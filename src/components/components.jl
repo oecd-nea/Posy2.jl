@@ -615,7 +615,7 @@ end
 Build, connect and return an interconnection component linking two nodes.
 If `dir` is true, apply a one-way constraint at every timestep.
 """
-function makenodeinterco(name::String, a::Node, b::Node, atob::Number, btoa::Number, s::Snapshot; dir::Bool=false, foreign::Bool=false, transactioncost=1.)
+function makenodeinterco(name::String, a::Node, b::Node, atob::Number, btoa::Number, s::Snapshot; dir::Bool=false, foreign::Bool=false, transactioncost=1., dc::Bool=false)
     vb = []
 
     # a -> b
@@ -650,9 +650,9 @@ function makenodeinterco(name::String, a::Node, b::Node, atob::Number, btoa::Num
     for t in (:interconnection, :nodeinterconnection)
         tag!(c, t)
     end
-    if foreign
-        tag!(c, :foreign)
-    end
+    foreign && tag!(c, :foreign) # IC between self and other country
+    dc ? tag!(c, :DC) : tag!(c, :AC) # AC or DC
+
     connect!(s, c, a)
     connect!(s, c, b)
 
