@@ -90,12 +90,14 @@ function __write_to_sheet!(sh, d::DataLine{<:DataFrame}, row=1)
 end
 
 # write a vector of DataLine to a sheet
-function _write_to_sheet!(sh, v::AbstractVector{<:DataLine})
+function _write_to_sheet!(sh, v::AbstractVector)
     local row = 1
     for e in v
         row = __write_to_sheet!(sh, e, row)
     end
 end
 
+ __write_to_sheet!(sh, ::Nothing, row=1) = row
+
 _write!(sh, a::DataFrame) = !isempty(a) && XLSX.writetable!(sh, a)
-_write!(sh, a::Vector{<:DataLine}) = _write_to_sheet!(sh, a)
+_write!(sh, a::AbstractVector) = _write_to_sheet!(sh, a)

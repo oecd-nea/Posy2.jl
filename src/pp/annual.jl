@@ -970,6 +970,7 @@ end
 # evaluated as ratio of energy produced over energy that could have been produced
 function _dataline_electrolysers_capacityfactors(s; showforeign=true)
     dfp = _dataline_yearly_electrolysis(s, showforeign=showforeign).d[1:end-1,1:end-1]
+    isempty(dfp) && return nothing
     dfc = _dataline_electrolysis_cap(s, showforeign=showforeign).d[1:end-1,1:end-1]
 
     df = DataFrame([name => Vector{Union{String,Float64}}(undef,nrow(dfp)) for name in names(dfp)])
