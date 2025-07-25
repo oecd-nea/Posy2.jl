@@ -106,12 +106,26 @@ end
 # return demand time series in MWhe
 function demand(s; aggregate=false, collapse=false)
     d = LittleDict()
-    dcomps = getcomponents(s, [:demand], Symbol[])
-    for (k,v) in dcomps
+    de = getcomponents(s, [:demand, :electricity], Symbol[]) # consumption of demand-type components
+    dh = getcomponents(s, [:electrolysis], Symbol[]) # consumption of electrolyser-type components
+    for (k,v) in merge(de, dh)
         d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input"]
     end
     aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
     return d
+end
+
+function demand(s, nodename::String; aggregate=false, collapse=false)
+    d = demand(s, aggregate=false, collapse=collapse)
+    d2 = Dict()
+    for (k,v) in d
+        s = split(k, ' ')
+        if s[end] == nodename
+            d2[k] = v
+        end
+    end
+    aggregate && return sum(values(d2))
+    return d2
 end
 
 # return curtailment time series in MWhe

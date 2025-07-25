@@ -24,7 +24,9 @@ function makedemand(name::String, tech::String, n::Node, s::Snapshot; coeff=1.0,
     vb = []
     !iszero(gridlosses) && push!(vb, LinkedJointFlow("grid losses", n.carrier, :input, "input", x->x * gridlosses))
     c = Component(name * " " * n.name, m, vb)
-    tag!(c, :demand)
+    for t in (:electricity, :demand)
+        tag!(c, t)
+    end
     connect!(s, c, n)   
     return c
 end
@@ -45,7 +47,9 @@ function makeEV(name::String, yearly::Float64, offhours1::AbstractVector{<:Int},
     vb = []
     !iszero(gridlosses) && push!(vb, LinkedJointFlow("grid losses", n.carrier, :input, "input", x->x * gridlosses))
     c = Component(name * " " * n.name, m, vb)
-    tag!(c, :demand)
+    for t in (:electricity, :demand)
+        tag!(c, t)
+    end
     connect!(s, c, n)   
     return c
 end
@@ -451,7 +455,7 @@ end
 Build, connect and return a hydro reservoir component.
 NB: no energy capacity at the moment.
 """
-function makehydroreservoir(name::String, tech::String, zone::String, elec::Node, cap_discharging, cap_charging, cap_reservoir, inflow::Number, s::Snapshot; renormalize=true, weatheryear=2019, gridlosses=0., simplified=false)
+function makehydroreservoir(name::String, tech::String, zone::String, elec::Node, cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot; renormalize=true, weatheryear=2019, gridlosses=0., simplified=false)
     m = LazyStorage(elec.carrier, eff=Dict("natural" => 1., "output" => 1., "input" => 0.76, "grid losses" => 0.), simplified=simplified)
     vb = []
     # joint flows for input and output
@@ -464,7 +468,15 @@ function makehydroreservoir(name::String, tech::String, zone::String, elec::Node
     push!(vb, FixedCost(:fom, "output", energy, gettechparam(s, tech, "om_fixed_cost", "storage") * 1000.))
     push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "storage"), _lt, s.options["discountrate"])))
     
-    if !iszero(inflow)
+    
+
+    if isnothing(inflow)
+        # no renormalization via inflow
+        _profile = gettimeseries(s, zone, "reservoir_inflow_$weatheryear")
+        push!(vb, FixedJointFlow("natural", elec.carrier, :input, _profile, mustconnect=false))
+    elseif iszero(inflow)
+        nothing # no inflow
+    else
         # intake profile
         _profile = gettimeseries(s, zone, "reservoir_inflow_$weatheryear")
         if renormalize 

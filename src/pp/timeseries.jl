@@ -25,6 +25,11 @@ function gentimeseries(s::Snapshot)
     df[!,"Total curtailment"] = curt / 1000.
     df[!,"Total level"] = lev / 1000.
 
+    dcons = demand(s, collapse=false, aggregate=false)
+    for (k,v) in dcons
+        df[!,k] = v / 1000.
+    end
+
     dprod = production(s, collapse=false, aggregate=false)
     for (k,v) in dprod
         df[!,k] = v / 1000.

@@ -1,20 +1,7 @@
 using OrderedCollections: LittleDict
+using Nosy: nhours
+using Infiltrator
 
-"""
-    demand(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-Return a Dict of the time series associated with demand of `modifier` in node named `nodename` of Snapshot `s`.
-If `collapse`, return a Dict of values instead.
-"""
-function demand(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    if collapse
-        ini = 0.
-    else
-        ini = zeros(nhours(sim(s)))
-    end
-    d = getcomponents(s, nodename, [:demand])
-    dem = sum([balance(v, :input, modifier, collapse=collapse, aggregate=false)["input"] for (k,v) in d], init=ini)
-    return dem
-end
 
 """
     losses(s::Snapshot, compname::String; modifier=energy, collapse=true)
@@ -266,12 +253,10 @@ function _dataline_demand_prod(s; showforeign=true)
     else
         enodes = getnodes(s, [:electricity], [:foreign])
     end
-
-
-
+    
     d = LittleDict()
     d["zone"] = [k for (k,_) in enodes]
-    d["Final consumption excl. electrolysis"] = [demand(s, k)/1E6 for (k,_) in enodes]
+    d["Final consumption incl. electrolysis"] = [demand(s, k, aggregate=true, collapse=true)/1E6 for (k,_) in enodes]
     d["Production"] = [production(s, k)/1E6 for (k,_) in enodes] # includes discharging
     d["Charging"] = [charging(s, k)/1E6 for (k,_) in enodes]
     # d["Storage losses"] = [storageloss(s,k)/1E6 for (k,_) in enodes] # already counted in charging
