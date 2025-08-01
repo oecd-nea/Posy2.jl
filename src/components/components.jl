@@ -425,9 +425,9 @@ end
     makehydroror(name::String, zone::String, elec::Node, cap, s::Snapshot; weatheryear=2019)
 Build, connect and return a run-of-river hydro component.
 """
-function makehydroror(name::String, zone::String, elec::Node, cap, s::Snapshot; weatheryear=2019)
+function makehydroror(name::String, zone::String, elec::Node, cap, s::Snapshot; weatheryear=2019, intake_mult=1.)
     _profile = gettimeseries(s, zone, "hydro_ror_$weatheryear")
-    m = ProfileSource(elec.carrier, _profile / cap, cutoff=1.)
+    m = ProfileSource(elec.carrier, _profile * intake_mult / cap, cutoff=1.)
     vb = []
     if cap isa Number
         push!(vb, FixedCapacity("output", energy, cap))
@@ -455,7 +455,7 @@ end
 Build, connect and return a hydro reservoir component.
 NB: no energy capacity at the moment.
 """
-function makehydroreservoir(name::String, tech::String, zone::String, elec::Node, cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot; renormalize=true, weatheryear=2019, gridlosses=0., simplified=false)
+function makehydroreservoir(name::String, tech::String, zone::String, elec::Node, cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot; renormalize=true, weatheryear=2019, gridlosses=0., simplified=false, intake_mult=1.)
     m = LazyStorage(elec.carrier, eff=Dict("natural" => 1., "output" => 1., "input" => 0.76, "grid losses" => 0.), simplified=simplified)
     vb = []
     # joint flows for input and output
@@ -472,7 +472,7 @@ function makehydroreservoir(name::String, tech::String, zone::String, elec::Node
 
     if isnothing(inflow)
         # no renormalization via inflow
-        _profile = gettimeseries(s, zone, "reservoir_inflow_$weatheryear")
+        _profile = gettimeseries(s, zone, "reservoir_inflow_$weatheryear") * intake_mult
         push!(vb, FixedJointFlow("natural", elec.carrier, :input, _profile, mustconnect=false))
     elseif iszero(inflow)
         nothing # no inflow
@@ -480,7 +480,7 @@ function makehydroreservoir(name::String, tech::String, zone::String, elec::Node
         # intake profile
         _profile = gettimeseries(s, zone, "reservoir_inflow_$weatheryear")
         if renormalize 
-            _profile = _profile / sum(_profile)
+            _profile = _profile / sum(_profile) * intake_mult
         end   
         push!(vb, FixedJointFlow("natural", elec.carrier, :input, _profile * inflow, mustconnect=false))
     end
