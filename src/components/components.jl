@@ -193,8 +193,10 @@ function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snaps
     elseif isnothing(cap)
         if isnothing(ini)
             push!(vb, VariableCapacity("output", energy, unitsize=_usize, integer=integercap, lb = isnothing(mincap) ? 0 : mincap, ub = isnothing(maxcap) ? Inf : maxcap, warmstart=warmstart))
-        else
+        elseif Nosy.hascomponent(ini, name * "_" * elec.name)
             push!(vb, FixedCapacity("output", energy, capacity(ini, name * " " * elec.name), unitsize=_usize))
+        else
+            push!(vb, FixedCapacity("output", energy, 0., unitsize=_usize))
         end
     end
 
@@ -218,11 +220,15 @@ function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snaps
                 shutdown=gettechparam(s, tech, "shutdown_duration", "dispatchable"), 
                 integer=integeruc)
             )
-        else
+            push!(vb, NoLoadCost(:noload, "output", gettechparam(s, tech, "no_load_cost", "dispatchable")))
+            push!(vb, StartupCost(:startup, "output", gettechparam(s, tech, "startup_cost", "dispatchable")))
+        elseif Nosy.hascomponent(ini, name * "_" * elec.name)
+            push!(vb, NoLoadCost(:noload, "output", gettechparam(s, tech, "no_load_cost", "dispatchable")))
+            push!(vb, StartupCost(:startup, "output", gettechparam(s, tech, "startup_cost", "dispatchable")))
             push!(vb, UnitCommitment(first(Nosy.getbehaviors(ini.components[name * " " * elec.name], Nosy.FleetUnitCommitmentBehavior))))
+        else
+            uc = false # not considering uc for the rest of the method
         end
-        push!(vb, NoLoadCost(:noload, "output", gettechparam(s, tech, "no_load_cost", "dispatchable")))
-        push!(vb, StartupCost(:startup, "output", gettechparam(s, tech, "startup_cost", "dispatchable")))
     end
 
     c = Component(name * " " * elec.name, m, vb)
