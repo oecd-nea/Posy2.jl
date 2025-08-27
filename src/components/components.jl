@@ -174,6 +174,14 @@ end
 Build, connect and return a nuclear reactor component.
 """
 function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snapshot; integercap=false, integeruc=false, cap=nothing, mincap=nothing, maxcap=nothing, warmstart=nothing, uc=false, fuelnode=nothing, capex_mult=1., fuel_mult=1., ini::Union{Nothing,Snapshot}=nothing, co2price=s.sim.options["CO2 price"])
+    if tech in ("Nuclear", "Nuclear flexible",)
+        reloading = 30 * 24 # hours
+    elseif tech == "SMR"
+        reloading = 15 * 7 # hours
+    else
+        throw(AssertionError("technology " * tech * " not recognized"))
+    end
+    
     m = DispatchableSource(elec.carrier)
     vb = []
     _oc = gettechparam(s, tech, "overnight_cost", "dispatchable") * 1000.
@@ -216,7 +224,7 @@ function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snaps
             push!(vb, Nosy.UnitCommitment("output", 
                 gettechparam(s, tech, "min_power", "dispatchable"), 
                 uptime=gettechparam(s, tech, "min_uptime", "dispatchable"), 
-                downtime=[gettechparam(s, tech, "min_downtime", "dispatchable"), 876], 
+                downtime=[gettechparam(s, tech, "min_downtime", "dispatchable"), reloading], 
                 #downtime2=876, # 24*30, 
                 startup=gettechparam(s, tech, "startup_duration", "dispatchable"), 
                 shutdown=gettechparam(s, tech, "shutdown_duration", "dispatchable"), 
@@ -260,44 +268,55 @@ function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snaps
     #     end
     # end
 
-    # reduce capabilities of short shutdown
-    if uc
-        for h in 1:8760
-            # reduce possibilities for reloading-type shutdown
-            if !iszero((h-1)%(12))
-                # reduce possibilities for startup
-                e = c.behaviors[2].startup[h]
-                if (e isa GenericAffExpr) && !iszero(e)
-                    v = first(e.terms)[1]
-                    fix(v, 0., force=true)
-                end                
+    if tech in ("Nuclear", "Nuclear flexible",)
+        # reduce capabilities of short shutdown
+        if uc
+            for h in 1:8760
+                # reduce possibilities for reloading-type shutdown
+                if !iszero((h-1)%(12))
+                    # reduce possibilities for startup
+                    e = c.behaviors[2].startup[h]
+                    if (e isa GenericAffExpr) && !iszero(e)
+                        v = first(e.terms)[1]
+                        fix(v, 0., force=true)
+                    end                
 
-                # reduce possibilities for normal shutdown
-                e = c.behaviors[2].shutdownselector[1][h]
-                if (e isa GenericAffExpr) && !iszero(e)
-                    v = first(e.terms)[1]
-                    fix(v, 0., force=true)
+                    # reduce possibilities for normal shutdown
+                    e = c.behaviors[2].shutdownselector[1][h]
+                    if (e isa GenericAffExpr) && !iszero(e)
+                        v = first(e.terms)[1]
+                        fix(v, 0., force=true)
+                    end
                 end
             end
         end
-    end
 
-    # reloading of nuclear fuel
-    if uc
-        sum_reload = AffExpr(0.)
-        for h in 1:8760
-            # reduce possibilities for reloading-type shutdown
-            if !iszero((h-1)%(24*7))
-                e = c.behaviors[2].shutdownselector[2][h]
-                if (e isa GenericAffExpr) && !iszero(e)
-                    v = first(e.terms)[1]
-                    fix(v, 0., force=true)
+        # reloading of nuclear fuel
+        if uc
+            sum_reload = AffExpr(0.)
+            for h in 1:8760
+                # reduce possibilities for reloading-type shutdown
+                if !iszero((h-1)%(24*7))
+                    e = c.behaviors[2].shutdownselector[2][h]
+                    if (e isa GenericAffExpr) && !iszero(e)
+                        v = first(e.terms)[1]
+                        fix(v, 0., force=true)
+                    end
+                else
+                    add_to_expression!(sum_reload, c.behaviors[2].shutdownselector[2][h])
                 end
-            else
+            end
+            @constraint(s.sim.model, sum_reload == nbunits(c))
+        end
+    elseif tech == "SMR"
+        # reloading of nuclear fuel
+        if uc
+            sum_reload = AffExpr(0.)
+            for h in 1:8760
                 add_to_expression!(sum_reload, c.behaviors[2].shutdownselector[2][h])
             end
+            @constraint(s.sim.model, sum_reload == nbunits(c))
         end
-        @constraint(s.sim.model, sum_reload == nbunits(c))
     end
 
     return c
@@ -779,7 +798,7 @@ function makehydrogenstorage(name::String, tech::String, h2::Node, cap, eff::Num
     end
     # push!(vb, Duration(4)) # TYNDP methodology 9.6.4: fill in 4 hours # removed for large storage (no meaning, no impact except negative on performance)
     c = Component(name * " " * h2.name, m, vb)
-    for t in (:electrolysis, :hydrogen, :storage)
+    for t in (:hydrogen, :storage)
         tag!(c, t)
     end
     connect!(s, c, h2)
