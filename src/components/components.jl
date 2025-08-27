@@ -177,7 +177,7 @@ function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snaps
     if tech in ("Nuclear", "Nuclear flexible",)
         reloading = 30 * 24 # hours
     elseif tech == "SMR"
-        reloading = 15 * 7 # hours
+        reloading = 15 * 24 # hours
     else
         throw(AssertionError("technology " * tech * " not recognized"))
     end
