@@ -15,10 +15,16 @@ function eac(overnight::Number, discountrate::Number, lifetime, constructionprof
     if ismissing(constructionprofile)
         return _eac(overnight * (1+discountrate), discountrate, 1) # if constructionprofile is not given, assume 1 year of construction (the year before operation)
     else
-        vc = isa(constructionprofile, String) ? parse.(Float64, split(constructionprofile, ';')) : [constructionprofile] # construction profile is given in the chronological order
-        @assert isapprox(sum(vc), 1., rtol=1E-3) "Sum of the construction profile is not equal to 1"
-        overnight * sum((vc[y]) * (1 + discountrate)^(length(vc)+1-y) for y in eachindex(vc)) * corrected_crf(discountrate, lifetime)
+        return overnight * construction_factor(discountrate, constructionprofile) * corrected_crf(discountrate, lifetime)
     end
+end
+
+# construction_factor
+function construction_factor(discountrate, constructionprofile)
+    vc = isa(constructionprofile, String) ? parse.(Float64, split(constructionprofile, ';')) : [constructionprofile]
+    @assert isapprox(sum(vc), 1., rtol=1E-3) "Sum of the construction profile is not equal to 1"
+    cf = sum((vc[y]) * (1 + discountrate)^(length(vc)+1-y) for y in eachindex(vc))
+    return cf
 end
 
 #version of capital recovery factor that does not consider year 0 as a white year
