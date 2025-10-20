@@ -97,7 +97,7 @@ function storagelevel(s; aggregate=false)
     d = LittleDict()
     dcomps = getcomponents(s, [:storage], Symbol[])
     for (k,v) in dcomps
-        d["level " * k] = Nosy.Hourly(v.model.s.level["level"].series, sim(s).mesh)
+        d["level" * k] = balance(v, :level, energy, collapse=false, aggregate=true)
     end
     aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
     return d
