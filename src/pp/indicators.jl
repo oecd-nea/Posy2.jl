@@ -7,7 +7,7 @@ The functions below rely on the tag system
 # return exports time series
 function ic_vol_sense1(s; aggregate=false, collapse=false, showforeign=true)
     d = LittleDict()
-    dcomps = getcomponents(s, [:interconnection], Symbol[]) # only considering components connected with foreign nodes
+    dcomps = getcomponents(s, with=[:interconnection]) # only considering components connected with foreign nodes
     for (k,v) in dcomps
         d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input2"]
     end
@@ -18,7 +18,7 @@ end
 # return imports time series
 function ic_vol_sense2(s; aggregate=false, collapse=false, showforeign=true)
     d = LittleDict()
-    dcomps = getcomponents(s, [:interconnection], Symbol[])
+    dcomps = getcomponents(s, with=[:interconnection])
     for (k,v) in dcomps
         d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["output"]
     end
@@ -44,7 +44,7 @@ end
 
 function availabletransfercapacities(s) # no aggregate or collapse options (no meaning)
     d = LittleDict()
-    dcomps = getcomponents(s, [:interconnection, :foreign], Symbol[]) # only considering components connected with foreign nodes
+    dcomps = getcomponents(s, with=[:interconnection, :foreign]) # only considering components connected with foreign nodes
     for (k,v) in dcomps
         d["ATC " * rewrite_import_from_implicit(k)] = capacity(v, "output", multiplier=true)
         d["ATC " * rewrite_export_from_implicit(k)] = capacity(v, "input", multiplier=true)
@@ -56,7 +56,7 @@ end
 # return production time series in MWhe
 function production(s; aggregate=false, collapse=false)
     d = LittleDict()
-    dcomps = getcomponents(s, [:generation], Symbol[])
+    dcomps = getcomponents(s, with=[:generation])
     for (k,v) in dcomps
         d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["output"]
     end
@@ -67,7 +67,7 @@ end
 # return charging time series in MWhe
 function charging(s; aggregate=false, collapse=false)
     d = LittleDict()
-    dcomps = getcomponents(s, [:storage], Symbol[])
+    dcomps = getcomponents(s, with=[:storage])
     for (k,v) in dcomps
         b = balance(v, :input, energy, collapse=collapse, aggregate=false)
         if haskey(b, "input")
@@ -81,7 +81,7 @@ end
 # return natural intake time series in MWhe
 function intake(s; aggregate=false, collapse=false)
     d = LittleDict()
-    dcomps = getcomponents(s, [:storage], Symbol[])
+    dcomps = getcomponents(s, with=[:storage])
     for (k,v) in dcomps
         b = balance(v, :input, energy, collapse=collapse, aggregate=false)
         if haskey(b, "natural")
@@ -95,7 +95,7 @@ end
 # return storagelevel time series in MWhe
 function storagelevel(s; aggregate=false)
     d = LittleDict()
-    dcomps = getcomponents(s, [:storage], Symbol[])
+    dcomps = getcomponents(s, with=[:storage])
     for (k,v) in dcomps
         d["level" * k] = balance(v, :level, energy, collapse=false, aggregate=true)
     end
@@ -106,8 +106,8 @@ end
 # return demand time series in MWhe
 function demand(s; aggregate=false, collapse=false)
     d = LittleDict()
-    de = getcomponents(s, [:demand, :electricity], Symbol[]) # consumption of demand-type components
-    dh = getcomponents(s, [:electrolysis], Symbol[]) # consumption of electrolyser-type components
+    de = getcomponents(s, with=[:demand, :electricity]) # consumption of demand-type components
+    dh = getcomponents(s, with=[:electrolysis]) # consumption of electrolyser-type components
     for (k,v) in merge(de, dh)
         d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input"]
     end
@@ -134,8 +134,8 @@ curtailment(s; collapse=true) = sum(curtailment(s, z, collapse=collapse) for (z,
 # return lossestime series in MWhe
 function losses(s; aggregate=false, collapse=true)
     d = LittleDict()
-    for (nname, _) in getnodes(s, [:electricity], Symbol[])
-        d[nname] = sum([losses(s, cname, modifier=energy, collapse=collapse) for (cname, c) in getcomponents(s, nname, Symbol[], Symbol[])])
+    for (nname, _) in getnodes(s, with=[:electricity])
+        d[nname] = sum([losses(s, cname, modifier=energy, collapse=collapse) for (cname, c) in getcomponents(s, nname)])
     end
     aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
     return d

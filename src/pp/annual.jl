@@ -32,7 +32,7 @@ function production(s::Snapshot, nodename::String; modifier=energy, collapse=tru
     else
         ini = zeros(nhours(sim(s)))
     end
-    d = getcomponents(s, nodename, [:generation])
+    d = getcomponents(s, nodename, with=[:generation])
     val = sum([balance(v, :output, modifier, collapse=collapse, aggregate=true) for (k,v) in d], init=ini)
     return val  
 end
@@ -43,7 +43,7 @@ Return a Dict of the time series associated with charging of `modifier` in node 
 If `collapse`, return a Dict of values instead.
 """
 function charging(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = getcomponents(s, nodename, [:storage])
+    d = getcomponents(s, nodename, with=[:storage])
     if collapse
         local c = 0.
     else
@@ -59,7 +59,7 @@ function charging(s::Snapshot, nodename::String; modifier=energy, collapse=true)
 end
 
 function storageloss(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = getcomponents(s, nodename, [:storage])
+    d = getcomponents(s, nodename, with=[:storage])
     if collapse
         local c = 0.
     else
@@ -218,7 +218,7 @@ function demandresponse(s::Snapshot, nodename::String; modifier=energy, collapse
     else
         ini = zeros(nhours(sim(s)))
     end
-    d = getcomponents(s, nodename, [:demandresponse])
+    d = getcomponents(s, nodename, with=[:demandresponse])
     dem = sum([balance(v, :output, modifier, collapse=collapse, aggregate=true) for (k,v) in d], init=ini)
     return dem  
 end
@@ -234,7 +234,7 @@ function electrolysis(s::Snapshot, nodename::String; collapse=true)
     else
         ini = zeros(nhours(sim(s)))
     end
-    d = getcomponents(s, nodename, [:electrolysis])
+    d = getcomponents(s, nodename, with=[:electrolysis])
     dem = sum([balance(v, :input, energy, collapse=collapse, aggregate=false)["input"] for (k,v) in d], init=ini)
     return dem
 end
@@ -249,9 +249,9 @@ end
 # return a line with aggregated annual indicators e.g. demand, production etc.
 function _dataline_demand_prod(s; showforeign=true)
     if showforeign
-        enodes = getnodes(s, [:electricity], Symbol[])
+        enodes = getnodes(s, with=[:electricity])
     else
-        enodes = getnodes(s, [:electricity], [:foreign])
+        enodes = getnodes(s, with=[:electricity], without=[:foreign])
     end
     
     d = LittleDict()
@@ -260,7 +260,7 @@ function _dataline_demand_prod(s; showforeign=true)
     d["Production"] = [production(s, k)/1E6 for (k,_) in enodes] # includes discharging
     d["Charging"] = [charging(s, k)/1E6 for (k,_) in enodes]
     # d["Storage losses"] = [storageloss(s,k)/1E6 for (k,_) in enodes] # already counted in charging
-    d["Grid losses"] = [sum([losses(s, cname)/1E6 for (cname, c) in getcomponents(s, k, Symbol[], Symbol[])], init=0.)  for (k,_) in enodes]
+    d["Grid losses"] = [sum([losses(s, cname)/1E6 for (cname, c) in getcomponents(s, k)], init=0.)  for (k,_) in enodes]
     d["Electrolysis"] = [electrolysis(s,k)/1E6 for (k,_) in enodes]
 
     if showforeign
@@ -308,9 +308,9 @@ end
 # return a DataLine for capacity with specified parameters
 function __dataline_cap(s::Snapshot, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Symbol}, compswithout::Vector{Symbol}, portname::String, title::String, unit::String, coeff=1E3)
     allcomps = String[]
-    allnodes = getnodes(s, nodeswith, nodeswithout)
+    allnodes = getnodes(s, with=nodeswith, without=nodeswithout)
     for (nodename, _) in allnodes
-        d = getcomponents(s, nodename, compswith, compswithout)
+        d = getcomponents(s, nodename, with=compswith, without=compswithout)
         lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
         for cname in lcomps
             !(cname in allcomps) && push!(allcomps, cname)
@@ -393,12 +393,12 @@ end
 function _dataline_demandresponse_cap(s; showforeign=true)
     allcomps = String[]
     if showforeign
-        allnodes = getnodes(s, [:electricity], Symbol[])
+        allnodes = getnodes(s, with=[:electricity])
     else
-        allnodes = getnodes(s, [:electricity], [:foreign])
+        allnodes = getnodes(s, with=[:electricity], without=[:foreign])
     end
     for (nodename, _) in allnodes
-        d = getcomponents(s, nodename, [:demandresponse])
+        d = getcomponents(s, nodename, with=[:demandresponse])
         lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
         for cname in lcomps
             !(cname in allcomps) && push!(allcomps, cname)
@@ -454,9 +454,9 @@ end
 
 function __dataline_yearly(s::Snapshot, modifier::Function, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Symbol}, compswithout::Vector{Symbol}, portname::String, title::String, unit::String; factor=1)
     allcomps = String[]
-    allnodes = getnodes(s, nodeswith, nodeswithout) # not including foreign nodes
+    allnodes = getnodes(s, with=nodeswith, without=nodeswithout) # not including foreign nodes
     for (nodename, _) in allnodes
-        d = getcomponents(s, nodename, compswith, compswithout)
+        d = getcomponents(s, nodename, with=compswith, without=compswithout)
         lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
         for cname in lcomps
             !(cname in allcomps) && push!(allcomps, cname)
@@ -552,7 +552,7 @@ end
 
 # parse an node-based ic (as a component linking 2 nodes) name, return a tuple of node names (from, to) associated with this interconnection
 function _fromto_ic_internal(s::Snapshot, ic::Component)
-    elecnodes = getnodes(s, [:electricity])
+    elecnodes = getnodes(s, with=[:electricity])
     local _to = ""
     local _from = ""
     for (nodename, node) in elecnodes
@@ -575,7 +575,7 @@ end
 
 # parse an external ic (with price time series) name, return a tuple of node names (from, to) associated with this interconnection
 function _fromto_ic_external(s::Snapshot, ic::Component)
-    elecnodes = getnodes(s, [:electricity])
+    elecnodes = getnodes(s, with=[:electricity])
     local _to = ""
     local _from = ""
     for (nodename, node) in elecnodes
@@ -598,15 +598,15 @@ function _dataline_ic_cap(s)
     allcomps_int = Set{String}()
     allcomps_ext = Set{String}()
     allquasinodes = Set{String}()
-    allnodes = getnodes(s, [:electricity])
+    allnodes = getnodes(s, with=[:electricity])
     for (nodename, _) in allnodes
-        let d = getcomponents(s, nodename, [:interconnection, :nodeinterconnection])
+        let d = getcomponents(s, nodename, with=[:interconnection, :nodeinterconnection])
             lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
             for cname in lcomps
                 push!(allcomps_int, cname)
             end
         end
-        let d = getcomponents(s, nodename, [:interconnection, :priceinterconnection])
+        let d = getcomponents(s, nodename, with=[:interconnection, :priceinterconnection])
             lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
             for cname in lcomps
                 push!(allcomps_ext, cname)
@@ -662,15 +662,15 @@ function _interco_vol_detailed(s; collapse=true, addtotal=false)
     allcomps_int = Set{String}()
     allcomps_ext = Set{String}()
     allquasinodes = Set{String}()
-    allnodes = getnodes(s, [:electricity])
+    allnodes = getnodes(s, with=[:electricity])
     for (nodename, _) in allnodes
-        let d = getcomponents(s, nodename, [:interconnection, :nodeinterconnection])
+        let d = getcomponents(s, nodename, with=[:interconnection, :nodeinterconnection])
             lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
             for cname in lcomps
                 push!(allcomps_int, cname)
             end
         end
-        let d = getcomponents(s, nodename, [:interconnection, :priceinterconnection])
+        let d = getcomponents(s, nodename, with=[:interconnection, :priceinterconnection])
             lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
             for cname in lcomps
                 push!(allcomps_ext, cname)
@@ -738,7 +738,7 @@ function imports_foreign(s; collapse=true)
     dv = LittleDict()
 
     df = _interco_vol_detailed(s, collapse=collapse, addtotal=false)
-    selfnodes = getnodes(s, [:electricity], [:foreign])
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
     for (nodename, _) in selfnodes
         toname = "> " * nodename
         for fromname in df[!,"From \\ To"]
@@ -758,7 +758,7 @@ function imports_internal(s; collapse=true)
     dv = LittleDict()
 
     df = _interco_vol_detailed(s, collapse=collapse, addtotal=false)
-    selfnodes = getnodes(s, [:electricity], [:foreign])
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
     for (nodename, _) in selfnodes
         toname = "> " * nodename
         for fromname in df[!,"From \\ To"]
@@ -778,7 +778,7 @@ function imports_all(s; collapse=true)
     dv = LittleDict()
 
     df = _interco_vol_detailed(s, collapse=collapse, addtotal=false)
-    selfnodes = getnodes(s, [:electricity], Symbol[])
+    selfnodes = getnodes(s, with=[:electricity])
     for (nodename, _) in selfnodes
         toname = "> " * nodename
         for fromname in df[!,"From \\ To"]
@@ -809,7 +809,7 @@ function exports_foreign(s; collapse=true)
     dv = LittleDict()
 
     df = _interco_vol_detailed(s, addtotal=false)
-    selfnodes = getnodes(s, [:electricity], [:foreign])
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
 
     for (nodename, _) in selfnodes
         fromname = nodename * " >"
@@ -830,7 +830,7 @@ function exports_internal(s; collapse=true)
     dv = LittleDict()
 
     df = _interco_vol_detailed(s, addtotal=false)
-    selfnodes = getnodes(s, [:electricity], [:foreign])
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
 
     for (nodename, _) in selfnodes
         fromname = nodename * " >"
@@ -851,7 +851,7 @@ function exports_all(s; collapse=true)
     dv = LittleDict()
 
     df = _interco_vol_detailed(s, addtotal=false)
-    selfnodes = getnodes(s, [:electricity], Symbol[])
+    selfnodes = getnodes(s, with=[:electricity])
 
     for (nodename, _) in selfnodes
         fromname = nodename * " >"
@@ -881,7 +881,7 @@ end
 
 function _dataline_net_ic_vol(s)
     df = _interco_vol_detailed(s, addtotal=false)
-    selfnodes = getnodes(s, [:electricity], [:foreign])
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
 
     _im = LittleDict()
     for (nodename, _) in selfnodes
@@ -987,7 +987,7 @@ function _dataline_costs(s; showforeign=true)
     end
 
     # filter out items not associated with costs
-    vcomp = getcomponents(s, Symbol[], [:demand])
+    vcomp = getcomponents(s, without=[:demand])
     for cname in collect(df[!,"component"]) # prevent lazy iteration because we modify the df
         if !haskey(vcomp, cname) && cname != "all"
             deleteat!(df, df[!,"component"] .== cname)
@@ -1054,9 +1054,9 @@ end
 
 function __dataline_yearly_price_received(s::Snapshot, modifier::Function, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Symbol}, compswithout::Vector{Symbol}, portname::String, title::String, unit::String; factor=1)
     allcomps = String[]
-    allnodes = getnodes(s, nodeswith, nodeswithout) # not including foreign nodes
+    allnodes = getnodes(s, with=nodeswith, without=nodeswithout) # not including foreign nodes
     for (nodename, _) in allnodes
-        d = getcomponents(s, nodename, compswith, compswithout)
+        d = getcomponents(s, nodename, with=compswith, without=compswithout)
         lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
         for cname in lcomps
             !(cname in allcomps) && push!(allcomps, cname)
@@ -1103,9 +1103,9 @@ end
 
 function __dataline_yearly_cost(s::Snapshot, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Symbol}, compswithout::Vector{Symbol}, title::String, unit::String; factor=1)
     allcomps = String[]
-    allnodes = getnodes(s, nodeswith, nodeswithout) # not including foreign nodes
+    allnodes = getnodes(s, with=nodeswith, without=nodeswithout) # not including foreign nodes
     for (nodename, _) in allnodes
-        d = getcomponents(s, nodename, compswith, compswithout)
+        d = getcomponents(s, nodename, with=compswith, without=compswithout)
         lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
         for cname in lcomps
             !(cname in allcomps) && push!(allcomps, cname)
@@ -1151,9 +1151,9 @@ end
 
 function __dataline_yearly_earnings(s::Snapshot, modifier::Function, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Symbol}, compswithout::Vector{Symbol}, portname::String, title::String, unit::String; factor=1)
     allcomps = String[]
-    allnodes = getnodes(s, nodeswith, nodeswithout) # not including foreign nodes
+    allnodes = getnodes(s, with=nodeswith, without=nodeswithout) # not including foreign nodes
     for (nodename, _) in allnodes
-        d = getcomponents(s, nodename, compswith, compswithout)
+        d = getcomponents(s, nodename, with=compswith, without=compswithout)
         lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
         for cname in lcomps
             !(cname in allcomps) && push!(allcomps, cname)

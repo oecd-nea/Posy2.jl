@@ -47,7 +47,7 @@ Return the "self" cost associated with interconnection named `cname`, for sense 
 """
 function _selfinterconnectioncost(s::Snapshot, cname::String, sense::Symbol, tag::Symbol)
     # find self node associated with IC component
-    selfnodes = getnodes(s, [:electricity], [:foreign])
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
     vsnode = Node[]
     for (_sname, _snode) in selfnodes
         if contains(cname, _sname)
@@ -59,7 +59,7 @@ function _selfinterconnectioncost(s::Snapshot, cname::String, sense::Symbol, tag
     snode = first(vsnode)
 
     # check component is connected to node snode
-    @assert haskey(getcomponents(s, snode.name, [tag]), cname)
+    @assert haskey(getcomponents(s, snode.name, with=[tag]), cname)
 
     # evaluating cost = volume * price
     # the price is defined as the SELF price! (not the other node price)
@@ -86,7 +86,7 @@ Return the congestion rent of an node-based interconnection (between nodes).
 """
 function selfcongestionrent_node(s::Snapshot, cname::String)
     # find the matching neighbor node
-    neighbornodes = getnodes(s, [:foreign], Symbol[])
+    neighbornodes = getnodes(s, with=[:foreign])
     local vnnode = Node[]
     for (_nname, _nnode) in neighbornodes
         if contains(cname, _nname)
@@ -98,7 +98,7 @@ function selfcongestionrent_node(s::Snapshot, cname::String)
     nnode = first(vnnode)
 
     # find the matching self node
-    selfnodes = getnodes(s, Symbol[], [:foreign])
+    selfnodes = getnodes(s, without=[:foreign])
     local vnnode = Node[]
     for (_nname, _nnode) in selfnodes
         if contains(cname, _nname)
@@ -110,8 +110,8 @@ function selfcongestionrent_node(s::Snapshot, cname::String)
     snode = first(vnnode)
 
     # check component is an explicit IC from nodes nnode and snode
-    @assert haskey(getcomponents(s, snode.name, [:interconnection, :nodeinterconnection]), cname)
-    @assert haskey(getcomponents(s, nnode.name, [:interconnection, :nodeinterconnection]), cname)
+    @assert haskey(getcomponents(s, snode.name, with=[:interconnection, :nodeinterconnection]), cname)
+    @assert haskey(getcomponents(s, nnode.name, with=[:interconnection, :nodeinterconnection]), cname)
 
     # price difference
     pricediff = Nosy.dualprice(snode) - Nosy.dualprice(nnode)
@@ -135,7 +135,7 @@ Return the congestion rent of an price-based interconnection (using exogenous pr
 """
 function selfcongestionrent_price(s::Snapshot, cname::String)
     # find the node it is connected to
-    nodes = getnodes(s, [:electricity], Symbol[])
+    nodes = getnodes(s, with=[:electricity])
     local vnnode = Node[]
     for (_nname, _nnode) in nodes
         if contains(cname, _nname)
@@ -147,7 +147,7 @@ function selfcongestionrent_price(s::Snapshot, cname::String)
     node = first(vnnode)
 
     # check component is an explicit IC from node 
-    @assert haskey(getcomponents(s, node.name, [:interconnection, :priceinterconnection]), cname)
+    @assert haskey(getcomponents(s, node.name, with=[:interconnection, :priceinterconnection]), cname)
     c = Nosy.getcomponent(s, cname)
 
     # price difference
@@ -181,8 +181,8 @@ function selfcosts(s::Snapshot; removezero::Bool=false, addtotal::Bool=true)
    
     # remove components associated to foreign nodes only
     _vselfcompname = String[]
-    for (nname, _) in getnodes(s, [:electricity], [:foreign])
-        for (cname, _) in getcomponents(s, nname, Symbol[], Symbol[])
+    for (nname, _) in getnodes(s, with=[:electricity], without=[:foreign])
+        for (cname, _) in getcomponents(s, nname)
             !(cname in _vselfcompname) && push!(_vselfcompname, cname)
         end
     end
@@ -203,8 +203,8 @@ function selfcosts(s::Snapshot; removezero::Bool=false, addtotal::Bool=true)
     
     # iterate on node-based IC with neighbors
     # outer loop on foreign nodes, inner loop on components
-    for (nname, _) in getnodes(s, [:electricity, :foreign], Symbol[])
-        d = getcomponents(s, nname, [:interconnection, :nodeinterconnection])
+    for (nname, _) in getnodes(s, with=[:electricity, :foreign])
+        d = getcomponents(s, nname, with=[:interconnection, :nodeinterconnection])
         for (cname, _) in d
             df[df[!,:component] .== cname, :imports] .= selfinterconnectioncost_node(s, cname)
             df[df[!,:component] .== cname, :exports] .= -selfinterconnectionrevenue_node(s, cname)
@@ -214,8 +214,8 @@ function selfcosts(s::Snapshot; removezero::Bool=false, addtotal::Bool=true)
 
     # iterate on price series IC
     # outer loop on self nodes, inner loop on components
-    for (nname, _) in getnodes(s, [:electricity], [:foreign])
-        d = getcomponents(s, nname, [:interconnection, :priceinterconnection])
+    for (nname, _) in getnodes(s, with=[:electricity], without=[:foreign])
+        d = getcomponents(s, nname, with=[:interconnection, :priceinterconnection])
         for (cname, _) in d
 
             # throw(AssertionError("TODO: re-evaluate import / export cost on price IC (export / import at self price)"))

@@ -6,12 +6,12 @@ function genpricecurves(s::Snapshot)
     df = DataFrame()
     
     if JuMP.has_duals(sim(s).model)
-        for (nname, n) in getnodes(s, [:electricity])
+        for (nname, n) in getnodes(s, with=[:electricity])
             df[!,nname] = sort(Nosy.dualprice(n), rev=true)
         end
     end
 
-    for (cname, c) in getcomponents(s, [:interconnection, :foreign], Symbol[])
+    for (cname, c) in getcomponents(s, with=[:interconnection, :foreign])
         _name = split(cname, '_')[2]
         df[!,_name] = sort(getexogenousprice(c), rev=true)
     end

@@ -67,18 +67,18 @@ function gentimeseries(s::Snapshot)
 
     # price from electricity nodes
     if JuMP.has_duals(sim(s).model)
-        for (nname, n) in getnodes(s, [:electricity])
+        for (nname, n) in getnodes(s, with=[:electricity])
             df[!,"price " * nname] = Nosy.dualprice(n)
         end
     else
         @warn "Model has no duals - dual price evaluation is skipped"
-        for (nname, n) in getnodes(s, [:electricity])
+        for (nname, n) in getnodes(s, with=[:electricity])
             df[!,"price " * nname] .= "not evaluated"
         end
     end
 
     # average price from price interconnection components (average of buying price and selling price)
-    for (cname, c) in getcomponents(s, [:interconnection, :priceinterconnection], Symbol[])
+    for (cname, c) in getcomponents(s, with=[:interconnection, :priceinterconnection])
         df[!,"price " * cname] = getexogenousprice(c)
     end
 
