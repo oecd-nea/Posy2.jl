@@ -703,7 +703,7 @@ function makenodeinterco(name::String, a::Node, b::Node, atob::Number, btoa::Num
     if !isinf(btoa)
         push!(vb, FixedCapacity("input2", energy, btoa))
         push!(vb, Nosy.CapacityMultiplier("input2", gettimeseries(s, b.name * ">" * a.name, "transfer_capacities", digits=2)))
-        push!(vb, VariableCost(:transaction, "output", energy, Float64(transactioncost)))
+        push!(vb, VariableCost(:transaction, "input2", energy, Float64(transactioncost)))
     end
     
     c = Component(string(name, "_", a.name, "_", b.name), m, vb)
