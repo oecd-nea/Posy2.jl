@@ -186,7 +186,7 @@ end
     makenuclear(name::String, tech::String, elec::Node, co2::Node, cap, s::Snapshot; integer=false)
 Build, connect and return a nuclear reactor component.
 """
-function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snapshot; integercap=false, integeruc=false, cap=nothing, mincap=nothing, maxcap=nothing, warmstart=nothing, uc=false, fuelnode=nothing, capex_mult=1., fuel_mult=1., ini::Union{Nothing,Snapshot}=nothing, co2price=s.sim.options["CO2 price"])
+function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snapshot; integercap=false, integeruc=false, cap=nothing, mincap=nothing, maxcap=nothing, warmstart=nothing, uc=false, fuelnode=nothing, capex_mult=1., fuel_mult=1., ini::Union{Nothing,Snapshot}=nothing, co2price=s.sim.options["CO2 price"], startupmask=nothing, shutdownmask=nothing)
     if tech in ("Nuclear", "Nuclear flexible",)
         reloading = 30 * 24 # hours
     elseif tech == "SMR"
@@ -242,7 +242,9 @@ function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snaps
                 downtime=[gettechparam(s, tech, "min_downtime", "dispatchable"), reloading], 
                 #downtime2=876, # 24*30, 
                 startup=gettechparam(s, tech, "startup_duration", "dispatchable"), 
-                shutdown=gettechparam(s, tech, "shutdown_duration", "dispatchable"), 
+                shutdown=gettechparam(s, tech, "shutdown_duration", "dispatchable"),
+                startupmask=startupmask,
+                shutdownmask=shutdownmask,
                 integer=integeruc)
             )
             push!(vb, NoLoadCost(:noload, "output", gettechparam(s, tech, "no_load_cost", "dispatchable")))
@@ -267,21 +269,6 @@ function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snaps
     if !isnothing(fuelnode)
         connect!(s, c, fuelnode)
     end
-
-    # load-following using startup and shutdown
-    # if uc
-    #     sum_reload = AffExpr(0.)
-    #     for h in 1:8760
-    #         # reduce possibilities for reloading-type shutdown
-    #         if !iszero((h-1)%(6))
-    #             e = c.behaviors[2].shutdownselector[1][h]
-    #             if e isa GenericAffExpr
-    #                 v = first(e.terms)[1]
-    #                 fix(v, 0., force=true)
-    #             end
-    #         end
-    #     end
-    # end
 
     if tech in ("Nuclear", "Nuclear flexible",)
         # reduce capabilities of short shutdown
@@ -527,7 +514,7 @@ function makehydroreservoir(name::String, tech::String, zone::String, elec::Node
     _inv = eac(_oc , s.options["discountrate"], _lt, _cp)
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:fom, "output", energy, gettechparam(s, tech, "om_fixed_cost", "storage") * 1000.))
-    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "storage"), _lt, s.options["discountrate"])))    
+    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "storage"), _lt, s.options["discountrate"])))   
 
     if isnothing(inflow)
         # no renormalization via inflow
