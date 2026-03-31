@@ -512,9 +512,9 @@ end
 
 function _dataline_yearly_production(s; showforeign=true)
     if showforeign
-        __dataline_yearly(s, energy, [:electricity], Symbol[], [:generation], Symbol[], "output", "Electrical production (Gross)", "TWeh/y", factor=1E6)
+        __dataline_yearly(s, energy, [:electricity], Symbol[], [:generation], Symbol[], "output", "Electrical production (Net)", "TWeh/y", factor=1E6)
     else
-        __dataline_yearly(s, energy, [:electricity], [:foreign], [:generation], Symbol[], "output", "Electrical production (Gross)", "TWeh/y", factor=1E6)
+        __dataline_yearly(s, energy, [:electricity], [:foreign], [:generation], Symbol[], "output", "Electrical production (Net)", "TWeh/y", factor=1E6)
     end
 end
 
