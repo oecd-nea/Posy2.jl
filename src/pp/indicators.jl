@@ -108,8 +108,12 @@ function demand(s; aggregate=false, collapse=false)
     d = LittleDict()
     de = getcomponents(s, with=[:demand, :electricity]) # consumption of demand-type components
     dh = getcomponents(s, with=[:electrolysis]) # consumption of electrolyser-type components
+    dev = getcomponents(s, with=[:ev]) # consumption of ev-type components
     for (k,v) in merge(de, dh)
         d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input"]
+    end
+    for (k,v) in dev
+        d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["driving"]
     end
     aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
     return d

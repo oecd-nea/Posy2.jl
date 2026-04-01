@@ -22,7 +22,7 @@ function makedemand(name::String, tech::String, n::Node, s::Snapshot; coeff=1.0,
 
     m = Demand(n.carrier, (var .+ yearlyconstant / 8760))
     vb = []
-    !iszero(gridlosses) && push!(vb, LinkedJointFlow("grid losses", n.carrier, :input, "input", x->x * gridlosses))
+    !iszero(gridlosses) && push!(vb, LinkedJointFlow("grid losses", n.carrier, :input, "input", x->x[1] * gridlosses))
     c = Component(name * " " * n.name, m, vb)
     for t in (:electricity, :demand)
         tag!(c, t)
@@ -45,7 +45,7 @@ function makeEV(name::String, yearly::Float64, offhours1::AbstractVector{<:Int},
 
     m = Demand(n.carrier, series)
     vb = []
-    !iszero(gridlosses) && push!(vb, LinkedJointFlow("grid losses", n.carrier, :input, "input", x->x * gridlosses))
+    !iszero(gridlosses) && push!(vb, LinkedJointFlow("grid losses", n.carrier, :input, "input", x->x[1] * gridlosses))
     c = Component(name * " " * n.name, m, vb)
     for t in (:electricity, :demand)
         tag!(c, t)
@@ -113,7 +113,7 @@ function makedispatchable(name::String, tech::String, elec::Node, co2::Node, s::
     # fuel cost only used is fuel node is nothing
     push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "dispatchable"), _lt, s.options["discountrate"])))
     if !iszero(gettechparam(s, tech, "co2_emission", "dispatchable"))
-        push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x * gettechparam(s, tech, "co2_emission", "dispatchable") / 1000.))
+        push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * gettechparam(s, tech, "co2_emission", "dispatchable") / 1000.))
         push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2price))
     end
     _usize = iszero(gettechparam(s, tech, "unit_size", "dispatchable")) ? nothing : gettechparam(s, tech, "unit_size", "dispatchable")
@@ -137,7 +137,7 @@ function makedispatchable(name::String, tech::String, elec::Node, co2::Node, s::
         push!(vb, VariableCost(:fuel, "output", energy, gettechparam(s, tech, "fuel_cost", "dispatchable")))
     else
         @assert !ismissing(gettechparam(s, tech, "efficiency", "dispatchable")) "Please define the `efficiency` parameter for $name in technological data file."
-        push!(vb, LinkedJointFlow("fuel", fuelnode.carrier, :input, "output", x->x / gettechparam(s, tech, "efficiency", "dispatchable")))
+        push!(vb, LinkedJointFlow("fuel", fuelnode.carrier, :input, "output", x->x[1] / gettechparam(s, tech, "efficiency", "dispatchable")))
     end
 
     # special case: cycling constraints for nuclear
@@ -209,7 +209,7 @@ function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snaps
     # fuel cost only used is fuel node is nothing
     push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "dispatchable"), _lt, s.options["discountrate"]) * capex_mult))
     if !iszero(gettechparam(s, tech, "co2_emission", "dispatchable"))
-        push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x * gettechparam(s, tech, "co2_emission", "dispatchable") / 1000.))
+        push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * gettechparam(s, tech, "co2_emission", "dispatchable") / 1000.))
         push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2price))
     end
     _usize = iszero(gettechparam(s, tech, "unit_size", "dispatchable")) ? nothing : gettechparam(s, tech, "unit_size", "dispatchable")
@@ -230,7 +230,7 @@ function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snaps
         push!(vb, VariableCost(:fuel, "output", energy, gettechparam(s, tech, "fuel_cost", "dispatchable") * fuel_mult))
     else
         @assert !ismissing(gettechparam(s, tech, "efficiency", "dispatchable")) "Please define the `efficiency` parameter for $name in technological data file."
-        push!(vb, LinkedJointFlow("fuel", fuelnode.carrier, :input, "output", x->x / gettechparam(s, tech, "efficiency", "dispatchable")))
+        push!(vb, LinkedJointFlow("fuel", fuelnode.carrier, :input, "output", x->x[1] / gettechparam(s, tech, "efficiency", "dispatchable")))
     end
 
     # special case: cycling constraints for nuclear
@@ -352,7 +352,7 @@ function makesmr(name::String, tech::String, elec::Node, heat::Node, s::Snapshot
     # fuel cost only used is fuel node is nothing
     push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "dispatchable"), _lt, s.options["discountrate"]) * capex_mult))
     
-    push!(vb, LinkedJointFlow("heat", heat.carrier, :output, "output", x->x * 1)) # actually not heat, but modeled as a 1:1 ratio to keep track of SMR and align it with HTE 
+    push!(vb, LinkedJointFlow("heat", heat.carrier, :output, "output", x->x[1] * 1)) # actually not heat, but modeled as a 1:1 ratio to keep track of SMR and align it with HTE 
     
     _usize = iszero(gettechparam(s, tech, "unit_size", "dispatchable")) ? nothing : gettechparam(s, tech, "unit_size", "dispatchable")
     if cap isa Number
@@ -393,7 +393,7 @@ function makenuclearprofile(name::String, tech::String, elec::Node, co2::Node, c
     push!(vb, VariableCost(:fuel, "output", energy, gettechparam(s, tech, "fuel_cost", "dispatchable")))
     push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "dispatchable"), _lt, s.options["discountrate"])))
     if !iszero(gettechparam(s, tech, "co2_emission", "dispatchable"))
-        push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x * gettechparam(s, tech, "co2_emission", "dispatchable") / 1000.))
+        push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * gettechparam(s, tech, "co2_emission", "dispatchable") / 1000.))
     end
     if cap isa Number
         push!(vb, FixedCapacity("output", energy, cap))
@@ -443,7 +443,7 @@ function makeintermittentsource(name::String, tech::String, elec::Node, co2::Nod
     push!(vb, VariableCost(:fuel, "output", energy, gettechparam(s, tech, "fuel_cost", "profile")))
     push!(vb, FixedCost(:decommissioning, "output", energy, gettechparam(s, tech, "decommissioning", "profile") * _inv))
     if !iszero(gettechparam(s, tech, "co2_emission", "profile"))
-        push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x * gettechparam(s, tech, "co2_emission", "profile") / 1000.))
+        push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * gettechparam(s, tech, "co2_emission", "profile") / 1000.))
     end
     if cap isa Number
         push!(vb, FixedCapacity("output", energy, cap))
@@ -545,11 +545,11 @@ function makehydroreservoir(name::String, tech::String, zone::String, elec::Node
         else
             push!(vb, FreeJointFlow("input", elec.carrier, :input))
             push!(vb, FixedCapacity("input", energy, cap_charging))
-            !iszero(gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x * gridlosses))
+            !iszero(gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * gridlosses))
         end
     elseif isnothing(cap_charging)
         push!(vb, VariableCapacity("input", energy))
-        !iszero(gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x * gridlosses))
+        !iszero(gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * gridlosses))
     else
         throw(error("cap_charging is not a number or nothing"))
     end
@@ -600,7 +600,7 @@ function makebatteries(name::String, tech::String, elec::Node, capin, s::Snapsho
     push!(vb, VariableCost(:vom, "input", energy, gettechparam(s, tech, "om_var_cost", "storage")))
 
     if !iszero(gridlosses)
-        push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x * gridlosses))
+        push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * gridlosses))
     end
 
     c = Component(name * " " * elec.name, m, vb)
@@ -691,13 +691,17 @@ function makenodeinterco(name::String, a::Node, b::Node, atob::Number, btoa::Num
 
     # b -> a
     push!(vb, FreeJointFlow("input2", b.carrier, :input))
-    push!(vb, LinkedJointFlow("output2", a.carrier, :output, "input2", x->x * (1. - lossfactor)))
+    push!(vb, LinkedJointFlow("output2", a.carrier, :output, "input2", x->x[1] * (1. - lossfactor)))
     if !isinf(btoa)
         push!(vb, FixedCapacity("input2", energy, btoa))
         push!(vb, Nosy.CapacityMultiplier("input2", gettimeseries(s, b.name * ">" * a.name, "transfer_capacities", digits=2)))
         push!(vb, VariableCost(:transaction, "input2", energy, Float64(transactioncost)))
     end
-    
+
+    # grid losses balance
+    # NB when counting grid losses from interconnectors, make sure to not double-count losses as interconnectors belong to multiple nodes
+    push!(vb, LinkedJointFlow("grid losses ic", b.carrier, :output, ("input", "input2"), x->(x[1]+x[2])*lossfactor, mustconnect=false))
+
     c = Component(string(name, "_", a.name, "_", b.name), m, vb)
 
     # make the IC flow go in one direction only
@@ -745,11 +749,11 @@ function makeelectrolyser(name::String, tech::String, elec::Node, h2::Node, cap,
         end
     end
     if !iszero(gridlosses)
-        push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x * gridlosses))
+        push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * gridlosses))
     end
 
     c = Component(name * " " * elec.name, m, vb)
-    for t in (:electrolysis, :hydrogen)
+    for t in (:demand, :electrolysis, :hydrogen)
         tag!(c, t)
     end
     connect!(s, c, elec)
@@ -781,10 +785,10 @@ function makeHTelectrolyser(name::String, tech::String, elec::Node, heat::Node, 
     end
 
     # heat from SMR
-    push!(vb, LinkedJointFlow("heat", heat.carrier, :input, "input", x->x))
+    push!(vb, LinkedJointFlow("heat", heat.carrier, :input, "input", x->x[1]))
 
     if !iszero(gridlosses)
-        push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x * gridlosses))
+        push!(vb, 1("grid losses", elec.carrier, :input, "input", x->x[1] * gridlosses))
     end
 
     c = Component(name * " " * elec.name, m, vb)

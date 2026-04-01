@@ -9,9 +9,11 @@ Return the time series associated with grid losses of `modifier` in component na
 If `collapse`, return a value instead.
 """
 function losses(s::Snapshot, compname::String; modifier=energy, collapse=true)
-    b = balance(Nosy.getcomponent(s, compname), :input, modifier, collapse=collapse, aggregate=false)
-    if haskey(b, "grid losses")
-        return b["grid losses"]
+    c = s.components[compname]
+    if Nosy.hasport(c, "grid losses")
+        return balance(c, Nosy.portsense(c.s, Nosy.PortRef(compname, "grid losses")), modifier, collapse=collapse, aggregate=false)["grid losses"]
+    elseif Nosy.hasport(c, "grid losses ic")
+        return balance(c, Nosy.portsense(c.s, Nosy.PortRef(compname, "grid losses ic")), modifier, collapse=collapse, aggregate=false)["grid losses ic"] / 2 # avoiding double-counting; convention for interconnectors: half of loss for each connected node
     else
         if collapse
             return 0.
@@ -33,7 +35,7 @@ function production(s::Snapshot, nodename::String; modifier=energy, collapse=tru
         ini = zeros(nhours(sim(s)))
     end
     d = getcomponents(s, nodename, with=[:generation])
-    val = sum([balance(v, :output, modifier, collapse=collapse, aggregate=true) for (k,v) in d], init=ini)
+    val = sum([balance(v, :output, modifier, collapse=collapse, aggregate=false)["output"] for (k,v) in d], init=ini)
     return val  
 end
 
@@ -41,25 +43,30 @@ end
     charging(s::Snapshot, nodename::String; modifier=energy, collapse=true)
 Return a Dict of the time series associated with charging of `modifier` in node named `nodename` of Snapshot `s`.
 If `collapse`, return a Dict of values instead.
+For EVs, return the charging minus the driving consumption, resulting in the effective pure charging behavior (should be zero for non-V2G EVs).
 """
 function charging(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = getcomponents(s, nodename, with=[:storage])
+    ds = getcomponents(s, nodename, with=[:storage])
+    dev = getcomponents(s, nodename, with=[:ev])
     if collapse
         local c = 0.
     else
         local c = zeros(nhours(s.sim))
     end
-    for (_,v) in d
+    for (_,v) in ds
         b = balance(v, :input, modifier, collapse=collapse, aggregate=false)
-        if haskey(b, "input")
-            c += b["input"]
-        end
+        c += b["input"]
+    end
+    for (_,v) in dev
+        bin = balance(v, :input, modifier, collapse=collapse, aggregate=false)
+        bout = balance(v, :output, modifier, collapse=collapse, aggregate=false)
+        c += (bin["input"] - bout["driving"])
     end
     return c
 end
 
 function storageloss(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = getcomponents(s, nodename, with=[:storage])
+    d = getcomponents(s, nodename, with=[:storage, :ev])
     if collapse
         local c = 0.
     else
@@ -257,11 +264,11 @@ function _dataline_demand_prod(s; showforeign=true)
     d = LittleDict()
     d["zone"] = [k for (k,_) in enodes]
     d["Final consumption incl. electrolysis"] = [demand(s, k, aggregate=true, collapse=true)/1E6 for (k,_) in enodes]
-    d["Production"] = [production(s, k)/1E6 for (k,_) in enodes] # includes discharging
+    d["Production incl. discharging"] = [production(s, k)/1E6 for (k,_) in enodes] # includes discharging
     d["Charging"] = [charging(s, k)/1E6 for (k,_) in enodes]
     # d["Storage losses"] = [storageloss(s,k)/1E6 for (k,_) in enodes] # already counted in charging
     d["Grid losses"] = [sum([losses(s, cname)/1E6 for (cname, c) in getcomponents(s, k)], init=0.)  for (k,_) in enodes]
-    d["Electrolysis"] = [electrolysis(s,k)/1E6 for (k,_) in enodes]
+    # d["Electrolysis"] = [electrolysis(s,k)/1E6 for (k,_) in enodes] # already included in final consumption
 
     if showforeign
         d["Imports"] = [imports_all(s,k)/1E6 for(k,_) in enodes]
@@ -276,23 +283,6 @@ function _dataline_demand_prod(s; showforeign=true)
     d["Curtailment"] = [curtailment(s,k)/1E6 for(k,_) in enodes]
 
     df = DataFrame(d)
-
-    # df = DataFrame(
-    #     LittleDict(
-    #         "zone" => [k for (k,_) in enodes],
-    #         "Demand" => [demand(s, k)/1E6 for (k,_) in enodes],
-    #         "Losses" => [losses(s, k)/1E6 for (k,_) in enodes],
-    #         "Production" => [production(s, k)/1E6 for (k,_) in enodes],
-    #         "Electrolysis" => [electrolysis(s,k)/1E6 for (k,_) in enodes],
-    #         "Charging" => [charging(s, k)/1E6 for (k,_) in enodes], 
-    #         "Imports (internal)" => [imports_internal(s,k)/1E6 for(k,_) in enodes],
-    #         "Exports (internal)" => [exports_internal(s,k)/1E6 for(k,_) in enodes],
-    #         "Imports (foreign)" => [imports_foreign(s,k)/1E6 for(k,_) in enodes],
-    #         "Exports (foreign)" => [exports_foreign(s,k)/1E6 for(k,_) in enodes],
-    #         "Curtailment" => [curtailment(s,k)/1E6 for(k,_) in enodes],
-    #         "Demand response" => [demandresponse(s,k)/1E6 for (k,_) in enodes],
-    #     )
-    # )
 
     # sum over zones
     _lastrow = permutedims(vcat("Total", [sum(c) for c in eachcol(df)[2:end]]))
@@ -364,18 +354,42 @@ end
 
 function _dataline_elec_storage_cap(s; showforeign=true) 
     if showforeign
-        __dataline_cap(s, [:electricity], Symbol[], [:storage], Symbol[], "input", "Electrical storage charging capacity", "GWe")
+        d1 = __dataline_cap(s, [:electricity], Symbol[], [:storage], Symbol[], "input", "Electrical storage charging capacity", "GWe")
+        d2 = __dataline_cap(s, [:electricity], Symbol[], [:ev], Symbol[], "input", "Electrical storage charging capacity", "GWe")
     else
-        __dataline_cap(s, [:electricity], [:foreign], [:storage], Symbol[], "input", "Electrical storage charging capacity", "GWe")
+        d1 = __dataline_cap(s, [:electricity], [:foreign], [:storage], Symbol[], "input", "Electrical storage charging capacity", "GWe")
+        d2 = __dataline_cap(s, [:electricity], [:foreign], [:ev], Symbol[], "input", "Electrical storage charging capacity", "GWe")
     end
+    # merge DataLines
+    df = leftjoin(d1.d, d2.d, on="zone", makeunique=true)
+    total = df[!,:Total] + df[!,:Total_1]
+    select!(df, Not([:Total, :Total_1]))
+    df[!,"Total"] = total
+    d = DataLine(
+        "Electrical storage charging capacity",
+        "TWh/y",
+        df
+    )
 end
 
 function _dataline_elec_storage_cap_level(s; showforeign=true) 
     if showforeign
-        __dataline_cap(s, [:electricity], Symbol[], [:storage], Symbol[], "level", "Electrical storage max level", "TWhe", 1E6)
+        d1 = __dataline_cap(s, [:electricity], Symbol[], [:storage], Symbol[], "level", "Electrical storage max level", "TWhe", 1E6)
+        d2 = __dataline_cap(s, [:electricity], Symbol[], [:ev], Symbol[], "level", "Electrical storage max level", "TWhe", 1E6)
     else
-        __dataline_cap(s, [:electricity], [:foreign], [:storage], Symbol[], "level", "Electrical storage max level", "TWhe", 1E6)
+        d1 = __dataline_cap(s, [:electricity], [:foreign], [:storage], Symbol[], "level", "Electrical storage max level", "TWhe", 1E6)
+        d2 = __dataline_cap(s, [:electricity], [:foreign], [:ev], Symbol[], "level", "Electrical storage max level", "TWhe", 1E6)
     end
+    # merge DataLines
+    df = leftjoin(d1.d, d2.d, on="zone", makeunique=true)
+    total = df[!,:Total] + df[!,:Total_1]
+    select!(df, Not([:Total, :Total_1]))
+    df[!,"Total"] = total
+    d = DataLine(
+        "Electrical storage max level",
+        "TWh/y",
+        df
+    )
 end
 
 function _dataline_electrolysis_cap(s; showforeign=true) 
@@ -504,41 +518,65 @@ end
 
 function _dataline_yearly_demand(s; showforeign=true)
     if showforeign
-        __dataline_yearly(s, energy, [:electricity], Symbol[], [:demand], Symbol[], "input", "Electrical final consumption (losses and electrolysis excluded)", "TWeh/y", factor=1E6)
+        d1 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:demand], Symbol[], "input", "Electrical final consumption (grid losses excluded)", "TWh/y", factor=1E6)
+        d2 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:ev], Symbol[], "driving", "EV", "TWh/y", factor=1E6)
     else
-        __dataline_yearly(s, energy, [:electricity], [:foreign], [:demand], Symbol[], "input", "Electrical final consumption (losses and electrolysis excluded)", "TWeh/y", factor=1E6)
+        d1 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:demand], Symbol[], "input", "Electrical final consumption (grid losses excluded)", "TWh/y", factor=1E6)
+        d2 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:ev], Symbol[], "driving", "EV", "TWh/y", factor=1E6)
     end
+    # merge DataLines
+    df = leftjoin(d1.d, d2.d, on="zone", makeunique=true)
+    total = df[!,:Total] + df[!,:Total_1]
+    select!(df, Not([:Total, :Total_1]))
+    df[!,"Total"] = total
+    d = DataLine(
+        "Electrical final consumption (losses excluded)",
+        "TWh/y",
+        df
+    )
 end
 
 function _dataline_yearly_production(s; showforeign=true)
     if showforeign
-        __dataline_yearly(s, energy, [:electricity], Symbol[], [:generation], Symbol[], "output", "Electrical production (Net)", "TWeh/y", factor=1E6)
+        __dataline_yearly(s, energy, [:electricity], Symbol[], [:generation], Symbol[], "output", "Electrical production (Net)", "TWh/y", factor=1E6)
     else
-        __dataline_yearly(s, energy, [:electricity], [:foreign], [:generation], Symbol[], "output", "Electrical production (Net)", "TWeh/y", factor=1E6)
+        __dataline_yearly(s, energy, [:electricity], [:foreign], [:generation], Symbol[], "output", "Electrical production (Net)", "TWh/y", factor=1E6)
     end
 end
 
 function _dataline_yearly_charging(s; showforeign=true)
     if showforeign
-        __dataline_yearly(s, energy, [:electricity], Symbol[], [:storage], Symbol[], "input", "Storage charging", "TWeh/y", factor=1E6)
+        d1 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:storage], Symbol[], "input", "Storage charging", "TWh/y", factor=1E6)
+        d2 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:ev], Symbol[], "input", "EV", "TWh/y", factor=1E6)
     else
-        __dataline_yearly(s, energy, [:electricity], [:foreign], [:storage], Symbol[], "input", "Storage charging", "TWeh/y", factor=1E6)
+        d1 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:storage], Symbol[], "input", "Storage charging", "TWh/y", factor=1E6)
+        d2 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:ev], Symbol[], "input", "EV", "TWh/y", factor=1E6)
     end
+    # merge DataLines
+    df = leftjoin(d1.d, d2.d, on="zone", makeunique=true)
+    total = df[!,:Total] + df[!,:Total_1]
+    select!(df, Not([:Total, :Total_1]))
+    df[!,"Total"] = total
+    d = DataLine(
+        "Storage charging (including V2G and non-V2G EVs)",
+        "TWh/y",
+        df
+    )
 end
 
 function _dataline_yearly_demandresponse(s; showforeign=true)
     if showforeign
-        __dataline_yearly(s, energy, [:electricity], Symbol[], [:demandresponse], Symbol[], "output", "Demand response", "TWeh/y", factor=1E6)
+        __dataline_yearly(s, energy, [:electricity], Symbol[], [:demandresponse], Symbol[], "output", "Demand response", "TWh/y", factor=1E6)
     else
-        __dataline_yearly(s, energy, [:electricity], [:foreign], [:demandresponse], Symbol[], "output", "Demand response", "TWeh/y", factor=1E6)
+        __dataline_yearly(s, energy, [:electricity], [:foreign], [:demandresponse], Symbol[], "output", "Demand response", "TWh/y", factor=1E6)
     end
 end
 
 function _dataline_yearly_electrolysis(s; showforeign=true)
     if showforeign
-        __dataline_yearly(s, energy, [:electricity], Symbol[], [:electrolysis], Symbol[], "input", "Electrolysis", "TWeh/y", factor=1E6)
+        __dataline_yearly(s, energy, [:electricity], Symbol[], [:electrolysis], Symbol[], "input", "Electrolysis", "TWh/y", factor=1E6)
     else
-        __dataline_yearly(s, energy, [:electricity], [:foreign], [:electrolysis], Symbol[], "input", "Electrolysis", "TWeh/y", factor=1E6)
+        __dataline_yearly(s, energy, [:electricity], [:foreign], [:electrolysis], Symbol[], "input", "Electrolysis", "TWh/y", factor=1E6)
     end
 end
 
@@ -1242,6 +1280,7 @@ function _annual_post_processing_self(s::Snapshot)
         x->_dataline_yearly_production(x, showforeign=false),
         x->_dataline_yearly_charging(x, showforeign=false),
         x->_dataline_yearly_demandresponse(x, showforeign=false),
+        # x->_dataline_yearly_ev_consumption(x, showforeign=false),
         x->_dataline_yearly_electrolysis(x, showforeign=false),
         _dataline_ic_vol_detailed,
         x->_dataline_imports_vol(x),
@@ -1273,6 +1312,7 @@ function _annual_post_processing_all(s::Snapshot)
         x->_dataline_yearly_production(x, showforeign=true),
         x->_dataline_yearly_charging(x, showforeign=true),
         x->_dataline_yearly_demandresponse(x, showforeign=true),
+        # x->_dataline_yearly_ev_consumption(x, showforeign=true),
         x->_dataline_yearly_electrolysis(x, showforeign=true),
         _dataline_ic_vol_detailed,
         x->_dataline_capacityfactors(x, showforeign=true),
