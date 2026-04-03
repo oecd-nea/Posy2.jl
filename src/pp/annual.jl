@@ -352,6 +352,17 @@ function _dataline_elec_prod_cap(s; showforeign=true)
     end
 end
 
+
+function _merge_annual_df(df1, df2)
+    df = leftjoin(df1, df2, on="zone", makeunique=true)
+    if "Total_1" in names(df)
+        total = df[!,:Total] + df[!,:Total_1]
+        select!(df, Not([:Total, :Total_1]))
+        df[!,"Total"] = total
+    end
+    return df
+end
+
 function _dataline_elec_storage_cap(s; showforeign=true) 
     if showforeign
         d1 = __dataline_cap(s, [:electricity], Symbol[], [:storage], Symbol[], "input", "Electrical storage charging capacity", "GWe")
@@ -361,10 +372,7 @@ function _dataline_elec_storage_cap(s; showforeign=true)
         d2 = __dataline_cap(s, [:electricity], [:foreign], [:ev], Symbol[], "input", "Electrical storage charging capacity", "GWe")
     end
     # merge DataLines
-    df = leftjoin(d1.d, d2.d, on="zone", makeunique=true)
-    total = df[!,:Total] + df[!,:Total_1]
-    select!(df, Not([:Total, :Total_1]))
-    df[!,"Total"] = total
+    df = _merge_annual_df(d1.d, d2.d)
     d = DataLine(
         "Electrical storage charging capacity",
         "TWh/y",
@@ -381,10 +389,7 @@ function _dataline_elec_storage_cap_level(s; showforeign=true)
         d2 = __dataline_cap(s, [:electricity], [:foreign], [:ev], Symbol[], "level", "Electrical storage max level", "TWhe", 1E6)
     end
     # merge DataLines
-    df = leftjoin(d1.d, d2.d, on="zone", makeunique=true)
-    total = df[!,:Total] + df[!,:Total_1]
-    select!(df, Not([:Total, :Total_1]))
-    df[!,"Total"] = total
+    df = _merge_annual_df(d1.d, d2.d)
     d = DataLine(
         "Electrical storage max level",
         "TWh/y",
@@ -525,10 +530,7 @@ function _dataline_yearly_demand(s; showforeign=true)
         d2 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:ev], Symbol[], "driving", "EV", "TWh/y", factor=1E6)
     end
     # merge DataLines
-    df = leftjoin(d1.d, d2.d, on="zone", makeunique=true)
-    total = df[!,:Total] + df[!,:Total_1]
-    select!(df, Not([:Total, :Total_1]))
-    df[!,"Total"] = total
+    df = _merge_annual_df(d1.d, d2.d)
     d = DataLine(
         "Electrical final consumption (losses excluded)",
         "TWh/y",
@@ -553,10 +555,7 @@ function _dataline_yearly_charging(s; showforeign=true)
         d2 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:ev], Symbol[], "input", "EV", "TWh/y", factor=1E6)
     end
     # merge DataLines
-    df = leftjoin(d1.d, d2.d, on="zone", makeunique=true)
-    total = df[!,:Total] + df[!,:Total_1]
-    select!(df, Not([:Total, :Total_1]))
-    df[!,"Total"] = total
+    df = _merge_annual_df(d1.d, d2.d)
     d = DataLine(
         "Storage charging (including V2G and non-V2G EVs)",
         "TWh/y",
