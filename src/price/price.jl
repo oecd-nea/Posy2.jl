@@ -188,6 +188,6 @@ end
 
 function reoptimizeforprice(s::Snapshot, metric=cost)
     s2 = rebuildsnapshotforprice(s)
-    Nosy.optimize!(s2, metric)
+    Nosy.optimize!(s2, metric(s2))
     return extract(s2)
 end
