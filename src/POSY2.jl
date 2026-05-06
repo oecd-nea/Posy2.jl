@@ -25,6 +25,7 @@ export makecurtailment
 
 export addkvlconstraints!
 
+export eac
 export selfcost
 export printsnapshot
 

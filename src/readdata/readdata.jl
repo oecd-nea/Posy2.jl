@@ -39,7 +39,7 @@ function gettechparam(xl, tech::String, param::String, sheetname::String, digits
         return val
     end
 end
-gettechparam(s::Snapshot, tech::String, param::String, sheetname::String; digits=6) = gettechparam(s.options["techdata"], tech, param, sheetname, digits)
+gettechparam(s::Snapshot, tech::String, param::String, sheetname::String; digits=6) = gettechparam(s.options[:techdata], tech, param, sheetname, digits)
 
 
 readtimeseries(filename="time_series.xlsx") = readexcel(joinpath(pwd(), "data"), filename)
@@ -51,5 +51,5 @@ function gettimeseries(xl, title::String, sheetname::String, digits::Int)
     return round.(df[!,title], digits=digits)
 end
 function gettimeseries(s::Snapshot, title::String, sheetname::String; digits=6)
-    gettimeseries(s.options["timeseries"], title, sheetname, digits)
+    gettimeseries(s.options[:timeseries], title, sheetname, digits)
 end

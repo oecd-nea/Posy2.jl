@@ -93,13 +93,13 @@ end
     makedispatchable(name::String, tech::String, elec::Node, co2::Node, cap, s::Snapshot; integer=false)
 Build, connect and return a dispatchable component.
 """
-function makedispatchable(name::String, tech::String, elec::Node, co2::Node, s::Snapshot; integer=false, cap=nothing, mincap=nothing, maxcap=nothing, uc=false, fuelnode=nothing, ini::Union{Nothing,Snapshot}=nothing, co2price=s.sim.options["CO2 price"], capacitymultiplier=nothing)
+function makedispatchable(name::String, tech::String, elec::Node, co2::Node, s::Snapshot; integer=false, cap=nothing, mincap=nothing, maxcap=nothing, uc=false, fuelnode=nothing, ini::Union{Nothing,Snapshot}=nothing, co2price=s.sim.options[:CO2_price], capacitymultiplier=nothing)
     m = DispatchableSource(elec.carrier)
     vb = []
     _oc = gettechparam(s, tech, "overnight_cost", "dispatchable") * 1000.
     _lt = Int(gettechparam(s, tech, "lifetime", "dispatchable"))
     _cp = gettechparam(s, tech, "construction_profile", "dispatchable")
-    _inv = eac(_oc , s.options["discountrate"], _lt, _cp)
+    _inv = eac(_oc , s.options[:discountrate], _lt, _cp)
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:connection, "output", energy, _inv * gettechparam(s, tech, "connection_cost", "dispatchable")))
     push!(vb, FixedCost(:fom, "output", energy, gettechparam(s, tech, "om_fixed_cost", "dispatchable") * 1000.))
@@ -111,7 +111,7 @@ function makedispatchable(name::String, tech::String, elec::Node, co2::Node, s::
     end
 
     # fuel cost only used is fuel node is nothing
-    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "dispatchable"), _lt, s.options["discountrate"])))
+    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "dispatchable"), _lt, s.options[:discountrate])))
     if !iszero(gettechparam(s, tech, "co2_emission", "dispatchable"))
         push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * gettechparam(s, tech, "co2_emission", "dispatchable") / 1000.))
         push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2price))
@@ -186,7 +186,7 @@ end
     makenuclear(name::String, tech::String, elec::Node, co2::Node, cap, s::Snapshot; integer=false)
 Build, connect and return a nuclear reactor component.
 """
-function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snapshot; integercap=false, integeruc=false, cap=nothing, mincap=nothing, maxcap=nothing, warmstart=nothing, uc=false, fuelnode=nothing, capex_mult=1., fuel_mult=1., ini::Union{Nothing,Snapshot}=nothing, co2price=s.sim.options["CO2 price"], startupmask=nothing, shutdownmask=nothing)
+function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snapshot; integercap=false, integeruc=false, cap=nothing, mincap=nothing, maxcap=nothing, warmstart=nothing, uc=false, fuelnode=nothing, capex_mult=1., fuel_mult=1., ini::Union{Nothing,Snapshot}=nothing, co2price=s.sim.options[:CO2_price], startupmask=nothing, shutdownmask=nothing)
     if tech in ("Nuclear", "Nuclear flexible",)
         reloading = 30 * 24 # hours
     elseif tech == "SMR"
@@ -200,14 +200,14 @@ function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snaps
     _oc = gettechparam(s, tech, "overnight_cost", "dispatchable") * 1000.
     _lt = Int(gettechparam(s, tech, "lifetime", "dispatchable"))
     _cp = gettechparam(s, tech, "construction_profile", "dispatchable")
-    _inv = eac(_oc , s.options["discountrate"], _lt, _cp) * capex_mult
+    _inv = eac(_oc , s.options[:discountrate], _lt, _cp) * capex_mult
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:connection, "output", energy, _inv * gettechparam(s, tech, "connection_cost", "dispatchable")))
     push!(vb, FixedCost(:fom, "output", energy, gettechparam(s, tech, "om_fixed_cost", "dispatchable") * 1000.))
     push!(vb, VariableCost(:vom, "output", energy, gettechparam(s, tech, "om_var_cost", "dispatchable")))
     push!(vb, VariableCost(:waste, "output", energy, gettechparam(s, tech, "waste_cost", "dispatchable")))
     # fuel cost only used is fuel node is nothing
-    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "dispatchable"), _lt, s.options["discountrate"]) * capex_mult))
+    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "dispatchable"), _lt, s.options[:discountrate]) * capex_mult))
     if !iszero(gettechparam(s, tech, "co2_emission", "dispatchable"))
         push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * gettechparam(s, tech, "co2_emission", "dispatchable") / 1000.))
         push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2price))
@@ -337,20 +337,20 @@ end
     makesmr(name::String, tech::String, elec::Node, co2::Node, cap, s::Snapshot; integer=false)
 Build, connect and return an SMR component.
 """
-function makesmr(name::String, tech::String, elec::Node, heat::Node, s::Snapshot; integercap=false, integeruc=false, cap=nothing, mincap=nothing, maxcap=nothing, warmstart=nothing, uc=false, fuelnode=nothing, capex_mult=1., ini::Union{Nothing,Snapshot}=nothing, co2price=s.sim.options["CO2 price"])
+function makesmr(name::String, tech::String, elec::Node, heat::Node, s::Snapshot; integercap=false, integeruc=false, cap=nothing, mincap=nothing, maxcap=nothing, warmstart=nothing, uc=false, fuelnode=nothing, capex_mult=1., ini::Union{Nothing,Snapshot}=nothing, co2price=s.sim.options[:CO2_price])
     m = DispatchableSource(elec.carrier)
     vb = []
     _oc = gettechparam(s, tech, "overnight_cost", "dispatchable") * 1000. / 0.9 # integrate 10% of offtime for reloading
     _lt = Int(gettechparam(s, tech, "lifetime", "dispatchable"))
     _cp = gettechparam(s, tech, "construction_profile", "dispatchable")
-    _inv = eac(_oc , s.options["discountrate"], _lt, _cp) * capex_mult
+    _inv = eac(_oc , s.options[:discountrate], _lt, _cp) * capex_mult
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:connection, "output", energy, _inv * gettechparam(s, tech, "connection_cost", "dispatchable")))
     push!(vb, FixedCost(:fom, "output", energy, gettechparam(s, tech, "om_fixed_cost", "dispatchable") * 1000.))
     push!(vb, VariableCost(:vom, "output", energy, gettechparam(s, tech, "om_var_cost", "dispatchable")))
     push!(vb, VariableCost(:waste, "output", energy, gettechparam(s, tech, "waste_cost", "dispatchable")))
     # fuel cost only used is fuel node is nothing
-    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "dispatchable"), _lt, s.options["discountrate"]) * capex_mult))
+    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "dispatchable"), _lt, s.options[:discountrate]) * capex_mult))
     
     push!(vb, LinkedJointFlow("heat", heat.carrier, :output, "output", x->x[1] * 1)) # actually not heat, but modeled as a 1:1 ratio to keep track of SMR and align it with HTE 
     
@@ -387,11 +387,11 @@ function makenuclearprofile(name::String, tech::String, elec::Node, co2::Node, c
     _oc = 1E3 * gettechparam(s, tech, "overnight_cost", "dispatchable")
     _lt = Int(gettechparam(s, tech, "lifetime", "dispatchable"))
     _cp = gettechparam(s, tech, "construction_profile", "dispatchable")
-    push!(vb, FixedCost(:investment, "output", energy, eac(_oc, s.options["discountrate"], gettechparam(s, tech, "lifetime", "dispatchable"), _cp)))
+    push!(vb, FixedCost(:investment, "output", energy, eac(_oc, s.options[:discountrate], gettechparam(s, tech, "lifetime", "dispatchable"), _cp)))
     push!(vb, FixedCost(:fom, "output", energy, gettechparam(s, tech, "om_fixed_cost", "dispatchable") * 1000.))
     push!(vb, VariableCost(:vom, "output", energy, gettechparam(s, tech, "om_var_cost", "dispatchable")))
     push!(vb, VariableCost(:fuel, "output", energy, gettechparam(s, tech, "fuel_cost", "dispatchable")))
-    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "dispatchable"), _lt, s.options["discountrate"])))
+    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "dispatchable"), _lt, s.options[:discountrate])))
     if !iszero(gettechparam(s, tech, "co2_emission", "dispatchable"))
         push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * gettechparam(s, tech, "co2_emission", "dispatchable") / 1000.))
     end
@@ -435,7 +435,7 @@ function makeintermittentsource(name::String, tech::String, elec::Node, co2::Nod
     m = ProfileSource(elec.carrier, gettimeseries(s, tech * "_" * elec.name, "profiles_" * string(weatheryear)))
     vb = []
     _cp = gettechparam(s, tech, "construction_profile", "profile")
-    _inv = 1E3 * eac(gettechparam(s, tech, "overnight_cost", "profile"), s.options["discountrate"], gettechparam(s, tech, "lifetime", "profile"), _cp) * capex_mult
+    _inv = 1E3 * eac(gettechparam(s, tech, "overnight_cost", "profile"), s.options[:discountrate], gettechparam(s, tech, "lifetime", "profile"), _cp) * capex_mult
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:connection, "output", energy, _inv * gettechparam(s, tech, "connection_cost", "profile")))
     push!(vb, FixedCost(:fom, "output", energy, gettechparam(s, tech, "om_fixed_cost", "profile") * 1000.))
@@ -483,10 +483,10 @@ function makehydroror(name::String, zone::String, elec::Node, cap, s::Snapshot; 
     _oc = gettechparam(s, "Hydro ror", "overnight_cost", "profile") * 1000.
     _lt = Int(gettechparam(s, "Hydro ror", "lifetime", "profile"))
     _cp = gettechparam(s, "Hydro ror", "construction_profile", "profile")
-    _inv = eac(_oc , s.options["discountrate"], _lt, _cp)
+    _inv = eac(_oc , s.options[:discountrate], _lt, _cp)
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:fom, "output", energy, gettechparam(s, "Hydro ror", "om_fixed_cost", "profile") * 1000.))
-    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, "Hydro ror", "decommissioning", "profile"), _lt, s.options["discountrate"])))
+    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, "Hydro ror", "decommissioning", "profile"), _lt, s.options[:discountrate])))
 
     c = Component(name * " " * elec.name, m, vb)
     connect!(s, c, elec)
@@ -511,10 +511,10 @@ function makehydroreservoir(name::String, tech::String, zone::String, elec::Node
     _oc = gettechparam(s, tech, "overnight_cost", "storage") * 1000.
     _lt = Int(gettechparam(s, tech, "lifetime", "storage"))
     _cp = gettechparam(s, tech, "construction_profile", "storage")
-    _inv = eac(_oc , s.options["discountrate"], _lt, _cp)
+    _inv = eac(_oc , s.options[:discountrate], _lt, _cp)
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:fom, "output", energy, gettechparam(s, tech, "om_fixed_cost", "storage") * 1000.))
-    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "storage"), _lt, s.options["discountrate"])))   
+    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, tech, "decommissioning", "storage"), _lt, s.options[:discountrate])))   
 
     if isnothing(inflow)
         # no renormalization via inflow
@@ -581,7 +581,7 @@ Build, connect and return a battery storage component.
 """
 function makebatteries(name::String, tech::String, elec::Node, capin, s::Snapshot; eff=0.85, gridlosses=0., capex_mult=1, simplified::Bool=false, ini::Union{Nothing,Snapshot}=nothing)
     _cp = gettechparam(s, tech, "construction_profile", "storage")
-    _inv = 1E3 * eac(gettechparam(s, tech, "overnight_cost", "storage"), s.options["discountrate"], gettechparam(s, tech, "lifetime", "storage"), _cp) * capex_mult
+    _inv = 1E3 * eac(gettechparam(s, tech, "overnight_cost", "storage"), s.options[:discountrate], gettechparam(s, tech, "lifetime", "storage"), _cp) * capex_mult
     m = BasicStorage(elec.carrier, eff_i=eff, simplified=simplified)
     vb = []
     
@@ -734,7 +734,7 @@ function makeelectrolyser(name::String, tech::String, elec::Node, h2::Node, cap,
     m = BasicConverter(elec.carrier, h2.carrier, ratio=0.7)
     vb = []
     _cp = gettechparam(s, tech, "construction_profile", "electrolysis")
-    _inv = 1E3 * eac(gettechparam(s, tech, "overnight_cost", "electrolysis"), s.options["discountrate"], gettechparam(s, tech, "lifetime", "electrolysis"), _cp) * capex_mult
+    _inv = 1E3 * eac(gettechparam(s, tech, "overnight_cost", "electrolysis"), s.options[:discountrate], gettechparam(s, tech, "lifetime", "electrolysis"), _cp) * capex_mult
     push!(vb, FixedCost(:investment, "input", energy, _inv))
     push!(vb, FixedCost(:decommissioning, "input", energy, gettechparam(s, tech, "decommissioning", "electrolysis") * _inv))
     push!(vb, FixedCost(:fom, "input", energy, gettechparam(s, tech, "om_fixed_cost", "electrolysis") * 1000.))
@@ -769,7 +769,7 @@ function makeHTelectrolyser(name::String, tech::String, elec::Node, heat::Node, 
     m = BasicConverter(elec.carrier, h2.carrier, ratio=0.9)
     vb = []
     _cp = gettechparam(s, tech, "construction_profile", "electrolysis")
-    _inv = 1E3 * eac(gettechparam(s, tech, "overnight_cost", "electrolysis"), s.options["discountrate"], gettechparam(s, tech, "lifetime", "electrolysis"), _cp) * capex_mult
+    _inv = 1E3 * eac(gettechparam(s, tech, "overnight_cost", "electrolysis"), s.options[:discountrate], gettechparam(s, tech, "lifetime", "electrolysis"), _cp) * capex_mult
     push!(vb, FixedCost(:investment, "input", energy, _inv))
     push!(vb, FixedCost(:decommissioning, "input", energy, gettechparam(s, tech, "decommissioning", "electrolysis") * _inv))
     push!(vb, FixedCost(:fom, "input", energy, gettechparam(s, tech, "om_fixed_cost", "electrolysis") * 1000.))
