@@ -411,8 +411,8 @@ function makenuclearprofile(name::String, tech::String, elec::Node, co2::Node, c
     return c
 end
 
-function makereservoirprofile(name::String, tech::String, elec::Node, cap, s::Snapshot)
-    m = ProfileSource(elec.carrier, gettimeseries(s, tech, "fixed_reservoir_output") / cap)
+function makereservoirprofile(name::String, zone::String, elec::Node, cap, s::Snapshot)
+    m = ProfileSource(elec.carrier, gettimeseries(s, zone, "fixed_reservoir_output") / cap)
     vb = []
     if cap isa Number
         push!(vb, FixedCapacity("output", energy, cap))
