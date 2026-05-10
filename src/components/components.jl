@@ -8,15 +8,15 @@ using ArgCheck: @argcheck
     makedemand(name::String, tech::String, n::Node, s::Snapshot; coeff=1.0, shift::Int=0)
 Build, connect and return a component based on the Demand template.
 Arguments:
-  * tech: name of time series in the time series file
+  * zone: name of time series in the time series file
   * coeff: multiplicative coefficient, applied at every hour (applies to the profile part of the demand, not the flat part)
   * shift: circular shift of demand time series (e.g. to make year start on monday)
 """
-function makedemand(name::String, tech::String, n::Node, s::Snapshot; coeff=1.0, shift::Int=0, yearlyconstant::Float64=0., gridlosses=0.)
+function makedemand(name::String, zone::String, n::Node, s::Snapshot; coeff=1.0, shift::Int=0, yearlyconstant::Float64=0., gridlosses=0.)
     if iszero(coeff)
         var = 0.
-    else
-        var = coeff * gettimeseries(s, tech, "demand") 
+    else d
+        var = coeff * gettimeseries(s, zone, "demand") 
         circshift!(var, shift)
     end
 
