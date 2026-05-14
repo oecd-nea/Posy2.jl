@@ -5,9 +5,10 @@ Price duration curves.
 function genpricecurves(s::Snapshot)
     df = DataFrame()
     
-    if JuMP.has_duals(sim(s).model)
-        for (nname, n) in getnodes(s, with=[:electricity])
-            df[!,nname] = sort(Nosy.dualprice(n), rev=true)
+    for (nname, n) in getnodes(s, with=[:electricity])
+        price = Nosy.dualprice(n)
+        if !isnothing(price)
+            df[!,nname] = sort(price, rev=true)
         end
     end
 
@@ -18,4 +19,3 @@ function genpricecurves(s::Snapshot)
 
     return df
 end
-
