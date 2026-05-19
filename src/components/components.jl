@@ -38,9 +38,9 @@ function makeEV(name::String, yearly::Float64, offhours1::AbstractVector{<:Int},
     maxlevel = yearly / ((183 * ((24 - length(offhours1)) + length(offhours1) * minratio)) + 182 * ((24 - length(offhours2)) + length(offhours2) * minratio))
     
     series = vcat(
-        repeat([h in offhours1 ? 0.3 : 1.0 for h in 0:23], days_threshold), # winter
-        repeat([h in offhours2 ? 0.3 : 1.0 for h in 0:23], 182), # summer
-        repeat([h in offhours1 ? 0.3 : 1.0 for h in 0:23], 183 - days_threshold), # winter
+        repeat([h in offhours1 ? minratio : 1.0 for h in 0:23], days_threshold), # winter
+        repeat([h in offhours2 ? minratio : 1.0 for h in 0:23], 182), # summer
+        repeat([h in offhours1 ? minratio : 1.0 for h in 0:23], 183 - days_threshold), # winter
     ) * maxlevel
 
     m = Demand(n.carrier, series)
@@ -434,16 +434,16 @@ Build, connect and return an intermittent source component.
 function makeintermittentsource(name::String, tech::String, elec::Node, co2::Node, s::Snapshot; cap=nothing, mincap=nothing, maxcap=nothing, capex_mult=1., weatheryear=2009, ini::Union{Nothing,Snapshot}=nothing)
     m = ProfileSource(elec.carrier, gettimeseries(s, tech * "_" * elec.name, "profiles_" * string(weatheryear)))
     vb = []
-    _cp = gettechparam(s, tech, "construction_profile", "profile")
-    _inv = 1E3 * eac(gettechparam(s, tech, "overnight_cost", "profile"), s.options[:discountrate], gettechparam(s, tech, "lifetime", "profile"), _cp) * capex_mult
+    _cp = gettechparam(s, tech, "construction_profile", "intermittent")
+    _inv = 1E3 * eac(gettechparam(s, tech, "overnight_cost", "intermittent"), s.options[:discountrate], gettechparam(s, tech, "lifetime", "intermittent"), _cp) * capex_mult
     push!(vb, FixedCost(:investment, "output", energy, _inv))
-    push!(vb, FixedCost(:connection, "output", energy, _inv * gettechparam(s, tech, "connection_cost", "profile")))
-    push!(vb, FixedCost(:fom, "output", energy, gettechparam(s, tech, "om_fixed_cost", "profile") * 1000.))
-    push!(vb, VariableCost(:vom, "output", energy, gettechparam(s, tech, "om_var_cost", "profile")))
-    push!(vb, VariableCost(:fuel, "output", energy, gettechparam(s, tech, "fuel_cost", "profile")))
-    push!(vb, FixedCost(:decommissioning, "output", energy, gettechparam(s, tech, "decommissioning", "profile") * _inv))
-    if !iszero(gettechparam(s, tech, "co2_emission", "profile"))
-        push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * gettechparam(s, tech, "co2_emission", "profile") / 1000.))
+    push!(vb, FixedCost(:connection, "output", energy, _inv * gettechparam(s, tech, "connection_cost", "intermittent")))
+    push!(vb, FixedCost(:fom, "output", energy, gettechparam(s, tech, "om_fixed_cost", "intermittent") * 1000.))
+    push!(vb, VariableCost(:vom, "output", energy, gettechparam(s, tech, "om_var_cost", "intermittent")))
+    push!(vb, VariableCost(:fuel, "output", energy, gettechparam(s, tech, "fuel_cost", "intermittent")))
+    push!(vb, FixedCost(:decommissioning, "output", energy, gettechparam(s, tech, "decommissioning", "intermittent") * _inv))
+    if !iszero(gettechparam(s, tech, "co2_emission", "intermittent"))
+        push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * gettechparam(s, tech, "co2_emission", "intermittent") / 1000.))
     end
     if cap isa Number
         push!(vb, FixedCapacity("output", energy, cap))
@@ -456,7 +456,7 @@ function makeintermittentsource(name::String, tech::String, elec::Node, co2::Nod
     end
     c = Component(name * " " * elec.name, m, vb)
     connect!(s, c, elec)
-    if !iszero(gettechparam(s, tech, "co2_emission", "profile"))
+    if !iszero(gettechparam(s, tech, "co2_emission", "intermittent"))
         connect!(s, c, co2)
     end
     for t in (:generation, :intermittent, :carbonfree,)
@@ -480,13 +480,13 @@ function makehydroror(name::String, zone::String, elec::Node, cap, s::Snapshot; 
     end
 
     # costs
-    _oc = gettechparam(s, "Hydro ror", "overnight_cost", "profile") * 1000.
-    _lt = Int(gettechparam(s, "Hydro ror", "lifetime", "profile"))
-    _cp = gettechparam(s, "Hydro ror", "construction_profile", "profile")
+    _oc = gettechparam(s, "Hydro ror", "overnight_cost", "intermittent") * 1000.
+    _lt = Int(gettechparam(s, "Hydro ror", "lifetime", "intermittent"))
+    _cp = gettechparam(s, "Hydro ror", "construction_profile", "intermittent")
     _inv = eac(_oc , s.options[:discountrate], _lt, _cp)
     push!(vb, FixedCost(:investment, "output", energy, _inv))
-    push!(vb, FixedCost(:fom, "output", energy, gettechparam(s, "Hydro ror", "om_fixed_cost", "profile") * 1000.))
-    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, "Hydro ror", "decommissioning", "profile"), _lt, s.options[:discountrate])))
+    push!(vb, FixedCost(:fom, "output", energy, gettechparam(s, "Hydro ror", "om_fixed_cost", "intermittent") * 1000.))
+    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, gettechparam(s, "Hydro ror", "decommissioning", "intermittent"), _lt, s.options[:discountrate])))
 
     c = Component(name * " " * elec.name, m, vb)
     connect!(s, c, elec)
@@ -502,7 +502,8 @@ Build, connect and return a hydro reservoir component.
 NB: no energy capacity at the moment.
 """
 function makehydroreservoir(name::String, tech::String, zone::String, elec::Node, cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot; renormalize=true, weatheryear=2019, gridlosses=0., simplified=false, intake_mult=1.)
-    m = LazyStorage(elec.carrier, eff=Dict("natural" => 1., "output" => 1., "input" => 0.76, "grid losses" => 0.), simplified=simplified)
+    _eff = gettechparam(s, tech, "roundtrip_eff", "storage")
+    m = LazyStorage(elec.carrier, eff=Dict("natural" => 1., "output" => 1., "input" => _eff, "grid losses" => 0.), simplified=simplified)
     vb = []
     # joint flows for input and output
     push!(vb, FreeJointFlow("output", elec.carrier, :output))
@@ -579,10 +580,11 @@ end
     makebatteries(name::String, tech::String, elec::Node, cap, s::Snapshot, maxcap=nothing)
 Build, connect and return a battery storage component.
 """
-function makebatteries(name::String, tech::String, elec::Node, capin, s::Snapshot; eff=0.85, gridlosses=0., capex_mult=1, simplified::Bool=false, ini::Union{Nothing,Snapshot}=nothing)
+function makebatteries(name::String, tech::String, elec::Node, capin, s::Snapshot; gridlosses=0., capex_mult=1, simplified::Bool=false, ini::Union{Nothing,Snapshot}=nothing)
     _cp = gettechparam(s, tech, "construction_profile", "storage")
     _inv = 1E3 * eac(gettechparam(s, tech, "overnight_cost", "storage"), s.options[:discountrate], gettechparam(s, tech, "lifetime", "storage"), _cp) * capex_mult
-    m = BasicStorage(elec.carrier, eff_i=eff, simplified=simplified)
+    _eff = gettechparam(s, tech, "roundtrip_eff", "storage")
+    m = BasicStorage(elec.carrier, eff_i=_eff, simplified=simplified)
     vb = []
     
     push!(vb, Duration(gettechparam(s, tech, "duration", "storage")))
@@ -731,7 +733,8 @@ end
 Build, connect and return an electrolyser component.
 """
 function makeelectrolyser(name::String, tech::String, elec::Node, h2::Node, cap, s::Snapshot; maxcap=nothing, gridlosses=0., capex_mult=1., ini::Union{Nothing,Snapshot}=nothing)
-    m = BasicConverter(elec.carrier, h2.carrier, ratio=0.7)
+    _eff = gettechparam(s, tech, "efficiency", "electrolysis")
+    m = BasicConverter(elec.carrier, h2.carrier, ratio=_eff)
     vb = []
     _cp = gettechparam(s, tech, "construction_profile", "electrolysis")
     _inv = 1E3 * eac(gettechparam(s, tech, "overnight_cost", "electrolysis"), s.options[:discountrate], gettechparam(s, tech, "lifetime", "electrolysis"), _cp) * capex_mult
@@ -766,7 +769,8 @@ end
 Build, connect and return an HT electrolyser component.
 """
 function makeHTelectrolyser(name::String, tech::String, elec::Node, heat::Node, h2::Node, cap, s::Snapshot; maxcap=nothing, gridlosses=0., capex_mult=1., ini::Union{Nothing,Snapshot}=nothing)
-    m = BasicConverter(elec.carrier, h2.carrier, ratio=0.9)
+    _eff = gettechparam(s, tech, "efficiency", "electrolysis")
+    m = BasicConverter(elec.carrier, h2.carrier, ratio=_eff)
     vb = []
     _cp = gettechparam(s, tech, "construction_profile", "electrolysis")
     _inv = 1E3 * eac(gettechparam(s, tech, "overnight_cost", "electrolysis"), s.options[:discountrate], gettechparam(s, tech, "lifetime", "electrolysis"), _cp) * capex_mult
@@ -788,7 +792,7 @@ function makeHTelectrolyser(name::String, tech::String, elec::Node, heat::Node, 
     push!(vb, LinkedJointFlow("heat", heat.carrier, :input, "input", x->x[1]))
 
     if !iszero(gridlosses)
-        push!(vb, 1("grid losses", elec.carrier, :input, "input", x->x[1] * gridlosses))
+        push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * gridlosses))
     end
 
     c = Component(name * " " * elec.name, m, vb)
