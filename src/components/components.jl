@@ -15,7 +15,7 @@ Arguments:
 function makedemand(name::String, zone::String, n::Node, s::Snapshot; coeff=1.0, shift::Int=0, yearlyconstant::Float64=0., gridlosses=0.)
     if iszero(coeff)
         var = 0.
-    else d
+    else
         var = coeff * gettimeseries(s, zone, "demand") 
         circshift!(var, shift)
     end
