@@ -67,11 +67,27 @@ end
 # return charging time series in MWhe
 function charging(s; aggregate=false, collapse=false)
     d = LittleDict()
-    dcomps = getcomponents(s, with=[:storage])
+    dcomps = merge(getcomponents(s, with=[:storage]), getcomponents(s, with=[:ev]))
     for (k,v) in dcomps
         b = balance(v, :input, energy, collapse=collapse, aggregate=false)
         if haskey(b, "input")
             d["charging "* k] = b["input"]
+        end
+    end
+    aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
+    return d
+end
+
+# return discharging time series in MWhe
+function discharging(s; aggregate=false, collapse=false)
+    d = LittleDict()
+    dcomps = merge(getcomponents(s, with=[:storage]), getcomponents(s, with=[:ev]))
+    for (k,v) in dcomps
+        if Nosy.hasport(v, "output")
+            b = balance(v, :output, energy, collapse=collapse, aggregate=false)
+            if haskey(b, "output")
+                d["discharging " * k] = b["output"]
+            end
         end
     end
     aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
@@ -95,9 +111,11 @@ end
 # return storagelevel time series in MWhe
 function storagelevel(s; aggregate=false)
     d = LittleDict()
-    dcomps = getcomponents(s, with=[:storage])
+    dcomps = merge(getcomponents(s, with=[:storage]), getcomponents(s, with=[:ev]))
     for (k,v) in dcomps
-        d["level" * k] = balance(v, :level, energy, collapse=false, aggregate=true)
+        if Nosy.hasport(v, "level")
+            d["level" * k] = balance(v, :level, energy, collapse=false, aggregate=true)
+        end
     end
     aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
     return d
