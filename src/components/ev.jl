@@ -120,7 +120,7 @@ function makeEV_flexible(name::String, yearly::Number, elec::Node, v2g::Bool, s:
     # generate consumption by applying normalized profile to yearly consumption
     consumption = ev_consumption_profile() * yearly
 
-    m = LazyStorage(elec.carrier, eff=Dict("input"=>1., "output"=>eff, "driving"=>1.), self_discharge=sd, simplified=true)
+    m = LazyStorage(elec.carrier, eff=Dict("input"=>1., "output"=>1/eff, "driving"=>1.), self_discharge=sd, simplified=true)
     vb = []
 
     # input: flexible charging, with availability multiplier
