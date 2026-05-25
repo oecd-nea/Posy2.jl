@@ -109,10 +109,10 @@ function getbalance(s::Snapshot, from::String, to::String)
 end
 
 function getsusceptance(s::Snapshot, from::String, to::String)
-    if haskey(s.sim.options["susceptance"], (from,to))
-        return s.sim.options["susceptance"][(from,to)]
-    elseif haskey(s.sim.options["susceptance"], (to,from))
-        return s.sim.options["susceptance"][(to,from)]
+    if haskey(s.sim.options[:susceptance], (from,to))
+        return s.sim.options[:susceptance][(from,to)]
+    elseif haskey(s.sim.options[:susceptance], (to,from))
+        return s.sim.options[:susceptance][(to,from)]
     else
         throw(AssertionError("No susceptance found for: " * from * " - " * to))
     end

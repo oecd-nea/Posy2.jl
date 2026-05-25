@@ -26,7 +26,7 @@ function readexcel(path, fname)
     return saferead(path, fname, mtime)
 end
 
-readtechdata(filename="tech_data.xlsx") = readexcel(joinpath(pwd(), "data"), filename)
+readtechdata(filename="tech_data.xlsx"; data_dir=joinpath(pwd(), "data")) = readexcel(data_dir, filename)
 @memoize function gettechdatasheet(xl, sheetname::String) # this function is memoized because gettable is time-consuming
     sns = XLSX.sheetnames(xl)
     if !(sheetname in sns)
@@ -57,14 +57,14 @@ function gettechparam(xl, tech::String, param::String, sheetname::String, digits
         return val
     end
 end
-gettechparam(s::Snapshot, tech::String, param::String, sheetname::String; digits=6) = gettechparam(
-    haskey(s.options, :techdata) ? s.options[:techdata] :
-        throw(ArgumentError("Snapshot.options must include :techdata (e.g. :techdata => readtechdata(\"tech_data_2050.xlsx\"))")),
-    tech, param, sheetname, digits
-)
+function gettechparam(s::Snapshot, tech::String, param::String, sheetname::String; digits=6)
+    opts = posy_options(s)
+    xl = readtechdata(opts.techdata_file; data_dir=opts.data_dir)
+    return gettechparam(xl, tech, param, sheetname, digits)
+end
 
 
-readtimeseries(filename="time_series.xlsx") = readexcel(joinpath(pwd(), "data"), filename)
+readtimeseries(filename="time_series.xlsx"; data_dir=joinpath(pwd(), "data")) = readexcel(data_dir, filename)
 @memoize function gettimeseriesdatasheet(xl, sheetname::String) # this function is memoized because gettable is time-consuming
     sns = XLSX.sheetnames(xl)
     if !(sheetname in sns)
@@ -88,9 +88,7 @@ function gettimeseries(xl, title::String, sheetname::String, digits::Int)
     return round.(df[!, title], digits=digits)
 end
 function gettimeseries(s::Snapshot, title::String, sheetname::String; digits=6)
-    gettimeseries(
-        haskey(s.options, :timeseries) ? s.options[:timeseries] :
-            throw(ArgumentError("Snapshot.options must include :timeseries (e.g. :timeseries => readtimeseries(join([\"time_series_2050_fromNT2040\", \".xlsx\"]))).")),
-        title, sheetname, digits
-    )
+    opts = posy_options(s)
+    xl = readtimeseries(opts.timeseries_file; data_dir=opts.data_dir)
+    return gettimeseries(xl, title, sheetname, digits)
 end

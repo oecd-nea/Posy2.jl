@@ -28,6 +28,7 @@ export addkvlconstraints!
 export eac
 export selfcost
 export printsnapshot
+export POSY2Options, posy_options, discountrate, co2_price
 
 include("tools/_includes.jl")
 include("readdata/_includes.jl")
