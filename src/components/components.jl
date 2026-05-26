@@ -5,12 +5,19 @@ Generate components.
 using ArgCheck: @argcheck
 
 """
-    makedemand(name::String, tech::String, n::Node, s::Snapshot; coeff=1.0, shift::Int=0)
+    makedemand(name::String, zone::String, n::Node, s::Snapshot; coeff=1.0, shift::Int=0, yearlyconstant::Float64=0., gridlosses=0.,)
+
 Build, connect and return a component based on the Demand template.
+
 Arguments:
-  * zone: name of time series in the time series file
-  * coeff: multiplicative coefficient, applied at every hour (applies to the profile part of the demand, not the flat part)
-  * shift: circular shift of demand time series (e.g. to make year start on monday)
+  * name: component name prefix.
+  * zone: time series name in the time series workbook (`demand` sheet).
+  * n: demand node to connect the component to.
+  * s: snapshot to register the component in.
+  * coeff: multiplicative factor applied to the profile part of demand.
+  * shift: circular shift of demand profile (e.g. align first day to Monday).
+  * yearlyconstant: flat yearly demand term distributed over 8760 hours.
+  * gridlosses: optional proportional grid-loss joint flow on demand input.
 """
 function makedemand(name::String, zone::String, n::Node, s::Snapshot; coeff=1.0, shift::Int=0, yearlyconstant::Float64=0., gridlosses=0.)
     if iszero(coeff)
@@ -90,8 +97,56 @@ function makeflathydrogenpurchase(name::String, n::Node, val::Number, s::Snapsho
 end
 
 """
-    makedispatchable(name::String, tech::String, elec::Node, co2::Node, s::Snapshot; integeruc=false, cap, mincap=nothing, maxcap=nothing, uc=false, fuelnode=nothing, capacitymultiplier=nothing, capex_mult=1., fuel_mult=1., ini=nothing, co2price=co2_price(s), overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing, connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, no_load_cost=nothing, startup_cost=nothing, co2_emission=nothing, efficiency=nothing, unit_size=nothing, min_power=nothing, min_uptime=nothing, min_downtime=nothing, startup_duration=nothing, shutdown_duration=nothing)
+    makedispatchable(name::String, tech::String, elec::Node, co2::Node, s::Snapshot;
+        cap, mincap=nothing, maxcap=nothing, ini=nothing, capacitymultiplier=nothing,
+        integeruc=false, uc=false, fuelnode=nothing,
+        capex_mult=1., fuel_mult=1., co2price=co2_price(s),
+        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
+        connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, no_load_cost=nothing, startup_cost=nothing,
+        co2_emission=nothing, efficiency=nothing, unit_size=nothing, min_power=nothing, min_uptime=nothing,
+        min_downtime=nothing, startup_duration=nothing, shutdown_duration=nothing,
+    )
+
 Build, connect and return a dispatchable component.
+
+Arguments:
+  * name: component name prefix.
+  * tech: technology row name in the `dispatchable` tech-data sheet.
+  * elec: electricity node to connect the component to.
+  * co2: CO2 node connected when `co2_emission` is non-zero.
+  * s: snapshot to register the component in.
+
+  * cap: fixed output capacity, or `nothing` for expansion.
+  * mincap, maxcap: expansion bounds used when `cap === nothing`.
+  * ini: initial snapshot used to fix capacity from a prior run.
+  * capacitymultiplier: optional time-varying multiplier applied to output capacity.
+
+  * integeruc: whether UC commitment variables are integer.
+  * uc: enable unit commitment and UC-related costs/constraints.
+  * fuelnode: optional fuel node; if `nothing`, `fuel_cost` is applied directly.
+
+  * capex_mult: multiplier applied to investment-related costs.
+  * fuel_mult: multiplier applied to direct fuel cost when `fuelnode === nothing`.
+  * co2price: CO2 variable-cost coefficient (defaults to POSY options value).
+
+  * overnight_cost: overnight investment cost override (Excel default when `nothing`).
+  * om_fixed_cost: fixed O&M cost override.
+  * decommissioning: decommissioning cost fraction override.
+  * lifetime: asset lifetime override.
+  * construction_profile: construction spending profile override.
+  * connection_cost: connection cost fraction override.
+  * om_var_cost: variable O&M cost override.
+  * fuel_cost: direct fuel cost override; used only when `fuelnode === nothing`.
+  * no_load_cost: no-load cost override; used only when `uc=true`.
+  * startup_cost: startup cost override; used only when `uc=true`.
+  * co2_emission: CO2 emission factor override.
+  * efficiency: fuel conversion efficiency override; required when `fuelnode` is provided.
+  * unit_size: discrete unit size override for capacity decisions.
+  * min_power: minimum stable output fraction; used only when `uc=true`.
+  * min_uptime: minimum uptime constraint; used only when `uc=true`.
+  * min_downtime: minimum downtime constraint; used only when `uc=true`.
+  * startup_duration: startup duration; used only when `uc=true`.
+  * shutdown_duration: shutdown duration; used only when `uc=true`.
 """
 function makedispatchable(name::String, tech::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / expansion
@@ -213,8 +268,67 @@ function makedispatchable(name::String, tech::String, elec::Node, co2::Node, s::
 end
 
 """
-    makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snapshot; integercap=false, integeruc=false, cap, mincap=nothing, maxcap=nothing, uc=false, fuelnode=nothing, capex_mult=1., fuel_mult=1., ini=nothing, warmstart=nothing, co2price=co2_price(s), startupmask=nothing, shutdownmask=nothing, overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing, connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, waste_cost=nothing, no_load_cost=nothing, startup_cost=nothing, co2_emission=nothing, efficiency=nothing, unit_size=nothing, min_power=nothing, min_uptime=nothing, min_downtime=nothing, startup_duration=nothing, shutdown_duration=nothing, reload_duration_hours=nothing, reload_step_hours=24*7, reload_fraction_per_year=1.0)
+    makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snapshot;
+        cap, mincap=nothing, maxcap=nothing, integercap=false, ini=nothing, warmstart=nothing,
+        uc=false, integeruc=false, startupmask=nothing, shutdownmask=nothing,
+        reload_duration_hours=nothing, reload_step_hours=24*7, reload_fraction_per_year=1.0,
+        fuelnode=nothing, co2price=co2_price(s),
+        capex_mult=1., fuel_mult=1.,
+        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
+        connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, waste_cost=nothing, no_load_cost=nothing,
+        startup_cost=nothing, co2_emission=nothing, efficiency=nothing, unit_size=nothing, min_power=nothing,
+        min_uptime=nothing, min_downtime=nothing, startup_duration=nothing, shutdown_duration=nothing,
+    )
+
 Build, connect and return a nuclear reactor component.
+
+Arguments:
+  * name: component name prefix.
+  * tech: technology row name in the `dispatchable` tech-data sheet.
+  * elec: electricity node to connect the component to.
+  * co2: CO2 node connected when `co2_emission` is non-zero.
+  * s: snapshot to register the component in.
+
+  * cap: fixed output capacity, or `nothing` for expansion.
+  * mincap, maxcap: expansion bounds used when `cap === nothing`.
+  * integercap: whether expansion capacity is integer-constrained.
+  * ini: initial snapshot used to fix capacity or UC behavior from a prior run.
+  * warmstart: warm-start value for expansion capacity when `cap === nothing`.
+
+  * uc: enable unit commitment and optional reloading logic.
+  * integeruc: whether UC commitment variables are integer.
+  * startupmask: optional mask restricting UC startup scheduling.
+  * shutdownmask: optional mask restricting UC shutdown scheduling.
+
+  * reload_duration_hours: reloading outage duration; used when `uc=true`.
+  * reload_step_hours: hourly step size for reloading scheduling windows.
+  * reload_fraction_per_year: minimum yearly reloading fraction per unit.
+
+  * fuelnode: optional fuel node; if `nothing`, `fuel_cost` is applied directly.
+  * co2price: CO2 variable-cost coefficient (defaults to POSY options value).
+
+  * capex_mult: multiplier applied to investment-related costs.
+  * fuel_mult: multiplier applied to direct fuel cost when `fuelnode === nothing`.
+
+  * overnight_cost: overnight investment cost override (Excel default when `nothing`).
+  * om_fixed_cost: fixed O&M cost override.
+  * decommissioning: decommissioning cost fraction override.
+  * lifetime: asset lifetime override.
+  * construction_profile: construction spending profile override.
+  * connection_cost: connection cost fraction override.
+  * om_var_cost: variable O&M cost override.
+  * fuel_cost: direct fuel cost override; used only when `fuelnode === nothing`.
+  * waste_cost: nuclear waste cost override.
+  * no_load_cost: no-load cost override; used only when `uc=true`.
+  * startup_cost: startup cost override; used only when `uc=true`.
+  * co2_emission: CO2 emission factor override.
+  * efficiency: fuel conversion efficiency override; required when `fuelnode` is provided.
+  * unit_size: discrete unit size override for capacity decisions.
+  * min_power: minimum stable output fraction; used only when `uc=true`.
+  * min_uptime: minimum uptime constraint; used only when `uc=true`.
+  * min_downtime: minimum downtime constraint; used only when `uc=true`.
+  * startup_duration: startup duration; used only when `uc=true`.
+  * shutdown_duration: shutdown duration; used only when `uc=true`.
 """
 function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / expansion
@@ -423,8 +537,47 @@ function makenuclear(name::String, tech::String, elec::Node, co2::Node, s::Snaps
 end
 
 """
-    makesmr(name::String, tech::String, elec::Node, heat::Node, co2::Node, s::Snapshot; integercap=false, cap, mincap=nothing, maxcap=nothing, capex_mult=1., fuel_mult=1., ini=nothing, warmstart=nothing, co2price=co2_price(s), overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing, connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, waste_cost=nothing, co2_emission=nothing, unit_size=nothing)
+    makesmr(name::String, tech::String, elec::Node, heat::Node, co2::Node, s::Snapshot;
+        cap, mincap=nothing, maxcap=nothing, integercap=false, ini=nothing, warmstart=nothing,
+        co2price=co2_price(s),
+        capex_mult=1., fuel_mult=1.,
+        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
+        connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, waste_cost=nothing, co2_emission=nothing,
+        unit_size=nothing,
+    )
+
 Build, connect and return an SMR component.
+
+Arguments:
+  * name: component name prefix.
+  * tech: technology row name in the `dispatchable` tech-data sheet.
+  * elec: electricity node to connect the component to.
+  * heat: auxiliary node used to track SMR heat output.
+  * co2: CO2 node connected when `co2_emission` is non-zero.
+  * s: snapshot to register the component in.
+
+  * cap: fixed output capacity, or `nothing` for expansion.
+  * mincap, maxcap: expansion bounds used when `cap === nothing`.
+  * integercap: whether expansion capacity is integer-constrained.
+  * ini: initial snapshot used to fix capacity from a prior run.
+  * warmstart: warm-start value for expansion capacity when `cap === nothing`.
+
+  * co2price: CO2 variable-cost coefficient (defaults to POSY options value).
+
+  * capex_mult: multiplier applied to investment-related costs.
+  * fuel_mult: multiplier applied to fuel cost.
+
+  * overnight_cost: overnight investment cost override (Excel default when `nothing`).
+  * om_fixed_cost: fixed O&M cost override.
+  * decommissioning: decommissioning cost fraction override.
+  * lifetime: asset lifetime override.
+  * construction_profile: construction spending profile override.
+  * connection_cost: connection cost fraction override.
+  * om_var_cost: variable O&M cost override.
+  * fuel_cost: fuel cost override.
+  * waste_cost: nuclear waste cost override.
+  * co2_emission: CO2 emission factor override.
+  * unit_size: discrete unit size override for capacity decisions.
 """
 function makesmr(name::String, tech::String, elec::Node, heat::Node, co2::Node, s::Snapshot;
     # capacity / expansion
@@ -497,8 +650,35 @@ function makesmr(name::String, tech::String, elec::Node, heat::Node, co2::Node, 
 end
 
 """
-    makenuclearprofile(name::String, tech::String, elec::Node, co2::Node, s::Snapshot; cap, weatheryear=2009, co2price=co2_price(s), capex_mult=1., overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing, om_var_cost=nothing, fuel_cost=nothing, co2_emission=nothing)
-Build, connect and return a dispatchable component.
+    makenuclearprofile(name::String, tech::String, elec::Node, co2::Node, s::Snapshot;
+        cap, weatheryear=2009, co2price=co2_price(s), capex_mult=1.,
+        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing,
+        construction_profile=nothing, om_var_cost=nothing, fuel_cost=nothing, co2_emission=nothing,
+    )
+
+Build, connect and return a profile-based nuclear generation component.
+
+Arguments:
+  * name: component name prefix.
+  * tech: technology row name in the `dispatchable` tech-data sheet.
+  * elec: electricity node to connect the component to.
+  * co2: CO2 node connected when `co2_emission` is non-zero.
+  * s: snapshot to register the component in.
+
+  * cap: fixed output capacity, or `nothing` for expansion.
+  * weatheryear: profile year suffix used in `profiles_<year>` time series.
+
+  * co2price: CO2 variable-cost coefficient (defaults to POSY options value).
+  * capex_mult: multiplier applied to investment-related costs.
+
+  * overnight_cost: overnight investment cost override (Excel default when `nothing`).
+  * om_fixed_cost: fixed O&M cost override.
+  * decommissioning: decommissioning cost fraction override.
+  * lifetime: asset lifetime override.
+  * construction_profile: construction spending profile override.
+  * om_var_cost: variable O&M cost override.
+  * fuel_cost: fuel cost override.
+  * co2_emission: CO2 emission factor override.
 """
 function makenuclearprofile(name::String, tech::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / profile
@@ -590,8 +770,39 @@ function makereservoirprofile(name::String, zone::String, elec::Node, s::Snapsho
 end
 
 """
-    makeintermittentsource(name::String, tech::String, elec::Node, co2::Node, s::Snapshot; cap, mincap=nothing, maxcap=nothing, capex_mult=1., ini=nothing, weatheryear=2009, co2price=co2_price(s), overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing, connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, co2_emission=nothing)
+    makeintermittentsource(name::String, tech::String, elec::Node, co2::Node, s::Snapshot;
+        cap, mincap=nothing, maxcap=nothing, ini=nothing, weatheryear=2009,
+        capex_mult=1., co2price=co2_price(s),
+        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
+        connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, co2_emission=nothing,
+    )
+
 Build, connect and return an intermittent source component.
+
+Arguments:
+  * name: component name prefix.
+  * tech: technology row name in the `intermittent` tech-data sheet.
+  * elec: electricity node to connect the component to.
+  * co2: CO2 node connected when `co2_emission` is non-zero.
+  * s: snapshot to register the component in.
+
+  * cap: fixed output capacity, or `nothing` for expansion.
+  * mincap, maxcap: expansion bounds used when `cap === nothing`.
+  * ini: initial snapshot used to fix capacity from a prior run.
+  * weatheryear: profile year suffix used in `profiles_<year>` time series.
+
+  * capex_mult: multiplier applied to investment-related costs.
+  * co2price: CO2 variable-cost coefficient (defaults to POSY options value).
+
+  * overnight_cost: overnight investment cost override (Excel default when `nothing`).
+  * om_fixed_cost: fixed O&M cost override.
+  * decommissioning: decommissioning cost fraction override.
+  * lifetime: asset lifetime override.
+  * construction_profile: construction spending profile override.
+  * connection_cost: connection cost fraction override.
+  * om_var_cost: variable O&M cost override.
+  * fuel_cost: fuel cost override.
+  * co2_emission: CO2 emission factor override.
 """
 function makeintermittentsource(name::String, tech::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / profile
@@ -647,8 +858,33 @@ function makeintermittentsource(name::String, tech::String, elec::Node, co2::Nod
 end
 
 """
-    makehydroror(name::String, zone::String, elec::Node, s::Snapshot; cap, tech::String="Hydro ror", weatheryear=2019, intake_mult=1., capex_mult=1., overnight_cost=nothing, om_fixed_cost=nothing, om_var_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing)
+    makehydroror(name::String, zone::String, elec::Node, s::Snapshot;
+        cap, tech::String="Hydro ror", weatheryear=2019, intake_mult=1., capex_mult=1.,
+        overnight_cost=nothing, om_fixed_cost=nothing, om_var_cost=nothing,
+        decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
+    )
+
 Build, connect and return a run-of-river hydro component.
+
+Arguments:
+  * name: component name prefix.
+  * zone: time-series zone identifier for hydro inflow profile.
+  * elec: electricity node to connect the component to.
+  * s: snapshot to register the component in.
+
+  * cap: required installed output capacity used for profile normalization.
+  * tech: technology row name in the `intermittent` tech-data sheet.
+  * weatheryear: weather year suffix used in `hydro_ror_<year>` time series.
+
+  * intake_mult: multiplicative factor applied to inflow profile.
+  * capex_mult: multiplier applied to investment-related costs.
+
+  * overnight_cost: overnight investment cost override (Excel default when `nothing`).
+  * om_fixed_cost: fixed O&M cost override.
+  * om_var_cost: variable O&M cost override.
+  * decommissioning: decommissioning cost fraction override.
+  * lifetime: asset lifetime override.
+  * construction_profile: construction spending profile override.
 """
 function makehydroror(name::String, zone::String, elec::Node, s::Snapshot;
     # capacity / profile
@@ -697,9 +933,45 @@ function makehydroror(name::String, zone::String, elec::Node, s::Snapshot;
 end
 
 """
-    makehydroreservoir(name::String, tech::String, zone::String, elec::Node, cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot; renormalize=true, weatheryear=2019, gridlosses=0., simplified=false, intake_mult=1., eff=nothing, capex_mult=1., overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing)
+    makehydroreservoir(name::String, tech::String, zone::String, elec::Node,
+        cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot;
+        renormalize=true, weatheryear=2019, gridlosses=0., simplified=false, intake_mult=1.,
+        capex_mult=1.,
+        eff=nothing,
+        overnight_cost=nothing, om_fixed_cost=nothing, om_var_cost=nothing, decommissioning=nothing, lifetime=nothing,
+        construction_profile=nothing,
+    )
+
 Build, connect and return a hydro reservoir component.
 NB: no energy capacity at the moment.
+
+Arguments:
+  * name: component name prefix.
+  * tech: technology row name in the `storage` tech-data sheet.
+  * zone: time-series zone identifier for reservoir inflow profile.
+  * elec: electricity node to connect the component to.
+  * cap_discharging: discharge-side capacity (`nothing` enables expansion).
+  * cap_charging: charge-side capacity (`0` disables charging, `nothing` enables expansion).
+  * cap_reservoir: reservoir level capacity.
+  * inflow: annual inflow control (`nothing` for pure profile, `0` for no inflow, numeric for scaled inflow).
+  * s: snapshot to register the component in.
+
+  * renormalize: whether to renormalize inflow profile to annual `inflow` scale.
+  * weatheryear: weather year suffix used in `reservoir_inflow_<year>` time series.
+  * gridlosses: proportional grid losses applied on charging input.
+  * simplified: use simplified storage formulation.
+  * intake_mult: multiplicative factor applied to inflow profile.
+
+  * capex_mult: multiplier applied to investment-related costs.
+
+  * eff: roundtrip efficiency override for storage converter.
+
+  * overnight_cost: overnight investment cost override (Excel default when `nothing`).
+  * om_fixed_cost: fixed O&M cost override.
+  * om_var_cost: variable O&M cost override.
+  * decommissioning: decommissioning cost fraction override.
+  * lifetime: asset lifetime override.
+  * construction_profile: construction spending profile override.
 """
 function makehydroreservoir(name::String, tech::String, zone::String, elec::Node, cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot;
     # storage operation controls
@@ -794,8 +1066,40 @@ function makehydroreservoir(name::String, tech::String, zone::String, elec::Node
 end
 
 """
-    makebatteries(name::String, tech::String, elec::Node, s::Snapshot; capin, eff=nothing, duration=nothing, mincap=nothing, maxcap=nothing, gridlosses=0., capex_mult=1, simplified=false, ini=nothing, overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing, connection_cost=nothing, om_var_cost=nothing)
+    makebatteries(name::String, tech::String, elec::Node, s::Snapshot;
+        capin, mincap=nothing, maxcap=nothing, simplified=false, ini=nothing,
+        gridlosses=0., capex_mult=1,
+        eff=nothing, duration=nothing,
+        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
+        connection_cost=nothing, om_var_cost=nothing,
+    )
+
 Build, connect and return a battery storage component.
+
+Arguments:
+  * name: component name prefix.
+  * tech: technology row name in the `storage` tech-data sheet.
+  * elec: electricity node to connect the component to.
+  * s: snapshot to register the component in.
+
+  * capin: input-side charging capacity (`nothing` enables expansion).
+  * mincap, maxcap: expansion bounds used when `capin === nothing`.
+  * simplified: use simplified storage formulation.
+  * ini: initial snapshot used to fix capacity from a prior run.
+
+  * gridlosses: proportional grid losses applied on charging input.
+  * capex_mult: multiplier applied to investment-related costs.
+
+  * eff: roundtrip efficiency override.
+  * duration: storage duration override (Excel default when `nothing`).
+
+  * overnight_cost: overnight investment cost override (Excel default when `nothing`).
+  * om_fixed_cost: fixed O&M cost override.
+  * decommissioning: decommissioning cost fraction override.
+  * lifetime: asset lifetime override.
+  * construction_profile: construction spending profile override.
+  * connection_cost: connection cost fraction override.
+  * om_var_cost: variable O&M cost override.
 """
 function makebatteries(name::String, tech::String, elec::Node, s::Snapshot;
     # capacity / expansion
@@ -856,7 +1160,14 @@ end
 
 """
     makecurtailment(name::String, elec::Node, cost::Number, s::Snapshot)
+
 Build, connect and return a curtailment component.
+
+Arguments:
+  * name: component name prefix.
+  * elec: electricity node to connect the component to.
+  * cost: variable curtailment penalty (energy unit cost).
+  * s: snapshot to register the component in.
 """
 function makecurtailment(name::String, elec::Node, cost::Number, s::Snapshot)
     @argcheck elec.rule != :curtailed "Curtailment component is not compatible with curtailed node. Use :default node rule instead"
@@ -873,9 +1184,25 @@ function makecurtailment(name::String, elec::Node, cost::Number, s::Snapshot)
 end
 
 """
-    makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, s::Snapshot; dir::Bool=false, transactioncost::Number=1.)
+    makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, s::Snapshot;
+        dir::Bool=false, foreign::Bool=true,
+        transactioncost::Number=1.,
+    )
+
 Build, connect and return an interconnection component based on a price time series.
 If `dir` is true, apply a one-way constraint at every timestep.
+
+Arguments:
+  * zone: foreign zone name used for spot-price and transfer-capacity time series.
+  * elec: local electricity node to connect the interconnector to.
+  * mcap: import-side fixed capacity.
+  * xcap: export-side fixed capacity.
+  * s: snapshot to register the component in.
+
+  * dir: if `true`, apply SOS1 one-direction-at-a-time flow constraint.
+  * foreign: if `true`, tag interconnector as `:foreign`.
+
+  * transactioncost: per-unit transaction adder on both directions.
 """
 function makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, s::Snapshot;
     # operation flags
@@ -922,9 +1249,28 @@ function makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, 
 end
 
 """
-    makenodeinterco(name::String, a::Node, b::Node, mcap::Number, xcap::Number, s::Snapshot)
+    makenodeinterco(name::String, a::Node, b::Node, atob::Number, btoa::Number, s::Snapshot;
+        dir::Bool=false, foreign::Bool=false, dc::Bool=false,
+        transactioncost=1., lossfactor=0.,
+    )
+
 Build, connect and return an interconnection component linking two nodes.
 If `dir` is true, apply a one-way constraint at every timestep.
+
+Arguments:
+  * name: interconnector name prefix.
+  * a: first node linked by the interconnector.
+  * b: second node linked by the interconnector.
+  * atob: directional capacity for `a -> b` (`Inf` disables capacity limit).
+  * btoa: directional capacity for `b -> a` (`Inf` disables capacity limit).
+  * s: snapshot to register the component in.
+
+  * dir: if `true`, apply SOS1 one-direction-at-a-time flow constraint.
+  * foreign: if `true`, tag interconnector as `:foreign`.
+  * dc: if `true`, tag as `:DC`; otherwise tag as `:AC`.
+
+  * transactioncost: per-unit transaction adder on both directions.
+  * lossfactor: proportional losses applied on conversion.
 """
 function makenodeinterco(name::String, a::Node, b::Node, atob::Number, btoa::Number, s::Snapshot;
     # operation flags
@@ -982,8 +1328,38 @@ end
 
 
 """
-    makeelectrolyser(name::String, tech::String, elec::Node, h2::Node, s::Snapshot; cap, eff=nothing, mincap=nothing, maxcap=nothing, gridlosses=0., capex_mult=1., ini=nothing, overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing, om_var_cost=nothing)
+    makeelectrolyser(name::String, tech::String, elec::Node, h2::Node, s::Snapshot;
+        cap, mincap=nothing, maxcap=nothing, ini=nothing,
+        gridlosses=0., capex_mult=1.,
+        eff=nothing,
+        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
+        om_var_cost=nothing,
+    )
+
 Build, connect and return an electrolyser component.
+
+Arguments:
+  * name: component name prefix.
+  * tech: technology row name in the `electrolysis` tech-data sheet.
+  * elec: electricity node to connect the component to.
+  * h2: hydrogen node to connect the component to.
+  * s: snapshot to register the component in.
+
+  * cap: fixed input capacity, or `nothing` for expansion.
+  * mincap, maxcap: expansion bounds used when `cap === nothing`.
+  * ini: initial snapshot used to fix capacity from a prior run.
+
+  * gridlosses: proportional grid losses applied on electricity input.
+  * capex_mult: multiplier applied to investment-related costs.
+
+  * eff: conversion efficiency override (Excel default when `nothing`).
+
+  * overnight_cost: overnight investment cost override (Excel default when `nothing`).
+  * om_fixed_cost: fixed O&M cost override.
+  * decommissioning: decommissioning cost fraction override.
+  * lifetime: asset lifetime override.
+  * construction_profile: construction spending profile override.
+  * om_var_cost: variable O&M cost override.
 """
 function makeelectrolyser(name::String, tech::String, elec::Node, h2::Node, s::Snapshot;
     # capacity / expansion
@@ -1036,8 +1412,39 @@ function makeelectrolyser(name::String, tech::String, elec::Node, h2::Node, s::S
 end
 
 """
-    makeHTelectrolyser(name::String, tech::String, elec::Node, heat::Node, h2::Node, s::Snapshot; cap, eff=nothing, mincap=nothing, maxcap=nothing, gridlosses=0., capex_mult=1., ini=nothing, overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing, om_var_cost=nothing)
+    makeHTelectrolyser(name::String, tech::String, elec::Node, heat::Node, h2::Node, s::Snapshot;
+        cap, mincap=nothing, maxcap=nothing, ini=nothing,
+        gridlosses=0., capex_mult=1.,
+        eff=nothing,
+        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
+        om_var_cost=nothing,
+    )
+
 Build, connect and return an HT electrolyser component.
+
+Arguments:
+  * name: component name prefix.
+  * tech: technology row name in the `electrolysis` tech-data sheet.
+  * elec: electricity node to connect the component to.
+  * heat: heat node linked one-to-one to electrolyser input.
+  * h2: hydrogen node to connect the component to.
+  * s: snapshot to register the component in.
+
+  * cap: fixed input capacity, or `nothing` for expansion.
+  * mincap, maxcap: expansion bounds used when `cap === nothing`.
+  * ini: initial snapshot used to fix capacity from a prior run.
+
+  * gridlosses: proportional grid losses applied on electricity input.
+  * capex_mult: multiplier applied to investment-related costs.
+
+  * eff: conversion efficiency override (Excel default when `nothing`).
+
+  * overnight_cost: overnight investment cost override (Excel default when `nothing`).
+  * om_fixed_cost: fixed O&M cost override.
+  * decommissioning: decommissioning cost fraction override.
+  * lifetime: asset lifetime override.
+  * construction_profile: construction spending profile override.
+  * om_var_cost: variable O&M cost override.
 """
 function makeHTelectrolyser(name::String, tech::String, elec::Node, heat::Node, h2::Node, s::Snapshot;
     # capacity / expansion
@@ -1095,8 +1502,34 @@ function makeHTelectrolyser(name::String, tech::String, elec::Node, heat::Node, 
 end
 
 """
-    makehydrogenstorage(name::String, tech::String, h2::Node, s::Snapshot; cap, eff=nothing, mincap=nothing, maxcap=nothing, capex_mult=1., ini=nothing, overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing)
+    makehydrogenstorage(name::String, tech::String, h2::Node, s::Snapshot;
+        cap, mincap=nothing, maxcap=nothing, ini=nothing,
+        capex_mult=1.,
+        eff=nothing,
+        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
+    )
+
 Build, connect and return a hydrogen storage component.
+
+Arguments:
+  * name: component name prefix.
+  * tech: technology row name in the `storage` tech-data sheet.
+  * h2: hydrogen node to connect the component to.
+  * s: snapshot to register the component in.
+
+  * cap: fixed level capacity, or `nothing` for expansion.
+  * mincap, maxcap: expansion bounds used when `cap === nothing`.
+  * ini: initial snapshot used to fix capacity from a prior run.
+
+  * capex_mult: multiplier applied to investment-related costs.
+
+  * eff: roundtrip efficiency override for storage.
+
+  * overnight_cost: overnight investment cost override (Excel default when `nothing`).
+  * om_fixed_cost: fixed O&M cost override.
+  * decommissioning: decommissioning cost fraction override.
+  * lifetime: asset lifetime override.
+  * construction_profile: construction spending profile override.
 """
 function makehydrogenstorage(name::String, tech::String, h2::Node, s::Snapshot;
     # capacity / expansion
@@ -1146,7 +1579,16 @@ end
 
 """
     makedemandresponse(name::String, elec::Node, capa::Union{Nothing,Number}, cost::Number, s::Snapshot; type::Symbol=:volDR)
+
 Build, connect and return a demand response component.
+
+Arguments:
+  * name: component name prefix.
+  * elec: electricity node to connect the component to.
+  * capa: optional fixed response capacity (`nothing` means unconstrained).
+  * cost: demand-response activation cost coefficient.
+  * s: snapshot to register the component in.
+  * type: variable cost label used for reporting (default `:volDR`).
 """
 function makedemandresponse(name::String, elec::Node, capa::Union{Nothing,Number}, cost::Number, s::Snapshot; type::Symbol=:volDR)
     m = DispatchableSource(elec.carrier)
