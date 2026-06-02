@@ -1,0 +1,199 @@
+"""
+Generate conversion components.
+"""
+
+using ArgCheck: @argcheck
+
+"""
+    makeelectrolyser(cname::String, tech::String, elec::Node, h2::Node, s::Snapshot;
+        cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
+        gridlosses=0., capex_mult=1.,
+        eff=nothing,
+        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
+        om_var_cost=nothing,
+    )
+
+Build, connect and return an electrolyser component.
+
+Arguments:
+  * cname: component name prefix.
+  * tech: technology row name in the `electrolysis` tech data sheet.
+  * elec: electricity node to connect the component to.
+  * h2: hydrogen node to connect the component to.
+  * s: snapshot to register the component in.
+
+  * cap: Fixed electrolyser input capacity. If `nothing`, input capacity is optimized.
+  * mincap: Bounds for optimized input capacity when `cap === nothing`.
+  * maxcap: Bounds for optimized input capacity when `cap === nothing`.
+  * ini: Optional initial snapshot used to inherit fixed input capacity.
+
+  * gridlosses: Proportional losses linked to electricity input flow (`0 <= gridlosses < 1`).
+  * capex_mult: Scenario multiplier on annualized investment related costs.
+  * eff: Electricity to hydrogen conversion ratio in `BasicConverter`. If `nothing`, read from Excel (`electrolysis.efficiency`).
+
+  * overnight_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * om_fixed_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * decommissioning: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * lifetime: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * construction_profile: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * om_var_cost: Variable O&M coefficient on input energy flow.
+"""
+function makeelectrolyser(cname::String, tech::String, elec::Node, h2::Node, s::Snapshot;
+    # capacity / expansion
+    cap=nothing, mincap=nothing, maxcap=nothing, ini::Union{Nothing,Snapshot}=nothing,
+
+    # scenario controls
+    gridlosses=0., capex_mult=1.,
+
+    # technical overrides
+    eff=nothing,
+
+    # economic overrides
+    overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
+    om_var_cost=nothing,
+)
+    @argcheck gridlosses isa Real "gridlosses must be Real."
+    @argcheck 0 <= gridlosses < 1 "gridlosses must be in [0, 1)."
+    _gridlosses = Float64(gridlosses)
+    _eff = isnothing(eff) ? gettechparam(s, tech, "efficiency", "electrolysis") : eff
+    @argcheck _eff isa Real "eff must be Real."
+    @argcheck 0 < _eff <= 1 "eff must be in (0, 1]."
+    _eff = Float64(_eff)
+    m = BasicConverter(elec.carrier, h2.carrier, ratio=_eff)
+    vb = []
+    _oc = (isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "electrolysis") : overnight_cost) * 1000.
+    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "electrolysis") : lifetime
+    @argcheck _lt_raw isa Real "lifetime must be Real."
+    @argcheck _lt_raw > 0 "lifetime must be > 0."
+    @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
+    _lt = Int(_lt_raw)
+    _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "electrolysis") : construction_profile
+    _inv = eac(_oc, discountrate(s), _lt, _cp) * capex_mult
+    push!(vb, FixedCost(:investment, "input", energy, _inv))
+    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "electrolysis") : decommissioning
+    push!(vb, FixedCost(:decommissioning, "input", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "electrolysis") : om_fixed_cost
+    push!(vb, FixedCost(:fom, "input", energy, _fom * 1000.))
+    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "electrolysis") : om_var_cost
+    push!(vb, VariableCost(:vom, "input", energy, _vom))
+    if cap isa Number
+        push!(vb, FixedCapacity("input", energy, cap))
+    elseif isnothing(cap)
+        if isnothing(ini)
+            push!(vb, VariableCapacity("input", energy, integer=false, lb = isnothing(mincap) ? 0 : mincap, ub = isnothing(maxcap) ? Inf : maxcap))
+        else
+            push!(vb, FixedCapacity("input", energy, capacity(ini, cname * " " * elec.name)))
+        end
+    end
+    if !iszero(_gridlosses)
+        push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _gridlosses))
+    end
+
+    c = Component(cname * " " * elec.name, m, vb)
+    for t in (:demand, :electrolysis, :hydrogen)
+        tag!(c, t)
+    end
+    connect!(s, c, elec)
+    connect!(s, c, h2)
+    return c
+end
+
+"""
+    makeHTelectrolyser(cname::String, tech::String, elec::Node, heat::Node, h2::Node, s::Snapshot;
+        cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
+        gridlosses=0., capex_mult=1.,
+        eff=nothing,
+        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
+        om_var_cost=nothing,
+    )
+
+Build, connect and return an HT electrolyser component.
+
+Arguments:
+  * cname: component name prefix.
+  * tech: technology row name in the `electrolysis` tech data sheet.
+  * elec: electricity node to connect the component to.
+  * heat: Heat node. It is linked one to one to electrolyser input via `LinkedJointFlow("heat", ...)`.
+  * h2: hydrogen node to connect the component to.
+  * s: snapshot to register the component in.
+
+  * cap: Fixed electrolyser input capacity. If `nothing`, input capacity is optimized.
+  * mincap: Bounds for optimized input capacity when `cap === nothing`.
+  * maxcap: Bounds for optimized input capacity when `cap === nothing`.
+  * ini: Optional initial snapshot used to inherit fixed input capacity.
+
+  * gridlosses: Proportional losses linked to electricity input flow (`0 <= gridlosses < 1`).
+  * capex_mult: Scenario multiplier on annualized investment related costs.
+  * eff: Electricity to hydrogen conversion ratio in `BasicConverter`. If `nothing`, read from Excel (`electrolysis.efficiency`).
+
+  * overnight_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * om_fixed_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * decommissioning: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * lifetime: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * construction_profile: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * om_var_cost: Variable O&M coefficient on input energy flow.
+"""
+function makeHTelectrolyser(cname::String, tech::String, elec::Node, heat::Node, h2::Node, s::Snapshot;
+    # capacity / expansion
+    cap=nothing, mincap=nothing, maxcap=nothing, ini::Union{Nothing,Snapshot}=nothing,
+
+    # scenario controls
+    gridlosses=0., capex_mult=1.,
+
+    # technical overrides
+    eff=nothing,
+
+    # economic overrides
+    overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
+    om_var_cost=nothing,
+)
+    @argcheck gridlosses isa Real "gridlosses must be Real."
+    @argcheck 0 <= gridlosses < 1 "gridlosses must be in [0, 1)."
+    _gridlosses = Float64(gridlosses)
+    _eff = isnothing(eff) ? gettechparam(s, tech, "efficiency", "electrolysis") : eff
+    @argcheck _eff isa Real "eff must be Real."
+    @argcheck 0 < _eff <= 1 "eff must be in (0, 1]."
+    _eff = Float64(_eff)
+    m = BasicConverter(elec.carrier, h2.carrier, ratio=_eff)
+    vb = []
+    _oc = (isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "electrolysis") : overnight_cost) * 1000.
+    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "electrolysis") : lifetime
+    @argcheck _lt_raw isa Real "lifetime must be Real."
+    @argcheck _lt_raw > 0 "lifetime must be > 0."
+    @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
+    _lt = Int(_lt_raw)
+    _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "electrolysis") : construction_profile
+    _inv = eac(_oc, discountrate(s), _lt, _cp) * capex_mult
+    push!(vb, FixedCost(:investment, "input", energy, _inv))
+    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "electrolysis") : decommissioning
+    push!(vb, FixedCost(:decommissioning, "input", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "electrolysis") : om_fixed_cost
+    push!(vb, FixedCost(:fom, "input", energy, _fom * 1000.))
+    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "electrolysis") : om_var_cost
+    push!(vb, VariableCost(:vom, "input", energy, _vom))
+    if cap isa Number
+        push!(vb, FixedCapacity("input", energy, cap))
+    elseif isnothing(cap)
+        if isnothing(ini)
+            push!(vb, VariableCapacity("input", energy, integer=false, lb = isnothing(mincap) ? 0 : mincap, ub = isnothing(maxcap) ? Inf : maxcap))
+        else
+            push!(vb, FixedCapacity("input", energy, capacity(ini, cname * " " * elec.name)))
+        end
+    end
+
+    # heat from SMR
+    push!(vb, LinkedJointFlow("heat", heat.carrier, :input, "input", x->x[1]))
+
+    if !iszero(_gridlosses)
+        push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _gridlosses))
+    end
+
+    c = Component(cname * " " * elec.name, m, vb)
+    for t in (:electrolysis, :hydrogen)
+        tag!(c, t)
+    end
+    connect!(s, c, elec)
+    connect!(s, c, heat)
+    connect!(s, c, h2)
+    return c
+end

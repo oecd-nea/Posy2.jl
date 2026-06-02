@@ -1,2 +1,5 @@
-include("components.jl")
-include("ev.jl")
+include("demand.jl")
+include("generation.jl")
+include("storage.jl")
+include("conversion.jl")
+include("interconnection.jl")

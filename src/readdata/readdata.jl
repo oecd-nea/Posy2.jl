@@ -63,6 +63,38 @@ function gettechparam(s::Snapshot, tech::String, param::String, sheetname::Strin
     return gettechparam(xl, tech, param, sheetname, digits)
 end
 
+"""
+    gettechparam_optional(s::Snapshot, tech::String, param::String, sheetname::String; digits=6)
+
+Best effort variant of `gettechparam` for optional parameters.
+Returns `nothing` when the sheet/column/row/value is missing or empty instead of throwing.
+"""
+function gettechparam_optional(s::Snapshot, tech::String, param::String, sheetname::String; digits=6)
+    opts = posy_options(s)
+    xl = readtechdata(opts.techdata_file; data_dir=opts.data_dir)
+    sns = XLSX.sheetnames(xl)
+    if !(sheetname in sns)
+        return nothing
+    end
+    df = gettechdatasheet(xl, sheetname)
+    if !("tech" in names(df)) || !(tech in names(df))
+        return nothing
+    end
+    sub = df[df[!, "tech"] .== param, [tech]]
+    if nrow(sub) == 0
+        return nothing
+    end
+    val = first(sub[!, tech])
+    if ismissing(val) || (val isa AbstractFloat && isnan(val)) || (val isa AbstractString && isempty(strip(val)))
+        return nothing
+    end
+    if val isa Number
+        return round(val, digits=digits)
+    else
+        return val
+    end
+end
+
 
 readtimeseries(filename="time_series.xlsx"; data_dir=joinpath(pwd(), "data")) = readexcel(data_dir, filename)
 @memoize function gettimeseriesdatasheet(xl, sheetname::String) # this function is memoized because gettable is time-consuming

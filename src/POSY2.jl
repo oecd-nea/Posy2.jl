@@ -10,7 +10,7 @@ using Infiltrator
 export readtechdata, gettechparam
 export readtimeseries, gettimeseries
 
-export makedemand, makeEV, makeEV_flexible
+export makedemand, makeEV
 export makeflathydrogendemand, makeflexhydrogendemand, makeflathydrogenpurchase
 export makedispatchable
 export makenuclear, makesmr
@@ -20,8 +20,6 @@ export makebatteries
 export makedemandresponse
 export makepriceinterco, makenodeinterco
 export makeelectrolyser, makeHTelectrolyser, makehydrogenstorage
-export makedemandresponse
-export makecurtailment
 
 export addkvlconstraints!
 

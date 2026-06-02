@@ -1,3 +1,5 @@
+using ArgCheck: @argcheck
+
 # basic annualized cost
 # used if no construction profile is given
 function _eac(overnight::Number, discountrate, years)
@@ -21,8 +23,13 @@ end
 
 # construction_factor
 function construction_factor(discountrate, constructionprofile)
-    vc = isa(constructionprofile, String) ? parse.(Float64, split(constructionprofile, ';')) : [constructionprofile]
-    @assert isapprox(sum(vc), 1., rtol=1E-3) "Sum of the construction profile is not equal to 1"
+    @argcheck constructionprofile isa Union{String, Real} "Construction profile must be a String like \"0.3;0.4;0.3\" or a single real number."
+    vc = isa(constructionprofile, String) ? parse.(Float64, split(constructionprofile, ';')) : [Float64(constructionprofile)]
+    @argcheck all(x -> x >= 0, vc) "Construction profile must be non-negative."
+    total = sum(vc)
+    @argcheck isapprox(total, 1.0; rtol=1E-3) "Sum of the construction profile must be close to 1."
+    # Accept small rounding errors, but compute with a profile that sums exactly to 1.
+    vc = vc ./ total
     cf = sum((vc[y]) * (1 + discountrate)^(length(vc)+1-y) for y in eachindex(vc))
     return cf
 end
