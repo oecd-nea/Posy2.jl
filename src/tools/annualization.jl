@@ -1,9 +1,3 @@
-# basic annualized cost
-# used if no construction profile is given
-function _eac(overnight::Number, discountrate, years)
-    return overnight * discountrate / (1 - (1 + discountrate)^(-years))
-end
-
 """
     eac(overnight::Number, discountrate::Number, lifetime::Int, constructionprofile::String)
 Return the annualized investment cost in function of the overnight cost, the discount rate, the lifetime and the construction profile.
@@ -13,7 +7,7 @@ The effects are the following:
 """
 function eac(overnight::Number, discountrate::Number, lifetime, constructionprofile)
     if ismissing(constructionprofile)
-        return _eac(overnight * (1+discountrate), discountrate, 1) # if constructionprofile is not given, assume 1 year of construction (the year before operation)
+        throw(ArgumentError("construction profile is missing"))
     else
         return overnight * construction_factor(discountrate, constructionprofile) * corrected_crf(discountrate, lifetime)
     end
