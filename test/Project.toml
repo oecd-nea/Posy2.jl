@@ -1,0 +1,17 @@
+[deps]
+ArgCheck = "dce04be8-c92d-5529-be00-80e4d2c0e197"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
+JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
+MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
+
+[compat]
+ArgCheck = "2"
+DataFrames = "1"
+HiGHS = "1"
+JuMP = "1"
+MathOptInterface = "1"
+XLSX = "0.10"
+julia = "1.11 - 1.12"

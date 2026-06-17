@@ -93,7 +93,7 @@ Return a Dict of the time series associated with internal (non-foreign) imports 
 If `collapse`, return a Dict of values instead.
 """
 function imports_internal(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = LittleDict{String,Float64}()
+    d = LittleDict{String,Union{Float64,Nosy.AbstractTimeSeries{Float64}}}()
     for (k,v) in imports_internal(s, collapse=collapse)
         s = split(k, ' ')
         if s[3] == nodename
@@ -102,6 +102,7 @@ function imports_internal(s::Snapshot, nodename::String; modifier=energy, collap
     end
 
     collapse && return sum(values(d)) # TODO replace collapse w aggregate
+    return d
 end
 
 """
@@ -110,7 +111,7 @@ Return a Dict of the time series associated with internal (non-foreign) exports 
 If `collapse`, return a Dict of values instead.
 """
 function exports_internal(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = LittleDict{String,Float64}()
+    d = LittleDict{String,Union{Float64,Nosy.AbstractTimeSeries{Float64}}}()
     for (k,v) in exports_internal(s, collapse=collapse)
         s = split(k, ' ')
         if s[1] == nodename
@@ -124,7 +125,7 @@ function exports_internal(s::Snapshot, nodename::String; modifier=energy, collap
 end
 
 function imports_all(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = LittleDict{String,Float64}()
+    d = LittleDict{String,Union{Float64,Nosy.AbstractTimeSeries{Float64}}}()
     for (k,v) in imports_all(s, collapse=collapse)
         s = split(k, ' ')
         if s[3] == nodename
@@ -133,10 +134,11 @@ function imports_all(s::Snapshot, nodename::String; modifier=energy, collapse=tr
     end
 
     collapse && return sum(values(d)) # TODO replace collapse w aggregate
+    return d
 end
 
 function exports_all(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = LittleDict{String,Float64}()
+    d = LittleDict{String,Union{Float64,Nosy.AbstractTimeSeries{Float64}}}()
     for (k,v) in exports_all(s, collapse=collapse)
         s = split(k, ' ')
         if s[1] == nodename
@@ -155,7 +157,7 @@ Return a Dict of the time series associated with external (foreign) imports of `
 If `collapse`, return a Dict of values instead.
 """
 function imports_foreign(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = LittleDict{String,Float64}()
+    d = LittleDict{String,Union{Float64,Nosy.AbstractTimeSeries{Float64}}}()
     for (k,v) in imports_foreign(s, collapse=collapse)
         s = split(k, ' ')
         if s[3] == nodename
@@ -174,7 +176,7 @@ Return a Dict of the time series associated with external (foreign) exports of `
 If `collapse`, return a Dict of values instead.
 """
 function exports_foreign(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = LittleDict{String,Float64}()
+    d = LittleDict{String,Union{Float64,Nosy.AbstractTimeSeries{Float64}}}()
     for (k,v) in exports_foreign(s, collapse=collapse)
         s = split(k, ' ')
         if s[1] == nodename
@@ -721,7 +723,7 @@ function _interco_vol_detailed(s; collapse=true, addtotal=false)
 
     df = DataFrame("From \\ To" => allquasinodes)
     for k in allquasinodes
-        df[!,k] = convert(Vector{Union{Nothing,Float64,Nosy.Stepwise{Float64}}}, fill(0., length(allquasinodes))) # zeros(length(allquasinodes))
+        df[!,k] = convert(Vector{Union{Nothing,Float64,Nosy.Stepwise{Float64},Nosy.Hourly{Float64}}}, fill(0., length(allquasinodes))) # zeros(length(allquasinodes))
     end
 
     for cname in allcomps_int
@@ -845,7 +847,7 @@ end
 function exports_foreign(s; collapse=true)
     dv = LittleDict()
 
-    df = _interco_vol_detailed(s, addtotal=false)
+    df = _interco_vol_detailed(s, collapse=collapse, addtotal=false)
     selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
 
     for (nodename, _) in selfnodes
@@ -866,7 +868,7 @@ end
 function exports_internal(s; collapse=true)
     dv = LittleDict()
 
-    df = _interco_vol_detailed(s, addtotal=false)
+    df = _interco_vol_detailed(s, collapse=collapse, addtotal=false)
     selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
 
     for (nodename, _) in selfnodes
@@ -887,7 +889,7 @@ end
 function exports_all(s; collapse=true)
     dv = LittleDict()
 
-    df = _interco_vol_detailed(s, addtotal=false)
+    df = _interco_vol_detailed(s, collapse=collapse, addtotal=false)
     selfnodes = getnodes(s, with=[:electricity])
 
     for (nodename, _) in selfnodes

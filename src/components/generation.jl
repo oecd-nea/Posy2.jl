@@ -4,6 +4,17 @@ Generate generation-side components.
 
 using ArgCheck: @argcheck
 
+"""
+    makeflathydrogenpurchase(cname::String, n::Node, val::Number, s::Snapshot)
+
+Build, connect and return a flat hydrogen purchase component.
+
+Arguments:
+  * cname: component name prefix.
+  * n: hydrogen node to connect the component to.
+  * val: yearly purchased hydrogen amount, converted internally to a flat hourly capacity (`val / 8760`).
+  * s: snapshot to register the component in.
+"""
 function makeflathydrogenpurchase(cname::String, n::Node, val::Number, s::Snapshot)
     m = ProfileSource(n.carrier, 1.)
     vb = []
@@ -21,10 +32,12 @@ end
         cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing, capacitymultiplier=nothing,
         integeruc=false, uc=false, fuelnode=nothing,
         capex_mult=1., fuel_mult=1., co2price=co2_price(s),
-        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
-        connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, no_load_cost=nothing, startup_cost=nothing,
-        co2_emission=nothing, efficiency=nothing, unit_size=nothing, min_power=nothing, min_uptime=nothing,
-        min_downtime=nothing, startup_duration=nothing, shutdown_duration=nothing,
+        overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing, decommissioning::Union{Nothing,Number}=nothing,
+        lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, connection_cost::Union{Nothing,Number}=nothing,
+        om_var_cost::Union{Nothing,Number}=nothing, fuel_cost::Union{Nothing,Number}=nothing, no_load_cost::Union{Nothing,Number}=nothing,
+        startup_cost::Union{Nothing,Number}=nothing, co2_emission::Union{Nothing,Number}=nothing, efficiency::Union{Nothing,Number}=nothing,
+        unit_size::Union{Nothing,Number}=nothing, min_power::Union{Nothing,Number}=nothing, min_uptime::Union{Nothing,Number}=nothing,
+        min_downtime::Union{Nothing,Number}=nothing, startup_duration::Union{Nothing,Number}=nothing, shutdown_duration::Union{Nothing,Number}=nothing,
     )
 
 Build, connect and return a dispatchable component.
@@ -36,7 +49,7 @@ Arguments:
   * co2: CO2 node connected only when `co2_emission != 0`.
   * s: Target snapshot where the component and behaviors are registered.
 
-  * cap: Fixed output capacity in model power units. If `nothing`, output capacity is a decision variable.
+  * cap: Fixed output capacity in model power units. If `0`, the function returns `nothing`. If `nothing`, output capacity is a decision variable.
   * mincap: Lower/upper bounds for variable capacity when `cap === nothing`.
   * maxcap: Lower/upper bounds for variable capacity when `cap === nothing`.
   * ini: Optional initial snapshot. If provided, capacity/UC state is inherited from the matching component.
@@ -53,7 +66,7 @@ Arguments:
   * overnight_cost: Overnight CAPEX input used by `eac(...)` (Excel default when `nothing`).
   * om_fixed_cost: Fixed O&M cost on output capacity (`FixedCost(:fom, "output", ...)`; Excel default when `nothing`).
   * decommissioning: Decommissioning cost ratio used in `decom_cost(...)` (Excel default when `nothing`).
-  * lifetime: Asset lifetime used by annualization/decommissioning calculations.
+  * lifetime: Asset lifetime used by annualization/decommissioning calculations (`> 0`, integer-valued).
   * construction_profile: Construction cost share profile passed to `eac(...)` (Excel default when `nothing`).
   * connection_cost: Connection cost ratio applied on annualized investment.
   * om_var_cost: Variable O&M cost on output energy flow (`VariableCost(:vom, "output", ...)`).
@@ -80,20 +93,21 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
     capex_mult=1., fuel_mult=1., co2price=co2_price(s),
 
     # technical / economic overrides
-    overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
-    connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, no_load_cost=nothing, startup_cost=nothing,
-    co2_emission=nothing, efficiency=nothing, unit_size=nothing, min_power=nothing, min_uptime=nothing,
-    min_downtime=nothing, startup_duration=nothing, shutdown_duration=nothing,
+    overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+    connection_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing, fuel_cost::Union{Nothing,Number}=nothing,
+    no_load_cost::Union{Nothing,Number}=nothing, startup_cost::Union{Nothing,Number}=nothing,
+    co2_emission::Union{Nothing,Number}=nothing, efficiency::Union{Nothing,Number}=nothing, unit_size::Union{Nothing,Number}=nothing,
+    min_power::Union{Nothing,Number}=nothing, min_uptime::Union{Nothing,Number}=nothing,
+    min_downtime::Union{Nothing,Number}=nothing, startup_duration::Union{Nothing,Number}=nothing, shutdown_duration::Union{Nothing,Number}=nothing,
 )
-    for param in ("reload_duration", "reload_fraction_per_year", "reloadmask")
-        val = gettechparam_optional(s, tech, param, "dispatchable")
-        @argcheck isnothing(val) || iszero(val) " `$param` is only supported by `makenuclear`, not by `makedispatchable`."
-    end
     m = DispatchableSource(elec.carrier)
     vb = []
-    _oc = (isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "dispatchable") : overnight_cost) * 1000.
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "dispatchable") : overnight_cost
+    @argcheck _oc_raw isa Number "overnight_cost must be Number."
+    _oc = _oc_raw * 1000.
     _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "dispatchable") : lifetime
-    @argcheck _lt_raw isa Real "lifetime must be Real."
+    @argcheck _lt_raw isa Number "lifetime must be Number."
     @argcheck _lt_raw > 0 "lifetime must be > 0."
     @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
     _lt = Int(_lt_raw)
@@ -101,10 +115,13 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
     _inv = eac(_oc , discountrate(s), _lt, _cp) * capex_mult
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     _conn = isnothing(connection_cost) ? gettechparam(s, tech, "connection_cost", "dispatchable") : connection_cost
+    @argcheck _conn isa Number "connection_cost must be Number."
     push!(vb, FixedCost(:connection, "output", energy, _inv * _conn))
     _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "dispatchable") : om_fixed_cost
+    @argcheck _fom isa Number "om_fixed_cost must be Number."
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))
     _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "dispatchable") : om_var_cost
+    @argcheck _vom isa Number "om_var_cost must be Number."
     push!(vb, VariableCost(:vom, "output", energy, _vom))
     
     # capacity multiplier
@@ -114,14 +131,16 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
 
     # fuel cost only used is fuel node is nothing
     _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "dispatchable") : decommissioning
+    @argcheck _decom isa Number "decommissioning must be Number."
     push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
     _co2_em = isnothing(co2_emission) ? gettechparam(s, tech, "co2_emission", "dispatchable") : co2_emission
+    @argcheck _co2_em isa Number "co2_emission must be Number."
     if !iszero(_co2_em)
         push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
         push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2price))
     end
     _usize_raw = isnothing(unit_size) ? gettechparam(s, tech, "unit_size", "dispatchable") : unit_size
-    @argcheck _usize_raw isa Real "unit_size must be Real."
+    @argcheck _usize_raw isa Number "unit_size must be Number."
     if iszero(_usize_raw)
         _usize = nothing
     else
@@ -146,10 +165,11 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
     # fuel node management
     if isnothing(fuelnode)
         _fuel = isnothing(fuel_cost) ? gettechparam(s, tech, "fuel_cost", "dispatchable") : fuel_cost
+        @argcheck _fuel isa Number "fuel_cost must be Number."
         push!(vb, VariableCost(:fuel, "output", energy, _fuel * fuel_mult))
     else
         _eff = isnothing(efficiency) ? gettechparam(s, tech, "efficiency", "dispatchable") : efficiency
-        @argcheck _eff isa Real "efficiency must be Real."
+        @argcheck _eff isa Number "efficiency must be Number."
         @argcheck 0 < _eff <= 1 "efficiency must be in (0, 1]."
         _eff = Float64(_eff)
         push!(vb, LinkedJointFlow("fuel", fuelnode.carrier, :input, "output", x->x[1] / _eff))
@@ -163,6 +183,11 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
             _min_downtime = isnothing(min_downtime) ? gettechparam(s, tech, "min_downtime", "dispatchable") : min_downtime
             _startup_dur = isnothing(startup_duration) ? gettechparam(s, tech, "startup_duration", "dispatchable") : startup_duration
             _shutdown_dur = isnothing(shutdown_duration) ? gettechparam(s, tech, "shutdown_duration", "dispatchable") : shutdown_duration
+            @argcheck _min_power isa Number "min_power must be Number."
+            @argcheck _min_uptime isa Number "min_uptime must be Number."
+            @argcheck _min_downtime isa Number "min_downtime must be Number."
+            @argcheck _startup_dur isa Number "startup_duration must be Number."
+            @argcheck _shutdown_dur isa Number "shutdown_duration must be Number."
             push!(vb, UnitCommitment("output", 
                 _min_power, 
                 uptime=_min_uptime, 
@@ -176,6 +201,8 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
         end
         _noload = isnothing(no_load_cost) ? gettechparam(s, tech, "no_load_cost", "dispatchable") : no_load_cost
         _startup = isnothing(startup_cost) ? gettechparam(s, tech, "startup_cost", "dispatchable") : startup_cost
+        @argcheck _noload isa Number "no_load_cost must be Number."
+        @argcheck _startup isa Number "startup_cost must be Number."
         push!(vb, NoLoadCost(:noload, "output", _noload))
         push!(vb, StartupCost(:startup, "output", _startup))
     end
@@ -208,13 +235,16 @@ end
     makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, integercap=false, ini=nothing, warmstart=nothing,
         uc=false, integeruc=false, startupmask=nothing, shutdownmask=nothing,
-        reload_duration=nothing, reloadmask=nothing, reload_fraction_per_year=nothing,
+        reload_duration::Union{Nothing,Number}=nothing, reloadmask::Union{Nothing,Number}=nothing, reload_fraction_per_year::Union{Nothing,Number}=nothing,
         fuelnode=nothing, co2price=co2_price(s),
         capex_mult=1., fuel_mult=1.,
-        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
-        connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, waste_cost=nothing, no_load_cost=nothing,
-        startup_cost=nothing, co2_emission=nothing, efficiency=nothing, unit_size=nothing, min_power=nothing,
-        min_uptime=nothing, min_downtime=nothing, startup_duration=nothing, shutdown_duration=nothing,
+        overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+        connection_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing, fuel_cost::Union{Nothing,Number}=nothing,
+        waste_cost::Union{Nothing,Number}=nothing, no_load_cost::Union{Nothing,Number}=nothing, startup_cost::Union{Nothing,Number}=nothing,
+        co2_emission::Union{Nothing,Number}=nothing, efficiency::Union{Nothing,Number}=nothing, unit_size::Union{Nothing,Number}=nothing,
+        min_power::Union{Nothing,Number}=nothing, min_uptime::Union{Nothing,Number}=nothing, min_downtime::Union{Nothing,Number}=nothing,
+        startup_duration::Union{Nothing,Number}=nothing, shutdown_duration::Union{Nothing,Number}=nothing,
     )
 
 Build, connect and return a nuclear reactor component.
@@ -239,7 +269,7 @@ Arguments:
   * shutdownmask: Optional masks restricting UC startup/shutdown availability over time.
 
   * reload_duration: Duration of planned reload outage. If `nothing`, read from Excel. Must be >= 0; reloading constraints are enabled only when this value is > 0.
-  * reloadmask: Interval between allowed reload windows. If `nothing`, read from Excel. When reloading is enabled, value must be strictly positive.
+  * reloadmask: Interval between allowed reload windows. Non default parameter (not read from Excel). When reloading is enabled, it must be provided , strictly positive, and integer-valued.
   * reload_fraction_per_year: Minimum yearly reload requirement (fraction per unit per year). If `nothing`, read from Excel. Must be >= 0; reloading constraints are enabled only when this value is > 0.
 
   * fuelnode: If provided, fuel is represented as linked input flow using `efficiency`. If `nothing`, `fuel_cost` is applied as output variable cost.
@@ -251,7 +281,7 @@ Arguments:
   * overnight_cost: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
   * om_fixed_cost: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
   * decommissioning: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
-  * lifetime: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
+  * lifetime: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
   * construction_profile: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
   * connection_cost: Ratio applied to annualized investment for connection cost.
   * om_var_cost: Variable cost coefficients on output energy (fuel cost used directly only when `fuelnode === nothing`).
@@ -276,7 +306,7 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
     uc=false, integeruc=false, startupmask=nothing, shutdownmask=nothing,
 
     # reloading controls
-    reload_duration=nothing, reloadmask=nothing, reload_fraction_per_year=nothing,
+    reload_duration::Union{Nothing,Number}=nothing, reloadmask::Union{Nothing,Number}=nothing, reload_fraction_per_year::Union{Nothing,Number}=nothing,
 
     # external nodes / prices
     fuelnode=nothing, co2price=co2_price(s),
@@ -285,16 +315,22 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
     capex_mult=1., fuel_mult=1.,
 
     # technical / economic overrides
-    overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
-    connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, waste_cost=nothing, no_load_cost=nothing,
-    startup_cost=nothing, co2_emission=nothing, efficiency=nothing, unit_size=nothing, min_power=nothing,
-    min_uptime=nothing, min_downtime=nothing, startup_duration=nothing, shutdown_duration=nothing,
+    overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+    connection_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing, fuel_cost::Union{Nothing,Number}=nothing,
+    waste_cost::Union{Nothing,Number}=nothing, no_load_cost::Union{Nothing,Number}=nothing,
+    startup_cost::Union{Nothing,Number}=nothing, co2_emission::Union{Nothing,Number}=nothing, efficiency::Union{Nothing,Number}=nothing,
+    unit_size::Union{Nothing,Number}=nothing, min_power::Union{Nothing,Number}=nothing,
+    min_uptime::Union{Nothing,Number}=nothing, min_downtime::Union{Nothing,Number}=nothing,
+    startup_duration::Union{Nothing,Number}=nothing, shutdown_duration::Union{Nothing,Number}=nothing,
 )
     m = DispatchableSource(elec.carrier)
     vb = []
-    _oc = (isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "dispatchable") : overnight_cost) * 1000.
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "dispatchable") : overnight_cost
+    @argcheck _oc_raw isa Number "overnight_cost must be Number."
+    _oc = _oc_raw * 1000.
     _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "dispatchable") : lifetime
-    @argcheck _lt_raw isa Real "lifetime must be Real."
+    @argcheck _lt_raw isa Number "lifetime must be Number."
     @argcheck _lt_raw > 0 "lifetime must be > 0."
     @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
     _lt = Int(_lt_raw)
@@ -302,23 +338,29 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
     _inv = eac(_oc , discountrate(s), _lt, _cp) * capex_mult
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     _conn = isnothing(connection_cost) ? gettechparam(s, tech, "connection_cost", "dispatchable") : connection_cost
+    @argcheck _conn isa Number "connection_cost must be Number."
     push!(vb, FixedCost(:connection, "output", energy, _inv * _conn))
     _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "dispatchable") : om_fixed_cost
+    @argcheck _fom isa Number "om_fixed_cost must be Number."
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))
     _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "dispatchable") : om_var_cost
+    @argcheck _vom isa Number "om_var_cost must be Number."
     push!(vb, VariableCost(:vom, "output", energy, _vom))
     _waste = isnothing(waste_cost) ? gettechparam(s, tech, "waste_cost", "dispatchable") : waste_cost
+    @argcheck _waste isa Number "waste_cost must be Number."
     push!(vb, VariableCost(:waste, "output", energy, _waste))
     # fuel cost only used is fuel node is nothing
     _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "dispatchable") : decommissioning
+    @argcheck _decom isa Number "decommissioning must be Number."
     push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
     _co2_em = isnothing(co2_emission) ? gettechparam(s, tech, "co2_emission", "dispatchable") : co2_emission
+    @argcheck _co2_em isa Number "co2_emission must be Number."
     if !iszero(_co2_em)
         push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
         push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2price))
     end
     _usize_raw = isnothing(unit_size) ? gettechparam(s, tech, "unit_size", "dispatchable") : unit_size
-    @argcheck _usize_raw isa Real "unit_size must be Real."
+    @argcheck _usize_raw isa Number "unit_size must be Number."
     if iszero(_usize_raw)
         _usize = nothing
     else
@@ -340,10 +382,11 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
     # fuel node management
     if isnothing(fuelnode)
         _fuel = isnothing(fuel_cost) ? gettechparam(s, tech, "fuel_cost", "dispatchable") : fuel_cost
+        @argcheck _fuel isa Number "fuel_cost must be Number."
         push!(vb, VariableCost(:fuel, "output", energy, _fuel * fuel_mult))
     else
         _eff = isnothing(efficiency) ? gettechparam(s, tech, "efficiency", "dispatchable") : efficiency
-        @argcheck _eff isa Real "efficiency must be Real."
+        @argcheck _eff isa Number "efficiency must be Number."
         @argcheck 0 < _eff <= 1 "efficiency must be in (0, 1]."
         _eff = Float64(_eff)
         push!(vb, LinkedJointFlow("fuel", fuelnode.carrier, :input, "output", x->x[1] / _eff))
@@ -356,16 +399,17 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
     end
     if uc
         _reload_fraction = isnothing(reload_fraction_per_year) ? gettechparam(s, tech, "reload_fraction_per_year", "dispatchable") : reload_fraction_per_year
-        @argcheck _reload_fraction isa Real "reload_fraction_per_year must be Real."
+        @argcheck _reload_fraction isa Number "reload_fraction_per_year must be Number."
         @argcheck _reload_fraction >= 0 "reload_fraction_per_year must be >= 0."
         if _reload_fraction > 0
             _reload_duration = isnothing(reload_duration) ? gettechparam(s, tech, "reload_duration", "dispatchable") : reload_duration
-            @argcheck _reload_duration isa Real "reload_duration must be Real."
+            @argcheck _reload_duration isa Number "reload_duration must be Number."
             @argcheck _reload_duration >= 0 "reload_duration must be >= 0."
             _reload_on = (_reload_fraction > 0) && (_reload_duration > 0)
             if _reload_on
-                _reload_mask_raw = isnothing(reloadmask) ? gettechparam(s, tech, "reloadmask", "dispatchable") : reloadmask
-                @argcheck _reload_mask_raw isa Real "reloadmask must be Real."
+                @argcheck !isnothing(reloadmask) "reloadmask must be provided when reloading is enabled."
+                _reload_mask_raw = reloadmask
+                @argcheck _reload_mask_raw isa Number "reloadmask must be Number."
                 @argcheck _reload_mask_raw > 0 "reloadmask must be > 0 when reloading is enabled."
                 @argcheck isinteger(_reload_mask_raw) "reloadmask must be integer-valued."
                 _reload_mask = Int(_reload_mask_raw)
@@ -373,12 +417,19 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
         end
         _noload = isnothing(no_load_cost) ? gettechparam(s, tech, "no_load_cost", "dispatchable") : no_load_cost
         _startup = isnothing(startup_cost) ? gettechparam(s, tech, "startup_cost", "dispatchable") : startup_cost
+        @argcheck _noload isa Number "no_load_cost must be Number."
+        @argcheck _startup isa Number "startup_cost must be Number."
         if isnothing(ini)
             _min_power = isnothing(min_power) ? gettechparam(s, tech, "min_power", "dispatchable") : min_power
             _min_uptime = isnothing(min_uptime) ? gettechparam(s, tech, "min_uptime", "dispatchable") : min_uptime
             _min_downtime = isnothing(min_downtime) ? gettechparam(s, tech, "min_downtime", "dispatchable") : min_downtime
             _startup_dur = isnothing(startup_duration) ? gettechparam(s, tech, "startup_duration", "dispatchable") : startup_duration
             _shutdown_dur = isnothing(shutdown_duration) ? gettechparam(s, tech, "shutdown_duration", "dispatchable") : shutdown_duration
+            @argcheck _min_power isa Number "min_power must be Number."
+            @argcheck _min_uptime isa Number "min_uptime must be Number."
+            @argcheck _min_downtime isa Number "min_downtime must be Number."
+            @argcheck _startup_dur isa Number "startup_duration must be Number."
+            @argcheck _shutdown_dur isa Number "shutdown_duration must be Number."
             if _reload_on
                 push!(vb, Nosy.UnitCommitment("output", 
                     _min_power, 
@@ -495,9 +546,10 @@ end
         cap=nothing, mincap=nothing, maxcap=nothing, integercap=false, ini=nothing, warmstart=nothing,
         co2price=co2_price(s),
         capex_mult=1., fuel_mult=1.,
-        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
-        connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, waste_cost=nothing, co2_emission=nothing,
-        unit_size=nothing,
+        overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+        connection_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing, fuel_cost::Union{Nothing,Number}=nothing,
+        waste_cost::Union{Nothing,Number}=nothing, co2_emission::Union{Nothing,Number}=nothing, unit_size::Union{Nothing,Number}=nothing,
     )
 
 Build, connect and return an SMR component.
@@ -525,7 +577,7 @@ Arguments:
   * overnight_cost: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms. If `nothing`, values are read from Excel.
   * om_fixed_cost: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms. If `nothing`, values are read from Excel.
   * decommissioning: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms. If `nothing`, values are read from Excel.
-  * lifetime: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms. If `nothing`, values are read from Excel.
+  * lifetime: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms (`> 0`, integer-valued). If `nothing`, values are read from Excel.
   * construction_profile: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms. If `nothing`, values are read from Excel.
   * connection_cost: Ratio applied on annualized investment as connection cost.
   * om_var_cost: Variable O&M cost on output energy flow.
@@ -546,15 +598,19 @@ function makesmr(cname::String, tech::String, elec::Node, heat::Node, co2::Node,
     fuel_mult=1.,
 
     # technical / economic overrides
-    overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
-    connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, waste_cost=nothing, co2_emission=nothing,
-    unit_size=nothing,
+    overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+    connection_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing, fuel_cost::Union{Nothing,Number}=nothing,
+    waste_cost::Union{Nothing,Number}=nothing, co2_emission::Union{Nothing,Number}=nothing,
+    unit_size::Union{Nothing,Number}=nothing,
 )
     m = DispatchableSource(elec.carrier)
     vb = []
-    _oc = (isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "dispatchable") : overnight_cost) * 1000.
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "dispatchable") : overnight_cost
+    @argcheck _oc_raw isa Number "overnight_cost must be Number."
+    _oc = _oc_raw * 1000.
     _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "dispatchable") : lifetime
-    @argcheck _lt_raw isa Real "lifetime must be Real."
+    @argcheck _lt_raw isa Number "lifetime must be Number."
     @argcheck _lt_raw > 0 "lifetime must be > 0."
     @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
     _lt = Int(_lt_raw)
@@ -562,18 +618,25 @@ function makesmr(cname::String, tech::String, elec::Node, heat::Node, co2::Node,
     _inv = eac(_oc , discountrate(s), _lt, _cp) * capex_mult
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     _conn = isnothing(connection_cost) ? gettechparam(s, tech, "connection_cost", "dispatchable") : connection_cost
+    @argcheck _conn isa Number "connection_cost must be Number."
     push!(vb, FixedCost(:connection, "output", energy, _inv * _conn))
     _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "dispatchable") : om_fixed_cost
+    @argcheck _fom isa Number "om_fixed_cost must be Number."
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))
     _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "dispatchable") : om_var_cost
+    @argcheck _vom isa Number "om_var_cost must be Number."
     push!(vb, VariableCost(:vom, "output", energy, _vom))
     _fuel = isnothing(fuel_cost) ? gettechparam(s, tech, "fuel_cost", "dispatchable") : fuel_cost
+    @argcheck _fuel isa Number "fuel_cost must be Number."
     push!(vb, VariableCost(:fuel, "output", energy, _fuel * fuel_mult))
     _waste = isnothing(waste_cost) ? gettechparam(s, tech, "waste_cost", "dispatchable") : waste_cost
+    @argcheck _waste isa Number "waste_cost must be Number."
     push!(vb, VariableCost(:waste, "output", energy, _waste))
     _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "dispatchable") : decommissioning
+    @argcheck _decom isa Number "decommissioning must be Number."
     push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
     _co2_em = isnothing(co2_emission) ? gettechparam(s, tech, "co2_emission", "dispatchable") : co2_emission
+    @argcheck _co2_em isa Number "co2_emission must be Number."
     if !iszero(_co2_em)
         push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
         push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2price))
@@ -582,7 +645,7 @@ function makesmr(cname::String, tech::String, elec::Node, heat::Node, co2::Node,
     push!(vb, LinkedJointFlow("heat", heat.carrier, :output, "output", x->x[1] * 1)) # actually not heat, but modeled as a 1:1 ratio to keep track of SMR and align it with HTE 
     
     _usize_raw = isnothing(unit_size) ? gettechparam(s, tech, "unit_size", "dispatchable") : unit_size
-    @argcheck _usize_raw isa Real "unit_size must be Real."
+    @argcheck _usize_raw isa Number "unit_size must be Number."
     if iszero(_usize_raw)
         _usize = nothing
     else
@@ -617,8 +680,10 @@ end
 """
     makenuclearprofile(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
         cap=nothing, weatheryear=2019, co2price=co2_price(s), capex_mult=1.,
-        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing,
-        construction_profile=nothing, om_var_cost=nothing, fuel_cost=nothing, co2_emission=nothing,
+        overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing,
+        construction_profile=nothing, om_var_cost::Union{Nothing,Number}=nothing,
+        fuel_cost::Union{Nothing,Number}=nothing, co2_emission::Union{Nothing,Number}=nothing,
     )
 
 Build, connect and return a profile based nuclear generation component.
@@ -639,7 +704,7 @@ Arguments:
   * overnight_cost: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms. Excel defaults are used when values are `nothing`.
   * om_fixed_cost: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms. Excel defaults are used when values are `nothing`.
   * decommissioning: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms. Excel defaults are used when values are `nothing`.
-  * lifetime: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms. Excel defaults are used when values are `nothing`.
+  * lifetime: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
   * construction_profile: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms. Excel defaults are used when values are `nothing`.
   * om_var_cost: Variable O&M coefficient on output energy flow.
   * fuel_cost: Fuel variable cost coefficient on output energy flow.
@@ -653,14 +718,17 @@ function makenuclearprofile(cname::String, tech::String, elec::Node, co2::Node, 
     co2price=co2_price(s), capex_mult=1.,
 
     # technical / economic overrides
-    overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
-    om_var_cost=nothing, fuel_cost=nothing, co2_emission=nothing,
+    overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+    om_var_cost::Union{Nothing,Number}=nothing, fuel_cost::Union{Nothing,Number}=nothing, co2_emission::Union{Nothing,Number}=nothing,
 )
     m = ProfileSource(elec.carrier, gettimeseries(s, tech * "_" * elec.name, "profiles_" * string(weatheryear)))
     vb = []
-    _oc = (isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "dispatchable") : overnight_cost) * 1000.
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "dispatchable") : overnight_cost
+    @argcheck _oc_raw isa Number "overnight_cost must be Number."
+    _oc = _oc_raw * 1000.
     _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "dispatchable") : lifetime
-    @argcheck _lt_raw isa Real "lifetime must be Real."
+    @argcheck _lt_raw isa Number "lifetime must be Number."
     @argcheck _lt_raw > 0 "lifetime must be > 0."
     @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
     _lt = Int(_lt_raw)
@@ -668,14 +736,19 @@ function makenuclearprofile(cname::String, tech::String, elec::Node, co2::Node, 
     _inv = eac(_oc, discountrate(s), _lt, _cp) * capex_mult
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "dispatchable") : om_fixed_cost
+    @argcheck _fom isa Number "om_fixed_cost must be Number."
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))
     _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "dispatchable") : om_var_cost
+    @argcheck _vom isa Number "om_var_cost must be Number."
     push!(vb, VariableCost(:vom, "output", energy, _vom))
     _fuel = isnothing(fuel_cost) ? gettechparam(s, tech, "fuel_cost", "dispatchable") : fuel_cost
+    @argcheck _fuel isa Number "fuel_cost must be Number."
     push!(vb, VariableCost(:fuel, "output", energy, _fuel))
     _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "dispatchable") : decommissioning
+    @argcheck _decom isa Number "decommissioning must be Number."
     push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
     _co2_em = isnothing(co2_emission) ? gettechparam(s, tech, "co2_emission", "dispatchable") : co2_emission
+    @argcheck _co2_em isa Number "co2_emission must be Number."
     if !iszero(_co2_em)
         push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
         push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2price))
@@ -696,6 +769,32 @@ function makenuclearprofile(cname::String, tech::String, elec::Node, co2::Node, 
     return c
 end
 
+"""
+    makereservoirprofile(cname::String, zone::String, elec::Node, s::Snapshot;
+        cap=nothing, tech::String="Hydro reservoir",
+        capex_mult=1.,
+        overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+        om_var_cost::Union{Nothing,Number}=nothing, decommissioning::Union{Nothing,Number}=nothing,
+        lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+    )
+
+Build, connect and return a profile-based hydro reservoir generation component.
+
+Arguments:
+  * cname: component name prefix.
+  * zone: time-series zone used to read `fixed_reservoir_output`.
+  * elec: electricity node to connect the component to.
+  * s: snapshot to register the component in.
+  * cap: Installed output capacity used to normalize the profile (`cap > 0` required; `nothing` is rejected).
+  * tech: technology row name in the `storage` tech data sheet.
+  * capex_mult: scenario multiplier applied to annualized investment and decommissioning terms.
+  * overnight_cost: optional CAPEX override for annualization. If `nothing`, read from Excel.
+  * om_fixed_cost: optional fixed O&M override. If `nothing`, read from Excel.
+  * om_var_cost: optional variable O&M override. If `nothing`, read from Excel.
+  * decommissioning: optional decommissioning ratio override. If `nothing`, read from Excel.
+  * lifetime: optional lifetime override (`> 0`, integer-valued). If `nothing`, read from Excel.
+  * construction_profile: optional construction profile override used in annualization.
+"""
 function makereservoirprofile(cname::String, zone::String, elec::Node, s::Snapshot;
     # capacity / profile
     cap=nothing, tech::String="Hydro reservoir",
@@ -704,7 +803,8 @@ function makereservoirprofile(cname::String, zone::String, elec::Node, s::Snapsh
     capex_mult=1.,
 
     # technical / economic overrides
-    overnight_cost=nothing, om_fixed_cost=nothing, om_var_cost=nothing, decommissioning=nothing, lifetime=nothing,
+    overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+    om_var_cost::Union{Nothing,Number}=nothing, decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing,
     construction_profile=nothing,
 )
     if cap isa Number
@@ -719,9 +819,11 @@ function makereservoirprofile(cname::String, zone::String, elec::Node, s::Snapsh
     if cap isa Number
         push!(vb, FixedCapacity("output", energy, cap))
     end
-    _oc = (isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "storage") : overnight_cost) * 1000.
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "storage") : overnight_cost
+    @argcheck _oc_raw isa Number "overnight_cost must be Number."
+    _oc = _oc_raw * 1000.
     _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "storage") : lifetime
-    @argcheck _lt_raw isa Real "lifetime must be Real."
+    @argcheck _lt_raw isa Number "lifetime must be Number."
     @argcheck _lt_raw > 0 "lifetime must be > 0."
     @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
     _lt = Int(_lt_raw)
@@ -729,10 +831,13 @@ function makereservoirprofile(cname::String, zone::String, elec::Node, s::Snapsh
     _inv = eac(_oc, discountrate(s), _lt, _cp) * capex_mult
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "storage") : om_fixed_cost
+    @argcheck _fom isa Number "om_fixed_cost must be Number."
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))
     _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "storage") : decommissioning
+    @argcheck _decom isa Number "decommissioning must be Number."
     push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
     _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "storage") : om_var_cost
+    @argcheck _vom isa Number "om_var_cost must be Number."
     push!(vb, VariableCost(:vom, "output", energy, _vom))
     c = Component(cname * " " * elec.name, m, vb)
     connect!(s, c, elec)
@@ -746,8 +851,10 @@ end
     makeintermittentsource(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing, weatheryear=2019,
         capex_mult=1., co2price=co2_price(s),
-        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
-        connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, co2_emission=nothing,
+        overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+        connection_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing,
+        fuel_cost::Union{Nothing,Number}=nothing, co2_emission::Union{Nothing,Number}=nothing,
     )
 
 Build, connect and return an intermittent source component.
@@ -771,7 +878,7 @@ Arguments:
   * overnight_cost: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
   * om_fixed_cost: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
   * decommissioning: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * lifetime: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * lifetime: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
   * construction_profile: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
   * connection_cost: Ratio applied to annualized investment as connection fixed cost.
   * om_var_cost: Variable O&M coefficient on output energy flow.
@@ -786,31 +893,41 @@ function makeintermittentsource(cname::String, tech::String, elec::Node, co2::No
     capex_mult=1., co2price=co2_price(s),
 
     # technical / economic overrides
-    overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
-    connection_cost=nothing, om_var_cost=nothing, fuel_cost=nothing, co2_emission=nothing,
+    overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+    connection_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing,
+    fuel_cost::Union{Nothing,Number}=nothing, co2_emission::Union{Nothing,Number}=nothing,
 )
     m = ProfileSource(elec.carrier, gettimeseries(s, tech * "_" * elec.name, "profiles_" * string(weatheryear)))
     vb = []
     _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "intermittent") : construction_profile
-    _oc = (isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "intermittent") : overnight_cost) * 1000.
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "intermittent") : overnight_cost
+    @argcheck _oc_raw isa Number "overnight_cost must be Number."
+    _oc = _oc_raw * 1000.
     _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "intermittent") : lifetime
-    @argcheck _lt_raw isa Real "lifetime must be Real."
+    @argcheck _lt_raw isa Number "lifetime must be Number."
     @argcheck _lt_raw > 0 "lifetime must be > 0."
     @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
     _lt = Int(_lt_raw)
     _inv = eac(_oc, discountrate(s), _lt, _cp) * capex_mult
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     _conn = isnothing(connection_cost) ? gettechparam(s, tech, "connection_cost", "intermittent") : connection_cost
+    @argcheck _conn isa Number "connection_cost must be Number."
     push!(vb, FixedCost(:connection, "output", energy, _inv * _conn))
     _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "intermittent") : om_fixed_cost
+    @argcheck _fom isa Number "om_fixed_cost must be Number."
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))
     _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "intermittent") : om_var_cost
+    @argcheck _vom isa Number "om_var_cost must be Number."
     push!(vb, VariableCost(:vom, "output", energy, _vom))
     _fuel = isnothing(fuel_cost) ? gettechparam(s, tech, "fuel_cost", "intermittent") : fuel_cost
+    @argcheck _fuel isa Number "fuel_cost must be Number."
     push!(vb, VariableCost(:fuel, "output", energy, _fuel))
     _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "intermittent") : decommissioning
+    @argcheck _decom isa Number "decommissioning must be Number."
     push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
     _co2_em = isnothing(co2_emission) ? gettechparam(s, tech, "co2_emission", "intermittent") : co2_emission
+    @argcheck _co2_em isa Number "co2_emission must be Number."
     if !iszero(_co2_em)
         push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
         push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2price))
@@ -838,8 +955,8 @@ end
 """
     makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
         cap=nothing, tech::String="Hydro ror", weatheryear=2019, intake_mult=1., capex_mult=1.,
-        overnight_cost=nothing, om_fixed_cost=nothing, om_var_cost=nothing,
-        decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
+        overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing,
+        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
     )
 
 Build, connect and return a run of river hydro component.
@@ -861,7 +978,7 @@ Arguments:
   * om_fixed_cost: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
   * om_var_cost: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
   * decommissioning: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
-  * lifetime: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
+  * lifetime: Cost/lifetime overrides for fixed and variable hydro cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
   * construction_profile: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
 """
 function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
@@ -872,7 +989,8 @@ function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     intake_mult=1., capex_mult=1.,
 
     # technical / economic overrides
-    overnight_cost=nothing, om_fixed_cost=nothing, om_var_cost=nothing, decommissioning=nothing, lifetime=nothing,
+    overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+    om_var_cost::Union{Nothing,Number}=nothing, decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing,
     construction_profile=nothing,
 )
     if cap isa Number
@@ -890,9 +1008,11 @@ function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     end
 
     # costs
-    _oc = (isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "intermittent") : overnight_cost) * 1000.
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "intermittent") : overnight_cost
+    @argcheck _oc_raw isa Number "overnight_cost must be Number."
+    _oc = _oc_raw * 1000.
     _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "intermittent") : lifetime
-    @argcheck _lt_raw isa Real "lifetime must be Real."
+    @argcheck _lt_raw isa Number "lifetime must be Number."
     @argcheck _lt_raw > 0 "lifetime must be > 0."
     @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
     _lt = Int(_lt_raw)
@@ -900,10 +1020,13 @@ function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     _inv = eac(_oc , discountrate(s), _lt, _cp) * capex_mult
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "intermittent") : om_fixed_cost
+    @argcheck _fom isa Number "om_fixed_cost must be Number."
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))
     _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "intermittent") : decommissioning
+    @argcheck _decom isa Number "decommissioning must be Number."
     push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
     _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "intermittent") : om_var_cost
+    @argcheck _vom isa Number "om_var_cost must be Number."
     push!(vb, VariableCost(:vom, "output", energy, _vom))
 
     c = Component(cname * " " * elec.name, m, vb)

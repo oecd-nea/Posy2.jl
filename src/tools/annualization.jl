@@ -1,13 +1,7 @@
 using ArgCheck: @argcheck
 
-# basic annualized cost
-# used if no construction profile is given
-function _eac(overnight::Number, discountrate, years)
-    return overnight * discountrate / (1 - (1 + discountrate)^(-years))
-end
-
 """
-    eac(overnight::Number, discountrate::Number, lifetime::Int, constructionprofile::String)
+    eac(overnight::Number, discountrate::Number, lifetime, constructionprofile)
 Return the annualized investment cost in function of the overnight cost, the discount rate, the lifetime and the construction profile.
 The effects are the following:
   * total cost (financing taking construction time into account + overnight)
@@ -15,15 +9,15 @@ The effects are the following:
 """
 function eac(overnight::Number, discountrate::Number, lifetime, constructionprofile)
     if ismissing(constructionprofile)
-        return _eac(overnight * (1+discountrate), discountrate, 1) # if constructionprofile is not given, assume 1 year of construction (the year before operation)
+        throw(ArgumentError("construction profile is missing"))
     else
         return overnight * construction_factor(discountrate, constructionprofile) * corrected_crf(discountrate, lifetime)
     end
 end
 
 # construction_factor
-function construction_factor(discountrate, constructionprofile)
-    @argcheck constructionprofile isa Union{String, Real} "Construction profile must be a String like \"0.3;0.4;0.3\" or a single real number."
+function construction_factor(discountrate::Number, constructionprofile)
+    @argcheck constructionprofile isa Union{String, Number} "Construction profile must be a String like \"0.3;0.4;0.3\" or a single number."
     vc = isa(constructionprofile, String) ? parse.(Float64, split(constructionprofile, ';')) : [Float64(constructionprofile)]
     @argcheck all(x -> x >= 0, vc) "Construction profile must be non-negative."
     total = sum(vc)

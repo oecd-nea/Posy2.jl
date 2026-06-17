@@ -8,9 +8,10 @@ using ArgCheck: @argcheck
     makeelectrolyser(cname::String, tech::String, elec::Node, h2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
         gridlosses=0., capex_mult=1.,
-        eff=nothing,
-        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
-        om_var_cost=nothing,
+        eff::Union{Nothing,Number}=nothing,
+        overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+        om_var_cost::Union{Nothing,Number}=nothing,
     )
 
 Build, connect and return an electrolyser component.
@@ -34,7 +35,7 @@ Arguments:
   * overnight_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
   * om_fixed_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
   * decommissioning: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * lifetime: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * lifetime: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
   * construction_profile: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
   * om_var_cost: Variable O&M coefficient on input energy flow.
 """
@@ -46,24 +47,27 @@ function makeelectrolyser(cname::String, tech::String, elec::Node, h2::Node, s::
     gridlosses=0., capex_mult=1.,
 
     # technical overrides
-    eff=nothing,
+    eff::Union{Nothing,Number}=nothing,
 
     # economic overrides
-    overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
-    om_var_cost=nothing,
+    overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+    om_var_cost::Union{Nothing,Number}=nothing,
 )
-    @argcheck gridlosses isa Real "gridlosses must be Real."
+    @argcheck gridlosses isa Number "gridlosses must be Number."
     @argcheck 0 <= gridlosses < 1 "gridlosses must be in [0, 1)."
     _gridlosses = Float64(gridlosses)
     _eff = isnothing(eff) ? gettechparam(s, tech, "efficiency", "electrolysis") : eff
-    @argcheck _eff isa Real "eff must be Real."
+    @argcheck _eff isa Number "eff must be Number."
     @argcheck 0 < _eff <= 1 "eff must be in (0, 1]."
     _eff = Float64(_eff)
     m = BasicConverter(elec.carrier, h2.carrier, ratio=_eff)
     vb = []
-    _oc = (isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "electrolysis") : overnight_cost) * 1000.
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "electrolysis") : overnight_cost
+    @argcheck _oc_raw isa Number "overnight_cost must be Number."
+    _oc = _oc_raw * 1000.
     _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "electrolysis") : lifetime
-    @argcheck _lt_raw isa Real "lifetime must be Real."
+    @argcheck _lt_raw isa Number "lifetime must be Number."
     @argcheck _lt_raw > 0 "lifetime must be > 0."
     @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
     _lt = Int(_lt_raw)
@@ -71,10 +75,13 @@ function makeelectrolyser(cname::String, tech::String, elec::Node, h2::Node, s::
     _inv = eac(_oc, discountrate(s), _lt, _cp) * capex_mult
     push!(vb, FixedCost(:investment, "input", energy, _inv))
     _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "electrolysis") : decommissioning
+    @argcheck _decom isa Number "decommissioning must be Number."
     push!(vb, FixedCost(:decommissioning, "input", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
     _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "electrolysis") : om_fixed_cost
+    @argcheck _fom isa Number "om_fixed_cost must be Number."
     push!(vb, FixedCost(:fom, "input", energy, _fom * 1000.))
     _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "electrolysis") : om_var_cost
+    @argcheck _vom isa Number "om_var_cost must be Number."
     push!(vb, VariableCost(:vom, "input", energy, _vom))
     if cap isa Number
         push!(vb, FixedCapacity("input", energy, cap))
@@ -102,9 +109,10 @@ end
     makeHTelectrolyser(cname::String, tech::String, elec::Node, heat::Node, h2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
         gridlosses=0., capex_mult=1.,
-        eff=nothing,
-        overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
-        om_var_cost=nothing,
+        eff::Union{Nothing,Number}=nothing,
+        overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+        om_var_cost::Union{Nothing,Number}=nothing,
     )
 
 Build, connect and return an HT electrolyser component.
@@ -129,7 +137,7 @@ Arguments:
   * overnight_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
   * om_fixed_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
   * decommissioning: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * lifetime: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * lifetime: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
   * construction_profile: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
   * om_var_cost: Variable O&M coefficient on input energy flow.
 """
@@ -141,24 +149,27 @@ function makeHTelectrolyser(cname::String, tech::String, elec::Node, heat::Node,
     gridlosses=0., capex_mult=1.,
 
     # technical overrides
-    eff=nothing,
+    eff::Union{Nothing,Number}=nothing,
 
     # economic overrides
-    overnight_cost=nothing, om_fixed_cost=nothing, decommissioning=nothing, lifetime=nothing, construction_profile=nothing,
-    om_var_cost=nothing,
+    overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
+    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+    om_var_cost::Union{Nothing,Number}=nothing,
 )
-    @argcheck gridlosses isa Real "gridlosses must be Real."
+    @argcheck gridlosses isa Number "gridlosses must be Number."
     @argcheck 0 <= gridlosses < 1 "gridlosses must be in [0, 1)."
     _gridlosses = Float64(gridlosses)
     _eff = isnothing(eff) ? gettechparam(s, tech, "efficiency", "electrolysis") : eff
-    @argcheck _eff isa Real "eff must be Real."
+    @argcheck _eff isa Number "eff must be Number."
     @argcheck 0 < _eff <= 1 "eff must be in (0, 1]."
     _eff = Float64(_eff)
     m = BasicConverter(elec.carrier, h2.carrier, ratio=_eff)
     vb = []
-    _oc = (isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "electrolysis") : overnight_cost) * 1000.
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "electrolysis") : overnight_cost
+    @argcheck _oc_raw isa Number "overnight_cost must be Number."
+    _oc = _oc_raw * 1000.
     _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "electrolysis") : lifetime
-    @argcheck _lt_raw isa Real "lifetime must be Real."
+    @argcheck _lt_raw isa Number "lifetime must be Number."
     @argcheck _lt_raw > 0 "lifetime must be > 0."
     @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
     _lt = Int(_lt_raw)
@@ -166,10 +177,13 @@ function makeHTelectrolyser(cname::String, tech::String, elec::Node, heat::Node,
     _inv = eac(_oc, discountrate(s), _lt, _cp) * capex_mult
     push!(vb, FixedCost(:investment, "input", energy, _inv))
     _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "electrolysis") : decommissioning
+    @argcheck _decom isa Number "decommissioning must be Number."
     push!(vb, FixedCost(:decommissioning, "input", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
     _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "electrolysis") : om_fixed_cost
+    @argcheck _fom isa Number "om_fixed_cost must be Number."
     push!(vb, FixedCost(:fom, "input", energy, _fom * 1000.))
     _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "electrolysis") : om_var_cost
+    @argcheck _vom isa Number "om_var_cost must be Number."
     push!(vb, VariableCost(:vom, "input", energy, _vom))
     if cap isa Number
         push!(vb, FixedCapacity("input", energy, cap))
