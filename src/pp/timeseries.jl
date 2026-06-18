@@ -9,6 +9,7 @@ function gentimeseries(s::Snapshot)
     atc = availabletransfercapacities(s)
     prod = production(s, collapse=false, aggregate=true)
     char = charging(s, collapse=false, aggregate=true)
+    dis = discharging(s, collapse=false, aggregate=true)
     inta = intake(s, collapse=false, aggregate=true)
     los = losses(s, collapse=false, aggregate=true)
     lev = storagelevel(s, aggregate=true)
@@ -21,6 +22,7 @@ function gentimeseries(s::Snapshot)
     df[!,"Total net interconnection"] = (imp - exp) / 1000.
     df[!,"Total production"] = prod / 1000.
     df[!,"Total charging"] = char / 1000.
+    df[!,"Total discharging"] = dis / 1000.
     df[!,"Total intake"] = inta / 1000.
     df[!,"Total curtailment"] = curt / 1000.
     df[!,"Total level"] = lev / 1000.
@@ -37,6 +39,11 @@ function gentimeseries(s::Snapshot)
 
     dchar = charging(s, collapse=false, aggregate=false)
     for (k,v) in dchar
+        df[!,k] = v / 1000.
+    end
+
+    ddis = discharging(s, collapse=false, aggregate=false)
+    for (k,v) in ddis
         df[!,k] = v / 1000.
     end
 
@@ -66,14 +73,12 @@ function gentimeseries(s::Snapshot)
     end
 
     # price from electricity nodes
-    if JuMP.has_duals(sim(s).model)
-        for (nname, n) in getnodes(s, with=[:electricity])
-            df[!,"price " * nname] = Nosy.dualprice(n)
-        end
-    else
-        @warn "Model has no duals - dual price evaluation is skipped"
-        for (nname, n) in getnodes(s, with=[:electricity])
+    for (nname, n) in getnodes(s, with=[:electricity])
+        price = Nosy.dualprice(n)
+        if isnothing(price)
             df[!,"price " * nname] .= "not evaluated"
+        else
+            df[!,"price " * nname] = price
         end
     end
 

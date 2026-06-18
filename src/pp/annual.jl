@@ -377,7 +377,23 @@ function _dataline_elec_storage_cap(s; showforeign=true)
     df = _merge_annual_df(d1.d, d2.d)
     d = DataLine(
         "Electrical storage charging capacity",
-        "TWh/y",
+        "GWe",
+        df
+    )
+end
+
+function _dataline_elec_storage_discharge_cap(s; showforeign=true)
+    if showforeign
+        d1 = __dataline_cap(s, [:electricity], Symbol[], [:storage], Symbol[], "output", "Electrical storage discharging capacity", "GWe")
+        d2 = __dataline_cap(s, [:electricity], Symbol[], [:ev], Symbol[], "output", "Electrical storage discharging capacity", "GWe")
+    else
+        d1 = __dataline_cap(s, [:electricity], [:foreign], [:storage], Symbol[], "output", "Electrical storage discharging capacity", "GWe")
+        d2 = __dataline_cap(s, [:electricity], [:foreign], [:ev], Symbol[], "output", "Electrical storage discharging capacity", "GWe")
+    end
+    df = _merge_annual_df(d1.d, d2.d)
+    d = DataLine(
+        "Electrical storage discharging capacity",
+        "GWe",
         df
     )
 end
@@ -394,7 +410,7 @@ function _dataline_elec_storage_cap_level(s; showforeign=true)
     df = _merge_annual_df(d1.d, d2.d)
     d = DataLine(
         "Electrical storage max level",
-        "TWh/y",
+        "TWhe",
         df
     )
 end
@@ -405,6 +421,13 @@ function _dataline_electrolysis_cap(s; showforeign=true)
     else
         __dataline_cap(s, [:electricity], [:foreign], [:electrolysis], Symbol[], "input", "Electrolysis capacity", "GWe")
     end
+end
+
+function _dataline_hydrogen_storage_cap(s; showforeign=true)
+    nodeswithout = showforeign ? Symbol[] : [:foreign]
+    d = __dataline_cap(s, [:hydrogen], nodeswithout, [:storage], Symbol[], "level", "Hydrogen storage capacity", "GWh", 1E3)
+    d.d[!,:zone] = replace.(String.(d.d[!,:zone]), r"^Hydrogen\s+" => "")
+    return d
 end
 
 
@@ -560,6 +583,22 @@ function _dataline_yearly_charging(s; showforeign=true)
     df = _merge_annual_df(d1.d, d2.d)
     d = DataLine(
         "Storage charging (including V2G and non-V2G EVs)",
+        "TWh/y",
+        df
+    )
+end
+
+function _dataline_yearly_discharging(s; showforeign=true)
+    if showforeign
+        d1 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:storage], Symbol[], "output", "Storage discharging", "TWh/y", factor=1E6)
+        d2 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:ev], Symbol[], "output", "EV", "TWh/y", factor=1E6)
+    else
+        d1 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:storage], Symbol[], "output", "Storage discharging", "TWh/y", factor=1E6)
+        d2 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:ev], Symbol[], "output", "EV", "TWh/y", factor=1E6)
+    end
+    df = _merge_annual_df(d1.d, d2.d)
+    d = DataLine(
+        "Storage discharging (including V2G EVs)",
         "TWh/y",
         df
     )
@@ -1275,11 +1314,14 @@ function _annual_post_processing_self(s::Snapshot)
         x->_dataline_elec_prod_cap(x, showforeign=false),
         x->_dataline_demandresponse_cap(x, showforeign=false),
         x->_dataline_electrolysis_cap(x, showforeign=false),
+        x->_dataline_hydrogen_storage_cap(x, showforeign=false),
         x->_dataline_elec_storage_cap(x, showforeign=false),
+        x->_dataline_elec_storage_discharge_cap(x, showforeign=false),
         x->_dataline_elec_storage_cap_level(x; showforeign=false), 
         _dataline_ic_cap,
         x->_dataline_yearly_production(x, showforeign=false),
         x->_dataline_yearly_charging(x, showforeign=false),
+        x->_dataline_yearly_discharging(x, showforeign=false),
         x->_dataline_yearly_demandresponse(x, showforeign=false),
         # x->_dataline_yearly_ev_consumption(x, showforeign=false),
         x->_dataline_yearly_electrolysis(x, showforeign=false),
@@ -1307,11 +1349,14 @@ function _annual_post_processing_all(s::Snapshot)
         x->_dataline_elec_prod_cap(x, showforeign=true),
         x->_dataline_demandresponse_cap(x, showforeign=true),
         x->_dataline_electrolysis_cap(x, showforeign=true),
+        x->_dataline_hydrogen_storage_cap(x, showforeign=true),
         x->_dataline_elec_storage_cap(x, showforeign=true),
+        x->_dataline_elec_storage_discharge_cap(x, showforeign=true),
         x->_dataline_elec_storage_cap_level(x; showforeign=true),
         _dataline_ic_cap,
         x->_dataline_yearly_production(x, showforeign=true),
         x->_dataline_yearly_charging(x, showforeign=true),
+        x->_dataline_yearly_discharging(x, showforeign=true),
         x->_dataline_yearly_demandresponse(x, showforeign=true),
         # x->_dataline_yearly_ev_consumption(x, showforeign=true),
         x->_dataline_yearly_electrolysis(x, showforeign=true),
