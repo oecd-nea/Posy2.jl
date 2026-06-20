@@ -12,9 +12,12 @@ function genpricecurves(s::Snapshot)
         end
     end
 
-    for (cname, c) in getcomponents(s, with=[:interconnection, :foreign])
-        _name = split(cname, '_')[2]
-        df[!,_name] = sort(getexogenousprice(c), rev=true)
+    # price duration curves for external zones linked by price interconnections
+    for (cname, c) in getcomponents(s, with=[:priceinterconnection])
+        kind = (:interconnection, :priceinterconnection, :foreign)
+        zones = [t for t in c.tags if !(t in kind)]
+        length(zones) == 1 || throw(ArgumentError("price IC $(cname): expected 1 external zone tag, got $(zones)"))
+        df[!, string(only(zones))] = sort(getexogenousprice(c), rev=true)
     end
 
     return df

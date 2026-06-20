@@ -64,8 +64,9 @@ function gentimeseries(s::Snapshot)
         df[!,k] = v / 1000.
     end
 
-    dimp = LittleDict(rewrite_import_from_implicit(k)=>v for (k,v) in ic_vol_sense2(s, collapse=false, aggregate=false))
-    dexp = LittleDict(rewrite_export_from_implicit(k)=>v for (k,v) in ic_vol_sense1(s, collapse=false, aggregate=false))
+    # interconnection import/export volumes (column names: from > to)
+    dimp = LittleDict(rewrite_import_from_implicit(s, k, Nosy.getcomponent(s, k)) => v for (k, v) in ic_vol_sense2(s, collapse=false, aggregate=false))
+    dexp = LittleDict(rewrite_export_from_implicit(s, k, Nosy.getcomponent(s, k)) => v for (k, v) in ic_vol_sense1(s, collapse=false, aggregate=false))
     for (k,v) in dimp
         df[!,k] = v / 1000.
         kinv = reverse_interco_sense(k)
@@ -83,7 +84,7 @@ function gentimeseries(s::Snapshot)
     end
 
     # average price from price interconnection components (average of buying price and selling price)
-    for (cname, c) in getcomponents(s, with=[:interconnection, :priceinterconnection])
+    for (cname, c) in getcomponents(s, with=[:priceinterconnection])
         df[!,"price " * cname] = getexogenousprice(c)
     end
 
@@ -96,7 +97,7 @@ Return the exogenous price time series of a component.
 The component must be an implicit interconnection component, associated with a price time series.
 """ 
 function getexogenousprice(c::Component)
-    @assert startswith(Nosy.name(c), "IC") "The component does not look like an interconnection"
+    @assert hastag(c, :priceinterconnection)
     vb = Nosy.getbehaviors(c, Nosy.VariableCostBehavior{Float64})
     vp = Vector{Float64}[]
     for b in vb

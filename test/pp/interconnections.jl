@@ -22,12 +22,26 @@ using HiGHS
         co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0)
         makenodeinterco("IC", elec1, elec2, Inf, Inf, snap)
 
         Nosy.optimize!(snap, cost(snap))
         return extract(snap)
+    end
+
+    # Node interconnection topology and direction labels.
+    let
+        s = makesnapshot()
+        c = Nosy.getcomponent(s, "IC_ZONE1_ZONE2")
+        @test POSY2._fromto_ic_internal(s, c) == ("ZONE1", "ZONE2")
+        @test POSY2.rewrite_import_from_implicit(s, Nosy.name(c), c) == "ZONE1 > ZONE2"
+        @test POSY2.rewrite_export_from_implicit(s, Nosy.name(c), c) == "ZONE2 > ZONE1"
+        @test POSY2._nodeic_connected_nodes(s, c) == ["ZONE1", "ZONE2"]
+
+        df = POSY2.gentimeseries(s)
+        @test "ZONE1 > ZONE2" in names(df)
+        @test "ZONE2 > ZONE1" in names(df)
     end
 
     # Internal import summary should match the detailed interconnection matrix.

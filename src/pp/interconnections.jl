@@ -46,20 +46,17 @@ end
 Return the "self" cost associated with interconnection named `cname`, for sense `sense` ∈ (:import, :export), with tag `tag`.
 """
 function _selfinterconnectioncost(s::Snapshot, cname::String, sense::Symbol, tag::Symbol)
-    # find self node associated with IC component
+    # find self node connected to this interconnection component
     selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
     vsnode = Node[]
     for (_sname, _snode) in selfnodes
-        if contains(cname, _sname)
+        if haskey(getcomponents(s, _sname, with=[tag]), cname)
             push!(vsnode, _snode)
         end
     end
     isempty(vsnode) && return 0. # interconnection between two foreign nodes
-    length(vsnode) > 1 && throw(AssertionError("Found more than one self node for component name $cname")) # likely: internal IC, not foreign
+    length(vsnode) > 1 && throw(AssertionError("Found more than one self node for component $cname")) # likely: internal IC, not foreign
     snode = first(vsnode)
-
-    # check component is connected to node snode
-    @assert haskey(getcomponents(s, snode.name, with=[tag]), cname)
 
     # evaluating cost = volume * price
     # the price is defined as the SELF price! (not the other node price)
@@ -85,33 +82,29 @@ selfinterconnectionrevenue_price(s::Snapshot, cname::String) = _selfinterconnect
 Return the congestion rent of an node-based interconnection (between nodes).
 """
 function selfcongestionrent_node(s::Snapshot, cname::String)
-    # find the matching neighbor node
+    # find the matching foreign (neighbor) node
     neighbornodes = getnodes(s, with=[:foreign])
     local vnnode = Node[]
     for (_nname, _nnode) in neighbornodes
-        if contains(cname, _nname)
+        if haskey(getcomponents(s, _nname, with=[:nodeinterconnection]), cname)
             push!(vnnode, _nnode)
         end
     end
-    isempty(vnnode) && throw(AssertionError("Foreign node not found for component name $cname"))
+    isempty(vnnode) && throw(AssertionError("Foreign node not found for component $cname"))
     length(vnnode) > 1 && return 0. # two foreign nodes
     nnode = first(vnnode)
 
     # find the matching self node
     selfnodes = getnodes(s, without=[:foreign])
-    local vnnode = Node[]
-    for (_nname, _nnode) in selfnodes
-        if contains(cname, _nname)
-            push!(vnnode, _nnode)
+    local vsnode = Node[]
+    for (_sname, _snode) in selfnodes
+        if haskey(getcomponents(s, _sname, with=[:nodeinterconnection]), cname)
+            push!(vsnode, _snode)
         end
     end
-    isempty(vnnode) && throw(AssertionError("Self node not found for component name $cname"))
-    length(vnnode) > 1 && throw(AssertionError("Found more than one self node for component name $cname"))
-    snode = first(vnnode)
-
-    # check component is an explicit IC from nodes nnode and snode
-    @assert haskey(getcomponents(s, snode.name, with=[:interconnection, :nodeinterconnection]), cname)
-    @assert haskey(getcomponents(s, nnode.name, with=[:interconnection, :nodeinterconnection]), cname)
+    isempty(vsnode) && throw(AssertionError("Self node not found for component $cname"))
+    length(vsnode) > 1 && throw(AssertionError("Found more than one self node for component $cname"))
+    snode = first(vsnode)
 
     # price difference
     pricediff = Nosy.dualprice(snode) - Nosy.dualprice(nnode)
@@ -134,20 +127,15 @@ end
 Return the congestion rent of an price-based interconnection (using exogenous price time series).
 """
 function selfcongestionrent_price(s::Snapshot, cname::String)
-    # find the node it is connected to
-    nodes = getnodes(s, with=[:electricity])
-    local vnnode = Node[]
-    for (_nname, _nnode) in nodes
-        if contains(cname, _nname)
-            push!(vnnode, _nnode)
+    # find the local electricity node connected to this price IC
+    node = nothing
+    for (nodename, _nnode) in getnodes(s, with=[:electricity])
+        if haskey(getcomponents(s, nodename, with=[:priceinterconnection]), cname)
+            node = _nnode
+            break
         end
     end
-    isempty(vnnode) && throw(AssertionError("Node not found for component name $cname"))
-    length(vnnode) > 1 && throw(AssertionError("Found more than one node for component name $cname"))
-    node = first(vnnode)
-
-    # check component is an explicit IC from node 
-    @assert haskey(getcomponents(s, node.name, with=[:interconnection, :priceinterconnection]), cname)
+    node === nothing && throw(AssertionError("Node not found for component $cname"))
     c = Nosy.getcomponent(s, cname)
 
     # price difference

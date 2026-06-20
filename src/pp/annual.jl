@@ -303,6 +303,7 @@ function __dataline_cap(s::Snapshot, nodeswith::Vector{Symbol}, nodeswithout::Ve
     allnodes = getnodes(s, with=nodeswith, without=nodeswithout)
     for (nodename, _) in allnodes
         d = getcomponents(s, nodename, with=compswith, without=compswithout)
+        # list components connected to this zone (names as in Excel sheet)
         lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
         for cname in lcomps
             !(cname in allcomps) && push!(allcomps, cname)
@@ -312,19 +313,23 @@ function __dataline_cap(s::Snapshot, nodeswith::Vector{Symbol}, nodeswithout::Ve
     df = DataFrame([name => [] for name in vcat(["zone"], allcomps)])
     for (nodename,_) in allnodes
         v = Any[nodename]
+        d = getcomponents(s, nodename, with=compswith, without=compswithout)
         for cname in allcomps
-            cname2 = cname * " " * nodename
-            if Nosy.hascomponent(s, cname2)
-                c = Nosy.getcomponent(s, cname2)
-                if Nosy.hasport(c, portname)
-                    cap = capacity(c, portname)
-                    if !isnothing(cap)
-                        push!(v, cap / coeff)
-                    else
-                        push!(v, Inf)
-                    end
+            c = nothing
+            for (k, comp) in d
+                if replace(k, " " * nodename => "") == cname
+                    c = comp
+                    break
+                end
+            end
+            if c === nothing
+                push!(v, 0.)
+            elseif Nosy.hasport(c, portname)
+                cap = capacity(c, portname)
+                if !isnothing(cap)
+                    push!(v, cap / coeff)
                 else
-                    push!(v, 0.)
+                    push!(v, Inf)
                 end
             else
                 push!(v, 0.)
@@ -443,6 +448,7 @@ function _dataline_demandresponse_cap(s; showforeign=true)
     end
     for (nodename, _) in allnodes
         d = getcomponents(s, nodename, with=[:demandresponse])
+        # list components connected to this zone (names as in Excel sheet)
         lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
         for cname in lcomps
             !(cname in allcomps) && push!(allcomps, cname)
@@ -453,10 +459,18 @@ function _dataline_demandresponse_cap(s; showforeign=true)
     df = DataFrame([name => [] for name in vcat(["zone"], allcomps)])
     for (nodename,_) in allnodes
         v = Any[nodename]
+        d = getcomponents(s, nodename, with=[:demandresponse])
         for cname in allcomps
-            cname2 = cname * " " * nodename
-            if Nosy.hascomponent(s, cname2)
-                c = Nosy.getcomponent(s, cname2)
+            c = nothing
+            for (k, comp) in d
+                if replace(k, " " * nodename => "") == cname
+                    c = comp
+                    break
+                end
+            end
+            if c === nothing
+                push!(v, "")
+            else
                 vcap = Nosy.behaviors(c, Nosy.AbstractCapacityBehavior)
                 vcost = Nosy.behaviors(c, Nosy.VariableCostBehavior)
                 if isempty(vcap)
@@ -476,8 +490,6 @@ function _dataline_demandresponse_cap(s; showforeign=true)
                         push!(v, join(string.(vnumcap), " + "))
                     end
                 end
-            else
-                push!(v, "")
             end
         end
         push!(df, permutedims(v))
@@ -512,23 +524,29 @@ function __dataline_yearly(s::Snapshot, modifier::Function, nodeswith::Vector{Sy
 
     for (nodename,_) in allnodes
         v = Any[nodename]
+        d = getcomponents(s, nodename, with=compswith, without=compswithout)
         for cname in allcomps
-            cname2 = cname * " " * nodename
-            if Nosy.hascomponent(s, cname2)
-                bout = balance(s, cname2, :output, modifier, collapse=true, aggregate=false)
+            c = nothing
+            for (k, comp) in d
+                if replace(k, " " * nodename => "") == cname
+                    c = comp
+                    break
+                end
+            end
+            if c === nothing
+                push!(v, 0.)
+            else
+                bout = balance(c, :output, modifier, collapse=true, aggregate=false)
                 if haskey(bout, portname)
                     push!(v, bout[portname] / factor)
                 else
-                    bin = balance(s, cname2, :input, modifier, collapse=true, aggregate=false)
+                    bin = balance(c, :input, modifier, collapse=true, aggregate=false)
                     if haskey(bin, portname)
                         push!(v, bin[portname] / factor)
                     else
                         push!(v, 0.)
                     end
                 end
-                # push!(v, balance(s, cname2, sense, energy, collapse=true, aggregate=false)[portname] / 1E6)
-            else
-                push!(v, 0.)
             end
         end
         push!(df, permutedims(v))
@@ -628,44 +646,66 @@ function _dataline_yearly_co2(s; showforeign=true)
     end
 end
 
-# parse an node-based ic (as a component linking 2 nodes) name, return a tuple of node names (from, to) associated with this interconnection
+# electricity nodes connected to a node interconnection component
+function _nodeic_connected_nodes(s::Snapshot, ic::Component)
+    connected = String[]
+    for (nodename, _) in getnodes(s, with=[:electricity])
+        if haskey(getcomponents(s, nodename, with=[:nodeinterconnection]), ic.name)
+            push!(connected, nodename)
+        end
+    end
+    return connected
+end
+
+"""
+    _fromto_ic_internal(s::Snapshot, ic::Component)
+Return `(from, to)` node names for a node interconnection.
+Direction follows builder ports `"input"` (from) and `"output"` (to); each port carrier
+identifies the connected electricity node among nodes linked to this component.
+"""
 function _fromto_ic_internal(s::Snapshot, ic::Component)
-    elecnodes = getnodes(s, with=[:electricity])
-    local _to = ""
-    local _from = ""
-    for (nodename, node) in elecnodes
-        if endswith(ic.name, nodename)
-            _to = nodename
-            break
-        end
+    hastag(ic, :nodeinterconnection) || throw(ArgumentError("expected :nodeinterconnection on $(ic.name), got tags $(ic.tags)"))
+    Nosy.hasport(ic, "input") || throw(ArgumentError("node IC $(ic.name) missing primary input port"))
+    Nosy.hasport(ic, "output") || throw(ArgumentError("node IC $(ic.name) missing primary output port"))
+
+    connected = _nodeic_connected_nodes(s, ic)
+    length(connected) == 2 || throw(ArgumentError("node IC $(ic.name) expected 2 connected electricity nodes, got $(connected)"))
+
+    carrier_from = Nosy.getport(ic, "input").carrier.name
+    carrier_to = Nosy.getport(ic, "output").carrier.name
+
+    from_candidates = String[]
+    to_candidates = String[]
+    for nodename in connected
+        n = Nosy.getnode(s, nodename)
+        n.carrier.name == carrier_from && push!(from_candidates, nodename)
+        n.carrier.name == carrier_to && push!(to_candidates, nodename)
     end
-    @assert !isempty(_to) "Target node not found in interconnection $(ic.name)"
-    _rem = rstrip(replace(ic.name, _to => ""), '_')
-    for (nodename, node) in elecnodes
-        if endswith(_rem, nodename)
-            _from = nodename
-            break
-        end
-    end
-    @assert !isempty(_from) "Origin node not found in interconnection $(ic.name)"
+    length(from_candidates) == 1 || throw(ArgumentError("node IC $(ic.name): input port carrier '$(carrier_from)' matched $(length(from_candidates)) connected nodes"))
+    length(to_candidates) == 1 || throw(ArgumentError("node IC $(ic.name): output port carrier '$(carrier_to)' matched $(length(to_candidates)) connected nodes"))
+
+    _from = only(from_candidates)
+    _to = only(to_candidates)
+    _from == _to && throw(ArgumentError("node IC $(ic.name): input and output ports map to the same node"))
     return (_from, _to)
 end
 
-# parse an external ic (with price time series) name, return a tuple of node names (from, to) associated with this interconnection
+# return (external zone, local node) for a price interconnection component
 function _fromto_ic_external(s::Snapshot, ic::Component)
-    elecnodes = getnodes(s, with=[:electricity])
-    local _to = ""
-    local _from = ""
-    for (nodename, node) in elecnodes
-        if endswith(ic.name, nodename)
+    hastag(ic, :priceinterconnection) || throw(ArgumentError("expected :priceinterconnection on $(ic.name), got tags $(ic.tags)"))
+    kind = (:interconnection, :priceinterconnection, :foreign)
+    zones = [t for t in ic.tags if t ∉ kind]
+    length(zones) == 1 || throw(ArgumentError("price IC $(ic.name): expected 1 external zone tag, got $(zones)"))
+    _from = string(only(zones))
+    _to = ""
+    # find local electricity node connected to this price IC
+    for (nodename, _) in getnodes(s, with=[:electricity])
+        if haskey(getcomponents(s, nodename, with=[:priceinterconnection]), ic.name)
             _to = nodename
             break
         end
     end
-    @assert !isempty(_to) "Target node not found in interconnection $(ic.name)"
-    _rem = rstrip(replace(ic.name, _to => ""), '_')
-
-    _from = replace(_rem, "IC_" => "")
+    isempty(_to) && throw(ArgumentError("local node not found for price IC $(ic.name)"))
     return (_from, _to)
 end
 
@@ -694,8 +734,6 @@ function _dataline_ic_cap(s)
     end
 
     allquasinodes = vcat(sort(collect(keys(allnodes)))..., sort(collect(allquasinodes))...)    
-    df = DataFrame([name => [] for name in vcat(["To \\ From"], allquasinodes)])
-
     df = DataFrame("From \\ To" => allquasinodes)
     for k in allquasinodes
         df[!,k] = convert(Vector{Union{String,Float64}}, fill(0., length(allquasinodes))) # zeros(length(allquasinodes))
@@ -758,8 +796,6 @@ function _interco_vol_detailed(s; collapse=true, addtotal=false)
     end
 
     allquasinodes = vcat(sort(collect(keys(allnodes)))..., sort(collect(allquasinodes))...)    
-    df = DataFrame([name => [] for name in vcat(["To \\ From"], allquasinodes)])
-
     df = DataFrame("From \\ To" => allquasinodes)
     for k in allquasinodes
         df[!,k] = convert(Vector{Union{Nothing,Float64,Nosy.Stepwise{Float64},Nosy.Hourly{Float64}}}, fill(0., length(allquasinodes))) # zeros(length(allquasinodes))
@@ -1147,17 +1183,24 @@ function __dataline_yearly_price_received(s::Snapshot, modifier::Function, nodes
     for (nodename,n) in allnodes
         price = Nosy.Hourly(Nosy.dualprice(n), sim(s).mesh)
         v = Any[nodename]
+        d = getcomponents(s, nodename, with=compswith, without=compswithout)
         for cname in allcomps
-            cname2 = cname * " " * nodename
-            if Nosy.hascomponent(s, cname2)
-                bout = balance(s, cname2, :output, modifier, collapse=false, aggregate=false)
+            c = nothing
+            for (k, comp) in d
+                if replace(k, " " * nodename => "") == cname
+                    c = comp
+                    break
+                end
+            end
+            if c === nothing
+                push!(v, "")
+            else
+                bout = balance(c, :output, modifier, collapse=false, aggregate=false)
                 if haskey(bout, portname) && !iszero(sum(bout[portname]))
                     push!(v, sum(bout[portname] .* price) / sum(bout[portname]) / factor)
                 else
                     push!(v, "")
                 end
-            else
-                push!(v, "")
             end
         end
         push!(v, sum(balance(n, :output, energy, collapse=false, aggregate=true) .* price) / balance(n, :output, energy, collapse=true, aggregate=true))
@@ -1195,12 +1238,19 @@ function __dataline_yearly_cost(s::Snapshot, nodeswith::Vector{Symbol}, nodeswit
 
     for (nodename,n) in allnodes
         v = Any[nodename]
+        d = getcomponents(s, nodename, with=compswith, without=compswithout)
         for cname in allcomps
-            cname2 = cname * " " * nodename
-            if Nosy.hascomponent(s, cname2)
-                push!(v, cost(s, cname2) / factor)
-            else
+            c = nothing
+            for (k, comp) in d
+                if replace(k, " " * nodename => "") == cname
+                    c = comp
+                    break
+                end
+            end
+            if c === nothing
                 push!(v, 0.)
+            else
+                push!(v, cost(s, Nosy.name(c)) / factor)
             end
         end
         push!(df, permutedims(v))
@@ -1244,17 +1294,24 @@ function __dataline_yearly_earnings(s::Snapshot, modifier::Function, nodeswith::
     for (nodename,n) in allnodes
         price = Nosy.Hourly(Nosy.dualprice(n), sim(s).mesh)
         v = Any[nodename]
+        d = getcomponents(s, nodename, with=compswith, without=compswithout)
         for cname in allcomps
-            cname2 = cname * " " * nodename
-            if Nosy.hascomponent(s, cname2)
-                bout = balance(s, cname2, :output, modifier, collapse=false, aggregate=false)
+            c = nothing
+            for (k, comp) in d
+                if replace(k, " " * nodename => "") == cname
+                    c = comp
+                    break
+                end
+            end
+            if c === nothing
+                push!(v, 0.)
+            else
+                bout = balance(c, :output, modifier, collapse=false, aggregate=false)
                 if haskey(bout, portname) && !iszero(sum(bout[portname]))
                     push!(v, sum(bout[portname] .* price) / factor)
                 else
                     push!(v, 0.)
                 end
-            else
-                push!(v, 0.)
             end
         end
         push!(df, permutedims(v))

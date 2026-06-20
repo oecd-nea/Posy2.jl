@@ -30,9 +30,23 @@ using HiGHS
         @test Nosy.getcomponent(s, "IC_ZONE1_ZONE2") === c
     end
 
-    # Price interconnection should fail when required spot/transfer series are missing.
+    # Price interconnection succeeds when zone series exist in the fixture.
     let
         s, elec1, _ = makesnapshot()
-        @test_throws ArgumentError makepriceinterco("ZONE2", elec1, 100.0, 100.0, s)
+        c = makepriceinterco("ZONE2", elec1, 100.0, 100.0, s)
+        @test !isnothing(c)
+        @test Nosy.getcomponent(s, "IC_ZONE2_ZONE1") === c
+        @test Nosy.hastag(c, :priceinterconnection)
+        @test Nosy.hastag(c, :ZONE2)
+        kind = (:interconnection, :priceinterconnection, :foreign)
+        zones = [t for t in c.tags if !(t in kind)]
+        @test length(zones) == 1
+        @test string(only(zones)) == "ZONE2"
+    end
+
+    # Price interconnection fails when spot/transfer columns for the zone are missing.
+    let
+        s, elec1, _ = makesnapshot()
+        @test_throws ArgumentError makepriceinterco("ZONE3", elec1, 100.0, 100.0, s)
     end
 end

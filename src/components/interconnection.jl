@@ -12,7 +12,7 @@ Build, connect and return an interconnection component based on a price time ser
 If `dir` is true, apply a one way constraint at every timestep.
 
 Arguments:
-  * zone: foreign zone name used for spot price and transfer capacity time series.
+  * zone: priced counterparty zone name for spot price and transfer capacity time series
   * elec: local electricity node to connect the interconnector to.
   * mcap: import side fixed capacity.
   * xcap: export side fixed capacity.
@@ -22,6 +22,9 @@ Arguments:
   * foreign: if `true`, tag interconnector as `:foreign`.
 
   * transactioncost: per unit transaction adder on both directions.
+
+Tag contract: `:interconnection`, `:priceinterconnection`, optional `:foreign`, and exactly one
+`Symbol(zone)` external zone tag (non kind tags are the external zone only).
 """
 function makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, s::Snapshot;
     # operation flags
@@ -62,6 +65,7 @@ function makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, 
     if foreign
         tag!(c, :foreign)
     end
+    tag!(c, Symbol(zone))
     connect!(s, c, elec)
 
     return c

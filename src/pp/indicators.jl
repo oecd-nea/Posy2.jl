@@ -26,14 +26,45 @@ function ic_vol_sense2(s; aggregate=false, collapse=false, showforeign=true)
     return d
 end
 
-function rewrite_export_from_implicit(name::String)
-    vn = split(name, '_')
-    return string(vn[3] * " > " * vn[2])
+# rewrite interconnection component names to "from > to" flow labels for reporting
+function rewrite_export_from_implicit(s::Snapshot, cname::String, c::Component)
+    if hastag(c, :priceinterconnection)
+        kind = (:interconnection, :priceinterconnection, :foreign)
+        zones = [t for t in c.tags if !(t in kind)]
+        length(zones) == 1 || throw(ArgumentError("price IC $(cname): expected 1 external zone tag, got $(zones)"))
+        extzone = string(only(zones))
+        for (nodename, _) in getnodes(s, with=[:electricity])
+            if haskey(getcomponents(s, nodename, with=[:priceinterconnection]), cname)
+                return string(nodename, " > ", extzone)
+            end
+        end
+        throw(ArgumentError("local node not found for price IC $(cname)"))
+    elseif hastag(c, :nodeinterconnection)
+        (_from, _to) = _fromto_ic_internal(s, c)
+        return string(_to, " > ", _from)
+    else
+        throw(ArgumentError("interconnection $(cname) must be :priceinterconnection or :nodeinterconnection, got tags $(c.tags)"))
+    end
 end
 
-function rewrite_import_from_implicit(name::String)
-    vn = split(name, '_')
-    return string(vn[2] * " > " * vn[3])
+function rewrite_import_from_implicit(s::Snapshot, cname::String, c::Component)
+    if hastag(c, :priceinterconnection)
+        kind = (:interconnection, :priceinterconnection, :foreign)
+        zones = [t for t in c.tags if !(t in kind)]
+        length(zones) == 1 || throw(ArgumentError("price IC $(cname): expected 1 external zone tag, got $(zones)"))
+        extzone = string(only(zones))
+        for (nodename, _) in getnodes(s, with=[:electricity])
+            if haskey(getcomponents(s, nodename, with=[:priceinterconnection]), cname)
+                return string(extzone, " > ", nodename)
+            end
+        end
+        throw(ArgumentError("local node not found for price IC $(cname)"))
+    elseif hastag(c, :nodeinterconnection)
+        (_from, _to) = _fromto_ic_internal(s, c)
+        return string(_from, " > ", _to)
+    else
+        throw(ArgumentError("interconnection $(cname) must be :priceinterconnection or :nodeinterconnection, got tags $(c.tags)"))
+    end
 end
 
 function reverse_interco_sense(name::String)
@@ -46,8 +77,8 @@ function availabletransfercapacities(s) # no aggregate or collapse options (no m
     d = LittleDict()
     dcomps = getcomponents(s, with=[:interconnection, :foreign]) # only considering components connected with foreign nodes
     for (k,v) in dcomps
-        d["ATC " * rewrite_import_from_implicit(k)] = capacity(v, "output", multiplier=true)
-        d["ATC " * rewrite_export_from_implicit(k)] = capacity(v, "input", multiplier=true)
+        d["ATC " * rewrite_import_from_implicit(s, k, v)] = capacity(v, "output", multiplier=true)
+        d["ATC " * rewrite_export_from_implicit(s, k, v)] = capacity(v, "input", multiplier=true)
     end
     return d
 end
