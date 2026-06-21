@@ -36,7 +36,7 @@ using HiGHS
             "EL", "PEM", elec, h2, s;
             cap=100.0, gridlosses=0.0, eff=0.8,
             overnight_cost=1200.0, om_fixed_cost=5.0,
-            decommissioning=0.1, lifetime=30.0, construction_profile=1.0,
+            decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,
             om_var_cost=1.0,
         )
         @test !isnothing(c)
@@ -50,7 +50,7 @@ using HiGHS
             "HTEL", "SOEC", elec, heat, h2, s;
             eff=0.8,
             overnight_cost=1200.0, om_fixed_cost=5.0, om_var_cost=1.0,
-            decommissioning=0.1, lifetime=30.5, construction_profile=1.0,
+            decommissioning=0.1, lifetime=30.5, construction_profile=1.0, decommissioning_profile=1.0,
         )
     end
 
@@ -61,7 +61,7 @@ using HiGHS
             "HTEL", "SOEC", elec, heat, h2, s;
             cap=100.0, gridlosses=0.0, eff=0.8,
             overnight_cost=1200.0, om_fixed_cost=5.0, om_var_cost=1.0,
-            decommissioning=0.1, lifetime=30.0, construction_profile=1.0,
+            decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,
         )
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "HTEL ZONE1") === c

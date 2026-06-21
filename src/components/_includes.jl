@@ -1,3 +1,4 @@
+include("input.jl")
 include("demand.jl")
 include("generation.jl")
 include("storage.jl")

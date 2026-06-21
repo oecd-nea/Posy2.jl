@@ -28,7 +28,7 @@ using HiGHS
         @test_throws ArgumentError makebatteries(
             "Battery", "Battery", elec, s;
             eff=0.9, duration=0.0,
-            overnight_cost=1000.0, lifetime=20, construction_profile=1.0,
+            overnight_cost=1000.0, lifetime=20, construction_profile=1.0, decommissioning_profile=1.0,
         )
     end
 
@@ -40,7 +40,7 @@ using HiGHS
             capin=100.0,
             eff=0.9, duration=4.0,
             overnight_cost=1000.0, om_fixed_cost=10.0,
-            decommissioning=0.1, lifetime=20.0, construction_profile=1.0,
+            decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
             connection_cost=0.0, om_var_cost=1.0,
         )
         @test !isnothing(c)
@@ -60,7 +60,7 @@ using HiGHS
             "Hydro reservoir", "Battery", "ZONE1", elec, 100.0, 50.0, 500.0, 0.0, s;
             gridlosses=0.0, eff=0.9,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=1.0,
-            decommissioning=0.1, lifetime=30.0, construction_profile=1.0,
+            decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,
         )
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "Hydro reservoir ZONE1") === c

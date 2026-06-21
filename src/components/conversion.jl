@@ -2,15 +2,13 @@
 Generate conversion components.
 """
 
-using ArgCheck: @argcheck
-
 """
     makeelectrolyser(cname::String, tech::String, elec::Node, h2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
-        gridlosses=0., capex_mult=1.,
+        gridlosses=0.,
         eff::Union{Nothing,Number}=nothing,
         overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
-        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
         om_var_cost::Union{Nothing,Number}=nothing,
     )
 
@@ -29,7 +27,6 @@ Arguments:
   * ini: Optional initial snapshot used to inherit fixed input capacity.
 
   * gridlosses: Proportional losses linked to electricity input flow (`0 <= gridlosses < 1`).
-  * capex_mult: Scenario multiplier on annualized investment related costs.
   * eff: Electricity to hydrogen conversion ratio in `BasicConverter`. If `nothing`, read from Excel (`electrolysis.efficiency`).
 
   * overnight_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
@@ -37,51 +34,45 @@ Arguments:
   * decommissioning: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
   * lifetime: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
   * construction_profile: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
   * om_var_cost: Variable O&M coefficient on input energy flow.
 """
 function makeelectrolyser(cname::String, tech::String, elec::Node, h2::Node, s::Snapshot;
     # capacity / expansion
-    cap=nothing, mincap=nothing, maxcap=nothing, ini::Union{Nothing,Snapshot}=nothing,
-
-    # scenario controls
-    gridlosses=0., capex_mult=1.,
+    cap=nothing, mincap=nothing, maxcap=nothing, ini::Union{Nothing,Snapshot}=nothing, gridlosses=0.,
 
     # technical overrides
     eff::Union{Nothing,Number}=nothing,
 
     # economic overrides
     overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
-    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
     om_var_cost::Union{Nothing,Number}=nothing,
 )
-    @argcheck gridlosses isa Number "gridlosses must be Number."
-    @argcheck 0 <= gridlosses < 1 "gridlosses must be in [0, 1)."
-    _gridlosses = Float64(gridlosses)
     _eff = isnothing(eff) ? gettechparam(s, tech, "efficiency", "electrolysis") : eff
-    @argcheck _eff isa Number "eff must be Number."
-    @argcheck 0 < _eff <= 1 "eff must be in (0, 1]."
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "electrolysis") : overnight_cost
+    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "electrolysis") : lifetime
+    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "electrolysis") : decommissioning
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "electrolysis") : om_fixed_cost
+    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "electrolysis") : om_var_cost
+    inputs = component_input(
+        gridlosses=gridlosses, efficiency=_eff, overnight_cost=_oc_raw, lifetime=_lt_raw,
+        decommissioning=_decom, om_fixed_cost=_fom, om_var_cost=_vom,
+    )
+    validate_component_input(inputs)
+
+    _gridlosses = Float64(gridlosses)
     _eff = Float64(_eff)
     m = BasicConverter(elec.carrier, h2.carrier, ratio=_eff)
     vb = []
-    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "electrolysis") : overnight_cost
-    @argcheck _oc_raw isa Number "overnight_cost must be Number."
     _oc = _oc_raw * 1000.
-    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "electrolysis") : lifetime
-    @argcheck _lt_raw isa Number "lifetime must be Number."
-    @argcheck _lt_raw > 0 "lifetime must be > 0."
-    @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
     _lt = Int(_lt_raw)
     _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "electrolysis") : construction_profile
-    _inv = eac(_oc, discountrate(s), _lt, _cp) * capex_mult
+    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, tech, "decommissioning_profile", "electrolysis") : decommissioning_profile
+    _inv = eac(_oc, discountrate(s), _lt, _cp)
     push!(vb, FixedCost(:investment, "input", energy, _inv))
-    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "electrolysis") : decommissioning
-    @argcheck _decom isa Number "decommissioning must be Number."
-    push!(vb, FixedCost(:decommissioning, "input", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
-    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "electrolysis") : om_fixed_cost
-    @argcheck _fom isa Number "om_fixed_cost must be Number."
+    push!(vb, FixedCost(:decommissioning, "input", energy, decom_cost(_oc, _decom, _lt, discountrate(s), _dcp)))
     push!(vb, FixedCost(:fom, "input", energy, _fom * 1000.))
-    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "electrolysis") : om_var_cost
-    @argcheck _vom isa Number "om_var_cost must be Number."
     push!(vb, VariableCost(:vom, "input", energy, _vom))
     if cap isa Number
         push!(vb, FixedCapacity("input", energy, cap))
@@ -108,10 +99,10 @@ end
 """
     makeHTelectrolyser(cname::String, tech::String, elec::Node, heat::Node, h2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
-        gridlosses=0., capex_mult=1.,
+        gridlosses=0.,
         eff::Union{Nothing,Number}=nothing,
         overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
-        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
         om_var_cost::Union{Nothing,Number}=nothing,
     )
 
@@ -131,7 +122,6 @@ Arguments:
   * ini: Optional initial snapshot used to inherit fixed input capacity.
 
   * gridlosses: Proportional losses linked to electricity input flow (`0 <= gridlosses < 1`).
-  * capex_mult: Scenario multiplier on annualized investment related costs.
   * eff: Electricity to hydrogen conversion ratio in `BasicConverter`. If `nothing`, read from Excel (`electrolysis.efficiency`).
 
   * overnight_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
@@ -139,51 +129,45 @@ Arguments:
   * decommissioning: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
   * lifetime: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
   * construction_profile: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
   * om_var_cost: Variable O&M coefficient on input energy flow.
 """
 function makeHTelectrolyser(cname::String, tech::String, elec::Node, heat::Node, h2::Node, s::Snapshot;
     # capacity / expansion
-    cap=nothing, mincap=nothing, maxcap=nothing, ini::Union{Nothing,Snapshot}=nothing,
-
-    # scenario controls
-    gridlosses=0., capex_mult=1.,
+    cap=nothing, mincap=nothing, maxcap=nothing, ini::Union{Nothing,Snapshot}=nothing, gridlosses=0.,
 
     # technical overrides
     eff::Union{Nothing,Number}=nothing,
 
     # economic overrides
     overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
-    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
     om_var_cost::Union{Nothing,Number}=nothing,
 )
-    @argcheck gridlosses isa Number "gridlosses must be Number."
-    @argcheck 0 <= gridlosses < 1 "gridlosses must be in [0, 1)."
-    _gridlosses = Float64(gridlosses)
     _eff = isnothing(eff) ? gettechparam(s, tech, "efficiency", "electrolysis") : eff
-    @argcheck _eff isa Number "eff must be Number."
-    @argcheck 0 < _eff <= 1 "eff must be in (0, 1]."
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "electrolysis") : overnight_cost
+    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "electrolysis") : lifetime
+    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "electrolysis") : decommissioning
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "electrolysis") : om_fixed_cost
+    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "electrolysis") : om_var_cost
+    inputs = component_input(
+        gridlosses=gridlosses, efficiency=_eff, overnight_cost=_oc_raw, lifetime=_lt_raw,
+        decommissioning=_decom, om_fixed_cost=_fom, om_var_cost=_vom,
+    )
+    validate_component_input(inputs)
+
+    _gridlosses = Float64(gridlosses)
     _eff = Float64(_eff)
     m = BasicConverter(elec.carrier, h2.carrier, ratio=_eff)
     vb = []
-    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "electrolysis") : overnight_cost
-    @argcheck _oc_raw isa Number "overnight_cost must be Number."
     _oc = _oc_raw * 1000.
-    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "electrolysis") : lifetime
-    @argcheck _lt_raw isa Number "lifetime must be Number."
-    @argcheck _lt_raw > 0 "lifetime must be > 0."
-    @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
     _lt = Int(_lt_raw)
     _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "electrolysis") : construction_profile
-    _inv = eac(_oc, discountrate(s), _lt, _cp) * capex_mult
+    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, tech, "decommissioning_profile", "electrolysis") : decommissioning_profile
+    _inv = eac(_oc, discountrate(s), _lt, _cp)
     push!(vb, FixedCost(:investment, "input", energy, _inv))
-    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "electrolysis") : decommissioning
-    @argcheck _decom isa Number "decommissioning must be Number."
-    push!(vb, FixedCost(:decommissioning, "input", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
-    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "electrolysis") : om_fixed_cost
-    @argcheck _fom isa Number "om_fixed_cost must be Number."
+    push!(vb, FixedCost(:decommissioning, "input", energy, decom_cost(_oc, _decom, _lt, discountrate(s), _dcp)))
     push!(vb, FixedCost(:fom, "input", energy, _fom * 1000.))
-    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "electrolysis") : om_var_cost
-    @argcheck _vom isa Number "om_var_cost must be Number."
     push!(vb, VariableCost(:vom, "input", energy, _vom))
     if cap isa Number
         push!(vb, FixedCapacity("input", energy, cap))

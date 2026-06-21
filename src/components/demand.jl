@@ -22,12 +22,8 @@ Arguments:
   * gridlosses: optional proportional grid loss joint flow on demand input (`0 <= gridlosses < 1`).
 """
 function makedemand(cname::String, zone::String, n::Node, s::Snapshot; coeff=1.0, shift::Int=0, yearlyconstant::Number=0., gridlosses=0.)
-    @argcheck coeff isa Number "coeff must be Number."
-    @argcheck coeff >= 0 "coeff must be >= 0."
-    @argcheck yearlyconstant isa Number "yearlyconstant must be Number."
-    @argcheck yearlyconstant >= 0 "yearlyconstant must be >= 0."
-    @argcheck gridlosses isa Number "gridlosses must be Number."
-    @argcheck 0 <= gridlosses < 1 "gridlosses must be in [0, 1)."
+    inputs = demand_input(coeff=coeff, yearlyconstant=yearlyconstant, gridlosses=gridlosses)
+    validate_demand_input(inputs)
     _gridlosses = Float64(gridlosses)
     if iszero(coeff)
         var = 0.
@@ -59,7 +55,8 @@ Arguments:
   * s: snapshot to register the component in.
 """
 function makeflathydrogendemand(cname::String, n::Node, val::Number, s::Snapshot)
-    @argcheck val >= 0 "val must be >= 0."
+    inputs = demand_input(val=val)
+    validate_demand_input(inputs)
     m = Demand(n.carrier, val / 8760)
     vb = []
     c = Component(cname * " " * n.name, m, vb)
@@ -82,7 +79,8 @@ Arguments:
   * s: snapshot to register the component in.
 """
 function makeflexhydrogendemand(cname::String, n::Node, val::Number, s::Snapshot)
-    @argcheck val >= 0 "val must be >= 0."
+    inputs = demand_input(val=val)
+    validate_demand_input(inputs)
     m = BasicSink(n.carrier)
     vb = []
     push!(vb, YearlySum("input", val, :equal))
@@ -146,15 +144,6 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
     charging_eff::Union{Nothing,Number}=nothing, self_discharge::Union{Nothing,Number}=nothing, min_level_morning::Union{Nothing,Number}=nothing,
     max_charging_power_per_ev::Union{Nothing,Number}=nothing, max_dispatch_power_per_ev::Union{Nothing,Number}=nothing,
     battery_capacity_per_ev::Union{Nothing,Number}=nothing, yearly_consumption_per_ev::Union{Nothing,Number}=nothing,)
-    @argcheck yearly isa Number "yearly must be Number."
-    @argcheck yearly >= 0 "yearly must be >= 0."
-    _yearly = Float64(yearly)
-    @argcheck gridlosses isa Number "gridlosses must be Number."
-    @argcheck 0 <= gridlosses < 1 "gridlosses must be in [0, 1)."
-    _gridlosses = Float64(gridlosses)
-    @argcheck compensation isa Number "compensation must be Number or left as default."
-    _compensation = Float64(compensation)
-
     mode_count = Int(fixed_profile) + Int(smart_charging) + Int(vehicle_to_grid)
     @argcheck mode_count == 1 "Exactly one of fixed_profile, smart_charging, vehicle_to_grid must be true."
 
@@ -164,12 +153,14 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
         @argcheck !isnothing(minratio) "minratio is required when fixed_profile=true."
         @argcheck offhours1 isa AbstractVector{<:Int} "offhours1 must be a vector of integers."
         @argcheck offhours2 isa AbstractVector{<:Int} "offhours2 must be a vector of integers."
-        @argcheck minratio isa Number "minratio must be Number."
-        @argcheck 0 <= minratio <= 1 "minratio must be in [0, 1]."
         @argcheck 0 <= days_threshold <= 183 "days_threshold must be in [0, 183]."
         @argcheck all(0 <= h <= 23 for h in offhours1) "offhours1 must be integers between 0 and 23."
         @argcheck all(0 <= h <= 23 for h in offhours2) "offhours2 must be integers between 0 and 23."
 
+        inputs = demand_input(yearly=yearly, gridlosses=gridlosses, minratio=minratio)
+        validate_demand_input(inputs)
+        _yearly = Float64(yearly)
+        _gridlosses = Float64(gridlosses)
         _minratio = Float64(minratio)
         maxlevel =
             _yearly / (
@@ -198,31 +189,24 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
 
         # efficiency on storage output port (V2G discharge); grid charging uses input at efficiency 1
         eff = isnothing(charging_eff) ? gettechparam(s, tech, "charging_eff", "storage") : charging_eff
-        @argcheck eff isa Number "charging_eff must be Number."
-        @argcheck 0 < eff <= 1 "charging_eff must be in (0, 1]."
         # hourly self-discharge
         sd = isnothing(self_discharge) ? gettechparam(s, tech, "self_discharge", "storage") : self_discharge
-        @argcheck sd isa Number "self_discharge must be Number."
-        @argcheck 0 <= sd < 1 "self_discharge must be in [0, 1)."
-
-        # min level of the battery of the average fleet at 7am: 80%
+        # min level of the average fleet battery at 7am
         min_level_ratio_morning = isnothing(min_level_morning) ? gettechparam(s, tech, "min_level_morning", "storage") : min_level_morning
-        @argcheck min_level_ratio_morning isa Number "min_level_morning must be Number."
-        @argcheck 0 <= min_level_ratio_morning <= 1 "min_level_morning must be in [0, 1]."
-
-        # assumptions about EV
+        # assumptions about EV (per vehicle parameters from Excel or overrides)
         max_charging_per_ev = isnothing(max_charging_power_per_ev) ? gettechparam(s, tech, "max_charging_power", "storage") : max_charging_power_per_ev
         max_dispatch_per_ev = isnothing(max_dispatch_power_per_ev) ? gettechparam(s, tech, "max_dispatch_power", "storage") : max_dispatch_power_per_ev
         battery_cap_per_ev = isnothing(battery_capacity_per_ev) ? gettechparam(s, tech, "battery_capacity", "storage") : battery_capacity_per_ev
         yearly_per_ev = isnothing(yearly_consumption_per_ev) ? gettechparam(s, tech, "yearly_consumption", "storage") : yearly_consumption_per_ev
-        @argcheck max_charging_per_ev isa Number "max_charging_power must be Number."
-        @argcheck max_charging_per_ev > 0 "max_charging_power must be > 0."
-        @argcheck max_dispatch_per_ev isa Number "max_dispatch_power must be Number."
-        @argcheck max_dispatch_per_ev >= 0 "max_dispatch_power must be >= 0."
-        @argcheck battery_cap_per_ev isa Number "battery_capacity must be Number."
-        @argcheck battery_cap_per_ev > 0 "battery_capacity must be > 0."
-        @argcheck yearly_per_ev isa Number "yearly_consumption must be Number."
-        @argcheck yearly_per_ev > 0 "yearly_consumption must be > 0."
+        inputs = demand_input(
+            yearly=yearly, compensation=compensation, charging_eff=eff, self_discharge=sd,
+            min_level_morning=min_level_ratio_morning, max_charging_power=max_charging_per_ev,
+            max_dispatch_power=max_dispatch_per_ev, battery_capacity=battery_cap_per_ev,
+            yearly_consumption=yearly_per_ev,
+        )
+        validate_demand_input(inputs)
+        _yearly = Float64(yearly)
+        _compensation = Float64(compensation)
         number_ev = _yearly / yearly_per_ev
         max_charging_power = number_ev * max_charging_per_ev
         max_dispatch_power = number_ev * max_dispatch_per_ev

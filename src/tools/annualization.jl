@@ -28,16 +28,31 @@ function construction_factor(discountrate::Number, constructionprofile)
     return cf
 end
 
+function decommissioning_factor(discountrate::Number, decommissionprofile)
+    @argcheck decommissionprofile isa Union{String, Number} "Decommissioning profile must be a String like \"0.3;0.4;0.3\" or a single number."
+    shares = isa(decommissionprofile, String) ? parse.(Float64, split(decommissionprofile, ';')) : [Float64(decommissionprofile)]
+    @argcheck all(x -> x >= 0, shares) "Decommissioning profile must be non-negative."
+    total = sum(shares)
+    @argcheck isapprox(total, 1.0; rtol=1E-3) "Sum of the decommissioning profile must be close to 1."
+    # Accept small rounding errors, but compute with a profile that sums exactly to 1.
+    shares = shares ./ total
+    return sum(share / (1 + discountrate)^(year - 1) for (year, share) in enumerate(shares))
+end
+
 #version of capital recovery factor that does not consider year 0 as a white year
 corrected_crf(discountrate, lifetime) = discountrate / (1 + discountrate) / (1 - (1 + discountrate)^(-lifetime))
 
-
-
-# decommissioning cost in function of overnight cost, lifetime and discount rate
-function decom_cost(overnight::Number, deco_ratio, lifetime, discountrate)
-    # overnight cost
-    # * decommissioning ratio
-    # * discounting because paid at end of lifetime
-    # * annualization factor
-    return overnight * deco_ratio * (1 + discountrate)^(-lifetime) * discountrate / (1 + discountrate) / (1 - (1 + discountrate)^(-lifetime))
+# decommissioning cost in function of overnight cost, lifetime, discount rate and decommissioning profile
+function decom_cost(overnight::Number, deco_ratio, lifetime, discountrate::Number, decommissionprofile)
+    if ismissing(deco_ratio)
+        throw(ArgumentError("decommissioning ratio is missing"))
+    end
+    if ismissing(decommissionprofile)
+        throw(ArgumentError("decommissioning profile is missing"))
+    end
+    total_decommissioning_cost = overnight * deco_ratio
+    lifetime_discount = iszero(discountrate) ? 1.0 : (1 + discountrate)^(-lifetime)
+    present_value = total_decommissioning_cost * lifetime_discount * decommissioning_factor(discountrate, decommissionprofile)
+    annualized_cost = iszero(discountrate) ? (1 / lifetime) : corrected_crf(discountrate, lifetime)
+    return present_value * annualized_cost
 end

@@ -27,7 +27,7 @@ using HiGHS
         s, elec, co2 = makesnapshot()
         c = makedispatchable(
             "CCGT", "CCGT", elec, co2, s;
-            cap=0.0, construction_profile=1.0,
+            cap=0.0, construction_profile=1.0, decommissioning_profile=1.0,
         )
         @test isnothing(c)
         @test !Nosy.hascomponent(s, "CCGT ZONE1")
@@ -36,7 +36,7 @@ using HiGHS
     # A valid dispatchable input should create and register the component.
     let
         s, elec, co2 = makesnapshot()
-        c = makedispatchable("CCGT", "CCGT", elec, co2, s; cap=100.0, construction_profile=1.0)
+        c = makedispatchable("CCGT", "CCGT", elec, co2, s; cap=100.0, construction_profile=1.0, decommissioning_profile=1.0)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "CCGT ZONE1") === c
     end
@@ -48,7 +48,7 @@ using HiGHS
             "Nuclear", "CCGT", elec, co2, s;
             uc=true, cap=100.0,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=2.0,
-            decommissioning=0.1, lifetime=30, construction_profile=1.0,
+            decommissioning=0.1, lifetime=30, construction_profile=1.0, decommissioning_profile=1.0,
             connection_cost=0.0, fuel_cost=30.0, waste_cost=0.0,
             no_load_cost=0.0, startup_cost=0.0,
             co2_emission=0.0, unit_size=0.0,
@@ -81,7 +81,7 @@ using HiGHS
             "SMR", "CCGT", elec, heat, co2, s;
             cap=100.0,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=2.0,
-            decommissioning=0.1, lifetime=30.0, construction_profile=1.0,
+            decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,
             connection_cost=0.0, fuel_cost=30.0, waste_cost=0.0,
             co2_emission=0.0, unit_size=0.0,
         )
@@ -96,7 +96,7 @@ using HiGHS
             "Nuclear profile", "Onwind", elec, co2, s;
             cap=100.0, weatheryear=2019,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=2.0,
-            decommissioning=0.1, lifetime=30.0, construction_profile=1.0,
+            decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,
             fuel_cost=30.0, co2_emission=0.0,
         )
         @test !isnothing(c)
@@ -112,7 +112,7 @@ using HiGHS
     # A valid intermittent source input should create and register the component.
     let
         s, elec, co2 = makesnapshot()
-        c = makeintermittentsource("Onwind gen", "Onwind", elec, co2, s; cap=100.0, weatheryear=2019, construction_profile=1.0)
+        c = makeintermittentsource("Onwind gen", "Onwind", elec, co2, s; cap=100.0, weatheryear=2019, construction_profile=1.0, decommissioning_profile=1.0)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "Onwind gen ZONE1") === c
     end

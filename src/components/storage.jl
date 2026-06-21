@@ -2,17 +2,14 @@
 Generate storage components.
 """
 
-using ArgCheck: @argcheck
-
 """
     makehydroreservoir(cname::String, tech::String, zone::String, elec::Node,
         cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot;
         renormalize=true, weatheryear=2019, gridlosses=0., simplified=false, intake_mult=1.,
-        capex_mult=1.,
         eff::Union{Nothing,Number}=nothing,
         overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing,
         decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing,
-        construction_profile=nothing,
+        construction_profile=nothing, decommissioning_profile=nothing,
     )
 
 Build, connect and return a hydro reservoir component.
@@ -35,7 +32,6 @@ Arguments:
   * simplified: Passed to `LazyStorage(..., simplified=...)`.
   * intake_mult: Multiplier applied to inflow profile.
 
-  * capex_mult: Scenario multiplier on annualized investment related costs.
   * eff: Roundtrip charging efficiency (input side conversion).
 
   * overnight_cost: Cost/lifetime overrides for annualized fixed and variable cost terms. Excel defaults are used when values are `nothing`.
@@ -44,13 +40,11 @@ Arguments:
   * decommissioning: Cost/lifetime overrides for annualized fixed and variable cost terms. Excel defaults are used when values are `nothing`.
   * lifetime: Cost/lifetime overrides for annualized fixed and variable cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
   * construction_profile: Cost/lifetime overrides for annualized fixed and variable cost terms. Excel defaults are used when values are `nothing`.
+  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
 """
 function makehydroreservoir(cname::String, tech::String, zone::String, elec::Node, cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot;
     # storage operation controls
     renormalize=true, weatheryear=2019, gridlosses=0., simplified=false, intake_mult=1.,
-
-    # scenario controls
-    capex_mult=1.,
 
     # technical overrides
     eff::Union{Nothing,Number}=nothing,
@@ -58,14 +52,21 @@ function makehydroreservoir(cname::String, tech::String, zone::String, elec::Nod
     # technical / economic overrides
     overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
     om_var_cost::Union{Nothing,Number}=nothing, decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing,
-    construction_profile=nothing,
+    construction_profile=nothing, decommissioning_profile=nothing,
 )
-    @argcheck gridlosses isa Number "gridlosses must be Number."
-    @argcheck 0 <= gridlosses < 1 "gridlosses must be in [0, 1)."
-    _gridlosses = Float64(gridlosses)
     _eff = isnothing(eff) ? gettechparam(s, tech, "roundtrip_eff", "storage") : eff
-    @argcheck _eff isa Number "eff must be Number."
-    @argcheck 0 < _eff <= 1 "eff must be in (0, 1]."
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "storage") : overnight_cost
+    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "storage") : lifetime
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "storage") : om_fixed_cost
+    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "storage") : decommissioning
+    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "storage") : om_var_cost
+    inputs = component_input(
+        gridlosses=gridlosses, efficiency=_eff, overnight_cost=_oc_raw, lifetime=_lt_raw,
+        om_fixed_cost=_fom, decommissioning=_decom, om_var_cost=_vom,
+    )
+    validate_component_input(inputs)
+
+    _gridlosses = Float64(gridlosses)
     _eff = Float64(_eff)
     m = LazyStorage(elec.carrier, eff=Dict("natural" => 1., "output" => 1., "input" => _eff, "grid losses" => 0.), simplified=simplified)
     vb = []
@@ -73,25 +74,14 @@ function makehydroreservoir(cname::String, tech::String, zone::String, elec::Nod
     push!(vb, FreeJointFlow("output", elec.carrier, :output))
 
     # costs
-    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "storage") : overnight_cost
-    @argcheck _oc_raw isa Number "overnight_cost must be Number."
     _oc = _oc_raw * 1000.
-    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "storage") : lifetime
-    @argcheck _lt_raw isa Number "lifetime must be Number."
-    @argcheck _lt_raw > 0 "lifetime must be > 0."
-    @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
     _lt = Int(_lt_raw)
     _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "storage") : construction_profile
-    _inv = eac(_oc , discountrate(s), _lt, _cp) * capex_mult
+    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, tech, "decommissioning_profile", "storage") : decommissioning_profile
+    _inv = eac(_oc , discountrate(s), _lt, _cp)
     push!(vb, FixedCost(:investment, "output", energy, _inv))
-    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "storage") : om_fixed_cost
-    @argcheck _fom isa Number "om_fixed_cost must be Number."
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))
-    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "storage") : decommissioning
-    @argcheck _decom isa Number "decommissioning must be Number."
-    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
-    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "storage") : om_var_cost
-    @argcheck _vom isa Number "om_var_cost must be Number."
+    push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, _decom, _lt, discountrate(s), _dcp)))
     push!(vb, VariableCost(:vom, "output", energy, _vom))
 
     if isnothing(inflow)
@@ -156,10 +146,10 @@ end
 """
     makebatteries(cname::String, tech::String, elec::Node, s::Snapshot;
         capin=nothing, mincap=nothing, maxcap=nothing, simplified=false, ini=nothing,
-        gridlosses=0., capex_mult=1,
+        gridlosses=0.,
         eff::Union{Nothing,Number}=nothing, duration::Union{Nothing,Number}=nothing,
         overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
-        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
         connection_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing,
     )
 
@@ -178,7 +168,6 @@ Arguments:
   * ini: Optional initial snapshot used to inherit fixed charging capacity.
 
   * gridlosses: Proportional losses linked to charging input flow (`0 <= gridlosses < 1`).
-  * capex_mult: Scenario multiplier on annualized investment related costs.
 
   * eff: Roundtrip storage efficiency (`eff_i` in `BasicStorage`).
   * duration: Storage duration parameter (`Duration(...)` behavior, `duration > 0`). Excel default when `nothing`.
@@ -188,47 +177,46 @@ Arguments:
   * decommissioning: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
   * lifetime: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
   * construction_profile: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
   * connection_cost: Ratio applied to annualized investment as connection fixed cost.
   * om_var_cost: Variable O&M coefficient on charging/input energy flow.
 """
 function makebatteries(cname::String, tech::String, elec::Node, s::Snapshot;
     # capacity / expansion
-    capin=nothing, mincap=nothing, maxcap=nothing, simplified::Bool=false, ini::Union{Nothing,Snapshot}=nothing,
-
-    # scenario controls
-    gridlosses=0., capex_mult=1,
+    capin=nothing, mincap=nothing, maxcap=nothing, simplified::Bool=false, ini::Union{Nothing,Snapshot}=nothing, gridlosses=0.,
 
     # technical overrides
     eff::Union{Nothing,Number}=nothing, duration::Union{Nothing,Number}=nothing,
 
     # economic overrides
     overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
-    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
     connection_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing,
 )
-    @argcheck gridlosses isa Number "gridlosses must be Number."
-    @argcheck 0 <= gridlosses < 1 "gridlosses must be in [0, 1)."
-    _gridlosses = Float64(gridlosses)
     _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "storage") : overnight_cost
-    @argcheck _oc_raw isa Number "overnight_cost must be Number."
-    _oc = _oc_raw * 1000.
     _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "storage") : lifetime
-    @argcheck _lt_raw isa Number "lifetime must be Number."
-    @argcheck _lt_raw > 0 "lifetime must be > 0."
-    @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
+    _eff = isnothing(eff) ? gettechparam(s, tech, "roundtrip_eff", "storage") : eff
+    _dur = isnothing(duration) ? gettechparam(s, tech, "duration", "storage") : duration
+    _conn = isnothing(connection_cost) ? gettechparam(s, tech, "connection_cost", "storage") : connection_cost
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "storage") : om_fixed_cost
+    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "storage") : decommissioning
+    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "storage") : om_var_cost
+    inputs = component_input(
+        gridlosses=gridlosses, overnight_cost=_oc_raw, lifetime=_lt_raw, efficiency=_eff,
+        duration=_dur, connection_cost=_conn, om_fixed_cost=_fom, decommissioning=_decom, om_var_cost=_vom,
+    )
+    validate_component_input(inputs)
+
+    _gridlosses = Float64(gridlosses)
+    _oc = _oc_raw * 1000.
     _lt = Int(_lt_raw)
     _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "storage") : construction_profile
-    _inv = eac(_oc, discountrate(s), _lt, _cp) * capex_mult
-    _eff = isnothing(eff) ? gettechparam(s, tech, "roundtrip_eff", "storage") : eff
-    @argcheck _eff isa Number "eff must be Number."
-    @argcheck 0 < _eff <= 1 "eff must be in (0, 1]."
+    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, tech, "decommissioning_profile", "storage") : decommissioning_profile
+    _inv = eac(_oc, discountrate(s), _lt, _cp)
     _eff = Float64(_eff)
     m = BasicStorage(elec.carrier, eff_i=_eff, simplified=simplified)
     vb = []
     
-    _dur = isnothing(duration) ? gettechparam(s, tech, "duration", "storage") : duration
-    @argcheck _dur isa Number "duration must be Number."
-    @argcheck _dur > 0 "duration must be > 0."
     push!(vb, Duration(_dur))
     if capin isa Number
         push!(vb, FixedCapacity("input", energy, capin))
@@ -240,17 +228,9 @@ function makebatteries(cname::String, tech::String, elec::Node, s::Snapshot;
         end
     end
     push!(vb, FixedCost(:investment, "input", energy, _inv))
-    _conn = isnothing(connection_cost) ? gettechparam(s, tech, "connection_cost", "storage") : connection_cost
-    @argcheck _conn isa Number "connection_cost must be Number."
     push!(vb, FixedCost(:connection, "input", energy, _inv * _conn))
-    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "storage") : om_fixed_cost
-    @argcheck _fom isa Number "om_fixed_cost must be Number."
     push!(vb, FixedCost(:fom, "input", energy, _fom * 1000.))
-    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "storage") : decommissioning
-    @argcheck _decom isa Number "decommissioning must be Number."
-    push!(vb, FixedCost(:decommissioning, "input", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
-    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "storage") : om_var_cost
-    @argcheck _vom isa Number "om_var_cost must be Number."
+    push!(vb, FixedCost(:decommissioning, "input", energy, decom_cost(_oc, _decom, _lt, discountrate(s), _dcp)))
     push!(vb, VariableCost(:vom, "input", energy, _vom))
 
     if !iszero(_gridlosses)
@@ -270,10 +250,9 @@ end
 """
     makehydrogenstorage(cname::String, tech::String, h2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
-        capex_mult=1.,
         eff::Union{Nothing,Number}=nothing,
         overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
-        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
     )
 
 Build, connect and return a hydrogen storage component.
@@ -289,7 +268,6 @@ Arguments:
   * maxcap: Bounds for optimized level capacity when `cap === nothing`.
   * ini: Optional initial snapshot used to inherit fixed level capacity.
 
-  * capex_mult: Scenario multiplier on annualized investment related costs.
   * eff: Roundtrip storage efficiency (`eff_i` in `BasicStorage`). If `nothing`, read from Excel (`storage.roundtrip_eff`).
 
   * overnight_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
@@ -297,44 +275,41 @@ Arguments:
   * decommissioning: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
   * lifetime: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
   * construction_profile: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
 """
 function makehydrogenstorage(cname::String, tech::String, h2::Node, s::Snapshot;
     # capacity / expansion
     cap=nothing, mincap=nothing, maxcap=nothing, ini::Union{Nothing,Snapshot}=nothing,
-
-    # scenario controls
-    capex_mult=1.,
 
     # technical overrides
     eff::Union{Nothing,Number}=nothing,
 
     # economic overrides
     overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
-    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing,
+    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
 )
     _eff = isnothing(eff) ? gettechparam(s, tech, "roundtrip_eff", "storage") : eff
-    @argcheck _eff isa Number "eff must be Number."
-    @argcheck 0 < _eff <= 1 "eff must be in (0, 1]."
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "storage") : overnight_cost
+    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "storage") : lifetime
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "storage") : om_fixed_cost
+    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "storage") : decommissioning
+    inputs = component_input(
+        efficiency=_eff, overnight_cost=_oc_raw, lifetime=_lt_raw,
+        om_fixed_cost=_fom, decommissioning=_decom,
+    )
+    validate_component_input(inputs)
+
     _eff = Float64(_eff)
     m = BasicStorage(h2.carrier, eff_i=_eff, simplified=true) # always simplified for this medium or long term storage archetype
     vb = []
-    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "storage") : overnight_cost
-    @argcheck _oc_raw isa Number "overnight_cost must be Number."
     _oc = _oc_raw * 1000.
-    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "storage") : lifetime
-    @argcheck _lt_raw isa Number "lifetime must be Number."
-    @argcheck _lt_raw > 0 "lifetime must be > 0."
-    @argcheck isinteger(_lt_raw) "lifetime must be integer-valued."
     _lt = Int(_lt_raw)
     _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "storage") : construction_profile
-    _inv = eac(_oc, discountrate(s), _lt, _cp) * capex_mult
+    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, tech, "decommissioning_profile", "storage") : decommissioning_profile
+    _inv = eac(_oc, discountrate(s), _lt, _cp)
     push!(vb, FixedCost(:investment, "level", energy, _inv))
-    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "storage") : om_fixed_cost
-    @argcheck _fom isa Number "om_fixed_cost must be Number."
     push!(vb, FixedCost(:fom, "level", energy, _fom * 1000.))
-    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "storage") : decommissioning
-    @argcheck _decom isa Number "decommissioning must be Number."
-    push!(vb, FixedCost(:decommissioning, "level", energy, decom_cost(_oc, _decom, _lt, discountrate(s)) * capex_mult))
+    push!(vb, FixedCost(:decommissioning, "level", energy, decom_cost(_oc, _decom, _lt, discountrate(s), _dcp)))
 
     if cap isa Number
         push!(vb, FixedCapacity("level", energy, cap))
