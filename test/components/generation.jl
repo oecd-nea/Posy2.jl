@@ -116,4 +116,32 @@ using HiGHS
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "Onwind gen ZONE1") === c
     end
+
+    # unit_size=0 skips ramping behaviors even when ramp rates are provided.
+    let
+        s, elec, co2 = makesnapshot()
+        c = makedispatchable(
+            "CCGT no ramp", "CCGT", elec, co2, s;
+            cap=100.0, unit_size=0.0, ramp_up=0.5, ramp_down=0.5,
+            construction_profile=1.0, decommissioning_profile=1.0,
+        )
+        @test !isnothing(c)
+        @test isempty(Nosy.getbehaviors(c, Nosy.RampingBehavior))
+    end
+
+    # ramp_up and ramp_down are scaled by unit_size before passing to Nosy.
+    let
+        s, elec, co2 = makesnapshot()
+        c = makedispatchable(
+            "CCGT ramp", "CCGT", elec, co2, s;
+            cap=8.0, unit_size=2.0, ramp_up=0.2, ramp_down=0.3,
+            construction_profile=1.0, decommissioning_profile=1.0,
+        )
+        ramping = Nosy.getbehaviors(c, Nosy.RampingBehavior)
+        @test length(ramping) == 2
+        up = only(filter(b -> b.data.sense == :up, ramping))
+        down = only(filter(b -> b.data.sense == :down, ramping))
+        @test up.data.val == 0.2 * 2.0
+        @test down.data.val == 0.3 * 2.0
+    end
 end

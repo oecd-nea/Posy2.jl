@@ -736,7 +736,7 @@ function _dataline_ic_cap(s)
     allquasinodes = vcat(sort(collect(keys(allnodes)))..., sort(collect(allquasinodes))...)    
     df = DataFrame("From \\ To" => allquasinodes)
     for k in allquasinodes
-        df[!,k] = convert(Vector{Union{String,Float64}}, fill(0., length(allquasinodes))) # zeros(length(allquasinodes))
+        df[!,k] = convert(Vector{Union{String,Float64,Missing}}, fill(missing, length(allquasinodes)))
     end
 
     for cname in allcomps_int
@@ -760,12 +760,10 @@ function _dataline_ic_cap(s)
     end
 
     # sum over zones
-    df[!,"> Total"] = sum(eachcol(df)[2:end])
-    _lastrow = permutedims(vcat("Total >", [sum(c) for c in eachcol(df)[2:end]]))
+    datacols = names(df)[2:end]
+    df[!,"> Total"] = [sum(df[i, c] for c in datacols if !ismissing(df[i, c])) for i in 1:nrow(df)]
+    _lastrow = permutedims(vcat("Total >", [sum(x for x in c if !ismissing(x)) for c in eachcol(df)[2:end]]))
     push!(df, _lastrow)
-
-    # replace zeros for readability
-    df = (x->(x == 0.) ? nothing : x).(df)
 
     return DataLine(
         "Interconnection capacity",
@@ -798,7 +796,7 @@ function _interco_vol_detailed(s; collapse=true, addtotal=false)
     allquasinodes = vcat(sort(collect(keys(allnodes)))..., sort(collect(allquasinodes))...)    
     df = DataFrame("From \\ To" => allquasinodes)
     for k in allquasinodes
-        df[!,k] = convert(Vector{Union{Nothing,Float64,Nosy.Stepwise{Float64},Nosy.Hourly{Float64}}}, fill(0., length(allquasinodes))) # zeros(length(allquasinodes))
+        df[!,k] = convert(Vector{Union{Missing,Float64,Nosy.Stepwise{Float64},Nosy.Hourly{Float64}}}, fill(missing, length(allquasinodes)))
     end
 
     for cname in allcomps_int
@@ -822,8 +820,9 @@ function _interco_vol_detailed(s; collapse=true, addtotal=false)
     end
     
     if addtotal
-        df[!,"> Total"] = sum(eachcol(df)[2:end])
-        _lastrow = permutedims(vcat("Total >", [sum(c) for c in eachcol(df)[2:end]]))
+        datacols = names(df)[2:end]
+        df[!,"> Total"] = [sum(df[i, c] for c in datacols if !ismissing(df[i, c])) for i in 1:nrow(df)]
+        _lastrow = permutedims(vcat("Total >", [sum(x for x in c if !ismissing(x)) for c in eachcol(df)[2:end]]))
         push!(df, _lastrow)
     end
 
@@ -837,9 +836,8 @@ function _dataline_ic_vol_detailed(s)
     
     df = _interco_vol_detailed(s, addtotal=true)
 
-    # replace zeros with dots for readability
     # divide the values by 1E6 (MWh -> TWh)
-    df = (x->(x == 0.) ? nothing : (x isa Number ? x / 1E6 : x)).(df)
+    df = (x -> x isa Number ? x / 1E6 : x).(df)
 
     return DataLine(
         "Interconnection volume",
@@ -858,7 +856,7 @@ function imports_foreign(s; collapse=true)
         for fromname in df[!,"From \\ To"]
             if !haskey(selfnodes, first(split(fromname, ' ')))
                 val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-                if !iszero(val)
+                if !ismissing(val)
                     dv[fromname * " " * nodename] = val
                 end
             end
@@ -878,7 +876,7 @@ function imports_internal(s; collapse=true)
         for fromname in df[!,"From \\ To"]
             if haskey(selfnodes, first(split(fromname, ' ')))
                 val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-                if !iszero(val)
+                if !ismissing(val)
                     dv[fromname * " " * nodename] = val
                 end
             end
@@ -897,7 +895,7 @@ function imports_all(s; collapse=true)
         toname = "> " * nodename
         for fromname in df[!,"From \\ To"]
             val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-            if !iszero(val)
+            if !ismissing(val)
                 dv[fromname * " " * nodename] = val
             end
         end
@@ -930,7 +928,7 @@ function exports_foreign(s; collapse=true)
         for toname in names(df)[2:end]
             if !haskey(selfnodes, last(split(toname, ' ')))
                 val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-                if !iszero(val)
+                if !ismissing(val)
                     dv[nodename * " " * toname] = val
                 end
             end
@@ -951,7 +949,7 @@ function exports_internal(s; collapse=true)
         for toname in names(df)[2:end]
             if haskey(selfnodes, last(split(toname, ' ')))
                 val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-                if !iszero(val)
+                if !ismissing(val)
                     dv[nodename * " " * toname] = val
                 end
             end
@@ -971,7 +969,7 @@ function exports_all(s; collapse=true)
         fromname = nodename * " >"
         for toname in names(df)[2:end]
             val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-            if !iszero(val)
+            if !ismissing(val)
                 dv[nodename * " " * toname] = val
             end
         end
@@ -1003,7 +1001,7 @@ function _dataline_net_ic_vol(s)
         for fromname in df[!,"From \\ To"]
             if !haskey(selfnodes, first(split(fromname, ' ')))
                 val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-                if !iszero(val)
+                if !ismissing(val)
                     _im[fromname * " " * nodename] = val
                 end
             end
@@ -1016,7 +1014,7 @@ function _dataline_net_ic_vol(s)
         for toname in names(df)[2:end]
             if !haskey(selfnodes, last(split(toname, ' ')))
                 val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-                if !iszero(val)
+                if !ismissing(val)
                     _ex[nodename * " " * toname] = val
                 end
             end

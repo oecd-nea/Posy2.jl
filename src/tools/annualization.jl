@@ -42,7 +42,14 @@ end
 #version of capital recovery factor that does not consider year 0 as a white year
 corrected_crf(discountrate, lifetime) = discountrate / (1 + discountrate) / (1 - (1 + discountrate)^(-lifetime))
 
-# decommissioning cost in function of overnight cost, lifetime, discount rate and decommissioning profile
+"""
+    decom_cost(overnight::Number, deco_ratio, lifetime, discountrate::Number, decommissionprofile)
+Return the annualized decommissioning cost in function of the overnight cost, the decommissioning ratio, the lifetime, the discount rate and the decommissioning profile.
+The effects are the following:
+  * total decommissioning cost (overnight * decommissioning ratio)
+  * discounting to the end of lifetime and payment timing via decommissioning profile
+  * annualization via corrected CRF over the operating lifetime
+"""
 function decom_cost(overnight::Number, deco_ratio, lifetime, discountrate::Number, decommissionprofile)
     if ismissing(deco_ratio)
         throw(ArgumentError("decommissioning ratio is missing"))

@@ -22,7 +22,6 @@ using HiGHS
         co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        # tech_data_test.xlsx has no profile rows; override with 1.0 to avoid missing Excel values.
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makenodeinterco("IC", elec1, elec2, Inf, Inf, snap)

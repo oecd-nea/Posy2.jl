@@ -36,7 +36,8 @@ end
         lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing, connection_cost::Union{Nothing,Number}=nothing,
         om_var_cost::Union{Nothing,Number}=nothing, fuel_cost::Union{Nothing,Number}=nothing, no_load_cost::Union{Nothing,Number}=nothing,
         startup_cost::Union{Nothing,Number}=nothing, co2_emission::Union{Nothing,Number}=nothing, efficiency::Union{Nothing,Number}=nothing,
-        unit_size::Union{Nothing,Number}=nothing, min_power::Union{Nothing,Number}=nothing, min_uptime::Union{Nothing,Number}=nothing,
+        unit_size::Union{Nothing,Number}=nothing, ramp_up::Union{Nothing,Number}=nothing, ramp_down::Union{Nothing,Number}=nothing,
+        min_power::Union{Nothing,Number}=nothing, min_uptime::Union{Nothing,Number}=nothing,
         min_downtime::Union{Nothing,Number}=nothing, startup_duration::Union{Nothing,Number}=nothing, shutdown_duration::Union{Nothing,Number}=nothing,
     )
 
@@ -75,6 +76,8 @@ Arguments:
   * co2_emission: CO2 emission factor linked from output energy to CO2 flow (`output * co2_emission / 1000`).
   * efficiency: Fuel to output conversion efficiency for linked fuel flow. Required when `fuelnode` is provided.
   * unit_size: Unit block size for discrete capacity representation. `0` is treated as no unit size constraint.
+  * ramp_up: Max ramp up as a fraction of unit capacity per hour. Passed to `Ramping(...)` as `ramp_up * unit_size`. Excel default when `nothing`. Used only when `unit_size > 0`.
+  * ramp_down: Max ramp down as a fraction of unit capacity per hour. Same scaling as `ramp_up`. Excel default when `nothing`. Used only when `unit_size > 0`.
   * min_power: UC minimum generation fraction while committed. Used only when `uc=true`.
   * min_uptime: UC minimum uptime constraint. Used only when `uc=true`.
   * min_downtime: UC minimum downtime constraint. Used only when `uc=true`.
@@ -96,6 +99,7 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
     connection_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing, fuel_cost::Union{Nothing,Number}=nothing,
     no_load_cost::Union{Nothing,Number}=nothing, startup_cost::Union{Nothing,Number}=nothing,
     co2_emission::Union{Nothing,Number}=nothing, efficiency::Union{Nothing,Number}=nothing, unit_size::Union{Nothing,Number}=nothing,
+    ramp_up::Union{Nothing,Number}=nothing, ramp_down::Union{Nothing,Number}=nothing,
     min_power::Union{Nothing,Number}=nothing, min_uptime::Union{Nothing,Number}=nothing,
     min_downtime::Union{Nothing,Number}=nothing, startup_duration::Union{Nothing,Number}=nothing, shutdown_duration::Union{Nothing,Number}=nothing,
 )
@@ -199,15 +203,20 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
         push!(vb, StartupCost(:startup, "output", _startup))
     end
 
-    # ramping
-    # _ru = gettechparam(s, tech, "ramp_up", "dispatchable")
-    # if !iszero(_ru) && !isone(_ru)
-    #     push!(vb, Ramping("output", :up, _ru, energy))
-    # end
-    # _rd = gettechparam(s, tech, "ramp_down", "dispatchable")
-    # if !iszero(_rd) && !isone(_rd)
-    #     push!(vb, Ramping("output", :down, _rd, energy))
-    # end
+    if !isnothing(_usize)
+        _ru = isnothing(ramp_up) ? gettechparam(s, tech, "ramp_up", "dispatchable") : ramp_up
+        _rd = isnothing(ramp_down) ? gettechparam(s, tech, "ramp_down", "dispatchable") : ramp_down
+        @argcheck _ru isa Number "ramp_up must be Number."
+        @argcheck _rd isa Number "ramp_down must be Number."
+        @argcheck _ru >= 0 "ramp_up must be non negative."
+        @argcheck _rd >= 0 "ramp_down must be non negative."
+        if !iszero(_ru)
+            push!(vb, Ramping("output", :up, _ru * _usize, energy))
+        end
+        if !iszero(_rd)
+            push!(vb, Ramping("output", :down, _rd * _usize, energy))
+        end
+    end
 
     c = Component(cname * " " * elec.name, m, vb)
     for t in (:generation, :dispatchable)
