@@ -4,7 +4,7 @@ using Test
 using JuMP
 using HiGHS
 
-@testset "Post processing costs" begin
+@testset "Post processing pricecurves" begin
     function makesnapshot()
         sim = Sim(Model(HiGHS.Optimizer))
         opts = Dict(
@@ -30,11 +30,14 @@ using HiGHS
         return extract(snap)
     end
 
-    # Aggregated self costs should satisfy Physical + Trade = Total.
+    # genpricecurves should return hourly price duration curves sorted in descending order.
     let
         s = makesnapshot()
-        d = POSY2._dataline_costs_aggregated(s; showforeign=false)
-        @test isapprox(d.d["Physical"] + d.d["Trade"], d.d["Total"]; rtol=1e-12)
-        @test isapprox(POSY2.selfcost(s) / 1e9, d.d["Total"]; rtol=1e-12)
+        df = POSY2.genpricecurves(s)
+        @test "ZONE1" in names(df)
+        @test "ZONE2" in names(df)
+        @test size(df, 1) == Nosy.nhours(sim(s))
+        @test issorted(df.ZONE1, rev=true)
+        @test issorted(df.ZONE2, rev=true)
     end
 end

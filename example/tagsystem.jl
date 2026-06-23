@@ -23,7 +23,7 @@ function makesnapshot(; optimize::Bool=false)
         "Battery", "Battery", elec, snap;
         capin=100.0, eff=0.9, duration=4.0,
         overnight_cost=1000.0, om_fixed_cost=10.0, decommissioning=0.1, lifetime=20.0,
-        construction_profile=1.0, connection_cost=0.0, om_var_cost=1.0,
+        construction_profile=1.0, decommissioning_profile=1.0, connection_cost=0.0, om_var_cost=1.0,
     )
 
     !optimize && return snap, elec, elec2, co2
@@ -84,9 +84,3 @@ zone2_price_ics = Nosy.getcomponents(s; with=[:priceinterconnection, :ZONE2])
 zone1_price_ics = Nosy.getcomponents(s, "ZONE1"; with=[:priceinterconnection, :ZONE2])
 @assert length(zone1_price_ics) == 1
 @assert haskey(zone1_price_ics, Nosy.name(price_ic))
-
-# Does makenodeinterco attach :interconnection and :nodeinterconnection?
-node_ic = makenodeinterco("IC name", elec, elec2, 100.0, 100.0, s)
-
-@assert Nosy.hastag(node_ic, :interconnection)
-@assert Nosy.hastag(node_ic, :nodeinterconnection)

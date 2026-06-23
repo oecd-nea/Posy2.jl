@@ -30,7 +30,7 @@ using HiGHS
         return extract(snap)
     end
 
-    # Time-series output should expose expected core columns with one row per hour.
+    # gentimeseries should expose core columns with one row per hour.
     let
         s = makesnapshot()
         df = POSY2.gentimeseries(s)
@@ -38,5 +38,21 @@ using HiGHS
         @test "Total demand" in names(df)
         @test "Total production" in names(df)
         @test "Total net interconnection" in names(df)
+    end
+
+    # Component demand columns should remain hourly and scale to GW.
+    let
+        s = makesnapshot()
+        df = POSY2.gentimeseries(s)
+        @test df[1, "Other consumption ZONE1"] ≈ 0.1
+        @test isapprox(sum(df[!, "Other consumption ZONE1"]), 876.0; rtol=1e-12)
+    end
+
+    # Total demand should equal the sum of component demand columns.
+    let
+        s = makesnapshot()
+        df = POSY2.gentimeseries(s)
+        component_sum = sum(df[!, "Other consumption ZONE1"])
+        @test isapprox(sum(df[!, "Total demand"]), component_sum; rtol=1e-12)
     end
 end

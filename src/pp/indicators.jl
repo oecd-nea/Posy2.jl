@@ -169,16 +169,18 @@ function demand(s; aggregate=false, collapse=false)
 end
 
 function demand(s, nodename::String; aggregate=false, collapse=false)
-    d = demand(s, aggregate=false, collapse=collapse)
-    d2 = Dict()
-    for (k,v) in d
-        s = split(k, ' ')
-        if s[end] == nodename
-            d2[k] = v
-        end
+    d = LittleDict()
+    for (k, v) in getcomponents(s, nodename, with=[:demand, :electricity])
+        d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input"]
     end
-    aggregate && return sum(values(d2))
-    return d2
+    for (k, v) in getcomponents(s, nodename, with=[:electrolysis])
+        d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input"]
+    end
+    for (k, v) in getcomponents(s, nodename, with=[:ev])
+        d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["driving"]
+    end
+    aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
+    return d
 end
 
 # return curtailment time series in MWhe
