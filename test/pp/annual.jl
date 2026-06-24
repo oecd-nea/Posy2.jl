@@ -58,6 +58,15 @@ using HiGHS
         @test isapprox(POSY2.selfcost(s) / 1e9, d.d["Total"]; rtol=1e-12)
     end
 
+    # Foreign import/export columns should be 0 when no foreign IC exists.
+    let
+        s = makesnapshot()
+        for (k, _) in Nosy.getnodes(s, with=[:electricity], without=[:foreign])
+            @test POSY2.imports_foreign(s, k; collapse=true) / 1e6 == 0.0
+            @test POSY2.exports_foreign(s, k; collapse=true) / 1e6 == 0.0
+        end
+    end
+
     # Interconnection volume dataline should scale MWh to TWh/y.
     let
         s = makesnapshot()

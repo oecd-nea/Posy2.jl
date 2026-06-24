@@ -55,4 +55,13 @@ using HiGHS
         @test isapprox(collapsed["Other consumption ZONE1"], sum(hourly["Other consumption ZONE1"]); rtol=1e-12)
         @test collapsed["Other consumption ZONE1"] ≈ 876_000.0
     end
+
+    # aggregate=true, collapse=true returns a zone total.
+    let
+        s = makesnapshot()
+        total = POSY2.demand(s, "ZONE1"; aggregate=true, collapse=true)
+        by_component = POSY2.demand(s, "ZONE1"; aggregate=false, collapse=true)
+        @test isapprox(total, sum(values(by_component)); rtol=1e-12)
+        @test POSY2.demand(s, "ZONE2"; aggregate=true, collapse=true) == 0.0
+    end
 end

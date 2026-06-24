@@ -179,7 +179,10 @@ function demand(s, nodename::String; aggregate=false, collapse=false)
     for (k, v) in getcomponents(s, nodename, with=[:ev])
         d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["driving"]
     end
-    aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
+    if aggregate
+        ini = collapse ? 0.0 : zeros(Nosy.nhours(sim(s)))
+        return sum(values(d); init=ini)
+    end
     return d
 end
 

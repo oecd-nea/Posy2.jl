@@ -53,12 +53,18 @@ using HiGHS
         @test isempty(POSY2.imports_foreign(s))
     end
 
+    # Foreign import/export with collapse=true should return 0.0 when no foreign IC exists.
+    let
+        s = makesnapshot()
+        @test POSY2.imports_foreign(s, "ZONE1"; collapse=true) == 0.0
+        @test POSY2.exports_foreign(s, "ZONE1"; collapse=true) == 0.0
+    end
+
     # Global import summaries should satisfy all = internal + foreign when collapsed.
     let
         s = makesnapshot()
         internal_total = sum(values(POSY2.imports_internal(s; collapse=true)))
-        foreign_imports = POSY2.imports_foreign(s; collapse=true)
-        foreign_total = isempty(foreign_imports) ? 0.0 : sum(values(foreign_imports))
+        foreign_total = sum(values(POSY2.imports_foreign(s; collapse=true)), init=0.0)
         all_total = sum(values(POSY2.imports_all(s; collapse=true)))
         @test isapprox(all_total, internal_total + foreign_total; rtol=1e-12)
         @test isapprox(

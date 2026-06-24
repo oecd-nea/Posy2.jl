@@ -101,7 +101,7 @@ function imports_internal(s::Snapshot, nodename::String; modifier=energy, collap
         end
     end
 
-    collapse && return sum(values(d)) # TODO replace collapse w aggregate
+    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
     return d
 end
 
@@ -119,7 +119,7 @@ function exports_internal(s::Snapshot, nodename::String; modifier=energy, collap
         end
     end
 
-    collapse && return sum(values(d)) # TODO replace collapse w aggregate
+    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
 
     return d
 end
@@ -133,7 +133,7 @@ function imports_all(s::Snapshot, nodename::String; modifier=energy, collapse=tr
         end
     end
 
-    collapse && return sum(values(d)) # TODO replace collapse w aggregate
+    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
     return d
 end
 
@@ -146,7 +146,7 @@ function exports_all(s::Snapshot, nodename::String; modifier=energy, collapse=tr
         end
     end
 
-    collapse && return sum(values(d)) # TODO replace collapse w aggregate
+    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
 
     return d
 end
@@ -165,7 +165,7 @@ function imports_foreign(s::Snapshot, nodename::String; modifier=energy, collaps
         end
     end
 
-    collapse && return sum(values(d)) # TODO replace collapse w aggregate
+    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
 
     return d
 end
@@ -184,7 +184,7 @@ function exports_foreign(s::Snapshot, nodename::String; modifier=energy, collaps
         end
     end
 
-    collapse && return sum(values(d)) # TODO replace collapse w aggregate
+    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
 
     return d
 end
