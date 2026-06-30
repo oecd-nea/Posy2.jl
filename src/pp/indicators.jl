@@ -5,20 +5,22 @@ The functions below rely on the tag system
 """
 
 # return exports time series
-function ic_vol_sense1(s; aggregate=false, collapse=false, showforeign=true)
+function ic_vol_sense1(s; aggregate=false, collapse=false)
     d = LittleDict()
-    dcomps = getcomponents(s, with=[:interconnection]) # only considering components connected with foreign nodes
-    for (k,v) in dcomps
+    for (k, v) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"])
         d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input2"]
+    end
+    for (k, v) in getcomponents(s, with=[:function => "interconnection", :function => "priceinterconnection"])
+        d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input"]
     end
     aggregate && return sum(values(d))
     return d
 end
 
 # return imports time series
-function ic_vol_sense2(s; aggregate=false, collapse=false, showforeign=true)
+function ic_vol_sense2(s; aggregate=false, collapse=false)
     d = LittleDict()
-    dcomps = getcomponents(s, with=[:interconnection])
+    dcomps = getcomponents(s, with=[:function => "interconnection"])
     for (k,v) in dcomps
         d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["output"]
     end
@@ -28,57 +30,44 @@ end
 
 # rewrite interconnection component names to "from > to" flow labels for reporting
 function rewrite_export_from_implicit(s::Snapshot, cname::String, c::Component)
-    if hastag(c, :priceinterconnection)
-        kind = (:interconnection, :priceinterconnection, :foreign)
-        zones = [t for t in c.tags if !(t in kind)]
-        length(zones) == 1 || throw(ArgumentError("price IC $(cname): expected 1 external zone tag, got $(zones)"))
-        extzone = string(only(zones))
+    if hastag(c, :function, "priceinterconnection")
+        zones = get(c.tags, :neighbor, String[])
+        extzone = only(zones)
         for (nodename, _) in getnodes(s, with=[:electricity])
-            if haskey(getcomponents(s, nodename, with=[:priceinterconnection]), cname)
+            if haskey(getcomponents(s, nodename, with=[:function => "interconnection", :function => "priceinterconnection"]), cname)
                 return string(nodename, " > ", extzone)
             end
         end
         throw(ArgumentError("local node not found for price IC $(cname)"))
-    elseif hastag(c, :nodeinterconnection)
+    else
         (_from, _to) = _fromto_ic_internal(s, c)
         return string(_to, " > ", _from)
-    else
-        throw(ArgumentError("interconnection $(cname) must be :priceinterconnection or :nodeinterconnection, got tags $(c.tags)"))
     end
 end
 
 function rewrite_import_from_implicit(s::Snapshot, cname::String, c::Component)
-    if hastag(c, :priceinterconnection)
-        kind = (:interconnection, :priceinterconnection, :foreign)
-        zones = [t for t in c.tags if !(t in kind)]
-        length(zones) == 1 || throw(ArgumentError("price IC $(cname): expected 1 external zone tag, got $(zones)"))
-        extzone = string(only(zones))
+    if hastag(c, :function, "priceinterconnection")
+        zones = get(c.tags, :neighbor, String[])
+        extzone = only(zones)
         for (nodename, _) in getnodes(s, with=[:electricity])
-            if haskey(getcomponents(s, nodename, with=[:priceinterconnection]), cname)
+            if haskey(getcomponents(s, nodename, with=[:function => "interconnection", :function => "priceinterconnection"]), cname)
                 return string(extzone, " > ", nodename)
             end
         end
         throw(ArgumentError("local node not found for price IC $(cname)"))
-    elseif hastag(c, :nodeinterconnection)
+    else
         (_from, _to) = _fromto_ic_internal(s, c)
         return string(_from, " > ", _to)
-    else
-        throw(ArgumentError("interconnection $(cname) must be :priceinterconnection or :nodeinterconnection, got tags $(c.tags)"))
     end
 end
 
-function reverse_interco_sense(name::String)
-    vn = split(name, " > ")
-    return string(vn[2] *  " > " * vn[1])
-end
-
-
 function availabletransfercapacities(s) # no aggregate or collapse options (no meaning)
     d = LittleDict()
-    dcomps = getcomponents(s, with=[:interconnection, :foreign]) # only considering components connected with foreign nodes
+    dcomps = getcomponents(s, with=[:function => "interconnection", :function => "foreign"])
     for (k,v) in dcomps
-        d["ATC " * rewrite_import_from_implicit(s, k, v)] = capacity(v, "output", multiplier=true)
-        d["ATC " * rewrite_export_from_implicit(s, k, v)] = capacity(v, "input", multiplier=true)
+        (_from, _to) = _fromto_ic_external(s, v)
+        d["ATC " * string(_from, " > ", _to)] = capacity(v, "output", multiplier=true)
+        d["ATC " * string(_to, " > ", _from)] = capacity(v, "input", multiplier=true)
     end
     return d
 end
@@ -87,7 +76,7 @@ end
 # return production time series in MWhe
 function production(s; aggregate=false, collapse=false)
     d = LittleDict()
-    dcomps = getcomponents(s, with=[:generation])
+    dcomps = getcomponents(s, with=[:function => "generation"])
     for (k,v) in dcomps
         d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["output"]
     end
@@ -98,7 +87,7 @@ end
 # return charging time series in MWhe
 function charging(s; aggregate=false, collapse=false)
     d = LittleDict()
-    dcomps = merge(getcomponents(s, with=[:storage]), getcomponents(s, with=[:ev]))
+    dcomps = merge(getcomponents(s, with=[:function => "storage"]), getcomponents(s, with=[:function => "ev"]))
     for (k,v) in dcomps
         b = balance(v, :input, energy, collapse=collapse, aggregate=false)
         if haskey(b, "input")
@@ -112,7 +101,7 @@ end
 # return discharging time series in MWhe
 function discharging(s; aggregate=false, collapse=false)
     d = LittleDict()
-    dcomps = merge(getcomponents(s, with=[:storage]), getcomponents(s, with=[:ev]))
+    dcomps = merge(getcomponents(s, with=[:function => "storage"]), getcomponents(s, with=[:function => "ev"]))
     for (k,v) in dcomps
         if Nosy.hasport(v, "output")
             b = balance(v, :output, energy, collapse=collapse, aggregate=false)
@@ -128,7 +117,7 @@ end
 # return natural intake time series in MWhe
 function intake(s; aggregate=false, collapse=false)
     d = LittleDict()
-    dcomps = getcomponents(s, with=[:storage])
+    dcomps = getcomponents(s, with=[:function => "storage"])
     for (k,v) in dcomps
         b = balance(v, :input, energy, collapse=collapse, aggregate=false)
         if haskey(b, "natural")
@@ -142,7 +131,7 @@ end
 # return storagelevel time series in MWhe
 function storagelevel(s; aggregate=false)
     d = LittleDict()
-    dcomps = merge(getcomponents(s, with=[:storage]), getcomponents(s, with=[:ev]))
+    dcomps = merge(getcomponents(s, with=[:function => "storage"]), getcomponents(s, with=[:function => "ev"]))
     for (k,v) in dcomps
         if Nosy.hasport(v, "level")
             d["level" * k] = balance(v, :level, energy, collapse=false, aggregate=true)
@@ -155,9 +144,9 @@ end
 # return demand time series in MWhe
 function demand(s; aggregate=false, collapse=false)
     d = LittleDict()
-    de = getcomponents(s, with=[:demand, :electricity]) # consumption of demand-type components
-    dh = getcomponents(s, with=[:electrolysis]) # consumption of electrolyser-type components
-    dev = getcomponents(s, with=[:ev]) # consumption of ev-type components
+    de = getcomponents(s, with=[:function => "demand", :function => "electricity"]) # consumption of demand-type components
+    dh = getcomponents(s, with=[:function => "electrolysis"]) # consumption of electrolyser-type components
+    dev = getcomponents(s, with=[:function => "ev"]) # consumption of ev-type components
     for (k,v) in merge(de, dh)
         d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input"]
     end
@@ -170,13 +159,13 @@ end
 
 function demand(s, nodename::String; aggregate=false, collapse=false)
     d = LittleDict()
-    for (k, v) in getcomponents(s, nodename, with=[:demand, :electricity])
+    for (k, v) in getcomponents(s, nodename, with=[:function => "demand", :function => "electricity"])
         d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input"]
     end
-    for (k, v) in getcomponents(s, nodename, with=[:electrolysis])
+    for (k, v) in getcomponents(s, nodename, with=[:function => "electrolysis"])
         d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input"]
     end
-    for (k, v) in getcomponents(s, nodename, with=[:ev])
+    for (k, v) in getcomponents(s, nodename, with=[:function => "ev"])
         d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["driving"]
     end
     if aggregate

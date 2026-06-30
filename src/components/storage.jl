@@ -130,6 +130,8 @@ function makehydroreservoir(cname::String, tech::String, zone::String, elec::Nod
     end
 
     c = Component(cname * " " * elec.name, m, vb)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, elec.name)
     
     # exogenously force production
     # _output = balance(c, :output, energy, collapse=false).data
@@ -137,8 +139,8 @@ function makehydroreservoir(cname::String, tech::String, zone::String, elec::Nod
     # @constraint(sim(c).model, _output .== _profile)
 
     connect!(s, c, elec)
-    for t in (:generation, :storage, :carbonfree,)
-        tag!(c, t)
+    for t in ("generation", "storage", "carbonfree")
+        tag!(c, :function, t)
     end
     return c
 end
@@ -238,9 +240,11 @@ function makebatteries(cname::String, tech::String, elec::Node, s::Snapshot;
     end
 
     c = Component(cname * " " * elec.name, m, vb)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, elec.name)
 
-    for t in (:electricity, :storage, :generation)
-        tag!(c, t)
+    for t in ("electricity", "storage", "generation")
+        tag!(c, :function, t)
     end
     connect!(s, c, elec)
 
@@ -324,8 +328,10 @@ function makehydrogenstorage(cname::String, tech::String, h2::Node, s::Snapshot;
     end
     # push!(vb, Duration(4)) # TYNDP methodology 9.6.4: fill in 4 hours # removed for large storage (no meaning, no impact except negative on performance)
     c = Component(cname * " " * h2.name, m, vb)
-    for t in (:hydrogen, :storage)
-        tag!(c, t)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, h2.name)
+    for t in ("hydrogen", "storage")
+        tag!(c, :function, t)
     end
     connect!(s, c, h2)
     return c

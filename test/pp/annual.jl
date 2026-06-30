@@ -3,11 +3,17 @@ using Nosy
 using Test
 using JuMP
 using HiGHS
+using DataFrames
 
 @testset "Post processing annual" begin
-    function makesnapshot()
+    function tsim()
         sim = Sim(Model(HiGHS.Optimizer))
-        opts = Dict(
+        set_silent(sim.model)
+        return sim
+    end
+
+    function posyopts()
+        return Dict(
             :posy => POSY2Options(
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
@@ -16,92 +22,94 @@ using HiGHS
                 co2_price=50.0,
             ),
         )
-        snap = Snapshot(sim, opts)
+    end
+
+    function makesnapshot()
+        sim = tsim()
+        snap = Snapshot(sim, posyopts())
         elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
+        return snap, elec1, elec2, co2
+    end
 
+    function makesnapshot2()
+        sim = tsim()
+        snap = Snapshot(sim, posyopts())
+        elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        elec3 = Node("ZONE3", EnergyCarrier("electricity ZONE3", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
+        return snap, elec1, elec2, elec3, co2
+    end
+
+    # Aggregated cost dataline: Physical + Trade equals Total and matches snapshot selfcost (Bn USD).
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, Inf, Inf, snap)
-
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
         Nosy.optimize!(snap, cost(snap))
-        return extract(snap)
-    end
+        s = extract(snap)
 
-    function makesnapshot_ic_cap()
-        sim = Sim(Model(HiGHS.Optimizer))
-        opts = Dict(
-            :posy => POSY2Options(
-                data_dir=joinpath(dirname(@__DIR__), "data"),
-                techdata_file="tech_data_test.xlsx",
-                timeseries_file="time_series_test.xlsx",
-                discountrate=0.05,
-                co2_price=50.0,
-            ),
-        )
-        snap = Snapshot(sim, opts)
-        elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
-        elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
-        co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
-        makenodeinterco("IC", elec1, elec2, 2_000.0, 3_000.0, snap)
-        Nosy.optimize!(snap, cost(snap))
-        return extract(snap)
-    end
-
-    # Aggregated self costs should satisfy Physical + Trade = Total.
-    let
-        s = makesnapshot()
         d = POSY2._dataline_costs_aggregated(s; showforeign=false)
         @test isapprox(d.d["Physical"] + d.d["Trade"], d.d["Total"]; rtol=1e-12)
         @test isapprox(POSY2.selfcost(s) / 1e9, d.d["Total"]; rtol=1e-12)
     end
 
-    # Foreign import/export columns should be 0 when no foreign IC exists.
+    # Internal-only model: foreign import/export datalines are zero at every electricity node (TWh/y scale).
     let
-        s = makesnapshot()
+        snap, elec1, elec2, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
         for (k, _) in Nosy.getnodes(s, with=[:electricity], without=[:foreign])
             @test POSY2.imports_foreign(s, k; collapse=true) / 1e6 == 0.0
             @test POSY2.exports_foreign(s, k; collapse=true) / 1e6 == 0.0
         end
     end
 
-    # Interconnection volume dataline should scale MWh to TWh/y.
+    # IC volume matrix: ZONE2->ZONE1 cell is annual MWh flow divided by 1e6 (50 MW * nhours in default fixture).
     let
-        s = makesnapshot()
-        raw_mwh = 438_000.0
+        snap, elec1, elec2, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        expected_mwh = 50.0 * Nosy.nhours(sim(s))
         line = POSY2._dataline_ic_vol_detailed(s)
         @test line.unit == "TWh/y"
         v = line.d[line.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
-        @test v ≈ raw_mwh / 1e6
+        @test isapprox(v, expected_mwh / 1e6; rtol=1e-12)
     end
 
-    # Interconnection capacity dataline should scale MW to GW.
+    # IC capacity matrix: asymmetric forward/reverse caps (2000/3000 MW) are reported in GW (2.0/3.0).
     let
-        s = makesnapshot_ic_cap()
+        snap, elec1, elec2, _ = makesnapshot()
+        makenodeinterco("IC", elec1, elec2, 2_000.0, 3_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
         line = POSY2._dataline_ic_cap(s)
         @test line.unit == "GW"
-        v = line.d[line.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
-        @test v ≈ 2.0
+        v_fwd = line.d[line.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
+        v_rev = line.d[line.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
+        @test isapprox(v_fwd, 2.0; rtol=1e-12)
+        @test isapprox(v_rev, 3.0; rtol=1e-12)
     end
 
-    # Zero flow corridors should remain 0.0 in the annual matrix, not missing.
+    # IC exists but no injection: corridor cell is 0.0 (flow is zero), not missing.
     let
-        sim = Sim(Model(HiGHS.Optimizer))
-        opts = Dict(
-            :posy => POSY2Options(
-                data_dir=joinpath(dirname(@__DIR__), "data"),
-                techdata_file="tech_data_test.xlsx",
-                timeseries_file="time_series_test.xlsx",
-                discountrate=0.05,
-                co2_price=50.0,
-            ),
-        )
-        snap = Snapshot(sim, opts)
-        elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
-        elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
-        makenodeinterco("IC", elec1, elec2, Inf, Inf, snap)
+        snap, elec1, elec2, co2 = makesnapshot()
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
         line = POSY2._dataline_ic_vol_detailed(s)
@@ -110,16 +118,467 @@ using HiGHS
         @test !ismissing(v)
     end
 
-    # Total row in the interconnection volume dataline should sum populated cells.
+    # Zone pair with no IC component: matrix cell stays missing, not zero.
     let
-        s = makesnapshot()
+        snap, elec1, elec2, elec3, co2 = makesnapshot2()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec3, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("IC12", elec1, elec2, 10_000.0, 10_000.0, snap)
+        makenodeinterco("IC23", elec2, elec3, Inf, Inf, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        line = POSY2._dataline_ic_vol_detailed(s)
+        v = line.d[line.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE3"][1]
+        @test ismissing(v)
+    end
+
+    # IC volume matrix Total row equals column sum over non missing corridor rows.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
         line = POSY2._dataline_ic_vol_detailed(s)
         df = line.d
         datacols = [name for name in names(df)[2:end] if name != "> Total"]
         total_row = df[df[!, "From \\ To"] .== "Total >", :]
         for col in datacols
             expected = sum(df[i, col] for i in 1:(size(df, 1) - 1) if !ismissing(df[i, col]))
-            @test total_row[1, col] ≈ expected
+            @test isapprox(total_row[1, col], expected; rtol=1e-12)
         end
+    end
+
+    # NTC hours per corridor: count of hours where hourly flow equals capacity on ports with FixedCapacity behavior.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        c = Nosy.getcomponent(s, "IC_ZONE1_ZONE2")
+        line = POSY2._dataline_ic_hours_at_ntc(s)
+        df = line.d
+        for (corridor, port, flow_key) in (
+            ("ZONE1 > ZONE2", "input", "input"),
+            ("ZONE2 > ZONE1", "input2", "input2"),
+        )
+            v = df[df[!, "Interconnection"] .== corridor, "Hours at NTC"][1]
+            if Nosy.hascapacitybehavior(c, port)
+                flow = Float64.(Nosy.balance(c, :input, energy, collapse=false, aggregate=false)[flow_key])
+                cap = Float64.(Nosy.capacity(c, port, multiplier=true))
+                expected = Float64(sum(isapprox.(cap, flow) .& (cap .> 0)))
+                @test isapprox(v, expected; rtol=1e-12)
+            else
+                @test ismissing(v)
+            end
+        end
+    end
+
+    # Inf IC has no capacity behavior: NTC hours are missing, not zero.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        makenodeinterco("IC", elec1, elec2, Inf, Inf, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+        line = POSY2._dataline_ic_hours_at_ntc(s)
+        df = line.d
+        for corridor in ("ZONE1 > ZONE2", "ZONE2 > ZONE1")
+            v = df[df[!, "Interconnection"] .== corridor, "Hours at NTC"][1]
+            @test ismissing(v)
+        end
+    end
+
+    # Internal price IC selfcosts row: imports/exports/congestion rent match dedicated priceIC helpers.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        cname = "IC_ZONE2_ZONE1"
+        df = POSY2.selfcosts(s)
+        row = first(df[df[!, :component] .== cname, :])
+        imp = POSY2.selfinterconnectioncost_price(s, cname)
+        exp = POSY2.selfinterconnectionrevenue_price(s, cname)
+        cr = POSY2.selfcongestionrent_price(s, cname)
+        @test isapprox(row.imports, imp; rtol=1e-12)
+        @test isapprox(row.exports, -exp; rtol=1e-12)
+        @test isapprox(row[Symbol("congestion rent")], -cr; rtol=1e-12)
+    end
+
+    # Demand/production dataline with foreign price IC: ZONE1 shows foreign imports only; internal imports are zero.
+    let
+        snap, elec1, _, _ = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        line = POSY2._dataline_demand_prod(s; showforeign=false)
+        row = first(line.d[line.d.zone .== "ZONE1", :])
+        expected = POSY2.imports_foreign(s, "ZONE1"; collapse=true) / 1e6
+        @test isapprox(row["Imports (foreign)"], expected; rtol=1e-12)
+        @test row["Imports (internal)"] == 0.0
+    end
+
+    # Internal price IC: volume matrix cell matches imports_internal converted to TWh/y.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        line = POSY2._dataline_ic_vol_detailed(s)
+        v = line.d[line.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
+        expected = POSY2.imports_internal(s, "ZONE1"; collapse=true) / 1e6
+        @test isapprox(v, expected; rtol=1e-12)
+    end
+
+    # Foreign IC volume datalines (imports, exports, net) match helper totals scaled to TWh/y.
+    let
+        snap, elec1, _, _ = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        imp_line = POSY2._dataline_imports_vol(s)
+        exp_line = POSY2._dataline_exports_vol(s)
+        net_line = POSY2._dataline_net_ic_vol(s)
+        imp = POSY2.imports_foreign(s; collapse=true)
+        exp = POSY2.exports_foreign(s; collapse=true)
+        @test isapprox(imp_line.d["ZONE2 > ZONE1"], imp["ZONE2 > ZONE1"] / 1e6; rtol=1e-12)
+        @test isapprox(imp_line.d["Total"], sum(values(imp)) / 1e6; rtol=1e-12)
+        @test isapprox(exp_line.d["ZONE1 > ZONE2"], exp["ZONE1 > ZONE2"] / 1e6; rtol=1e-12)
+        @test isapprox(net_line.d["ZONE2 > ZONE1"], (imp["ZONE2 > ZONE1"] - exp["ZONE1 > ZONE2"]) / 1e6; rtol=1e-12)
+    end
+
+    # node helpers match component balances; ZONE1 energy balance closes with imports.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        h2 = Node("H2", EnergyCarrier("hydrogen", sim(snap)), rule=:curtailed, tags=[:hydrogen])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makeelectrolyser(
+            "EL", "PEM", elec1, h2, snap;
+            cap=10.0, gridlosses=0.0, eff=0.8,
+            overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
+            construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
+        )
+        makebatteries(
+            "Battery", "Battery", elec1, snap;
+            capin=100.0,
+            eff=0.9, duration=4.0,
+            overnight_cost=1000.0, om_fixed_cost=10.0,
+            decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
+            connection_cost=0.0, om_var_cost=1.0,
+        )
+        makedemandresponse("DR", elec1, 100.0, 50.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        zone2_prod = POSY2.production(s, "ZONE2"; collapse=true)
+        ccgt_z2_out = Nosy.balance(s, "CCGT ZONE2", :output, energy, collapse=true, aggregate=false)["output"]
+        @test isapprox(zone2_prod, ccgt_z2_out; rtol=1e-12)
+        el_out = Nosy.balance(s, "EL ZONE1", :input, energy, collapse=true, aggregate=false)["input"]
+        @test isapprox(POSY2.electrolysis(s, "ZONE1"; collapse=true), el_out; rtol=1e-12)
+        dr_out = Nosy.balance(s, "DR ZONE1", :output, energy, collapse=true, aggregate=true)
+        @test isapprox(POSY2.demandresponse(s, "ZONE1"; collapse=true), dr_out; rtol=1e-12)
+        char_bat = POSY2.charging(s; aggregate=false, collapse=true)["charging Battery ZONE1"]
+        @test isapprox(POSY2.charging(s, "ZONE1"; collapse=true), char_bat; rtol=1e-12)
+        @test POSY2.curtailment(s, "ZONE1"; collapse=true) == 0.0
+        @test POSY2.losses(s, "IC_ZONE1_ZONE2"; collapse=true) == 0.0
+        zone1_prod = POSY2.production(s, "ZONE1"; collapse=true)
+        imports = POSY2.imports_internal(s, "ZONE1"; collapse=true)
+        expected_demand = POSY2.demand(s, "ZONE1"; aggregate=true, collapse=true)
+        dis_z1 = POSY2.discharging(s; aggregate=false, collapse=true)["discharging Battery ZONE1"]
+        # Multi-term optimizer balance: rtol=1e-6 (looser than identity compares).
+        @test isapprox(
+            zone1_prod + imports,
+            expected_demand + el_out + char_bat - dis_z1;
+            rtol=1e-6,
+        )
+    end
+
+    # Yearly demand/production datalines scale component balances from MWh to TWh/y.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        h2 = Node("H2", EnergyCarrier("hydrogen", sim(snap)), rule=:curtailed, tags=[:hydrogen])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makeelectrolyser(
+            "EL", "PEM", elec1, h2, snap;
+            cap=10.0, gridlosses=0.0, eff=0.8,
+            overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
+            construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
+        )
+        makebatteries(
+            "Battery", "Battery", elec1, snap;
+            capin=100.0,
+            eff=0.9, duration=4.0,
+            overnight_cost=1000.0, om_fixed_cost=10.0,
+            decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
+            connection_cost=0.0, om_var_cost=1.0,
+        )
+        makedemandresponse("DR", elec1, 100.0, 50.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        demand_line = POSY2._dataline_yearly_demand(s; showforeign=false)
+        prod_line = POSY2._dataline_yearly_production(s; showforeign=false)
+        row = first(demand_line.d[demand_line.d.zone .== "ZONE1", :])
+        expected = POSY2.demand(s, "ZONE1"; aggregate=true, collapse=true) / 1e6
+        @test isapprox(row["Other consumption"], expected; rtol=1e-12)
+        prod_row = first(prod_line.d[prod_line.d.zone .== "ZONE2", :])
+        @test isapprox(prod_row["CCGT"], POSY2.production(s, "ZONE2"; collapse=true) / 1e6; rtol=1e-12)
+    end
+
+    # Installed capacity datalines report GW/GWe from fixture caps (CCGT, EL, Battery, DR, H2 storage).
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        h2 = Node("H2", EnergyCarrier("hydrogen", sim(snap)), rule=:curtailed, tags=[:hydrogen])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makeelectrolyser(
+            "EL", "PEM", elec1, h2, snap;
+            cap=10.0, gridlosses=0.0, eff=0.8,
+            overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
+            construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
+        )
+        makebatteries(
+            "Battery", "Battery", elec1, snap;
+            capin=100.0,
+            eff=0.9, duration=4.0,
+            overnight_cost=1000.0, om_fixed_cost=10.0,
+            decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
+            connection_cost=0.0, om_var_cost=1.0,
+        )
+        makedemandresponse("DR", elec1, 100.0, 50.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        prod_cap = POSY2._dataline_elec_prod_cap(s; showforeign=false)
+        elec_cap = POSY2._dataline_electrolysis_cap(s; showforeign=false)
+        stor_cap = POSY2._dataline_elec_storage_cap(s; showforeign=false)
+        stor_dis = POSY2._dataline_elec_storage_discharge_cap(s; showforeign=false)
+        stor_lvl = POSY2._dataline_elec_storage_cap_level(s; showforeign=false)
+        dr_cap = POSY2._dataline_demandresponse_cap(s; showforeign=false)
+        h2_cap = POSY2._dataline_hydrogen_storage_cap(s; showforeign=false)
+
+        @test prod_cap.unit == "GWe"
+        @test isapprox(first(prod_cap.d[prod_cap.d.zone .== "ZONE1", "CCGT"]), 0.05; rtol=1e-12)
+        @test isapprox(first(prod_cap.d[prod_cap.d.zone .== "ZONE2", "CCGT"]), 0.3; rtol=1e-12)
+        @test isapprox(first(elec_cap.d[elec_cap.d.zone .== "ZONE1", "EL"]), 0.01; rtol=1e-12)
+        @test isapprox(first(stor_cap.d[stor_cap.d.zone .== "ZONE1", "Battery"]), 0.1; rtol=1e-12)
+        @test isapprox(first(stor_dis.d[stor_dis.d.zone .== "ZONE1", "Battery"]), 0.1; rtol=1e-12)
+        @test isapprox(first(stor_lvl.d[stor_lvl.d.zone .== "ZONE1", "Battery"]), 0.0004; rtol=1e-12)
+        @test isapprox(first(dr_cap.d[dr_cap.d.zone .== "ZONE1", "DR"]), 0.1; rtol=1e-12)
+        @test h2_cap.unit == "GWh"
+    end
+
+    # Yearly energy datalines use TWh/y for electricity flows and t/y for CO2; charging matches helper total.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        h2 = Node("H2", EnergyCarrier("hydrogen", sim(snap)), rule=:curtailed, tags=[:hydrogen])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makeelectrolyser(
+            "EL", "PEM", elec1, h2, snap;
+            cap=10.0, gridlosses=0.0, eff=0.8,
+            overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
+            construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
+        )
+        makebatteries(
+            "Battery", "Battery", elec1, snap;
+            capin=100.0,
+            eff=0.9, duration=4.0,
+            overnight_cost=1000.0, om_fixed_cost=10.0,
+            decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
+            connection_cost=0.0, om_var_cost=1.0,
+        )
+        makedemandresponse("DR", elec1, 100.0, 50.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        charge_line = POSY2._dataline_yearly_charging(s; showforeign=false)
+        discharge_line = POSY2._dataline_yearly_discharging(s; showforeign=false)
+        elec_line = POSY2._dataline_yearly_electrolysis(s; showforeign=false)
+        dr_line = POSY2._dataline_yearly_demandresponse(s; showforeign=false)
+        co2_line = POSY2._dataline_yearly_co2(s; showforeign=false)
+
+        @test charge_line.unit == "TWh/y"
+        @test discharge_line.unit == "TWh/y"
+        @test elec_line.unit == "TWh/y"
+        @test dr_line.unit == "TWh/y"
+        @test co2_line.unit == "t/y"
+        @test isapprox(
+            first(charge_line.d[charge_line.d.zone .== "ZONE1", "Battery"]),
+            POSY2.charging(s, "ZONE1"; collapse=true) / 1e6;
+            rtol=1e-12,
+        )
+    end
+
+    # Derived annual indicators: capacity factors (%) and LCOE (USD/MWhe) include weighted average row.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        h2 = Node("H2", EnergyCarrier("hydrogen", sim(snap)), rule=:curtailed, tags=[:hydrogen])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makeelectrolyser(
+            "EL", "PEM", elec1, h2, snap;
+            cap=10.0, gridlosses=0.0, eff=0.8,
+            overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
+            construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
+        )
+        makebatteries(
+            "Battery", "Battery", elec1, snap;
+            capin=100.0,
+            eff=0.9, duration=4.0,
+            overnight_cost=1000.0, om_fixed_cost=10.0,
+            decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
+            connection_cost=0.0, om_var_cost=1.0,
+        )
+        makedemandresponse("DR", elec1, 100.0, 50.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        cf_line = POSY2._dataline_capacityfactors(s; showforeign=false)
+        el_cf_line = POSY2._dataline_electrolysers_capacityfactors(s; showforeign=false)
+        lcoe_line = POSY2._dataline_lcoe(s; showforeign=false)
+        @test cf_line.unit == "Energy %"
+        @test el_cf_line.unit == "Energy %"
+        @test lcoe_line.unit == "USD/MWhe"
+        @test "CCGT" in names(cf_line.d)
+        @test "EL" in names(el_cf_line.d)
+        @test lcoe_line.d[end, "zone"] == "Weighted average"
+    end
+
+    # Cost/earnings/price received datalines use expected units (Bn USD, USD/MWh) and component detail table.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        h2 = Node("H2", EnergyCarrier("hydrogen", sim(snap)), rule=:curtailed, tags=[:hydrogen])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makeelectrolyser(
+            "EL", "PEM", elec1, h2, snap;
+            cap=10.0, gridlosses=0.0, eff=0.8,
+            overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
+            construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
+        )
+        makebatteries(
+            "Battery", "Battery", elec1, snap;
+            capin=100.0,
+            eff=0.9, duration=4.0,
+            overnight_cost=1000.0, om_fixed_cost=10.0,
+            decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
+            connection_cost=0.0, om_var_cost=1.0,
+        )
+        makedemandresponse("DR", elec1, 100.0, 50.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        cost_line = POSY2._dataline_yearly_cost(s; showforeign=false)
+        earn_line = POSY2._dataline_yearly_earnings(s; showforeign=false)
+        price_line = POSY2._dataline_yearly_price_received(s; showforeign=false)
+        detail_line = POSY2._dataline_costs(s; showforeign=false)
+        @test cost_line.unit == "Billions USD (2024)"
+        @test earn_line.unit == "Billions USD (2024)"
+        @test price_line.unit == "USD/MWh"
+        @test detail_line.unit == "Billion USD (2024)"
+        @test "Component" in names(detail_line.d)
+        @test "total" in names(detail_line.d)
+    end
+
+    # showforeign=false (selfcosts) omits foreign node components; showforeign=true (costs) includes them.
+    let
+        sim = tsim()
+        snap = Snapshot(sim, posyopts())
+        elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity, :foreign])
+        co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        self_detail = POSY2._dataline_costs(s; showforeign=false)
+        all_detail = POSY2._dataline_costs(s; showforeign=true)
+        self_components = Set(self_detail.d.Component)
+        all_components = Set(all_detail.d.Component)
+        @test "CCGT ZONE2" in all_components
+        @test !("CCGT ZONE2" in self_components)
+        @test length(all_components) > length(self_components)
+        ccgt_z2_total = first(all_detail.d[all_detail.d.Component .== "CCGT ZONE2", :total])
+        @test ccgt_z2_total > 0.0
+    end
+
+    # without foreign nodes: self and all cost tables have the same component set.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        h2 = Node("H2", EnergyCarrier("hydrogen", sim(snap)), rule=:curtailed, tags=[:hydrogen])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makeelectrolyser(
+            "EL", "PEM", elec1, h2, snap;
+            cap=10.0, gridlosses=0.0, eff=0.8,
+            overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
+            construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
+        )
+        makebatteries(
+            "Battery", "Battery", elec1, snap;
+            capin=100.0,
+            eff=0.9, duration=4.0,
+            overnight_cost=1000.0, om_fixed_cost=10.0,
+            decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
+            connection_cost=0.0, om_var_cost=1.0,
+        )
+        makedemandresponse("DR", elec1, 100.0, 50.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        self_detail = POSY2._dataline_costs(s; showforeign=false)
+        all_detail = POSY2._dataline_costs(s; showforeign=true)
+        @test Set(self_detail.d.Component) == Set(all_detail.d.Component)
+        @test isapprox(
+            sum(skipmissing(self_detail.d.total)),
+            sum(skipmissing(all_detail.d.total));
+            rtol=1e-12,
+        )
+    end
+
+    # Cost table cleanup: rows with all zero numeric columns are dropped.
+    let
+        df = DataFrame(component=["A", "B", "C"], fuel=[0.0, 1.0, 0.0], total=[0.0, 1.0, 0.0])
+        POSY2._removezerorows!(df)
+        @test df.component == ["B"]
     end
 end

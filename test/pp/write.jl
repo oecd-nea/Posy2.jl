@@ -1,0 +1,152 @@
+using POSY2
+using Nosy
+using Test
+using JuMP
+using HiGHS
+using XLSX
+using DataFrames
+
+@testset "Post processing write" begin
+    function tsim()
+        sim = Sim(Model(HiGHS.Optimizer))
+        set_silent(sim.model)
+        return sim
+    end
+
+    function posyopts()
+        return Dict(
+            :posy => POSY2Options(
+                data_dir=joinpath(dirname(@__DIR__), "data"),
+                techdata_file="tech_data_test.xlsx",
+                timeseries_file="time_series_test.xlsx",
+                discountrate=0.05,
+                co2_price=50.0,
+            ),
+        )
+    end
+
+    function makesnapshot()
+        sim = tsim()
+        snap = Snapshot(sim, posyopts())
+        elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
+        return snap, elec1, elec2, co2
+    end
+
+    # Full PP bundle: four report sections (annual self/all, time series, price curves) with expected types.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        h2 = Node("H2", EnergyCarrier("hydrogen", sim(snap)), rule=:curtailed, tags=[:hydrogen])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makeelectrolyser(
+            "EL", "PEM", elec1, h2, snap;
+            cap=10.0, gridlosses=0.0, eff=0.8,
+            overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
+            construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
+        )
+        makebatteries(
+            "Battery", "Battery", elec1, snap;
+            capin=100.0,
+            eff=0.9, duration=4.0,
+            overnight_cost=1000.0, om_fixed_cost=10.0,
+            decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
+            connection_cost=0.0, om_var_cost=1.0,
+        )
+        makedemandresponse("DR", elec1, 100.0, 50.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        dat = POSY2._gensnapshotpp(s)
+        @test haskey(dat, "Annual values (all)")
+        @test haskey(dat, "Annual values (self)")
+        @test haskey(dat, "Time series")
+        @test haskey(dat, "Price duration curves")
+        @test dat["Time series"] isa DataFrame
+        @test dat["Price duration curves"] isa DataFrame
+        @test dat["Annual values (self)"] isa AbstractVector
+        @test dat["Annual values (all)"] isa AbstractVector
+    end
+
+    # Excel writer for DataFrame DataLines: missing cells are written as missing, not zero.
+    let
+        df = DataFrame(
+            "From \\ To" => ["ZONE1 >", "ZONE2 >"],
+            "> ZONE1" => [1.0, missing],
+            "> ZONE2" => [missing, 2.0],
+        )
+        line = POSY2.DataLine("IC volume", "TWh/y", df)
+        filepath = joinpath(mktempdir(), "pp_write_missing.xlsx")
+        XLSX.openxlsx(filepath, mode="w") do xf
+            sh = xf[1]
+            POSY2.__write_to_sheet!(sh, line)
+            @test sh[4, 2] == 1.0
+            @test ismissing(sh[5, 2])
+            @test ismissing(sh[4, 3])
+            @test sh[5, 3] == 2.0
+        end
+    end
+
+    # Excel writer for dict DataLines: float values are rounded to three decimals.
+    let
+        line = POSY2.DataLine("Costs", "B USD", Dict("Physical" => 1.23456, "Trade" => 2.0))
+        filepath = joinpath(mktempdir(), "pp_write_dict.xlsx")
+        XLSX.openxlsx(filepath, mode="w") do xf
+            sh = xf[1]
+            POSY2.__write_to_sheet!(sh, line)
+            @test sh[3, 1] == "Physical"
+            @test sh[4, 1] == 1.235
+            @test sh[3, 2] == "Trade"
+            @test sh[4, 2] == 2.0
+        end
+    end
+
+    # _printsnapshot writes an xlsx with the four named sheets in order.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        h2 = Node("H2", EnergyCarrier("hydrogen", sim(snap)), rule=:curtailed, tags=[:hydrogen])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makeelectrolyser(
+            "EL", "PEM", elec1, h2, snap;
+            cap=10.0, gridlosses=0.0, eff=0.8,
+            overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
+            construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
+        )
+        makebatteries(
+            "Battery", "Battery", elec1, snap;
+            capin=100.0,
+            eff=0.9, duration=4.0,
+            overnight_cost=1000.0, om_fixed_cost=10.0,
+            decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
+            connection_cost=0.0, om_var_cost=1.0,
+        )
+        makedemandresponse("DR", elec1, 100.0, 50.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        dat = POSY2._gensnapshotpp(s)
+        filepath = joinpath(mktempdir(), "pp_snapshot.xlsx")
+        POSY2._printsnapshot(dat, filepath)
+        @test isfile(filepath)
+        XLSX.openxlsx(filepath) do xf
+            @test XLSX.sheetnames(xf) == [
+                "Annual values (all)",
+                "Annual values (self)",
+                "Time series",
+                "Price duration curves",
+            ]
+        end
+    end
+
+    # printsnapshot requires an optimized snapshot; unoptimized snapshot raises AssertionError.
+    let
+        snap = Snapshot(tsim(), posyopts())
+        @test_throws AssertionError POSY2.printsnapshot(snap, "should_fail.xlsx")
+    end
+end

@@ -7,6 +7,7 @@ using HiGHS
 @testset "Interconnection components" begin
     function makesnapshot()
         sim = Sim(Model(HiGHS.Optimizer))
+        set_silent(sim.model)
         opts = Dict(
             :posy => POSY2Options(
                 data_dir=joinpath(dirname(@__DIR__), "data"),
@@ -28,6 +29,10 @@ using HiGHS
         c = makenodeinterco("IC", elec1, elec2, Inf, Inf, s)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "IC_ZONE1_ZONE2") === c
+        @test Nosy.hastag(c, :function, "nodeinterconnection")
+        zone1_ics = Nosy.getcomponents(s, "ZONE1"; with=[:function => "interconnection", :function => "nodeinterconnection"])
+        @test length(zone1_ics) == 1
+        @test haskey(zone1_ics, "IC_ZONE1_ZONE2")
     end
 
     # Price interconnection succeeds when zone series exist in the fixture.
@@ -36,12 +41,9 @@ using HiGHS
         c = makepriceinterco("ZONE2", elec1, 100.0, 100.0, s)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "IC_ZONE2_ZONE1") === c
-        @test Nosy.hastag(c, :priceinterconnection)
-        @test Nosy.hastag(c, :ZONE2)
-        kind = (:interconnection, :priceinterconnection, :foreign)
-        zones = [t for t in c.tags if !(t in kind)]
-        @test length(zones) == 1
-        @test string(only(zones)) == "ZONE2"
+        @test Nosy.hastag(c, :function, "priceinterconnection")
+        @test Nosy.hastag(c, :neighbor, "ZONE2")
+        @test get(c.tags, :neighbor, String[]) == ["ZONE2"]
     end
 
     # Price interconnection fails when spot/transfer columns for the zone are missing.

@@ -34,7 +34,7 @@ function production(s::Snapshot, nodename::String; modifier=energy, collapse=tru
     else
         ini = zeros(nhours(sim(s)))
     end
-    d = getcomponents(s, nodename, with=[:generation])
+    d = getcomponents(s, nodename, with=[:function => "generation"])
     val = sum([balance(v, :output, modifier, collapse=collapse, aggregate=false)["output"] for (k,v) in d], init=ini)
     return val  
 end
@@ -46,8 +46,8 @@ If `collapse`, return a Dict of values instead.
 For EVs, return the charging minus the driving consumption, resulting in the effective pure charging behavior (should be zero for non-V2G EVs).
 """
 function charging(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    ds = getcomponents(s, nodename, with=[:storage])
-    dev = getcomponents(s, nodename, with=[:ev])
+    ds = getcomponents(s, nodename, with=[:function => "storage"])
+    dev = getcomponents(s, nodename, with=[:function => "ev"])
     if collapse
         local c = 0.
     else
@@ -65,8 +65,13 @@ function charging(s::Snapshot, nodename::String; modifier=energy, collapse=true)
     return c
 end
 
+"""
+    storageloss(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+Return the time series associated with storage charging losses of `modifier` in node named `nodename` of Snapshot `s`.
+If `collapse`, return a value instead.
+"""
 function storageloss(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = getcomponents(s, nodename, with=[:storage, :ev])
+    d = getcomponents(s, nodename, with=[:function => "storage", :function => "ev"])
     if collapse
         local c = 0.
     else
@@ -88,108 +93,6 @@ function storageloss(s::Snapshot, nodename::String; modifier=energy, collapse=tr
 end
 
 """
-    imports_internal(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-Return a Dict of the time series associated with internal (non-foreign) imports of `modifier` in node named `nodename` of Snapshot `s`.
-If `collapse`, return a Dict of values instead.
-"""
-function imports_internal(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = LittleDict{String,Union{Float64,Nosy.AbstractTimeSeries{Float64}}}()
-    for (k,v) in imports_internal(s, collapse=collapse)
-        s = split(k, ' ')
-        if s[3] == nodename
-            d[s[1]] = v
-        end
-    end
-
-    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
-    return d
-end
-
-"""
-    exports_internal(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-Return a Dict of the time series associated with internal (non-foreign) exports of `modifier` in node named `nodename` of Snapshot `s`.
-If `collapse`, return a Dict of values instead.
-"""
-function exports_internal(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = LittleDict{String,Union{Float64,Nosy.AbstractTimeSeries{Float64}}}()
-    for (k,v) in exports_internal(s, collapse=collapse)
-        s = split(k, ' ')
-        if s[1] == nodename
-            d[s[3]] = v
-        end
-    end
-
-    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
-
-    return d
-end
-
-function imports_all(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = LittleDict{String,Union{Float64,Nosy.AbstractTimeSeries{Float64}}}()
-    for (k,v) in imports_all(s, collapse=collapse)
-        s = split(k, ' ')
-        if s[3] == nodename
-            d[s[1]] = v
-        end
-    end
-
-    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
-    return d
-end
-
-function exports_all(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = LittleDict{String,Union{Float64,Nosy.AbstractTimeSeries{Float64}}}()
-    for (k,v) in exports_all(s, collapse=collapse)
-        s = split(k, ' ')
-        if s[1] == nodename
-            d[s[3]] = v
-        end
-    end
-
-    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
-
-    return d
-end
-
-"""
-    imports_foreign(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-Return a Dict of the time series associated with external (foreign) imports of `modifier` in node named `nodename` of Snapshot `s`.
-If `collapse`, return a Dict of values instead.
-"""
-function imports_foreign(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = LittleDict{String,Union{Float64,Nosy.AbstractTimeSeries{Float64}}}()
-    for (k,v) in imports_foreign(s, collapse=collapse)
-        s = split(k, ' ')
-        if s[3] == nodename
-            d[s[1]] = v
-        end
-    end
-
-    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
-
-    return d
-end
-
-"""
-    exports_foreign(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-Return a Dict of the time series associated with external (foreign) exports of `modifier` in node named `nodename` of Snapshot `s`.
-If `collapse`, return a Dict of values instead.
-"""
-function exports_foreign(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = LittleDict{String,Union{Float64,Nosy.AbstractTimeSeries{Float64}}}()
-    for (k,v) in exports_foreign(s, collapse=collapse)
-        s = split(k, ' ')
-        if s[1] == nodename
-            d[s[3]] = v
-        end
-    end
-
-    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
-
-    return d
-end
-
-"""
     curtailment(s::Snapshot, nodename::String; modifier=energy, collapse=true)
 Return a Dict of the time series associated with curtailment of `modifier` in node named `nodename` of Snapshot `s`.
 If `collapse`, return a Dict of values instead.
@@ -208,7 +111,7 @@ function curtailment(s::Snapshot, nodename::String; modifier=energy, collapse=tr
         end
         b = balance(Nosy.getnode(s, nodename), :output, modifier, collapse=collapse, aggregate=false)
         for (k,v) in b
-            if k != "losses" && hastag(Nosy.getcomponent(s, k), :curtailment)
+            if k != "losses" && hastag(Nosy.getcomponent(s, k), :function, "curtailment")
                 cur += v
             end
         end
@@ -227,7 +130,7 @@ function demandresponse(s::Snapshot, nodename::String; modifier=energy, collapse
     else
         ini = zeros(nhours(sim(s)))
     end
-    d = getcomponents(s, nodename, with=[:demandresponse])
+    d = getcomponents(s, nodename, with=[:function => "demandresponse"])
     dem = sum([balance(v, :output, modifier, collapse=collapse, aggregate=true) for (k,v) in d], init=ini)
     return dem  
 end
@@ -243,7 +146,7 @@ function electrolysis(s::Snapshot, nodename::String; collapse=true)
     else
         ini = zeros(nhours(sim(s)))
     end
-    d = getcomponents(s, nodename, with=[:electrolysis])
+    d = getcomponents(s, nodename, with=[:function => "electrolysis"])
     dem = sum([balance(v, :input, energy, collapse=collapse, aggregate=false)["input"] for (k,v) in d], init=ini)
     return dem
 end
@@ -272,14 +175,49 @@ function _dataline_demand_prod(s; showforeign=true)
     d["Grid losses"] = [sum([losses(s, cname)/1E6 for (cname, c) in getcomponents(s, k)], init=0.)  for (k,_) in enodes]
     # d["Electrolysis"] = [electrolysis(s,k)/1E6 for (k,_) in enodes] # already included in final consumption
 
+    flows = _all_ic_directed_flows(s; collapse=true)
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
+    zone_keys = d["zone"]
+    enode_set = Set(zone_keys)
+    imp_all = Dict(k => LittleDict{String, Float64}() for k in zone_keys)
+    exp_all = Dict(k => LittleDict{String, Float64}() for k in zone_keys)
+    imp_int = Dict(k => LittleDict{String, Float64}() for k in zone_keys)
+    exp_int = Dict(k => LittleDict{String, Float64}() for k in zone_keys)
+    imp_for = Dict(k => LittleDict{String, Float64}() for k in zone_keys)
+    exp_for = Dict(k => LittleDict{String, Float64}() for k in zone_keys)
+    for ((from, to), flow) in flows
+        if to in enode_set
+            if from != to
+                imp_all[to][from] = flow
+                if haskey(selfnodes, from)
+                    imp_int[to][from] = flow
+                end
+            end
+            if !haskey(selfnodes, from)
+                imp_for[to][from] = flow
+            end
+        end
+        if from in enode_set
+            if from != to
+                exp_all[from][to] = flow
+                if haskey(selfnodes, to)
+                    exp_int[from][to] = flow
+                end
+            end
+            if !haskey(selfnodes, to)
+                exp_for[from][to] = flow
+            end
+        end
+    end
+    _ic_vol_sum(partners) = sum(values(partners), init=0.0) / 1E6
     if showforeign
-        d["Imports"] = [imports_all(s,k)/1E6 for(k,_) in enodes]
-        d["Exports"] = [exports_all(s,k)/1E6 for(k,_) in enodes]
+        d["Imports"] = [_ic_vol_sum(imp_all[k]) for k in zone_keys]
+        d["Exports"] = [_ic_vol_sum(exp_all[k]) for k in zone_keys]
     else
-        d["Imports (internal)"] = [imports_internal(s,k)/1E6 for(k,_) in enodes]
-        d["Exports (internal)"] = [exports_internal(s,k)/1E6 for(k,_) in enodes]
-        d["Imports (foreign)"] = [imports_foreign(s,k)/1E6 for(k,_) in enodes]
-        d["Exports (foreign)"] = [exports_foreign(s,k)/1E6 for(k,_) in enodes]
+        d["Imports (internal)"] = [_ic_vol_sum(imp_int[k]) for k in zone_keys]
+        d["Exports (internal)"] = [_ic_vol_sum(exp_int[k]) for k in zone_keys]
+        d["Imports (foreign)"] = [_ic_vol_sum(imp_for[k]) for k in zone_keys]
+        d["Exports (foreign)"] = [_ic_vol_sum(exp_for[k]) for k in zone_keys]
     end
     d["Demand response"] = [demandresponse(s,k)/1E6 for (k,_) in enodes]
     d["Curtailment"] = [curtailment(s,k)/1E6 for(k,_) in enodes]
@@ -298,14 +236,14 @@ function _dataline_demand_prod(s; showforeign=true)
 end
 
 # return a DataLine for capacity with specified parameters
-function __dataline_cap(s::Snapshot, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Symbol}, compswithout::Vector{Symbol}, portname::String, title::String, unit::String, coeff=1E3)
+function __dataline_cap(s::Snapshot, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Pair{Symbol,String}}, compswithout::Vector{Pair{Symbol,String}}, portname::String, title::String, unit::String, coeff=1E3)
     allcomps = String[]
     allnodes = getnodes(s, with=nodeswith, without=nodeswithout)
-    for (nodename, _) in allnodes
-        d = getcomponents(s, nodename, with=compswith, without=compswithout)
-        # list components connected to this zone (names as in Excel sheet)
-        lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
-        for cname in lcomps
+    allnode_comps = Dict(nodename => getcomponents(s, nodename, with=compswith, without=compswithout) for (nodename, _) in allnodes)
+    for (_, d) in allnode_comps
+        # list components connected to this zone (tech tag values, as in Excel sheet)
+        for (_, comp) in d
+            cname = only(get(comp.tags, :tech, String[]))
             !(cname in allcomps) && push!(allcomps, cname)
         end
     end
@@ -313,31 +251,21 @@ function __dataline_cap(s::Snapshot, nodeswith::Vector{Symbol}, nodeswithout::Ve
     df = DataFrame([name => [] for name in vcat(["zone"], allcomps)])
     for (nodename,_) in allnodes
         v = Any[nodename]
-        d = getcomponents(s, nodename, with=compswith, without=compswithout)
+        d = allnode_comps[nodename]
+        compbytech = Dict(only(get(comp.tags, :tech, String[])) => comp for (_, comp) in d)
         for cname in allcomps
-            c = nothing
-            for (k, comp) in d
-                if replace(k, " " * nodename => "") == cname
-                    c = comp
-                    break
-                end
-            end
-            if c === nothing
+            comp = get(compbytech, cname, nothing)
+            if comp === nothing
                 push!(v, 0.)
-            elseif Nosy.hasport(c, portname)
-                cap = capacity(c, portname)
-                if !isnothing(cap)
-                    push!(v, cap / coeff)
-                else
-                    push!(v, Inf)
-                end
+            elseif Nosy.hasport(comp, portname)
+                cap = capacity(comp, portname)
+                push!(v, isnothing(cap) ? Inf : cap / coeff)
             else
                 push!(v, 0.)
             end
         end
         push!(df, permutedims(v))
     end
-
 
     # sum over zones and components
     _lastrow = permutedims(vcat("Total", [sum(c) for c in eachcol(df)[2:end]]))
@@ -353,9 +281,9 @@ end
 
 function _dataline_elec_prod_cap(s; showforeign=true)
     if showforeign
-        __dataline_cap(s, [:electricity], Symbol[], [:generation], Symbol[], "output", "Electrical production capacity", "GWe")
+        __dataline_cap(s, [:electricity], Symbol[], [:function => "generation"], Pair{Symbol,String}[], "output", "Electrical production capacity", "GWe")
     else
-        __dataline_cap(s, [:electricity], [:foreign], [:generation], Symbol[], "output", "Electrical production capacity", "GWe")
+        __dataline_cap(s, [:electricity], [:foreign], [:function => "generation"], Pair{Symbol,String}[], "output", "Electrical production capacity", "GWe")
     end
 end
 
@@ -372,11 +300,11 @@ end
 
 function _dataline_elec_storage_cap(s; showforeign=true) 
     if showforeign
-        d1 = __dataline_cap(s, [:electricity], Symbol[], [:storage], Symbol[], "input", "Electrical storage charging capacity", "GWe")
-        d2 = __dataline_cap(s, [:electricity], Symbol[], [:ev], Symbol[], "input", "Electrical storage charging capacity", "GWe")
+        d1 = __dataline_cap(s, [:electricity], Symbol[], [:function => "storage"], Pair{Symbol,String}[], "input", "Electrical storage charging capacity", "GWe")
+        d2 = __dataline_cap(s, [:electricity], Symbol[], [:function => "ev"], Pair{Symbol,String}[], "input", "Electrical storage charging capacity", "GWe")
     else
-        d1 = __dataline_cap(s, [:electricity], [:foreign], [:storage], Symbol[], "input", "Electrical storage charging capacity", "GWe")
-        d2 = __dataline_cap(s, [:electricity], [:foreign], [:ev], Symbol[], "input", "Electrical storage charging capacity", "GWe")
+        d1 = __dataline_cap(s, [:electricity], [:foreign], [:function => "storage"], Pair{Symbol,String}[], "input", "Electrical storage charging capacity", "GWe")
+        d2 = __dataline_cap(s, [:electricity], [:foreign], [:function => "ev"], Pair{Symbol,String}[], "input", "Electrical storage charging capacity", "GWe")
     end
     # merge DataLines
     df = _merge_annual_df(d1.d, d2.d)
@@ -389,11 +317,11 @@ end
 
 function _dataline_elec_storage_discharge_cap(s; showforeign=true)
     if showforeign
-        d1 = __dataline_cap(s, [:electricity], Symbol[], [:storage], Symbol[], "output", "Electrical storage discharging capacity", "GWe")
-        d2 = __dataline_cap(s, [:electricity], Symbol[], [:ev], Symbol[], "output", "Electrical storage discharging capacity", "GWe")
+        d1 = __dataline_cap(s, [:electricity], Symbol[], [:function => "storage"], Pair{Symbol,String}[], "output", "Electrical storage discharging capacity", "GWe")
+        d2 = __dataline_cap(s, [:electricity], Symbol[], [:function => "ev"], Pair{Symbol,String}[], "output", "Electrical storage discharging capacity", "GWe")
     else
-        d1 = __dataline_cap(s, [:electricity], [:foreign], [:storage], Symbol[], "output", "Electrical storage discharging capacity", "GWe")
-        d2 = __dataline_cap(s, [:electricity], [:foreign], [:ev], Symbol[], "output", "Electrical storage discharging capacity", "GWe")
+        d1 = __dataline_cap(s, [:electricity], [:foreign], [:function => "storage"], Pair{Symbol,String}[], "output", "Electrical storage discharging capacity", "GWe")
+        d2 = __dataline_cap(s, [:electricity], [:foreign], [:function => "ev"], Pair{Symbol,String}[], "output", "Electrical storage discharging capacity", "GWe")
     end
     df = _merge_annual_df(d1.d, d2.d)
     d = DataLine(
@@ -405,11 +333,11 @@ end
 
 function _dataline_elec_storage_cap_level(s; showforeign=true) 
     if showforeign
-        d1 = __dataline_cap(s, [:electricity], Symbol[], [:storage], Symbol[], "level", "Electrical storage max level", "TWhe", 1E6)
-        d2 = __dataline_cap(s, [:electricity], Symbol[], [:ev], Symbol[], "level", "Electrical storage max level", "TWhe", 1E6)
+        d1 = __dataline_cap(s, [:electricity], Symbol[], [:function => "storage"], Pair{Symbol,String}[], "level", "Electrical storage max level", "TWhe", 1E6)
+        d2 = __dataline_cap(s, [:electricity], Symbol[], [:function => "ev"], Pair{Symbol,String}[], "level", "Electrical storage max level", "TWhe", 1E6)
     else
-        d1 = __dataline_cap(s, [:electricity], [:foreign], [:storage], Symbol[], "level", "Electrical storage max level", "TWhe", 1E6)
-        d2 = __dataline_cap(s, [:electricity], [:foreign], [:ev], Symbol[], "level", "Electrical storage max level", "TWhe", 1E6)
+        d1 = __dataline_cap(s, [:electricity], [:foreign], [:function => "storage"], Pair{Symbol,String}[], "level", "Electrical storage max level", "TWhe", 1E6)
+        d2 = __dataline_cap(s, [:electricity], [:foreign], [:function => "ev"], Pair{Symbol,String}[], "level", "Electrical storage max level", "TWhe", 1E6)
     end
     # merge DataLines
     df = _merge_annual_df(d1.d, d2.d)
@@ -422,15 +350,15 @@ end
 
 function _dataline_electrolysis_cap(s; showforeign=true) 
     if showforeign
-        __dataline_cap(s, [:electricity], Symbol[], [:electrolysis], Symbol[], "input", "Electrolysis capacity", "GWe")
+        __dataline_cap(s, [:electricity], Symbol[], [:function => "electrolysis"], Pair{Symbol,String}[], "input", "Electrolysis capacity", "GWe")
     else
-        __dataline_cap(s, [:electricity], [:foreign], [:electrolysis], Symbol[], "input", "Electrolysis capacity", "GWe")
+        __dataline_cap(s, [:electricity], [:foreign], [:function => "electrolysis"], Pair{Symbol,String}[], "input", "Electrolysis capacity", "GWe")
     end
 end
 
 function _dataline_hydrogen_storage_cap(s; showforeign=true)
     nodeswithout = showforeign ? Symbol[] : [:foreign]
-    d = __dataline_cap(s, [:hydrogen], nodeswithout, [:storage], Symbol[], "level", "Hydrogen storage capacity", "GWh", 1E3)
+    d = __dataline_cap(s, [:hydrogen], nodeswithout, [:function => "storage"], Pair{Symbol,String}[], "level", "Hydrogen storage capacity", "GWh", 1E3)
     d.d[!,:zone] = replace.(String.(d.d[!,:zone]), r"^Hydrogen\s+" => "")
     return d
 end
@@ -446,11 +374,11 @@ function _dataline_demandresponse_cap(s; showforeign=true)
     else
         allnodes = getnodes(s, with=[:electricity], without=[:foreign])
     end
-    for (nodename, _) in allnodes
-        d = getcomponents(s, nodename, with=[:demandresponse])
-        # list components connected to this zone (names as in Excel sheet)
-        lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
-        for cname in lcomps
+    allnode_comps = Dict(nodename => getcomponents(s, nodename, with=[:function => "demandresponse"]) for (nodename, _) in allnodes)
+    for (_, d) in allnode_comps
+        # list components connected to this zone (tech tag values, as in Excel sheet)
+        for (_, comp) in d
+            cname = only(get(comp.tags, :tech, String[]))
             !(cname in allcomps) && push!(allcomps, cname)
         end
     end
@@ -459,15 +387,10 @@ function _dataline_demandresponse_cap(s; showforeign=true)
     df = DataFrame([name => [] for name in vcat(["zone"], allcomps)])
     for (nodename,_) in allnodes
         v = Any[nodename]
-        d = getcomponents(s, nodename, with=[:demandresponse])
+        d = allnode_comps[nodename]
+        compbytech = Dict(only(get(comp.tags, :tech, String[])) => comp for (_, comp) in d)
         for cname in allcomps
-            c = nothing
-            for (k, comp) in d
-                if replace(k, " " * nodename => "") == cname
-                    c = comp
-                    break
-                end
-            end
+            c = get(compbytech, cname, nothing)
             if c === nothing
                 push!(v, "")
             else
@@ -508,13 +431,13 @@ function _dataline_demandresponse_cap(s; showforeign=true)
 end
 
 
-function __dataline_yearly(s::Snapshot, modifier::Function, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Symbol}, compswithout::Vector{Symbol}, portname::String, title::String, unit::String; factor=1)
+function __dataline_yearly(s::Snapshot, modifier::Function, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Pair{Symbol,String}}, compswithout::Vector{Pair{Symbol,String}}, portname::String, title::String, unit::String; factor=1)
     allcomps = String[]
     allnodes = getnodes(s, with=nodeswith, without=nodeswithout) # not including foreign nodes
-    for (nodename, _) in allnodes
-        d = getcomponents(s, nodename, with=compswith, without=compswithout)
-        lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
-        for cname in lcomps
+    allnode_comps = Dict(nodename => getcomponents(s, nodename, with=compswith, without=compswithout) for (nodename, _) in allnodes)
+    for (_, d) in allnode_comps
+        for (_, comp) in d
+            cname = only(get(comp.tags, :tech, String[]))
             !(cname in allcomps) && push!(allcomps, cname)
         end
     end
@@ -524,28 +447,19 @@ function __dataline_yearly(s::Snapshot, modifier::Function, nodeswith::Vector{Sy
 
     for (nodename,_) in allnodes
         v = Any[nodename]
-        d = getcomponents(s, nodename, with=compswith, without=compswithout)
+        d = allnode_comps[nodename]
+        compbytech = Dict(only(get(comp.tags, :tech, String[])) => comp for (_, comp) in d)
         for cname in allcomps
-            c = nothing
-            for (k, comp) in d
-                if replace(k, " " * nodename => "") == cname
-                    c = comp
-                    break
-                end
-            end
-            if c === nothing
+            comp = get(compbytech, cname, nothing)
+            if comp === nothing
                 push!(v, 0.)
             else
-                bout = balance(c, :output, modifier, collapse=true, aggregate=false)
+                bout = balance(comp, :output, modifier, collapse=true, aggregate=false)
                 if haskey(bout, portname)
                     push!(v, bout[portname] / factor)
                 else
-                    bin = balance(c, :input, modifier, collapse=true, aggregate=false)
-                    if haskey(bin, portname)
-                        push!(v, bin[portname] / factor)
-                    else
-                        push!(v, 0.)
-                    end
+                    bin = balance(comp, :input, modifier, collapse=true, aggregate=false)
+                    push!(v, haskey(bin, portname) ? bin[portname] / factor : 0.)
                 end
             end
         end
@@ -566,11 +480,11 @@ end
 
 function _dataline_yearly_demand(s; showforeign=true)
     if showforeign
-        d1 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:demand], Symbol[], "input", "Electrical final consumption (grid losses excluded)", "TWh/y", factor=1E6)
-        d2 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:ev], Symbol[], "driving", "EV", "TWh/y", factor=1E6)
+        d1 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:function => "demand"], Pair{Symbol,String}[], "input", "Electrical final consumption (grid losses excluded)", "TWh/y", factor=1E6)
+        d2 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:function => "ev"], Pair{Symbol,String}[], "driving", "EV", "TWh/y", factor=1E6)
     else
-        d1 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:demand], Symbol[], "input", "Electrical final consumption (grid losses excluded)", "TWh/y", factor=1E6)
-        d2 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:ev], Symbol[], "driving", "EV", "TWh/y", factor=1E6)
+        d1 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:function => "demand"], Pair{Symbol,String}[], "input", "Electrical final consumption (grid losses excluded)", "TWh/y", factor=1E6)
+        d2 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:function => "ev"], Pair{Symbol,String}[], "driving", "EV", "TWh/y", factor=1E6)
     end
     # merge DataLines
     df = _merge_annual_df(d1.d, d2.d)
@@ -583,19 +497,19 @@ end
 
 function _dataline_yearly_production(s; showforeign=true)
     if showforeign
-        __dataline_yearly(s, energy, [:electricity], Symbol[], [:generation], Symbol[], "output", "Electrical production (Net)", "TWh/y", factor=1E6)
+        __dataline_yearly(s, energy, [:electricity], Symbol[], [:function => "generation"], Pair{Symbol,String}[], "output", "Electrical production (Net)", "TWh/y", factor=1E6)
     else
-        __dataline_yearly(s, energy, [:electricity], [:foreign], [:generation], Symbol[], "output", "Electrical production (Net)", "TWh/y", factor=1E6)
+        __dataline_yearly(s, energy, [:electricity], [:foreign], [:function => "generation"], Pair{Symbol,String}[], "output", "Electrical production (Net)", "TWh/y", factor=1E6)
     end
 end
 
 function _dataline_yearly_charging(s; showforeign=true)
     if showforeign
-        d1 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:storage], Symbol[], "input", "Storage charging", "TWh/y", factor=1E6)
-        d2 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:ev], Symbol[], "input", "EV", "TWh/y", factor=1E6)
+        d1 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:function => "storage"], Pair{Symbol,String}[], "input", "Storage charging", "TWh/y", factor=1E6)
+        d2 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:function => "ev"], Pair{Symbol,String}[], "input", "EV", "TWh/y", factor=1E6)
     else
-        d1 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:storage], Symbol[], "input", "Storage charging", "TWh/y", factor=1E6)
-        d2 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:ev], Symbol[], "input", "EV", "TWh/y", factor=1E6)
+        d1 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:function => "storage"], Pair{Symbol,String}[], "input", "Storage charging", "TWh/y", factor=1E6)
+        d2 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:function => "ev"], Pair{Symbol,String}[], "input", "EV", "TWh/y", factor=1E6)
     end
     # merge DataLines
     df = _merge_annual_df(d1.d, d2.d)
@@ -608,11 +522,11 @@ end
 
 function _dataline_yearly_discharging(s; showforeign=true)
     if showforeign
-        d1 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:storage], Symbol[], "output", "Storage discharging", "TWh/y", factor=1E6)
-        d2 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:ev], Symbol[], "output", "EV", "TWh/y", factor=1E6)
+        d1 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:function => "storage"], Pair{Symbol,String}[], "output", "Storage discharging", "TWh/y", factor=1E6)
+        d2 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:function => "ev"], Pair{Symbol,String}[], "output", "EV", "TWh/y", factor=1E6)
     else
-        d1 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:storage], Symbol[], "output", "Storage discharging", "TWh/y", factor=1E6)
-        d2 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:ev], Symbol[], "output", "EV", "TWh/y", factor=1E6)
+        d1 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:function => "storage"], Pair{Symbol,String}[], "output", "Storage discharging", "TWh/y", factor=1E6)
+        d2 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:function => "ev"], Pair{Symbol,String}[], "output", "EV", "TWh/y", factor=1E6)
     end
     df = _merge_annual_df(d1.d, d2.d)
     d = DataLine(
@@ -624,38 +538,29 @@ end
 
 function _dataline_yearly_demandresponse(s; showforeign=true)
     if showforeign
-        __dataline_yearly(s, energy, [:electricity], Symbol[], [:demandresponse], Symbol[], "output", "Demand response", "TWh/y", factor=1E6)
+        __dataline_yearly(s, energy, [:electricity], Symbol[], [:function => "demandresponse"], Pair{Symbol,String}[], "output", "Demand response", "TWh/y", factor=1E6)
     else
-        __dataline_yearly(s, energy, [:electricity], [:foreign], [:demandresponse], Symbol[], "output", "Demand response", "TWh/y", factor=1E6)
+        __dataline_yearly(s, energy, [:electricity], [:foreign], [:function => "demandresponse"], Pair{Symbol,String}[], "output", "Demand response", "TWh/y", factor=1E6)
     end
 end
 
 function _dataline_yearly_electrolysis(s; showforeign=true)
     if showforeign
-        __dataline_yearly(s, energy, [:electricity], Symbol[], [:electrolysis], Symbol[], "input", "Electrolysis", "TWh/y", factor=1E6)
+        __dataline_yearly(s, energy, [:electricity], Symbol[], [:function => "electrolysis"], Pair{Symbol,String}[], "input", "Electrolysis", "TWh/y", factor=1E6)
     else
-        __dataline_yearly(s, energy, [:electricity], [:foreign], [:electrolysis], Symbol[], "input", "Electrolysis", "TWh/y", factor=1E6)
+        __dataline_yearly(s, energy, [:electricity], [:foreign], [:function => "electrolysis"], Pair{Symbol,String}[], "input", "Electrolysis", "TWh/y", factor=1E6)
     end
 end
 
 function _dataline_yearly_co2(s; showforeign=true)
     if showforeign
-        __dataline_yearly(s, co2, [:electricity], Symbol[], [:generation], Symbol[], "co2", "CO2 emissions", "t/y", factor=1)
+        __dataline_yearly(s, co2, [:electricity], Symbol[], [:function => "generation"], Pair{Symbol,String}[], "co2", "CO2 emissions", "t/y", factor=1)
     else
-        __dataline_yearly(s, co2, [:electricity], [:foreign], [:generation], Symbol[], "co2", "CO2 emissions", "t/y", factor=1)
+        __dataline_yearly(s, co2, [:electricity], [:foreign], [:function => "generation"], Pair{Symbol,String}[], "co2", "CO2 emissions", "t/y", factor=1)
     end
 end
 
-# electricity nodes connected to a node interconnection component
-function _nodeic_connected_nodes(s::Snapshot, ic::Component)
-    connected = String[]
-    for (nodename, _) in getnodes(s, with=[:electricity])
-        if haskey(getcomponents(s, nodename, with=[:nodeinterconnection]), ic.name)
-            push!(connected, nodename)
-        end
-    end
-    return connected
-end
+# Interconnection topology, volumes, and annual IC datalines.
 
 """
     _fromto_ic_internal(s::Snapshot, ic::Component)
@@ -664,11 +569,12 @@ Direction follows builder ports `"input"` (from) and `"output"` (to); each port 
 identifies the connected electricity node among nodes linked to this component.
 """
 function _fromto_ic_internal(s::Snapshot, ic::Component)
-    hastag(ic, :nodeinterconnection) || throw(ArgumentError("expected :nodeinterconnection on $(ic.name), got tags $(ic.tags)"))
-    Nosy.hasport(ic, "input") || throw(ArgumentError("node IC $(ic.name) missing primary input port"))
-    Nosy.hasport(ic, "output") || throw(ArgumentError("node IC $(ic.name) missing primary output port"))
-
-    connected = _nodeic_connected_nodes(s, ic)
+    connected = String[]
+    for (nodename, _) in getnodes(s, with=[:electricity])
+        if haskey(getcomponents(s, nodename, with=[:function => "interconnection", :function => "nodeinterconnection"]), ic.name)
+            push!(connected, nodename)
+        end
+    end
     length(connected) == 2 || throw(ArgumentError("node IC $(ic.name) expected 2 connected electricity nodes, got $(connected)"))
 
     carrier_from = Nosy.getport(ic, "input").carrier.name
@@ -686,27 +592,287 @@ function _fromto_ic_internal(s::Snapshot, ic::Component)
 
     _from = only(from_candidates)
     _to = only(to_candidates)
-    _from == _to && throw(ArgumentError("node IC $(ic.name): input and output ports map to the same node"))
+    @assert _from != _to "node IC $(ic.name): input and output ports map to the same node"
     return (_from, _to)
 end
 
-# return (external zone, local node) for a price interconnection component
+"""
+    _fromto_ic_external(s::Snapshot, ic::Component)
+Return `(from, to)` node names for a price interconnection.
+`from` is the external neighbor zone (`:neighbor` tag); `to` is the local electricity node connected to the component.
+"""
 function _fromto_ic_external(s::Snapshot, ic::Component)
-    hastag(ic, :priceinterconnection) || throw(ArgumentError("expected :priceinterconnection on $(ic.name), got tags $(ic.tags)"))
-    kind = (:interconnection, :priceinterconnection, :foreign)
-    zones = [t for t in ic.tags if t ∉ kind]
-    length(zones) == 1 || throw(ArgumentError("price IC $(ic.name): expected 1 external zone tag, got $(zones)"))
-    _from = string(only(zones))
+    zones = get(ic.tags, :neighbor, String[])
+    _from = only(zones)
     _to = ""
     # find local electricity node connected to this price IC
     for (nodename, _) in getnodes(s, with=[:electricity])
-        if haskey(getcomponents(s, nodename, with=[:priceinterconnection]), ic.name)
+        if haskey(getcomponents(s, nodename, with=[:function => "interconnection", :function => "priceinterconnection"]), ic.name)
             _to = nodename
             break
         end
     end
     isempty(_to) && throw(ArgumentError("local node not found for price IC $(ic.name)"))
     return (_from, _to)
+end
+
+# return sorted electricity node names, including external neighbor zones from price ICs
+function _ic_quasinodes(s::Snapshot)
+    allquasinodes = Set{String}()
+    allnodes = getnodes(s, with=[:electricity])
+    for (_, c) in getcomponents(s, with=[:function => "interconnection", :function => "priceinterconnection"])
+        union!(allquasinodes, get(c.tags, :neighbor, String[]))
+    end
+    return vcat(sort(collect(keys(allnodes)))..., sort(collect(allquasinodes))...)
+end
+
+# return both directed energy flows for an interconnection component (from, to, flow) tuples
+function _ic_directed_flows(s::Snapshot, c::Component; collapse=true)
+    if hastag(c, :function, "nodeinterconnection")
+        (_from, _to) = _fromto_ic_internal(s, c)
+        fwd = balance(c, :input, energy, aggregate=false, collapse=collapse)["input"]
+        rev = balance(c, :input, energy, aggregate=false, collapse=collapse)["input2"]
+    else
+        (_from, _to) = _fromto_ic_external(s, c)
+        fwd = balance(c, :output, energy, aggregate=false, collapse=collapse)["output"]
+        rev = balance(c, :input, energy, aggregate=false, collapse=collapse)["input"]
+    end
+    return ((_from, _to, fwd), (_to, _from, rev))
+end
+
+function _all_ic_directed_flows(s::Snapshot; collapse=true)
+    FlowT = Union{Float64, Nosy.AbstractTimeSeries{Float64}}
+    flows = Dict{Tuple{String, String}, FlowT}()
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            flows[(_from, _to)] = flow
+        end
+    end
+    return flows
+end
+
+"""
+    imports_internal(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+Return a Dict of the time series associated with internal (non-foreign) imports of `modifier` in node named `nodename` of Snapshot `s`.
+If `collapse`, return a Dict of values instead.
+"""
+function imports_internal(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
+    d = LittleDict{String, Union{Float64, Nosy.AbstractTimeSeries{Float64}}}()
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            _to == nodename || continue
+            _from == nodename && continue
+            haskey(selfnodes, _from) || continue
+            d[_from] = flow
+        end
+    end
+    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
+    return d
+end
+
+"""
+    exports_internal(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+Return a Dict of the time series associated with internal (non-foreign) exports of `modifier` in node named `nodename` of Snapshot `s`.
+If `collapse`, return a Dict of values instead.
+"""
+function exports_internal(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
+    d = LittleDict{String, Union{Float64, Nosy.AbstractTimeSeries{Float64}}}()
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            _from == nodename || continue
+            _to == nodename && continue
+            haskey(selfnodes, _to) || continue
+            d[_to] = flow
+        end
+    end
+    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
+    return d
+end
+
+"""
+    imports_all(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+Return a Dict of the time series associated with all (internal and foreign) imports of `modifier` in node named `nodename` of Snapshot `s`.
+If `collapse`, return a Dict of values instead.
+"""
+function imports_all(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+    d = LittleDict{String, Union{Float64, Nosy.AbstractTimeSeries{Float64}}}()
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            _to == nodename || continue
+            _from == nodename && continue
+            d[_from] = flow
+        end
+    end
+    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
+    return d
+end
+
+"""
+    exports_all(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+Return a Dict of the time series associated with all (internal and foreign) exports of `modifier` in node named `nodename` of Snapshot `s`.
+If `collapse`, return a Dict of values instead.
+"""
+function exports_all(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+    d = LittleDict{String, Union{Float64, Nosy.AbstractTimeSeries{Float64}}}()
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            _from == nodename || continue
+            _to == nodename && continue
+            d[_to] = flow
+        end
+    end
+    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
+    return d
+end
+
+"""
+    imports_foreign(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+Return a Dict of the time series associated with external (foreign) imports of `modifier` in node named `nodename` of Snapshot `s`.
+If `collapse`, return a Dict of values instead.
+"""
+function imports_foreign(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
+    d = LittleDict{String, Union{Float64, Nosy.AbstractTimeSeries{Float64}}}()
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            _to == nodename || continue
+            haskey(selfnodes, _from) && continue
+            d[_from] = flow
+        end
+    end
+    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
+    return d
+end
+
+"""
+    exports_foreign(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+Return a Dict of the time series associated with external (foreign) exports of `modifier` in node named `nodename` of Snapshot `s`.
+If `collapse`, return a Dict of values instead.
+"""
+function exports_foreign(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
+    d = LittleDict{String, Union{Float64, Nosy.AbstractTimeSeries{Float64}}}()
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            _from == nodename || continue
+            haskey(selfnodes, _to) && continue
+            d[_to] = flow
+        end
+    end
+    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
+    return d
+end
+
+"""
+    imports_foreign(s::Snapshot; collapse=true)
+Return a Dict of the time series associated with external (foreign) interconnection imports in Snapshot `s`.
+Dict keys are corridor labels `"from > to"`. If `collapse`, return a Dict of values instead.
+"""
+function imports_foreign(s; collapse=true)
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
+    dv = LittleDict()
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            haskey(selfnodes, _to) || continue
+            haskey(selfnodes, _from) && continue
+            dv[string(_from, " > ", _to)] = flow
+        end
+    end
+    return dv
+end
+
+"""
+    imports_internal(s::Snapshot; collapse=true)
+Return a Dict of the time series associated with internal (non-foreign) interconnection imports in Snapshot `s`.
+Dict keys are corridor labels `"from > to"`. If `collapse`, return a Dict of values instead.
+"""
+function imports_internal(s; collapse=true)
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
+    dv = LittleDict()
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            haskey(selfnodes, _to) || continue
+            haskey(selfnodes, _from) || continue
+            _from == _to && continue
+            dv[string(_from, " > ", _to)] = flow
+        end
+    end
+    return dv
+end
+
+"""
+    imports_all(s::Snapshot; collapse=true)
+Return a Dict of the time series associated with all (internal and foreign) interconnection imports in Snapshot `s`.
+Dict keys are corridor labels `"from > to"`. If `collapse`, return a Dict of values instead.
+"""
+function imports_all(s; collapse=true)
+    allnodes = getnodes(s, with=[:electricity])
+    dv = LittleDict()
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            haskey(allnodes, _to) || continue
+            _from == _to && continue
+            dv[string(_from, " > ", _to)] = flow
+        end
+    end
+    return dv
+end
+
+"""
+    exports_foreign(s::Snapshot; collapse=true)
+Return a Dict of the time series associated with external (foreign) interconnection exports in Snapshot `s`.
+Dict keys are corridor labels `"from > to"`. If `collapse`, return a Dict of values instead.
+"""
+function exports_foreign(s; collapse=true)
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
+    dv = LittleDict()
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            haskey(selfnodes, _from) || continue
+            haskey(selfnodes, _to) && continue
+            dv[string(_from, " > ", _to)] = flow
+        end
+    end
+    return dv
+end
+
+"""
+    exports_internal(s::Snapshot; collapse=true)
+Return a Dict of the time series associated with internal (non-foreign) interconnection exports in Snapshot `s`.
+Dict keys are corridor labels `"from > to"`. If `collapse`, return a Dict of values instead.
+"""
+function exports_internal(s; collapse=true)
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
+    dv = LittleDict()
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            haskey(selfnodes, _from) || continue
+            haskey(selfnodes, _to) || continue
+            _from == _to && continue
+            dv[string(_from, " > ", _to)] = flow
+        end
+    end
+    return dv
+end
+
+"""
+    exports_all(s::Snapshot; collapse=true)
+Return a Dict of the time series associated with all (internal and foreign) interconnection exports in Snapshot `s`.
+Dict keys are corridor labels `"from > to"`. If `collapse`, return a Dict of values instead.
+"""
+function exports_all(s; collapse=true)
+    allnodes = getnodes(s, with=[:electricity])
+    dv = LittleDict()
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            haskey(allnodes, _from) || continue
+            _from == _to && continue
+            dv[string(_from, " > ", _to)] = flow
+        end
+    end
+    return dv
 end
 
 # return a dataframe with interconnectors capacities
@@ -717,20 +883,15 @@ function _dataline_ic_cap(s)
     allcomps_ext = Set{String}()
     allquasinodes = Set{String}()
     allnodes = getnodes(s, with=[:electricity])
-    for (nodename, _) in allnodes
-        let d = getcomponents(s, nodename, with=[:interconnection, :nodeinterconnection])
-            lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
-            for cname in lcomps
-                push!(allcomps_int, cname)
-            end
-        end
-        let d = getcomponents(s, nodename, with=[:interconnection, :priceinterconnection])
-            lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
-            for cname in lcomps
-                push!(allcomps_ext, cname)
-                push!(allquasinodes, _fromto_ic_external(s, Nosy.getcomponent(s, cname))[1])
-            end
-        end
+    for (cname, c) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"])
+        push!(allcomps_int, cname)
+    end
+    ext_fromto = Dict{String, Tuple{String,String}}()
+    for (cname, c) in getcomponents(s, with=[:function => "interconnection", :function => "priceinterconnection"])
+        push!(allcomps_ext, cname)
+        ft = _fromto_ic_external(s, c)
+        ext_fromto[cname] = ft
+        push!(allquasinodes, ft[1])
     end
 
     allquasinodes = vcat(sort(collect(keys(allnodes)))..., sort(collect(allquasinodes))...)    
@@ -742,15 +903,23 @@ function _dataline_ic_cap(s)
     for cname in allcomps_int
         c = Nosy.getcomponent(s, cname)
         (_from, _to) = _fromto_ic_internal(s, c)
-        df[df[!,"From \\ To"] .== _from, _to] .= capacity(c, "input") / 1E3
-        df[df[!,"From \\ To"] .== _to, _from] .= capacity(c, "input2") / 1E3
+        if Nosy.hascapacitybehavior(c, "input")
+            df[df[!,"From \\ To"] .== _from, _to] .= capacity(c, "input") / 1E3
+        end
+        if Nosy.hascapacitybehavior(c, "input2")
+            df[df[!,"From \\ To"] .== _to, _from] .= capacity(c, "input2") / 1E3
+        end
     end
 
     for cname in allcomps_ext
         c = Nosy.getcomponent(s, cname)
-        (_from, _to) = _fromto_ic_external(s, c)
-        df[df[!,"From \\ To"] .== _from, _to] .= capacity(c, "output") / 1E3
-        df[df[!,"From \\ To"] .== _to, _from] .= capacity(c, "input") / 1E3
+        (_from, _to) = ext_fromto[cname]
+        if Nosy.hascapacitybehavior(c, "output")
+            df[df[!,"From \\ To"] .== _from, _to] .= capacity(c, "output") / 1E3
+        end
+        if Nosy.hascapacitybehavior(c, "input")
+            df[df[!,"From \\ To"] .== _to, _from] .= capacity(c, "input") / 1E3
+        end
     end
 
     # rename columns and first row to clarify sense
@@ -772,56 +941,60 @@ function _dataline_ic_cap(s)
     )
 end
 
-function _interco_vol_detailed(s; collapse=true, addtotal=false)
-    allcomps_int = Set{String}()
-    allcomps_ext = Set{String}()
-    allquasinodes = Set{String}()
-    allnodes = getnodes(s, with=[:electricity])
-    for (nodename, _) in allnodes
-        let d = getcomponents(s, nodename, with=[:interconnection, :nodeinterconnection])
-            lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
-            for cname in lcomps
-                push!(allcomps_int, cname)
-            end
-        end
-        let d = getcomponents(s, nodename, with=[:interconnection, :priceinterconnection])
-            lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
-            for cname in lcomps
-                push!(allcomps_ext, cname)
-                push!(allquasinodes, _fromto_ic_external(s, Nosy.getcomponent(s, cname))[1])
-            end
-        end
-    end
+# return a DataLine with the number of hours per year each node interconnection is at its NTC
+function _dataline_ic_hours_at_ntc(s)
+    corridors = String[]
+    hours = Union{Float64, Missing}[]
 
-    allquasinodes = vcat(sort(collect(keys(allnodes)))..., sort(collect(allquasinodes))...)    
-    df = DataFrame("From \\ To" => allquasinodes)
-    for k in allquasinodes
-        df[!,k] = convert(Vector{Union{Missing,Float64,Nosy.Stepwise{Float64},Nosy.Hourly{Float64}}}, fill(missing, length(allquasinodes)))
-    end
-
-    for cname in allcomps_int
-        c = Nosy.getcomponent(s, cname)
+    for (_, c) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"])
         (_from, _to) = _fromto_ic_internal(s, c)
-        df[df[!,"From \\ To"] .== _from, _to] .= Ref(balance(c, :input, energy, aggregate=false, collapse=collapse)["input"])
-        df[df[!,"From \\ To"] .== _to, _from] .= Ref(balance(c, :input, energy, aggregate=false, collapse=collapse)["input2"])
+        bin = Float64.(balance(c, :input, energy, collapse=false, aggregate=false)["input"])
+        bout = Float64.(balance(c, :input, energy, collapse=false, aggregate=false)["input2"])
+
+        push!(corridors, string(_from, " > ", _to))
+        if Nosy.hascapacitybehavior(c, "input")
+            cin = capacity(c, "input", multiplier=true)
+            push!(hours, Float64(sum(isapprox.(cin, bin) .& (cin .> 0))))
+        else
+            push!(hours, missing)
+        end
+
+        push!(corridors, string(_to, " > ", _from))
+        if Nosy.hascapacitybehavior(c, "input2")
+            cout = capacity(c, "input2", multiplier=true)
+            push!(hours, Float64(sum(isapprox.(cout, bout) .& (cout .> 0))))
+        else
+            push!(hours, missing)
+        end
     end
 
-    for cname in allcomps_ext
-        c = Nosy.getcomponent(s, cname)
-        (_from, _to) = _fromto_ic_external(s, c)
-        df[df[!,"From \\ To"] .== _from, _to] .= Ref(balance(c, :output, energy, aggregate=false, collapse=collapse)["output"])
-        df[df[!,"From \\ To"] .== _to, _from] .= Ref(balance(c, :input, energy, aggregate=false, collapse=collapse)["input"])
+    df = DataFrame("Interconnection" => corridors, "Hours at NTC" => hours)
+    return DataLine("Hours at NTC", "h/y", df)
+end
+
+# build an interconnection volume matrix (From \ To layout)
+function _ic_vol_detailed(s; collapse=true, addtotal=false)
+    allquasinodes = _ic_quasinodes(s)
+
+    df = DataFrame("From \\ To" => allquasinodes .* " >")
+    for k in allquasinodes
+        col = "> " * k
+        df[!, col] = Union{Missing, Float64, Nosy.Stepwise{Float64}, Nosy.Hourly{Float64}}[
+            missing for _ in allquasinodes
+        ]
     end
 
-    # rename columns and first row to clarify sense
-    df[!,1] .*= " >"
-    for n in names(df)[2:end]
-        rename!(df, n => "> " * n)
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            row = string(_from, " >")
+            col = "> " * _to
+            df[df[!, "From \\ To"] .== row, col] .= Ref(flow)
+        end
     end
-    
+
     if addtotal
         datacols = names(df)[2:end]
-        df[!,"> Total"] = [sum(df[i, c] for c in datacols if !ismissing(df[i, c])) for i in 1:nrow(df)]
+        df[!, "> Total"] = [sum(df[i, c] for c in datacols if !ismissing(df[i, c])) for i in 1:nrow(df)]
         _lastrow = permutedims(vcat("Total >", [sum(x for x in c if !ismissing(x)) for c in eachcol(df)[2:end]]))
         push!(df, _lastrow)
     end
@@ -834,7 +1007,7 @@ end
 # and interconnection from price time series
 function _dataline_ic_vol_detailed(s)
     
-    df = _interco_vol_detailed(s, addtotal=true)
+    df = _ic_vol_detailed(s, addtotal=true)
 
     # divide the values by 1E6 (MWh -> TWh)
     df = (x -> x isa Number ? x / 1E6 : x).(df)
@@ -844,64 +1017,6 @@ function _dataline_ic_vol_detailed(s)
         "TWh/y",
         df
     )
-end
-
-function imports_foreign(s; collapse=true)
-    dv = LittleDict()
-
-    df = _interco_vol_detailed(s, collapse=collapse, addtotal=false)
-    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
-    for (nodename, _) in selfnodes
-        toname = "> " * nodename
-        for fromname in df[!,"From \\ To"]
-            if !haskey(selfnodes, first(split(fromname, ' ')))
-                val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-                if !ismissing(val)
-                    dv[fromname * " " * nodename] = val
-                end
-            end
-        end
-    end
-
-    return dv
-end
-
-function imports_internal(s; collapse=true)
-    dv = LittleDict()
-
-    df = _interco_vol_detailed(s, collapse=collapse, addtotal=false)
-    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
-    for (nodename, _) in selfnodes
-        toname = "> " * nodename
-        for fromname in df[!,"From \\ To"]
-            if haskey(selfnodes, first(split(fromname, ' ')))
-                val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-                if !ismissing(val)
-                    dv[fromname * " " * nodename] = val
-                end
-            end
-        end
-    end
-
-    return dv
-end
-
-function imports_all(s; collapse=true)
-    dv = LittleDict()
-
-    df = _interco_vol_detailed(s, collapse=collapse, addtotal=false)
-    selfnodes = getnodes(s, with=[:electricity])
-    for (nodename, _) in selfnodes
-        toname = "> " * nodename
-        for fromname in df[!,"From \\ To"]
-            val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-            if !ismissing(val)
-                dv[fromname * " " * nodename] = val
-            end
-        end
-    end
-
-    return dv
 end
 
 # return a line with detail of annual imports
@@ -916,71 +1031,8 @@ function _dataline_imports_vol(s)
     return d
 end
 
-
-function exports_foreign(s; collapse=true)
-    dv = LittleDict()
-
-    df = _interco_vol_detailed(s, collapse=collapse, addtotal=false)
-    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
-
-    for (nodename, _) in selfnodes
-        fromname = nodename * " >"
-        for toname in names(df)[2:end]
-            if !haskey(selfnodes, last(split(toname, ' ')))
-                val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-                if !ismissing(val)
-                    dv[nodename * " " * toname] = val
-                end
-            end
-        end
-    end
-
-    return dv
-end
-
-function exports_internal(s; collapse=true)
-    dv = LittleDict()
-
-    df = _interco_vol_detailed(s, collapse=collapse, addtotal=false)
-    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
-
-    for (nodename, _) in selfnodes
-        fromname = nodename * " >"
-        for toname in names(df)[2:end]
-            if haskey(selfnodes, last(split(toname, ' ')))
-                val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-                if !ismissing(val)
-                    dv[nodename * " " * toname] = val
-                end
-            end
-        end
-    end
-
-    return dv
-end
-
-function exports_all(s; collapse=true)
-    dv = LittleDict()
-
-    df = _interco_vol_detailed(s, collapse=collapse, addtotal=false)
-    selfnodes = getnodes(s, with=[:electricity])
-
-    for (nodename, _) in selfnodes
-        fromname = nodename * " >"
-        for toname in names(df)[2:end]
-            val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-            if !ismissing(val)
-                dv[nodename * " " * toname] = val
-            end
-        end
-    end
-
-    return dv
-end
-
 # return a line with detail of annual exports
 function _dataline_exports_vol(s)
-
     dv = exports_foreign(s, collapse=true)
     dv["Total"] = sum(values(dv), init=0.)
     d = DataLine(
@@ -992,49 +1044,34 @@ function _dataline_exports_vol(s)
 end
 
 function _dataline_net_ic_vol(s)
-    df = _interco_vol_detailed(s, addtotal=false)
+    flows = _all_ic_directed_flows(s; collapse=true)
     selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
-
-    _im = LittleDict()
-    for (nodename, _) in selfnodes
-        toname = "> " * nodename
-        for fromname in df[!,"From \\ To"]
-            if !haskey(selfnodes, first(split(fromname, ' ')))
-                val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-                if !ismissing(val)
-                    _im[fromname * " " * nodename] = val
-                end
-            end
+    imp = Dict{Tuple{String, String}, Float64}()
+    exp = Dict{Tuple{String, String}, Float64}()
+    for ((from, to), flow) in flows
+        if haskey(selfnodes, to) && !haskey(selfnodes, from)
+            imp[(from, to)] = flow
+        end
+        if haskey(selfnodes, from) && !haskey(selfnodes, to)
+            exp[(from, to)] = flow
         end
     end
-
-    _ex = LittleDict()
-    for (nodename, _) in selfnodes
-        fromname = nodename * " >"
-        for toname in names(df)[2:end]
-            if !haskey(selfnodes, last(split(toname, ' ')))
-                val = (df[df[!,"From \\ To"] .== fromname, toname])[]
-                if !ismissing(val)
-                    _ex[nodename * " " * toname] = val
-                end
-            end
-        end
+    net = Dict{Tuple{String, String}, Float64}()
+    for ((from, to), val) in imp
+        net[(from, to)] = val - get(exp, (to, from), 0.0)
     end
-
-    _net = LittleDict()
-    for (_i, _e) in zip(_im, _ex)
-        @assert split(_i[1], ' ')[1] == split(_e[1], ' ')[end] "_im and _ex do not iterate in same order"
-        @assert split(_i[1], ' ')[end] == split(_e[1], ' ')[1] "_im and _ex do not iterate in same order"
-        _net[_i[1]] = _i[2] - _e[2]
+    for ((from, to), val) in exp
+        haskey(imp, (to, from)) && continue
+        net[(to, from)] = -val
     end
-    _net["Total"] = sum(values(_net), init=0.)
-
-    d = DataLine(
+    total = sum(values(net), init=0.0)
+    labeled = LittleDict(string(from, " > ", to) => v / 1E6 for ((from, to), v) in net)
+    labeled["Total"] = total / 1E6
+    return DataLine(
         "Net interconnection volume",
         "TWh/y (negative is export)",
-        LittleDict(k=>v/1E6 for (k,v) in _net),
+        labeled,
     )
-    return d  
 end
 
 # return a line with detail of annual capacity factors
@@ -1099,7 +1136,7 @@ function _dataline_costs(s; showforeign=true)
     end
 
     # filter out items not associated with costs
-    vcomp = getcomponents(s, without=[:demand])
+    vcomp = getcomponents(s, without=[:function => "demand"])
     for cname in collect(df[!,"component"]) # prevent lazy iteration because we modify the df
         if !haskey(vcomp, cname) && cname != "all"
             deleteat!(df, df[!,"component"] .== cname)
@@ -1164,13 +1201,13 @@ function _dataline_costs_aggregated(s; showforeign=true)
     )
 end
 
-function __dataline_yearly_price_received(s::Snapshot, modifier::Function, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Symbol}, compswithout::Vector{Symbol}, portname::String, title::String, unit::String; factor=1)
+function __dataline_yearly_price_received(s::Snapshot, modifier::Function, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Pair{Symbol,String}}, compswithout::Vector{Pair{Symbol,String}}, portname::String, title::String, unit::String; factor=1)
     allcomps = String[]
     allnodes = getnodes(s, with=nodeswith, without=nodeswithout) # not including foreign nodes
     for (nodename, _) in allnodes
         d = getcomponents(s, nodename, with=compswith, without=compswithout)
-        lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
-        for cname in lcomps
+        for (_, comp) in d
+            cname = only(get(comp.tags, :tech, String[]))
             !(cname in allcomps) && push!(allcomps, cname)
         end
     end
@@ -1182,22 +1219,32 @@ function __dataline_yearly_price_received(s::Snapshot, modifier::Function, nodes
         price = Nosy.Hourly(Nosy.dualprice(n), sim(s).mesh)
         v = Any[nodename]
         d = getcomponents(s, nodename, with=compswith, without=compswithout)
+        dbytech = Dict{String,Vector{Component}}()
+        for (_, comp) in d
+            tech = only(get(comp.tags, :tech, String[]))
+            push!(get!(dbytech, tech, Component[]), comp)
+        end
         for cname in allcomps
-            c = nothing
-            for (k, comp) in d
-                if replace(k, " " * nodename => "") == cname
-                    c = comp
-                    break
-                end
-            end
-            if c === nothing
+            comps = get(dbytech, cname, Component[])
+            if isempty(comps)
                 push!(v, "")
             else
-                bout = balance(c, :output, modifier, collapse=false, aggregate=false)
-                if haskey(bout, portname) && !iszero(sum(bout[portname]))
-                    push!(v, sum(bout[portname] .* price) / sum(bout[portname]) / factor)
-                else
+                local wsum = 0.0
+                local fsum = 0.0
+                for c in comps
+                    bout = balance(c, :output, modifier, collapse=false, aggregate=false)
+                    if haskey(bout, portname)
+                        f = sum(bout[portname])
+                        if !iszero(f)
+                            wsum += sum(bout[portname] .* price)
+                            fsum += f
+                        end
+                    end
+                end
+                if iszero(fsum)
                     push!(v, "")
+                else
+                    push!(v, wsum / fsum / factor)
                 end
             end
         end
@@ -1214,19 +1261,19 @@ end
 
 function _dataline_yearly_price_received(s; showforeign=true)
     if showforeign
-        __dataline_yearly_price_received(s, energy, [:electricity], Symbol[], [:generation], Symbol[], "output", "Average price received", "USD/MWh", factor=1)
+        __dataline_yearly_price_received(s, energy, [:electricity], Symbol[], [:function => "generation"], Pair{Symbol,String}[], "output", "Average price received", "USD/MWh", factor=1)
     else
-        __dataline_yearly_price_received(s, energy, [:electricity], [:foreign], [:generation], Symbol[], "output", "Average price received", "USD/MWh", factor=1)
+        __dataline_yearly_price_received(s, energy, [:electricity], [:foreign], [:function => "generation"], Pair{Symbol,String}[], "output", "Average price received", "USD/MWh", factor=1)
     end
 end
 
-function __dataline_yearly_cost(s::Snapshot, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Symbol}, compswithout::Vector{Symbol}, title::String, unit::String; factor=1)
+function __dataline_yearly_cost(s::Snapshot, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Pair{Symbol,String}}, compswithout::Vector{Pair{Symbol,String}}, title::String, unit::String; factor=1)
     allcomps = String[]
     allnodes = getnodes(s, with=nodeswith, without=nodeswithout) # not including foreign nodes
     for (nodename, _) in allnodes
         d = getcomponents(s, nodename, with=compswith, without=compswithout)
-        lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
-        for cname in lcomps
+        for (_, comp) in d
+            cname = only(get(comp.tags, :tech, String[]))
             !(cname in allcomps) && push!(allcomps, cname)
         end
     end
@@ -1237,18 +1284,17 @@ function __dataline_yearly_cost(s::Snapshot, nodeswith::Vector{Symbol}, nodeswit
     for (nodename,n) in allnodes
         v = Any[nodename]
         d = getcomponents(s, nodename, with=compswith, without=compswithout)
+        dbytech = Dict{String,Vector{Component}}()
+        for (_, comp) in d
+            tech = only(get(comp.tags, :tech, String[]))
+            push!(get!(dbytech, tech, Component[]), comp)
+        end
         for cname in allcomps
-            c = nothing
-            for (k, comp) in d
-                if replace(k, " " * nodename => "") == cname
-                    c = comp
-                    break
-                end
-            end
-            if c === nothing
+            comps = get(dbytech, cname, Component[])
+            if isempty(comps)
                 push!(v, 0.)
             else
-                push!(v, cost(s, Nosy.name(c)) / factor)
+                push!(v, sum(cost(s, Nosy.name(c)) for c in comps) / factor)
             end
         end
         push!(df, permutedims(v))
@@ -1269,19 +1315,19 @@ end
 
 function _dataline_yearly_cost(s; showforeign=true)
     if showforeign
-        __dataline_yearly_cost(s, [:electricity], Symbol[], [:generation], Symbol[], "Components costs", "Billions USD (2024)", factor=1E9)
+        __dataline_yearly_cost(s, [:electricity], Symbol[], [:function => "generation"], Pair{Symbol,String}[], "Components costs", "Billions USD (2024)", factor=1E9)
     else
-        __dataline_yearly_cost(s, [:electricity], [:foreign], [:generation], Symbol[], "Components costs", "Billions USD (2024)", factor=1E9)
+        __dataline_yearly_cost(s, [:electricity], [:foreign], [:function => "generation"], Pair{Symbol,String}[], "Components costs", "Billions USD (2024)", factor=1E9)
     end
 end
 
-function __dataline_yearly_earnings(s::Snapshot, modifier::Function, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Symbol}, compswithout::Vector{Symbol}, portname::String, title::String, unit::String; factor=1)
+function __dataline_yearly_earnings(s::Snapshot, modifier::Function, nodeswith::Vector{Symbol}, nodeswithout::Vector{Symbol}, compswith::Vector{Pair{Symbol,String}}, compswithout::Vector{Pair{Symbol,String}}, portname::String, title::String, unit::String; factor=1)
     allcomps = String[]
     allnodes = getnodes(s, with=nodeswith, without=nodeswithout) # not including foreign nodes
     for (nodename, _) in allnodes
         d = getcomponents(s, nodename, with=compswith, without=compswithout)
-        lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
-        for cname in lcomps
+        for (_, comp) in d
+            cname = only(get(comp.tags, :tech, String[]))
             !(cname in allcomps) && push!(allcomps, cname)
         end
     end
@@ -1293,23 +1339,24 @@ function __dataline_yearly_earnings(s::Snapshot, modifier::Function, nodeswith::
         price = Nosy.Hourly(Nosy.dualprice(n), sim(s).mesh)
         v = Any[nodename]
         d = getcomponents(s, nodename, with=compswith, without=compswithout)
+        dbytech = Dict{String,Vector{Component}}()
+        for (_, comp) in d
+            tech = only(get(comp.tags, :tech, String[]))
+            push!(get!(dbytech, tech, Component[]), comp)
+        end
         for cname in allcomps
-            c = nothing
-            for (k, comp) in d
-                if replace(k, " " * nodename => "") == cname
-                    c = comp
-                    break
-                end
-            end
-            if c === nothing
+            comps = get(dbytech, cname, Component[])
+            if isempty(comps)
                 push!(v, 0.)
             else
-                bout = balance(c, :output, modifier, collapse=false, aggregate=false)
-                if haskey(bout, portname) && !iszero(sum(bout[portname]))
-                    push!(v, sum(bout[portname] .* price) / factor)
-                else
-                    push!(v, 0.)
+                local _val = 0.0
+                for c in comps
+                    bout = balance(c, :output, modifier, collapse=false, aggregate=false)
+                    if haskey(bout, portname) && !iszero(sum(bout[portname]))
+                        _val += sum(bout[portname] .* price) / factor
+                    end
                 end
+                push!(v, _val)
             end
         end
         push!(df, permutedims(v))
@@ -1330,9 +1377,9 @@ end
 
 function _dataline_yearly_earnings(s; showforeign=true)
     if showforeign
-        __dataline_yearly_earnings(s, energy, [:electricity], Symbol[], [:generation], Symbol[], "output", "Components earnings", "Billions USD (2024)", factor=1E9)
+        __dataline_yearly_earnings(s, energy, [:electricity], Symbol[], [:function => "generation"], Pair{Symbol,String}[], "output", "Components earnings", "Billions USD (2024)", factor=1E9)
     else
-        __dataline_yearly_earnings(s, energy, [:electricity], [:foreign], [:generation], Symbol[], "output", "Components earnings", "Billions USD (2024)", factor=1E9)
+        __dataline_yearly_earnings(s, energy, [:electricity], [:foreign], [:function => "generation"], Pair{Symbol,String}[], "output", "Components earnings", "Billions USD (2024)", factor=1E9)
     end
 end
 
@@ -1374,6 +1421,7 @@ function _annual_post_processing_self(s::Snapshot)
         x->_dataline_elec_storage_discharge_cap(x, showforeign=false),
         x->_dataline_elec_storage_cap_level(x; showforeign=false), 
         _dataline_ic_cap,
+        _dataline_ic_hours_at_ntc,
         x->_dataline_yearly_production(x, showforeign=false),
         x->_dataline_yearly_charging(x, showforeign=false),
         x->_dataline_yearly_discharging(x, showforeign=false),
@@ -1409,6 +1457,7 @@ function _annual_post_processing_all(s::Snapshot)
         x->_dataline_elec_storage_discharge_cap(x, showforeign=true),
         x->_dataline_elec_storage_cap_level(x; showforeign=true),
         _dataline_ic_cap,
+        _dataline_ic_hours_at_ntc,
         x->_dataline_yearly_production(x, showforeign=true),
         x->_dataline_yearly_charging(x, showforeign=true),
         x->_dataline_yearly_discharging(x, showforeign=true),

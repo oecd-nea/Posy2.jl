@@ -36,8 +36,10 @@ function makedemand(cname::String, zone::String, n::Node, s::Snapshot; coeff=1.0
     vb = []
     !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", n.carrier, :input, "input", x->x[1] * _gridlosses))
     c = Component(cname * " " * n.name, m, vb)
-    for t in (:electricity, :demand)
-        tag!(c, t)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, n.name)
+    for t in ("electricity", "demand")
+        tag!(c, :function, t)
     end
     connect!(s, c, n)   
     return c
@@ -60,8 +62,10 @@ function makeflathydrogendemand(cname::String, n::Node, val::Number, s::Snapshot
     m = Demand(n.carrier, val / 8760)
     vb = []
     c = Component(cname * " " * n.name, m, vb)
-    for t in (:hydrogen, :demand)
-        tag!(c, t)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, n.name)
+    for t in ("hydrogen", "demand")
+        tag!(c, :function, t)
     end
     connect!(s, c, n)
     return c
@@ -85,8 +89,10 @@ function makeflexhydrogendemand(cname::String, n::Node, val::Number, s::Snapshot
     vb = []
     push!(vb, YearlySum("input", val, :equal))
     c = Component(cname * " " * n.name, m, vb)
-    for t in (:hydrogen, :demand)
-        tag!(c, t)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, n.name)
+    for t in ("hydrogen", "demand")
+        tag!(c, :function, t)
     end
     connect!(s, c, n)
     return c
@@ -178,8 +184,10 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
         vb = []
         !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x -> x[1] * _gridlosses))
         c = Component(cname * " " * elec.name, m, vb)
-        for t in (:electricity, :demand)
-            tag!(c, t)
+        tag!(c, :tech, cname)
+        tag!(c, :zone, elec.name)
+        for t in ("electricity", "demand")
+            tag!(c, :function, t)
         end
         connect!(s, c, elec)
         return c
@@ -248,6 +256,8 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
         push!(vb, FixedJointFlow("driving", EnergyCarrier(cname, sim(elec)), :output, consumption, mustconnect=false)) # this port does not need connection
 
         c = Component(cname * " " * elec.name, m, vb)
+        tag!(c, :tech, cname)
+        tag!(c, :zone, elec.name)
 
         # level limits
         # ensure the EVs are charged enough at 7am
@@ -256,10 +266,10 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
             Nosy.balance(c, :level, energy, collapse=false, aggregate=true).data[8:24:end] .>= min_level_ratio_morning * max_battery_capacity * chargingstationprofile[8:24:end]
         )
 
-        for t in (:electricity, :ev) # ev tag: must have "driving" output. No :storage tag because charging balance is handled differently for EV to avoid double-counting
-            tag!(c, t)
+        for t in ("electricity", "ev")
+            tag!(c, :function, t)
         end
-        vehicle_to_grid && tag!(c, :generation)
+        vehicle_to_grid && tag!(c, :function, "generation")
         connect!(s, c, elec)
 
         return c
@@ -288,8 +298,10 @@ function makedemandresponse(cname::String, elec::Node, capa::Union{Nothing,Numbe
     push!(vb, VariableCost(type, "output", energy, cost * (1-elec.losses))) # do not include demand response in losses
 
     c = Component(cname * " " * elec.name, m, vb)
-    for t in (:virtual, :demandresponse)
-        tag!(c, t)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, elec.name)
+    for t in ("virtual", "demandresponse")
+        tag!(c, :function, t)
     end
     connect!(s, c, elec)
     return c

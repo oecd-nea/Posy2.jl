@@ -7,6 +7,7 @@ using HiGHS
 @testset "Storage components" begin
     function makesnapshot()
         sim = Sim(Model(HiGHS.Optimizer))
+        set_silent(sim.model)
         opts = Dict(
             :posy => POSY2Options(
                 data_dir=joinpath(dirname(@__DIR__), "data"),

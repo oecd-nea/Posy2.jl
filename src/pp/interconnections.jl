@@ -1,6 +1,6 @@
 # return the price of an price interconnection component
 function geticprice(c::Component)
-    @assert hastag(c, :priceinterconnection)
+    hastag(c, :function, "priceinterconnection") || throw(ArgumentError("expected :function=>\"priceinterconnection\" on $(c.name)"))
     _price_import = zeros(Nosy.nhours(sim(c)))
     _price_export = zeros(Nosy.nhours(sim(c)))
     for b in Nosy.getbehaviors(c, Nosy.VariableCostBehavior)
@@ -15,7 +15,7 @@ end
 
 # return a Dict of series indicating whether the price interconnection is maxed
 function ispriceicmaxed(c::Component)
-    @assert hastag(c, :priceinterconnection)
+    hastag(c, :function, "priceinterconnection") || throw(ArgumentError("expected :function=>\"priceinterconnection\" on $(c.name)"))
     cin = capacity(c, "input", multiplier=true)
     cout = capacity(c, "output", multiplier=true)
     bin = balance(c, :input, energy, collapse=false, aggregate=false)["input"]
@@ -29,7 +29,7 @@ end
 
 # return a Dict of series indicating whether the node interconnection is maxed
 function isnodeicmaxed(c::Component)
-    @assert hastag(c, :nodeinterconnection)
+    hastag(c, :function, "nodeinterconnection") || throw(ArgumentError("expected :function=>\"nodeinterconnection\" on $(c.name)"))
     cin = capacity(c, "input", multiplier=true)
     cout = capacity(c, "input2", multiplier=true)
     bin = balance(c, :input, energy, collapse=false, aggregate=false)["input"]
@@ -41,23 +41,8 @@ function isnodeicmaxed(c::Component)
     return d
 end
 
-"""
-    _selfinterconnectioncost(s::Snapshot, cname::String, sense::Symbol, tag::Symbol)
-Return the "self" cost associated with interconnection named `cname`, for sense `sense` ∈ (:import, :export), with tag `tag`.
-"""
-function _selfinterconnectioncost(s::Snapshot, cname::String, sense::Symbol, tag::Symbol)
-    # find self node connected to this interconnection component
-    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
-    vsnode = Node[]
-    for (_sname, _snode) in selfnodes
-        if haskey(getcomponents(s, _sname, with=[tag]), cname)
-            push!(vsnode, _snode)
-        end
-    end
-    isempty(vsnode) && return 0. # interconnection between two foreign nodes
-    length(vsnode) > 1 && throw(AssertionError("Found more than one self node for component $cname")) # likely: internal IC, not foreign
-    snode = first(vsnode)
-
+# evaluate self IC cost at self node price (snode must be pre-resolved)
+function _selfinterconnectioncost(s::Snapshot, cname::String, sense::Symbol, snode::Node)
     # evaluating cost = volume * price
     # the price is defined as the SELF price! (not the other node price)
     vprice = Nosy.dualprice(snode) # Nosy.dualprice(nnode)
@@ -68,44 +53,47 @@ function _selfinterconnectioncost(s::Snapshot, cname::String, sense::Symbol, tag
     else
         throw(AssertionError("sense must be :import or :export"))
     end
-    _cost = sum(vprice .* vol)
-    return _cost
+    return sum(vprice .* vol)
 end
 
-selfinterconnectioncost_node(s::Snapshot, cname::String) = _selfinterconnectioncost(s, cname, :import, :nodeinterconnection)
-selfinterconnectionrevenue_node(s::Snapshot, cname::String) = _selfinterconnectioncost(s, cname, :export, :nodeinterconnection)
-selfinterconnectioncost_price(s::Snapshot, cname::String) = _selfinterconnectioncost(s, cname, :import, :priceinterconnection)
-selfinterconnectionrevenue_price(s::Snapshot, cname::String) = _selfinterconnectioncost(s, cname, :export, :priceinterconnection)
-
 """
-    selfcongestionrent_node(s::Snapshot, cname::String)
-Return the congestion rent of an node-based interconnection (between nodes).
+    _selfinterconnectioncost(s::Snapshot, cname::String, sense::Symbol, function_tag::String)
+Return the "self" cost associated with interconnection named `cname`, for sense `sense` ∈ (:import, :export), with function tag `function_tag`.
 """
-function selfcongestionrent_node(s::Snapshot, cname::String)
-    # find the matching foreign (neighbor) node
-    neighbornodes = getnodes(s, with=[:foreign])
-    local vnnode = Node[]
-    for (_nname, _nnode) in neighbornodes
-        if haskey(getcomponents(s, _nname, with=[:nodeinterconnection]), cname)
-            push!(vnnode, _nnode)
+function _selfinterconnectioncost(s::Snapshot, cname::String, sense::Symbol, function_tag::String)
+    # find self node connected to this interconnection component
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
+    vsnode = Node[]
+    for (_sname, _snode) in selfnodes
+        if haskey(getcomponents(s, _sname, with=[:function => function_tag]), cname)
+            push!(vsnode, _snode)
         end
     end
-    isempty(vnnode) && throw(AssertionError("Foreign node not found for component $cname"))
-    length(vnnode) > 1 && return 0. # two foreign nodes
-    nnode = first(vnnode)
+    isempty(vsnode) && return 0. # interconnection between two foreign nodes
+    length(vsnode) > 1 && throw(AssertionError("Found more than one self node for component $cname")) # likely: internal IC, not foreign
+    return _selfinterconnectioncost(s, cname, sense, first(vsnode))
+end
 
-    # find the matching self node
-    selfnodes = getnodes(s, without=[:foreign])
-    local vsnode = Node[]
-    for (_sname, _snode) in selfnodes
-        if haskey(getcomponents(s, _sname, with=[:nodeinterconnection]), cname)
+# find the matching self node
+function _self_node_for_nodeic(s::Snapshot, cname::String)
+    vsnode = Node[]
+    for (_sname, _snode) in getnodes(s, without=[:foreign])
+        if haskey(getcomponents(s, _sname, with=[:function => "interconnection", :function => "nodeinterconnection"]), cname)
             push!(vsnode, _snode)
         end
     end
     isempty(vsnode) && throw(AssertionError("Self node not found for component $cname"))
     length(vsnode) > 1 && throw(AssertionError("Found more than one self node for component $cname"))
-    snode = first(vsnode)
+    return first(vsnode)
+end
 
+selfinterconnectioncost_node(s::Snapshot, cname::String) = _selfinterconnectioncost(s, cname, :import, "nodeinterconnection")
+selfinterconnectionrevenue_node(s::Snapshot, cname::String) = _selfinterconnectioncost(s, cname, :export, "nodeinterconnection")
+selfinterconnectioncost_price(s::Snapshot, cname::String) = _selfinterconnectioncost(s, cname, :import, "priceinterconnection")
+selfinterconnectionrevenue_price(s::Snapshot, cname::String) = _selfinterconnectioncost(s, cname, :export, "priceinterconnection")
+
+# congestion rent at pre-resolved self and neighbor nodes
+function _selfcongestionrent_node(s::Snapshot, cname::String, snode::Node, nnode::Node)
     # price difference
     pricediff = Nosy.dualprice(snode) - Nosy.dualprice(nnode)
 
@@ -116,26 +104,31 @@ function selfcongestionrent_node(s::Snapshot, cname::String)
     # is interconnector maxed
     # this is useful because IC may be associated with a transaction cost => price may be different even with non-saturated IC
     dmaxed = isnodeicmaxed(Nosy.getcomponent(s, cname))
-
-    cr = 1/2 * sum(abs.((dmaxed[:input] + dmaxed[:input2]) .* vol .* pricediff))
-
-    return cr
+    return 1/2 * sum(abs.((dmaxed[:input] + dmaxed[:input2]) .* vol .* pricediff))
 end
 
 """
-    selfcongestionrent_price(s::Snapshot, cname::String)
-Return the congestion rent of an price-based interconnection (using exogenous price time series).
+    selfcongestionrent_node(s::Snapshot, cname::String)
+Return the congestion rent of an node-based interconnection (between nodes).
 """
-function selfcongestionrent_price(s::Snapshot, cname::String)
-    # find the local electricity node connected to this price IC
-    node = nothing
-    for (nodename, _nnode) in getnodes(s, with=[:electricity])
-        if haskey(getcomponents(s, nodename, with=[:priceinterconnection]), cname)
-            node = _nnode
-            break
+function selfcongestionrent_node(s::Snapshot, cname::String)
+    # find the matching foreign (neighbor) node
+    neighbornodes = getnodes(s, with=[:foreign])
+    vnnode = Node[]
+    for (_nname, _nnode) in neighbornodes
+        if haskey(getcomponents(s, _nname, with=[:function => "interconnection", :function => "nodeinterconnection"]), cname)
+            push!(vnnode, _nnode)
         end
     end
-    node === nothing && throw(AssertionError("Node not found for component $cname"))
+    isempty(vnnode) && throw(AssertionError("Foreign node not found for component $cname"))
+    length(vnnode) > 1 && return 0. # two foreign nodes
+    nnode = first(vnnode)
+    snode = _self_node_for_nodeic(s, cname)
+    return _selfcongestionrent_node(s, cname, snode, nnode)
+end
+
+# congestion rent at pre-resolved local node
+function _selfcongestionrent_price(s::Snapshot, cname::String, node::Node)
     c = Nosy.getcomponent(s, cname)
 
     # price difference
@@ -147,9 +140,24 @@ function selfcongestionrent_price(s::Snapshot, cname::String)
         :export => capacity(c, "input", multiplier=true),
     )
     nodeprice = Nosy.dualprice(node)
+    return 1/2 * (sum(abs.(dmaxed[:import] .* dcap[:import] .* (dprice[:import] - nodeprice))) + sum(abs.(dmaxed[:export] .* dcap[:export] .* (dprice[:export] - nodeprice))))
+end
 
-    cr = 1/2 * (sum(abs.(dmaxed[:import] .* dcap[:import] .* (dprice[:import] - nodeprice))) + sum(abs.(dmaxed[:export] .* dcap[:export] .* (dprice[:export] - nodeprice))))
-    return cr
+"""
+    selfcongestionrent_price(s::Snapshot, cname::String)
+Return the congestion rent of an price-based interconnection (using exogenous price time series).
+"""
+function selfcongestionrent_price(s::Snapshot, cname::String)
+    # find the local electricity node connected to this price IC
+    node = nothing
+    for (nodename, _nnode) in getnodes(s, with=[:electricity])
+        if haskey(getcomponents(s, nodename, with=[:function => "interconnection", :function => "priceinterconnection"]), cname)
+            node = _nnode
+            break
+        end
+    end
+    node === nothing && throw(AssertionError("Node not found for component $cname"))
+    return _selfcongestionrent_price(s, cname, node)
 end
 
 # remove rows populated only with zeros (except on first column)
@@ -191,26 +199,27 @@ function selfcosts(s::Snapshot; removezero::Bool=false, addtotal::Bool=true)
     
     # iterate on node-based IC with neighbors
     # outer loop on foreign nodes, inner loop on components
-    for (nname, _) in getnodes(s, with=[:electricity, :foreign])
-        d = getcomponents(s, nname, with=[:interconnection, :nodeinterconnection])
+    for (nname, nnode) in getnodes(s, with=[:electricity, :foreign])
+        d = getcomponents(s, nname, with=[:function => "interconnection", :function => "nodeinterconnection"])
         for (cname, _) in d
-            df[df[!,:component] .== cname, :imports] .= selfinterconnectioncost_node(s, cname)
-            df[df[!,:component] .== cname, :exports] .= -selfinterconnectionrevenue_node(s, cname)
-            df[df[!,:component] .== cname, Symbol("congestion rent")] .= -selfcongestionrent_node(s, cname)
+            snode = _self_node_for_nodeic(s, cname)
+            df[df[!,:component] .== cname, :imports] .= _selfinterconnectioncost(s, cname, :import, snode)
+            df[df[!,:component] .== cname, :exports] .= -_selfinterconnectioncost(s, cname, :export, snode)
+            df[df[!,:component] .== cname, Symbol("congestion rent")] .= -_selfcongestionrent_node(s, cname, snode, nnode)
         end
     end
 
     # iterate on price series IC
     # outer loop on self nodes, inner loop on components
-    for (nname, _) in getnodes(s, with=[:electricity], without=[:foreign])
-        d = getcomponents(s, nname, with=[:interconnection, :priceinterconnection])
+    for (nname, snode) in getnodes(s, with=[:electricity], without=[:foreign])
+        d = getcomponents(s, nname, with=[:function => "interconnection", :function => "priceinterconnection"])
         for (cname, _) in d
 
             # throw(AssertionError("TODO: re-evaluate import / export cost on price IC (export / import at self price)"))
 
-            df[df[!,:component] .== cname, :imports] .= selfinterconnectioncost_price(s, cname)
-            df[df[!,:component] .== cname, :exports] .= -selfinterconnectionrevenue_price(s, cname)
-            df[df[!,:component] .== cname, Symbol("congestion rent")] .= -selfcongestionrent_price(s, cname)
+            df[df[!,:component] .== cname, :imports] .= _selfinterconnectioncost(s, cname, :import, snode)
+            df[df[!,:component] .== cname, :exports] .= -_selfinterconnectioncost(s, cname, :export, snode)
+            df[df[!,:component] .== cname, Symbol("congestion rent")] .= -_selfcongestionrent_price(s, cname, snode)
         end
     end
 

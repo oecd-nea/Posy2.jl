@@ -20,8 +20,10 @@ function makeflathydrogenpurchase(cname::String, n::Node, val::Number, s::Snapsh
     vb = []
     push!(vb, FixedCapacity("output", energy, val/8760))
     c = Component(cname * " " * n.name, m, vb)
-    for t in (:hydrogen, :purchase)
-        tag!(c, t)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, n.name)
+    for t in ("hydrogen", "purchase")
+        tag!(c, :function, t)
     end
     connect!(s, c, n)
     return c
@@ -219,8 +221,10 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
     end
 
     c = Component(cname * " " * elec.name, m, vb)
-    for t in (:generation, :dispatchable)
-        tag!(c, t)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, elec.name)
+    for t in ("generation", "dispatchable")
+        tag!(c, :function, t)
     end
     connect!(s, c, elec)
     if !iszero(_co2_em)
@@ -454,6 +458,8 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
     end
     
     c = Component(cname * " " * elec.name, m, vb)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, elec.name)
     if uc
         _ucb = first(Nosy.getbehaviors(c, Nosy.AbstractFleetUnitCommitmentBehavior))
         if tech in ("Nuclear", "Nuclear flexible",)
@@ -516,8 +522,8 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
             end
         end
     end
-    for t in (:generation, :dispatchable)
-        tag!(c, t)
+    for t in ("generation", "dispatchable")
+        tag!(c, :function, t)
     end
     connect!(s, c, elec)
     if !iszero(_co2_em)
@@ -641,8 +647,10 @@ function makesmr(cname::String, tech::String, elec::Node, heat::Node, co2::Node,
     end
 
     c = Component(cname * " " * elec.name, m, vb)
-    for t in (:generation, :dispatchable)
-        tag!(c, t)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, elec.name)
+    for t in ("generation", "dispatchable")
+        tag!(c, :function, t)
     end
     connect!(s, c, elec)
     connect!(s, c, heat)
@@ -734,12 +742,14 @@ function makenuclearprofile(cname::String, tech::String, elec::Node, co2::Node, 
         push!(vb, VariableCapacity("output", energy))
     end
     c = Component(cname * " " * elec.name, m, vb)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, elec.name)
     connect!(s, c, elec)
     if !iszero(_co2_em)
         connect!(s, c, co2)
     end
-    for t in (:generation, :dispatchable, :carbonfree,)
-        tag!(c, t)
+    for t in ("generation", "dispatchable", "carbonfree")
+        tag!(c, :function, t)
     end
     return c
 end
@@ -811,9 +821,11 @@ function makereservoirprofile(cname::String, zone::String, elec::Node, s::Snapsh
     push!(vb, FixedCost(:decommissioning, "output", energy, decom_cost(_oc, _decom, _lt, discountrate(s), _dcp)))
     push!(vb, VariableCost(:vom, "output", energy, _vom))
     c = Component(cname * " " * elec.name, m, vb)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, elec.name)
     connect!(s, c, elec)
-    for t in (:generation, :dispatchable, :carbonfree,)
-        tag!(c, t)
+    for t in ("generation", "dispatchable", "carbonfree")
+        tag!(c, :function, t)
     end
     return c
 end
@@ -909,12 +921,14 @@ function makeintermittentsource(cname::String, tech::String, elec::Node, co2::No
         end
     end
     c = Component(cname * " " * elec.name, m, vb)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, elec.name)
     connect!(s, c, elec)
     if !iszero(_co2_em)
         connect!(s, c, co2)
     end
-    for t in (:generation, :intermittent, :carbonfree)
-        tag!(c, t)
+    for t in ("generation", "intermittent", "carbonfree")
+        tag!(c, :function, t)
     end
     return c
 end
@@ -996,9 +1010,11 @@ function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     push!(vb, VariableCost(:vom, "output", energy, _vom))
 
     c = Component(cname * " " * elec.name, m, vb)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, elec.name)
     connect!(s, c, elec)
-    for t in (:generation, :intermittent, :carbonfree)
-        tag!(c, t)
+    for t in ("generation", "intermittent", "carbonfree")
+        tag!(c, :function, t)
     end
     return c
 end

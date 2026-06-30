@@ -88,8 +88,10 @@ function makeelectrolyser(cname::String, tech::String, elec::Node, h2::Node, s::
     end
 
     c = Component(cname * " " * elec.name, m, vb)
-    for t in (:demand, :electrolysis, :hydrogen)
-        tag!(c, t)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, elec.name)
+    for t in ("demand", "electrolysis", "hydrogen")
+        tag!(c, :function, t)
     end
     connect!(s, c, elec)
     connect!(s, c, h2)
@@ -187,8 +189,10 @@ function makeHTelectrolyser(cname::String, tech::String, elec::Node, heat::Node,
     end
 
     c = Component(cname * " " * elec.name, m, vb)
-    for t in (:electrolysis, :hydrogen)
-        tag!(c, t)
+    tag!(c, :tech, cname)
+    tag!(c, :zone, elec.name)
+    for t in ("electrolysis", "hydrogen")
+        tag!(c, :function, t)
     end
     connect!(s, c, elec)
     connect!(s, c, heat)

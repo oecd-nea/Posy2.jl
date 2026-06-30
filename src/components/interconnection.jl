@@ -22,9 +22,6 @@ Arguments:
   * foreign: if `true`, tag interconnector as `:foreign`.
 
   * transactioncost: per unit transaction adder on both directions.
-
-Tag contract: `:interconnection`, `:priceinterconnection`, optional `:foreign`, and exactly one
-`Symbol(zone)` external zone tag (non kind tags are the external zone only).
 """
 function makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, s::Snapshot;
     # operation flags
@@ -59,14 +56,15 @@ function makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, 
             @constraint(Nosy.sim(s).model, [bin[step], bout[step]] in SOS1())
         end
     end
-    for t in (:interconnection, :priceinterconnection)
-        tag!(c, t)
+    for t in ("interconnection", "priceinterconnection")
+        tag!(c, :function, t)
     end
     if foreign
-        tag!(c, :foreign)
+        tag!(c, :function, "foreign")
     end
-    tag!(c, Symbol(zone))
+    tag!(c, :neighbor, zone)
     connect!(s, c, elec)
+    tag!(c, :zone, elec.name)
 
     return c
 end
@@ -137,14 +135,17 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Nu
         end
     end
     
-    for t in (:interconnection, :nodeinterconnection)
-        tag!(c, t)
+    for t in ("interconnection", "nodeinterconnection")
+        tag!(c, :function, t)
     end
-    foreign && tag!(c, :foreign) # IC between self and other country
-    dc ? tag!(c, :DC) : tag!(c, :AC) # AC or DC
+    foreign && tag!(c, :function, "foreign") # IC between self and other country
+    dc ? tag!(c, :function, "DC") : tag!(c, :function, "AC") # AC or DC
 
     connect!(s, c, a)
     connect!(s, c, b)
+    # denormalized zone metadata for convenient component queries 
+    tag!(c, :zone, a.name)
+    tag!(c, :zone, b.name)
 
     return c
 end

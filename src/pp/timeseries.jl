@@ -1,7 +1,9 @@
 
-# return a dataframe filled with time series related to the snapshot
-# power time series are in GWe
-# prices time series are in €/MWhe
+"""
+    gentimeseries(s::Snapshot)
+Return a DataFrame of hourly post-processing time series related to Snapshot `s`.
+Power time series are in GWe. Price time series use the same units as in Snapshot `s`.
+"""
 function gentimeseries(s::Snapshot)
     cons = demand(s, collapse=false, aggregate=true)
     imp = ic_vol_sense2(s, collapse=false, aggregate=true)
@@ -65,12 +67,13 @@ function gentimeseries(s::Snapshot)
     end
 
     # interconnection import/export volumes (column names: from > to)
-    dimp = LittleDict(rewrite_import_from_implicit(s, k, Nosy.getcomponent(s, k)) => v for (k, v) in ic_vol_sense2(s, collapse=false, aggregate=false))
-    dexp = LittleDict(rewrite_export_from_implicit(s, k, Nosy.getcomponent(s, k)) => v for (k, v) in ic_vol_sense1(s, collapse=false, aggregate=false))
-    for (k,v) in dimp
-        df[!,k] = v / 1000.
-        kinv = reverse_interco_sense(k)
-        df[!,kinv] = dexp[kinv] / 1000.
+    for (cname, c) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"])
+        df[!, rewrite_import_from_implicit(s, cname, c)] = balance(c, :output, energy, collapse=false, aggregate=false)["output"] / 1000.
+        df[!, rewrite_export_from_implicit(s, cname, c)] = balance(c, :input, energy, collapse=false, aggregate=false)["input2"] / 1000.
+    end
+    for (cname, c) in getcomponents(s, with=[:function => "interconnection", :function => "priceinterconnection"])
+        df[!, rewrite_import_from_implicit(s, cname, c)] = balance(c, :output, energy, collapse=false, aggregate=false)["output"] / 1000.
+        df[!, rewrite_export_from_implicit(s, cname, c)] = balance(c, :input, energy, collapse=false, aggregate=false)["input"] / 1000.
     end
 
     # price from electricity nodes
@@ -84,7 +87,7 @@ function gentimeseries(s::Snapshot)
     end
 
     # average price from price interconnection components (average of buying price and selling price)
-    for (cname, c) in getcomponents(s, with=[:priceinterconnection])
+    for (cname, c) in getcomponents(s, with=[:function => "interconnection", :function => "priceinterconnection"])
         df[!,"price " * cname] = getexogenousprice(c)
     end
 
@@ -97,7 +100,7 @@ Return the exogenous price time series of a component.
 The component must be an implicit interconnection component, associated with a price time series.
 """ 
 function getexogenousprice(c::Component)
-    @assert hastag(c, :priceinterconnection)
+    hastag(c, :function, "priceinterconnection") || throw(ArgumentError("expected :function=>\"priceinterconnection\" on $(c.name)"))
     vb = Nosy.getbehaviors(c, Nosy.VariableCostBehavior{Float64})
     vp = Vector{Float64}[]
     for b in vb

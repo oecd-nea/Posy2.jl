@@ -12,13 +12,8 @@ function getintercocapacitymatrix(s::Snapshot)
     allcomps_ext = Set{String}()
     allquasinodes = Set{String}()
     allnodes = getnodes(s, with=[:electricity])
-    for (nodename, _) in allnodes
-        let d = getcomponents(s, nodename, with=[:interconnection, :nodeinterconnection], without=[:DC,])
-            lcomps = [replace(k, (" " * nodename) => "") for (k,_) in d]
-            for cname in lcomps
-                push!(allcomps_int, cname)
-            end
-        end
+    for (cname, _) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"], without=[:function => "DC"])
+        push!(allcomps_int, cname)
     end
 
     allquasinodes = vcat(sort(collect(keys(allnodes)))..., sort(collect(allquasinodes))...)    

@@ -80,7 +80,7 @@ function __write_to_sheet!(sh, d::DataLine{<:DataFrame}, row=1)
         sh[XLSX.CellRef(row+2,c)] = k
         for r in 1:nrow(d.d)
             v = d.d[r,k]
-            if !isnothing(v)
+            if !isnothing(v) && !ismissing(v)
                 sh[XLSX.CellRef(row+2+r,c)] = _round(v)
             end
         end
