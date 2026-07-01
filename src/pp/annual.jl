@@ -948,13 +948,18 @@ function _dataline_ic_hours_at_ntc(s)
 
     for (_, c) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"])
         (_from, _to) = _fromto_ic_internal(s, c)
-        bin = Float64.(balance(c, :input, energy, collapse=false, aggregate=false)["input"])
-        bout = Float64.(balance(c, :input, energy, collapse=false, aggregate=false)["input2"])
+        b = balance(c, :input, energy, collapse=false, aggregate=false)
+        bin, bout = b["input"], b["input2"]
 
         push!(corridors, string(_from, " > ", _to))
         if Nosy.hascapacitybehavior(c, "input")
             cin = capacity(c, "input", multiplier=true)
-            push!(hours, Float64(sum(isapprox.(cin, bin) .& (cin .> 0))))
+            n = 0
+            for t in eachindex(bin, cin)
+                cap_t = cin[t]
+                cap_t > 0 && isapprox(cap_t, bin[t]) && (n += 1)
+            end
+            push!(hours, Float64(n))
         else
             push!(hours, missing)
         end
@@ -962,7 +967,12 @@ function _dataline_ic_hours_at_ntc(s)
         push!(corridors, string(_to, " > ", _from))
         if Nosy.hascapacitybehavior(c, "input2")
             cout = capacity(c, "input2", multiplier=true)
-            push!(hours, Float64(sum(isapprox.(cout, bout) .& (cout .> 0))))
+            n = 0
+            for t in eachindex(bout, cout)
+                cap_t = cout[t]
+                cap_t > 0 && isapprox(cap_t, bout[t]) && (n += 1)
+            end
+            push!(hours, Float64(n))
         else
             push!(hours, missing)
         end

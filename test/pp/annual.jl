@@ -154,7 +154,7 @@ using DataFrames
         end
     end
 
-    # NTC hours per corridor: count of hours where hourly flow equals capacity on ports with FixedCapacity behavior.
+    # NTC: steady 50 MW import stays below IC cap; hours at NTC are zero on both corridors.
     let
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
@@ -164,23 +164,12 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        c = Nosy.getcomponent(s, "IC_ZONE1_ZONE2")
         line = POSY2._dataline_ic_hours_at_ntc(s)
         df = line.d
-        for (corridor, port, flow_key) in (
-            ("ZONE1 > ZONE2", "input", "input"),
-            ("ZONE2 > ZONE1", "input2", "input2"),
-        )
-            v = df[df[!, "Interconnection"] .== corridor, "Hours at NTC"][1]
-            if Nosy.hascapacitybehavior(c, port)
-                flow = Float64.(Nosy.balance(c, :input, energy, collapse=false, aggregate=false)[flow_key])
-                cap = Float64.(Nosy.capacity(c, port, multiplier=true))
-                expected = Float64(sum(isapprox.(cap, flow) .& (cap .> 0)))
-                @test isapprox(v, expected; rtol=1e-12)
-            else
-                @test ismissing(v)
-            end
-        end
+        v_import = df[df[!, "Interconnection"] .== "ZONE2 > ZONE1", "Hours at NTC"][1]
+        v_export = df[df[!, "Interconnection"] .== "ZONE1 > ZONE2", "Hours at NTC"][1]
+        @test isapprox(v_import, 0.0; rtol=1e-12)
+        @test isapprox(v_export, 0.0; rtol=1e-12)
     end
 
     # Inf IC has no capacity behavior: NTC hours are missing, not zero.
