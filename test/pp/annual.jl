@@ -80,7 +80,7 @@ using DataFrames
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -160,14 +160,14 @@ using DataFrames
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
         line = POSY2._dataline_ic_hours_at_ntc(s)
         df = line.d
-        v_import = df[df[!, "Interconnection"] .== "ZONE2 > ZONE1", "Hours at NTC"][1]
-        v_export = df[df[!, "Interconnection"] .== "ZONE1 > ZONE2", "Hours at NTC"][1]
+        v_import = df[df[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
+        v_export = df[df[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
         @test isapprox(v_import, 0.0; rtol=1e-12)
         @test isapprox(v_export, 0.0; rtol=1e-12)
     end
@@ -180,10 +180,10 @@ using DataFrames
         s = extract(snap)
         line = POSY2._dataline_ic_hours_at_ntc(s)
         df = line.d
-        for corridor in ("ZONE1 > ZONE2", "ZONE2 > ZONE1")
-            v = df[df[!, "Interconnection"] .== corridor, "Hours at NTC"][1]
-            @test ismissing(v)
-        end
+        v12 = df[df[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
+        v21 = df[df[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
+        @test ismissing(v12)
+        @test ismissing(v21)
     end
 
     # Internal price IC selfcosts row: imports/exports/congestion rent match dedicated priceIC helpers.
@@ -191,7 +191,7 @@ using DataFrames
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -210,7 +210,7 @@ using DataFrames
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -226,7 +226,7 @@ using DataFrames
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -240,7 +240,7 @@ using DataFrames
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -277,7 +277,7 @@ using DataFrames
             connection_cost=0.0, om_var_cost=1.0,
         )
         makedemandresponse("DR", elec1, 100.0, 50.0, snap)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 

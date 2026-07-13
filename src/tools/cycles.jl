@@ -1,149 +1,95 @@
 """
 Analyze cycles in the interconnection graph.
-Goal: Kirchoff voltage law.
+Goal: Kirchhoff voltage law (DC power flow).
 """
 
-using DataFrames
-using Graphs
-using JuMP
+using Graphs: SimpleGraph, cycle_basis, add_edge!
+using JuMP: @constraint
 
-function getintercocapacitymatrix(s::Snapshot)
-    allcomps_int = Set{String}()
-    allcomps_ext = Set{String}()
-    allquasinodes = Set{String}()
-    allnodes = getnodes(s, with=[:electricity])
-    for (cname, _) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"], without=[:function => "DC"])
-        push!(allcomps_int, cname)
+# Build B-matrix (admittance matrix) from AC node interconnections only.
+# DC interconnections are excluded because KVL does not apply to DC circuits.
+# Admittance values come from `Snapshot.options[:ic_admittance]` (registered by
+# `makenodeinterco`), not from component tags or name parsing.
+function getic_admittancematrix(s::Snapshot)
+    nodelist = sort(collect(keys(getnodes(s, with=[:electricity]))))
+    nodeindex = Dict(n => i for (i, n) in enumerate(nodelist))
+    N = length(nodelist)
+    mat = zeros(Float64, N, N)
+    # cache node connections to avoid repeated topology lookups
+    node_map = Dict{String, Tuple{String, String}}()  # cname => (from, to)
+
+    for (cname, c) in getcomponents(s, with=[:function => "nodeinterconnection"], without=[:function => "DC"])
+        from, to = _fromto_ic_internal(s, c)
+        bij = ic_admittance(s, from, to)
+        i = nodeindex[from]
+        j = nodeindex[to]
+        # symmetric matrix (undirected graph)
+        mat[i, j] = bij
+        mat[j, i] = bij
+        node_map[cname] = (from, to)
     end
 
-    allquasinodes = vcat(sort(collect(keys(allnodes)))..., sort(collect(allquasinodes))...)    
-    df = DataFrame([name => [] for name in vcat(["To \\ From"], allquasinodes)])
+    return mat, nodelist, node_map
+end
 
-    df = DataFrame("From \\ To" => allquasinodes)
-    for k in allquasinodes
-        df[!,k] = convert(Vector{Union{String,Float64}}, fill(-Inf, length(allquasinodes)))
+# Use undirected cycle basis to find a minimal set of independent cycles.
+# This avoids redundant constraints: only a basis of cycles needs KVL enforced.
+function gencycles(mat::Matrix{Float64})
+    N = size(mat, 1)
+    g = SimpleGraph(N)
+    # build graph: edge exists if admittance > 0 (AC interconnection present)
+    for i in 1:N, j in (i + 1):N
+        mat[i, j] > 0.0 && add_edge!(g, i, j)
     end
+    return cycle_basis(g)
+end
 
-    for cname in allcomps_int
+# Return net power flow between two nodes (from -> to).
+# Net flow = forward flow - reverse flow (bidirectional interconnections).
+# Multiple ICs can connect the same two nodes, so we sum their net flows.
+function _net_ic_flow(s::Snapshot, from::String, to::String, node_map::Dict{String, Tuple{String, String}})
+    net = nothing
+    for (cname, (ic_from, ic_to)) in node_map
+        (ic_from, ic_to) == (from, to) || (ic_from, ic_to) == (to, from) || continue
         c = Nosy.getcomponent(s, cname)
-        (_from, _to) = _fromto_ic_internal(s, c)
-        df[df[!,"From \\ To"] .== _from, _to] .= capacity(c, "input") / 1E3
-        df[df[!,"From \\ To"] .== _to, _from] .= capacity(c, "input2") / 1E3
+        fwd = balance(c, :input, energy, collapse=false, aggregate=false)["input"]
+        rev = balance(c, :input, energy, collapse=false, aggregate=false)["input2"]
+        # determine IC orientation to compute net flow correctly
+        flow = (ic_from == from && ic_to == to) ? (fwd - rev) : (rev - fwd)
+        net = isnothing(net) ? flow : (net .+ flow)
     end
-
-    for cname in allcomps_ext
-        c = Nosy.getcomponent(s, cname)
-        (_from, _to) = _fromto_ic_external(s, c)
-        df[df[!,"From \\ To"] .== _from, _to] .= capacity(c, "output") / 1E3
-        df[df[!,"From \\ To"] .== _to, _from] .= capacity(c, "input") / 1E3
-    end
-
-    return df
+    isnothing(net) && throw(AssertionError("No AC node IC between $from and $to"))
+    return net
 end
 
-# generate the cycles basis of the undirected graph
-function gencycles(df::DataFrame)
-    nodenames = df[!,"From \\ To"]
+# Put KVL at snapshot level so cycles are enforced globally.
+# For each cycle in the AC network, apply KVL constraint: sum(flow_ij / B_ij) = 0.
+# Called from `applydcopf!` when `Snapshot.options[:dcopf]` is true.
+function addkvl!(s::Snapshot{T}) where T
+    # build B-matrix (admittance matrix) from AC node ICs only
+    mat, nodelist, node_map = getic_admittancematrix(s)
+    isempty(node_map) && return nothing
 
-    # edges of the undirected graph
-    edges = Vector{Tuple{Int64,Int64}}(undef,0)
-    for i in eachindex(nodenames)
-        for j in eachindex(nodenames)
-            if j > i
-                if !isinf(df[i,j+1])
-                    push!(edges, (i,j))
-                end
-            end            
-        end
-    end
-
-    # generate the undirected graph
-    g = SimpleGraph(Graphs.SimpleEdge.(edges))
-
-
-
-    # generate the cycle basis of the undirected graph
-    b = cycle_basis(g)
-
-    # reassign name to nodes
-    namedcycles = [[nodenames[i] for i in c] for c in b]
-
-    return namedcycles
-end
-
-# return a tuple composed of:
-#  * the interconnector name to use when querying the snapshot
-#  * a multiplier to apply to the balance of an interconnector
-function getintercosign(s::Snapshot, from::String, to::String)
-    cname1 = "IC_" * from * "_" * to
-    cname2 = "IC_" * to * "_" * from
-
-    if haskey(s.components, cname1)
-        cname = cname1
-    elseif haskey(s.components, cname2)
-        cname = cname2
-    else
-        throw(AssertionError("Not found: interconnection between " * from * " and " * to))
-    end
-
-    (_from, _to) = _fromto_ic_internal(s, s.components[cname])
-    if (_from == from) && (_to == to)
-        return (cname, 1)
-    elseif (_from == to) && (_to == from)
-        return (cname, -1)
-    else
-        throw(AssertionError("Inconsistent interconnection name: " * cname1))
-    end
-end
-
-# return the interconnection balance in a directed edge
-function getbalance(s::Snapshot, from::String, to::String)
-    (icname, sign) = getintercosign(s, from, to)
-    bin = balance(s, icname, :input, energy, collapse=false, aggregate=false)
-    return sign * (bin["input"] - bin["input2"])
-end
-
-function getsusceptance(s::Snapshot, from::String, to::String)
-    if haskey(s.sim.options[:susceptance], (from,to))
-        return s.sim.options[:susceptance][(from,to)]
-    elseif haskey(s.sim.options[:susceptance], (to,from))
-        return s.sim.options[:susceptance][(to,from)]
-    else
-        throw(AssertionError("No susceptance found for: " * from * " - " * to))
-    end
-end
-
-function addkvlconstraints!(s::Snapshot{T}; all::Bool=true) where T
-    df = getintercocapacitymatrix(s)
-    namedcycles = gencycles(df)
-
-    for c in namedcycles
-
-        hasSE = false        
+    # find minimal set of independent cycles using cycle basis
+    for c in gencycles(mat)
+        # initialize expression for this cycle: sum(flow_ij / B_ij) over all edges in cycle
         exp = Nosy.differentzerovector(T, Nosy.nsteps(s.sim))
         for i in eachindex(c)
-            
-            # check if cycle includes SE bidding zones
-            if c[i] in ("SE1", "SE2", "SE3", "SE4")
-                hasSE = true
-            end
-
-            if i+1 <= length(c)
-                # node i to node i+1
-                Bij = getsusceptance(s, c[i], c[i+1])
-                add_to_expression!.(exp, getbalance(s, c[i], c[i+1]) / Bij)
-            else
-                # last node to first node
-                Bij = getsusceptance(s, c[i], c[1])
-                add_to_expression!.(exp, getbalance(s, c[i], c[1]) / Bij)
-            end
+            vi = c[i]
+            # wrap around: last vertex connects back to first to close the cycle
+            vj = (i < length(c)) ? c[i + 1] : c[1]
+            from = nodelist[vi]
+            to = nodelist[vj]
+            bij = mat[vi, vj]
+            bij <= 0.0 &&
+                throw(AssertionError("No AC node IC between nodes $from and $to"))
+            # KVL: sum(flow_ij / B_ij) = 0
+            # flow_ij is net flow (forward - reverse) for bidirectional ICs
+            # divide by admittance B_ij to get voltage drop: V = flow / B
+            add_to_expression!.(exp, (_net_ic_flow(s, from, to, node_map) / bij).data)
         end
-        # only apply constraint if cycle includes SE bidding zones
-        if all || hasSE
-            println("Applying KVL for cycle: " * join(c, " - "))
-            @constraint(s.sim.model, exp .== 0.)
-        else
-            println("Skipping KVL for cycle: " * join(c, " - "))
-        end
+        # enforce KVL constraint: sum of voltage drops around cycle must be zero
+        @constraint(s.sim.model, exp .== 0.0)
     end
+    return nothing
 end

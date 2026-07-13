@@ -56,7 +56,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 

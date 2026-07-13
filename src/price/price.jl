@@ -171,7 +171,6 @@ function rebuildsnapshotforprice(s1::Snapshot)
         dcomp[cname] = rebuildcomponentforprice(comp, dcarriers)
     end
 
-    # TODO connect (iterate on s1 nodes, connect the same for s2)
     for (nodename,node) in s1.nodes
         for (cname, _) in node.s.input
             connect!(s2, dcomp[cname], dnodes[nodename])

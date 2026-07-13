@@ -35,10 +35,21 @@ using HiGHS
         @test haskey(zone1_ics, "IC_ZONE1_ZONE2")
     end
 
+    let
+        s, elec1, elec2 = makesnapshot()
+        c = makenodeinterco("IC", elec1, elec2, Inf, Inf, s; dc=false, admittance=2.5)
+        @test POSY2.ic_admittance(s, "ZONE1", "ZONE2") == 2.5
+        @test !haskey(c.tags, :admittance)
+        mat, nodelist, node_map = POSY2.getic_admittancematrix(s)
+        @test nodelist == ["ZONE1", "ZONE2"]
+        @test mat[1, 2] == 2.5
+        @test length(node_map) == 1
+    end
+
     # Price interconnection succeeds when zone series exist in the fixture.
     let
         s, elec1, _ = makesnapshot()
-        c = makepriceinterco("ZONE2", elec1, 100.0, 100.0, s)
+        c = makepriceinterco("ZONE2", elec1, 100.0, 100.0, s; transactioncost=1.)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "IC_ZONE2_ZONE1") === c
         @test Nosy.hastag(c, :function, "priceinterconnection")

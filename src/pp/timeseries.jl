@@ -59,8 +59,6 @@ function gentimeseries(s::Snapshot)
         df[!,k] = v / 1000.
     end
 
-    # TODO internal IC
-       
     # available transfer capacities (GW)
     for (k,v) in atc
         df[!,k] = v / 1000.

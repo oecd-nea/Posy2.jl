@@ -5,7 +5,7 @@ Generate interconnection components.
 """
     makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, s::Snapshot;
         dir::Bool=false, foreign::Bool=true,
-        transactioncost::Number=1.,
+        transactioncost::Number=0.,
     )
 
 Build, connect and return an interconnection component based on a price time series.
@@ -28,7 +28,7 @@ function makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, 
     dir::Bool=false, foreign::Bool=true,
 
     # economic controls
-    transactioncost::Number=1.,
+    transactioncost::Number=0.,
 )
     vb = []
 
@@ -72,7 +72,8 @@ end
 """
     makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Number, s::Snapshot;
         dir::Bool=false, foreign::Bool=false, dc::Bool=false,
-        transactioncost=1., lossfactor=0.,
+        transactioncost::Number=0., lossfactor::Number=0.,
+        admittance::Union{Nothing,Number}=nothing,
     )
 
 Build, connect and return an interconnection component linking two nodes.
@@ -92,13 +93,15 @@ Arguments:
 
   * transactioncost: per unit transaction adder on both directions.
   * lossfactor: proportional losses applied on conversion.
+  * admittance: AC susceptance for DC power flow; stored in `Snapshot.options[:ic_admittance]` (required for KVL when `:dcopf` is true).
 """
 function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Number, s::Snapshot;
     # operation flags
     dir::Bool=false, foreign::Bool=false, dc::Bool=false,
 
     # economic / physical controls
-    transactioncost=1., lossfactor=0.,
+    transactioncost::Number=0., lossfactor::Number=0.,
+    admittance::Union{Nothing,Number}=nothing,
 )
     vb = []
 
@@ -140,6 +143,9 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Nu
     end
     foreign && tag!(c, :function, "foreign") # IC between self and other country
     dc ? tag!(c, :function, "DC") : tag!(c, :function, "AC") # AC or DC
+    if !dc && !isnothing(admittance)
+        register_ic_admittance!(s, a.name, b.name, admittance)
+    end
 
     connect!(s, c, a)
     connect!(s, c, b)

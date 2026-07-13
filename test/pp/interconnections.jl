@@ -61,7 +61,7 @@ using HiGHS
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -195,7 +195,7 @@ using HiGHS
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -210,7 +210,7 @@ using HiGHS
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -225,7 +225,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -249,7 +249,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -271,7 +271,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -292,7 +292,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -306,13 +306,13 @@ using HiGHS
         )
     end
 
-    # Internal node IC between two self nodes: helpers require a unique self node; ZONE1 import cost is dualprice times port volume.
+    # Node IC between two self zones: self interconnection helpers throw; selfcosts imports/exports/rent are 0.
     let
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -325,6 +325,11 @@ using HiGHS
         @test_throws AssertionError POSY2.selfinterconnectioncost_node(s, cname)
         @test_throws AssertionError POSY2.selfinterconnectionrevenue_node(s, cname)
         @test_throws AssertionError POSY2.selfcongestionrent_node(s, cname)
+        df = POSY2.selfcosts(s)
+        row = first(df[df[!, :component] .== cname, :])
+        @test row.imports == 0.0
+        @test row.exports == 0.0
+        @test row[Symbol("congestion rent")] == 0.0
         @test expected_imp > 0.0
         @test expected_exp == 0.0
     end
@@ -359,7 +364,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -378,7 +383,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 

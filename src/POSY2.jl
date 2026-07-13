@@ -21,7 +21,7 @@ export makedemandresponse
 export makepriceinterco, makenodeinterco
 export makeelectrolyser, makeHTelectrolyser, makehydrogenstorage
 
-export addkvlconstraints!
+export applydcopf!
 
 export eac
 export selfcost

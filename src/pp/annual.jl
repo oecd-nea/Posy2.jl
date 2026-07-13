@@ -667,7 +667,7 @@ function imports_internal(s::Snapshot, nodename::String; modifier=energy, collap
             d[_from] = flow
         end
     end
-    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
+    collapse && return sum(values(d), init=0.0)
     return d
 end
 
@@ -687,7 +687,7 @@ function exports_internal(s::Snapshot, nodename::String; modifier=energy, collap
             d[_to] = flow
         end
     end
-    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
+    collapse && return sum(values(d), init=0.0)
     return d
 end
 
@@ -705,7 +705,7 @@ function imports_all(s::Snapshot, nodename::String; modifier=energy, collapse=tr
             d[_from] = flow
         end
     end
-    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
+    collapse && return sum(values(d), init=0.0)
     return d
 end
 
@@ -723,7 +723,7 @@ function exports_all(s::Snapshot, nodename::String; modifier=energy, collapse=tr
             d[_to] = flow
         end
     end
-    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
+    collapse && return sum(values(d), init=0.0)
     return d
 end
 
@@ -742,7 +742,7 @@ function imports_foreign(s::Snapshot, nodename::String; modifier=energy, collaps
             d[_from] = flow
         end
     end
-    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
+    collapse && return sum(values(d), init=0.0)
     return d
 end
 
@@ -761,7 +761,7 @@ function exports_foreign(s::Snapshot, nodename::String; modifier=energy, collaps
             d[_to] = flow
         end
     end
-    collapse && return sum(values(d), init=0.0) # TODO replace collapse w aggregate
+    collapse && return sum(values(d), init=0.0)
     return d
 end
 
@@ -942,43 +942,50 @@ function _dataline_ic_cap(s)
 end
 
 # return a DataLine with the number of hours per year each node interconnection is at its NTC
+# (From \ To matrix; node IC corridors only, same endpoints as the original corridor list)
 function _dataline_ic_hours_at_ntc(s)
-    corridors = String[]
-    hours = Union{Float64, Missing}[]
+    allcomps_int = Set{String}()
+    for (cname, c) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"])
+        push!(allcomps_int, cname)
+    end
 
-    for (_, c) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"])
+    zonenames = sort(collect(keys(getnodes(s, with=[:electricity]))))
+    df = DataFrame("From \\ To" => zonenames)
+    for k in zonenames
+        df[!, k] = Union{Missing, Float64}[missing for _ in zonenames]
+    end
+
+    # Binding: flow and capacity in MW; atol = 1 W.
+    for cname in allcomps_int
+        c = Nosy.getcomponent(s, cname)
         (_from, _to) = _fromto_ic_internal(s, c)
-        b = balance(c, :input, energy, collapse=false, aggregate=false)
-        bin, bout = b["input"], b["input2"]
-
-        push!(corridors, string(_from, " > ", _to))
-        if Nosy.hascapacitybehavior(c, "input")
-            cin = capacity(c, "input", multiplier=true)
-            n = 0
-            for t in eachindex(bin, cin)
-                cap_t = cin[t]
-                cap_t > 0 && isapprox(cap_t, bin[t]) && (n += 1)
+        for (port, row_zone, col_zone) in (("input", _from, _to), ("input2", _to, _from))
+            val = if Nosy.hascapacitybehavior(c, port)
+                flow = balance(c, :input, energy, collapse=false, aggregate=false)[port]
+                cap = capacity(c, port, multiplier=true)
+                n = 0
+                for t in eachindex(flow, cap)
+                    cap_t = cap[t]
+                    cap_t > 0 && isapprox(cap_t, flow[t]; atol=1e-6, rtol=0) && (n += 1)
+                end
+                Float64(n)
+            else
+                missing
             end
-            push!(hours, Float64(n))
-        else
-            push!(hours, missing)
-        end
-
-        push!(corridors, string(_to, " > ", _from))
-        if Nosy.hascapacitybehavior(c, "input2")
-            cout = capacity(c, "input2", multiplier=true)
-            n = 0
-            for t in eachindex(bout, cout)
-                cap_t = cout[t]
-                cap_t > 0 && isapprox(cap_t, bout[t]) && (n += 1)
-            end
-            push!(hours, Float64(n))
-        else
-            push!(hours, missing)
+            df[df[!, "From \\ To"] .== row_zone, col_zone] .= Ref(val)
         end
     end
 
-    df = DataFrame("Interconnection" => corridors, "Hours at NTC" => hours)
+    df[!, 1] .*= " >"
+    for n in names(df)[2:end]
+        rename!(df, n => "> " * n)
+    end
+
+    datacols = names(df)[2:end]
+    df[!, "> Total"] = [sum((df[i, c] for c in datacols if !ismissing(df[i, c])); init=0.0) for i in 1:nrow(df)]
+    _lastrow = permutedims(vcat("Total >", [sum((x for x in c if !ismissing(x)); init=0.0) for c in eachcol(df)[2:end]],))
+    push!(df, _lastrow)
+
     return DataLine("Hours at NTC", "h/y", df)
 end
 
