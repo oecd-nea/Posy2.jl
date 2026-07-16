@@ -6,11 +6,11 @@ Goal: Kirchhoff voltage law (DC power flow).
 using Graphs: SimpleGraph, cycle_basis, add_edge!
 using JuMP: @constraint
 
-# Build B-matrix (admittance matrix) from AC node interconnections only.
+# Build B-matrix (susceptance matrix) from AC node interconnections only.
 # DC interconnections are excluded because KVL does not apply to DC circuits.
-# Admittance values come from `Snapshot.options[:ic_admittance]` (registered by
+# Susceptance values come from `Snapshot.options[:ic_susceptance]` (registered by
 # `makenodeinterco`), not from component tags or name parsing.
-function getic_admittancematrix(s::Snapshot)
+function getic_susceptancematrix(s::Snapshot)
     nodelist = sort(collect(keys(getnodes(s, with=[:electricity]))))
     nodeindex = Dict(n => i for (i, n) in enumerate(nodelist))
     N = length(nodelist)
@@ -20,7 +20,7 @@ function getic_admittancematrix(s::Snapshot)
 
     for (cname, c) in getcomponents(s, with=[:function => "nodeinterconnection"], without=[:function => "DC"])
         from, to = _fromto_ic_internal(s, c)
-        bij = ic_admittance(s, from, to)
+        bij = ic_susceptance(s, from, to)
         i = nodeindex[from]
         j = nodeindex[to]
         # symmetric matrix (undirected graph)
@@ -37,9 +37,9 @@ end
 function gencycles(mat::Matrix{Float64})
     N = size(mat, 1)
     g = SimpleGraph(N)
-    # build graph: edge exists if admittance > 0 (AC interconnection present)
+    # edge exists if susceptance < 0 (AC interconnection with registered B)
     for i in 1:N, j in (i + 1):N
-        mat[i, j] > 0.0 && add_edge!(g, i, j)
+        mat[i, j] < 0.0 && add_edge!(g, i, j)
     end
     return cycle_basis(g)
 end
@@ -64,10 +64,10 @@ end
 
 # Put KVL at snapshot level so cycles are enforced globally.
 # For each cycle in the AC network, apply KVL constraint: sum(flow_ij / B_ij) = 0.
-# Called from `applydcopf!` when `Snapshot.options[:dcopf]` is true.
+# Called from `applydcopf!` when `POSY2Options.dcopf` is true.
 function addkvl!(s::Snapshot{T}) where T
-    # build B-matrix (admittance matrix) from AC node ICs only
-    mat, nodelist, node_map = getic_admittancematrix(s)
+    # build B-matrix (susceptance matrix) from AC node ICs only
+    mat, nodelist, node_map = getic_susceptancematrix(s)
     isempty(node_map) && return nothing
 
     # find minimal set of independent cycles using cycle basis
@@ -81,11 +81,11 @@ function addkvl!(s::Snapshot{T}) where T
             from = nodelist[vi]
             to = nodelist[vj]
             bij = mat[vi, vj]
-            bij <= 0.0 &&
+            bij >= 0.0 &&
                 throw(AssertionError("No AC node IC between nodes $from and $to"))
             # KVL: sum(flow_ij / B_ij) = 0
             # flow_ij is net flow (forward - reverse) for bidirectional ICs
-            # divide by admittance B_ij to get voltage drop: V = flow / B
+            # divide by susceptance B_ij to get voltage drop: V = flow / B
             add_to_expression!.(exp, (_net_ic_flow(s, from, to, node_map) / bij).data)
         end
         # enforce KVL constraint: sum of voltage drops around cycle must be zero

@@ -186,7 +186,7 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
         c = Component(cname * " " * elec.name, m, vb)
         tag!(c, :tech, cname)
         tag!(c, :zone, elec.name)
-        for t in ("electricity", "demand")
+        for t in ("electricity", "demand", "ev")
             tag!(c, :function, t)
         end
         connect!(s, c, elec)
@@ -266,7 +266,7 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
             Nosy.balance(c, :level, energy, collapse=false, aggregate=true).data[8:24:end] .>= min_level_ratio_morning * max_battery_capacity * chargingstationprofile[8:24:end]
         )
 
-        for t in ("electricity", "ev")
+        for t in ("electricity", "demand", "ev")
             tag!(c, :function, t)
         end
         vehicle_to_grid && tag!(c, :function, "generation")

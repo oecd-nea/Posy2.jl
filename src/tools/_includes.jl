@@ -1,5 +1,4 @@
 include("annualization.jl")
-include("admittance.jl")
+include("susceptance.jl")
 include("cycles.jl")
-include("flows.jl")
 include("options.jl")

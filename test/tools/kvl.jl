@@ -13,8 +13,8 @@ using HiGHS
                 data_dir=joinpath(@__DIR__, "..", "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
+                dcopf=dcopf,
             ),
-            :dcopf => dcopf,
         ))
         return snap, sim
     end
@@ -30,11 +30,11 @@ using HiGHS
         dmd = Component("dmd", Demand(n2.carrier, fill(1.0, 24)), [])
         connect!(snap, dmd, n2)
 
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, admittance=1.0)
+        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-1.0)
 
-        _, _, node_map = POSY2.getic_admittancematrix(snap)
+        _, _, node_map = POSY2.getic_susceptancematrix(snap)
         @test length(node_map) == 1
-        @test isempty(POSY2.gencycles(POSY2.getic_admittancematrix(snap)[1]))
+        @test isempty(POSY2.gencycles(POSY2.getic_susceptancematrix(snap)[1]))
 
         POSY2.applydcopf!(snap)
         Nosy.optimize!(snap, cost(snap))
@@ -46,7 +46,7 @@ using HiGHS
         @test all(isapprox.(src_hourly.data, dmd_hourly.data; atol=1e-6))
     end
 
-    # DC tagged node IC is omitted from getic_admittancematrix; optimize remains feasible with power balance only.
+    # DC tagged node IC is omitted from getic_susceptancematrix; optimize remains feasible with power balance only.
     let
         snap, sim = makesnapshot()
         n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
@@ -59,7 +59,7 @@ using HiGHS
 
         makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=true)
 
-        mat, _, node_map = POSY2.getic_admittancematrix(snap)
+        mat, _, node_map = POSY2.getic_susceptancematrix(snap)
         @test isempty(node_map)
         @test all(iszero, mat)
 
@@ -91,16 +91,16 @@ using HiGHS
         connect!(snap, d2, n2)
         connect!(snap, d3, n3)
 
-        b12, b23, b31 = 1.5, 0.7, 2.0
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, admittance=b12)
-        makenodeinterco("IC", n2, n3, Inf, Inf, snap; dc=false, admittance=b23)
-        makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=false, admittance=b31)
+        b12, b23, b31 = -1.5, -0.7, -2.0
+        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=b12)
+        makenodeinterco("IC", n2, n3, Inf, Inf, snap; dc=false, susceptance=b23)
+        makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=false, susceptance=b31)
 
         POSY2.applydcopf!(snap)
         Nosy.optimize!(snap, cost(snap))
         @test is_solved_and_feasible(sim.model)
 
-        _, _, node_map = POSY2.getic_admittancematrix(snap)
+        _, _, node_map = POSY2.getic_susceptancematrix(snap)
         f12 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE1", "ZONE2", node_map))
         f23 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE2", "ZONE3", node_map))
         f31 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE3", "ZONE1", node_map))
@@ -136,13 +136,13 @@ using HiGHS
         connect!(snap, d3, n3)
         connect!(snap, d4, n4)
 
-        b12, b23, b31 = 1.5, 0.7, 2.0
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, admittance=b12)
-        makenodeinterco("IC", n2, n3, Inf, Inf, snap; dc=false, admittance=b23)
-        makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=false, admittance=b31)
+        b12, b23, b31 = -1.5, -0.7, -2.0
+        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=b12)
+        makenodeinterco("IC", n2, n3, Inf, Inf, snap; dc=false, susceptance=b23)
+        makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=false, susceptance=b31)
         makenodeinterco("IC", n2, n4, Inf, Inf, snap; dc=true)
 
-        _, _, node_map = POSY2.getic_admittancematrix(snap)
+        _, _, node_map = POSY2.getic_susceptancematrix(snap)
         @test length(node_map) == 3
 
         POSY2.applydcopf!(snap)
@@ -162,19 +162,19 @@ using HiGHS
         @test all(isapprox.(src_hourly.data, dmd3_hourly.data .+ dmd4_hourly.data; atol=1e-6))
     end
 
-    # With :dcopf false, applydcopf! skips KVL even when AC admittance is registered.
+    # With dcopf false, applydcopf! skips KVL even when AC susceptance is registered.
     let
         snap, sim = makesnapshot(dcopf=false)
 
         n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, admittance=1.0)
+        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-1.0)
 
         @test POSY2.applydcopf!(snap) === nothing
         @test !POSY2.dcopf(snap)
     end
 
-    # AC node IC without registered admittance raises ArgumentError when addkvl! runs.
+    # AC node IC without registered susceptance raises ArgumentError when addkvl! runs.
     let
         snap, sim = makesnapshot()
         n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])

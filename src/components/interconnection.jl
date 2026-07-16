@@ -73,7 +73,7 @@ end
     makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Number, s::Snapshot;
         dir::Bool=false, foreign::Bool=false, dc::Bool=false,
         transactioncost::Number=0., lossfactor::Number=0.,
-        admittance::Union{Nothing,Number}=nothing,
+        susceptance::Union{Nothing,Number}=nothing,
     )
 
 Build, connect and return an interconnection component linking two nodes.
@@ -93,7 +93,8 @@ Arguments:
 
   * transactioncost: per unit transaction adder on both directions.
   * lossfactor: proportional losses applied on conversion.
-  * admittance: AC susceptance for DC power flow; stored in `Snapshot.options[:ic_admittance]` (required for KVL when `:dcopf` is true).
+  * susceptance: AC susceptance for DC power flow (must be negative); stored in
+    `Snapshot.options[:ic_susceptance]` (required for KVL when `POSY2Options.dcopf` is true).
 """
 function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Number, s::Snapshot;
     # operation flags
@@ -101,7 +102,7 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Nu
 
     # economic / physical controls
     transactioncost::Number=0., lossfactor::Number=0.,
-    admittance::Union{Nothing,Number}=nothing,
+    susceptance::Union{Nothing,Number}=nothing,
 )
     vb = []
 
@@ -143,8 +144,8 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Nu
     end
     foreign && tag!(c, :function, "foreign") # IC between self and other country
     dc ? tag!(c, :function, "DC") : tag!(c, :function, "AC") # AC or DC
-    if !dc && !isnothing(admittance)
-        register_ic_admittance!(s, a.name, b.name, admittance)
+    if !dc && !isnothing(susceptance)
+        _register_ic_susceptance!(s, a.name, b.name, susceptance)
     end
 
     connect!(s, c, a)
