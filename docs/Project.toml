@@ -1,0 +1,21 @@
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
+JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
+Nosy = "b62be552-3e07-49d0-bbfa-d9387eb027f7"
+POSY2 = "e28d6228-85f0-4f5e-8e43-1e181ce309a6"
+XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
+
+[sources]
+Nosy = {rev = "POSY2_refactoring", url = "https://github.com/oecd-nea/Nosy.jl.git"}
+POSY2 = {path = ".."}
+
+[compat]
+DataFrames = "1"
+Documenter = "1"
+HiGHS = "1"
+JuMP = "1"
+Nosy = "0.2.2"
+XLSX = "0.10"
+julia = "1.11 - 1.12"

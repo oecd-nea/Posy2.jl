@@ -1,0 +1,126 @@
+# Generation
+
+Generation builders create dispatchable, nuclear, profile-based, hydro, and
+purchased-hydrogen sources. Costed electricity sources attach annualised
+investment and decommissioning costs, fixed operation and maintenance, and the
+applicable variable costs.
+
+See [Component Builders](../components.md) for shared naming, workbook,
+capacity, port, and tagging conventions.
+
+## Dispatchable Generation
+
+[`makedispatchable`](@ref) creates a source named
+`"$cname $(elec.name)"`. Its principal port is electricity `output`, and its
+investment, connection, fixed O&M, decommissioning, variable O&M, and direct
+fuel costs are attached there.
+
+The common technical and economic defaults come from technology column `tech`
+in sheet `dispatchable`. A numeric `cap` fixes output capacity; `nothing`
+creates a capacity decision bounded by `mincap` and `maxcap`. This builder has
+one special convention: `cap=0` omits the component and returns `nothing`.
+`capacitymultiplier` can impose a time-varying availability on output.
+
+If `fuelnode` is absent, `fuel_cost` is a variable cost on electricity output.
+If a fuel node is supplied, the builder instead creates a `fuel` input equal to
+electricity output divided by `efficiency`. Non-zero `co2_emission` adds a
+linked `co2` output and connects it to the CO2 node; `co2price` prices that
+flow.
+
+Setting `uc=true` adds unit commitment, no-load cost, and start-up cost.
+`integeruc` selects continuous or integer commitment. The minimum power,
+up-time, down-time, start-up duration, and shut-down duration default to rows in
+the same workbook column. When `unit_size` is positive, non-zero `ramp_up` and
+`ramp_down` values add ramp limits after multiplication by the unit size.
+
+The builder tags the component as `generation` and `dispatchable`.
+
+## Nuclear Generation
+
+[`makenuclear`](@ref) uses the same `dispatchable` sheet and the same principal
+electricity, fuel, and CO2 ports. It adds `waste_cost`, supports integer
+capacity with `integercap`, and accepts `warmstart` for a capacity decision.
+Unlike [`makedispatchable`](@ref), a fixed zero capacity creates a zero-capacity
+component rather than omitting it.
+
+Unit commitment may include planned fuel-reload outages. Reloading is active
+only when `uc=true`, `reload_fraction_per_year` is positive, and
+`reload_duration` is positive. In that case `reloadmask` must be a positive
+integer interval supplied by the caller. `startupmask` and `shutdownmask` can
+further restrict transitions. Reload fraction and duration default to the
+`dispatchable` technology column; `reloadmask` has no workbook default.
+
+The specialised reload constraints distinguish the technology names
+`Nuclear`, `Nuclear flexible`, and `SMR`. They also assume an 8,760-hour model
+horizon. Use these exact conventions only for a full non-leap-year study.
+
+The component carries `generation` and `dispatchable` function tags. Direct
+emissions are controlled by `co2_emission`; the builder does not infer a
+`carbonfree` tag from the technology name.
+
+## Small Modular Reactor With Heat
+
+[`makesmr`](@ref) creates dispatchable electricity output and a linked `heat`
+output at a one-to-one ratio. The heat port is an accounting flow used with the
+high-temperature electrolyser formulation. It must be connected to the heat
+node supplied to the builder.
+
+Capacity can be fixed, optimised within bounds, or inherited with `ini`; an
+optimised capacity supports `integercap` and `warmstart`. Costs and technical
+defaults come from the `dispatchable` technology column, including fuel and
+waste costs. The builder does not add the nuclear unit-commitment or reload
+formulation. Its function tags are `generation` and `dispatchable`.
+
+## Intermittent Generation
+
+[`makeintermittentsource`](@ref) creates a profile source. It reads availability
+from sheet `profiles_<weatheryear>`, column
+`<tech>_<electricity-node-name>`. The profile multiplies the `output` capacity.
+
+`cap` fixes capacity; `nothing` creates a decision bounded by `mincap` and
+`maxcap`; and `ini` inherits the named component's capacity. Technical and cost
+defaults come from technology column `tech` in sheet `intermittent`.
+Non-zero emissions create the same linked CO2 flow as for dispatchable
+generation.
+
+The component is tagged `generation`, `intermittent`, and `carbonfree`.
+Because the last tag is assigned by the builder, use this constructor only when
+that classification is appropriate for the study.
+
+## Run-of-river Hydro
+
+[`makehydroror`](@ref) reads absolute inflow from sheet
+`hydro_ror_<weatheryear>`, column `<zone>`. A positive numeric `cap` is required
+because the builder divides the inflow by capacity to form a profile. It then
+multiplies that profile by `intake_mult` and caps it at one.
+
+Cost defaults come from technology column `tech` in sheet `intermittent`; the
+default column name is `Hydro ror`. Capacity is fixed, not optimisable. The
+component is tagged `generation`, `intermittent`, and `carbonfree`.
+
+## Purchased Hydrogen
+
+[`makeflathydrogenpurchase`](@ref) represents an exogenous hydrogen supply. It
+creates fixed `output` capacity `val / 8760` with a constant profile, so `val`
+is the total annual hydrogen-energy purchase. It reads no workbook and adds no
+cost. Add an explicit Nosy cost behaviour when purchases should affect the
+objective.
+
+The generated name is `"$cname $(n.name)"`; the function tags are `hydrogen`
+and `purchase`.
+
+## Non-exported Profile Builders
+
+`POSY2.makenuclearprofile` and `POSY2.makereservoirprofile` exist as
+module-qualified, non-exported implementation helpers. They are exercised by
+limited tests but are not part of the exported POSY2 API. Treat them as
+experimental and subject to change; new user documentation should prefer the
+exported builders above.
+
+## API Entries
+
+See the [API Reference](../api.md) for [`makedispatchable`](@ref),
+[`makenuclear`](@ref), [`makesmr`](@ref),
+[`makeintermittentsource`](@ref), [`makehydroror`](@ref), and
+[`makeflathydrogenpurchase`](@ref).
+
