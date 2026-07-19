@@ -160,3 +160,7 @@ power flow, and energy system reporting for analysts and scenario builders.
 
 - Guillaume KRIVTCHIK, OECD Nuclear Energy Agency
 - Yuri BAE, KENTECH
+
+## License
+
+This project is licensed under the [MIT License](LICENSE.md).
