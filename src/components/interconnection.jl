@@ -77,7 +77,6 @@ end
     )
 
 Build, connect and return an interconnection component linking two nodes.
-If `dir` is true, apply a one way constraint at every timestep.
 
 Arguments:
   * cname: interconnector name prefix.
@@ -87,11 +86,12 @@ Arguments:
   * btoa: directional capacity for `b -> a` (`Inf` disables capacity limit).
   * s: snapshot to register the component in.
 
-  * dir: if `true`, apply SOS1 one direction at a time flow constraint.
+  * dir: apply an SOS1 one-direction-at-a-time constraint.
   * foreign: if `true`, tag interconnector as `:foreign`.
   * dc: if `true`, tag as `:DC`; otherwise tag as `:AC`.
 
-  * transactioncost: per unit transaction adder on both directions.
+  * transactioncost: per-unit transaction adder on each finite-capacity
+    direction.
   * lossfactor: proportional losses applied on conversion.
   * susceptance: AC susceptance for DC power flow (must be negative); stored in
     `Snapshot.options[:ic_susceptance]` (required for KVL when `POSY2Options.dcopf` is true).
@@ -108,20 +108,20 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Nu
 
     # a -> b
     m = BasicConverter(a.carrier, b.carrier, ratio=1. - lossfactor)
-    
+
+    push!(vb, VariableCost(:transaction, "input", energy, Float64(transactioncost)))
     if !isinf(atob)
         push!(vb, FixedCapacity("input", energy, atob))
         push!(vb, Nosy.CapacityMultiplier("input", gettimeseries(s, a.name * ">" * b.name, "transfer_capacities", digits=2)))
-        push!(vb, VariableCost(:transaction, "input", energy, Float64(transactioncost)))
     end
 
     # b -> a
     push!(vb, FreeJointFlow("input2", b.carrier, :input))
     push!(vb, LinkedJointFlow("output2", a.carrier, :output, "input2", x->x[1] * (1. - lossfactor)))
+    push!(vb, VariableCost(:transaction, "input2", energy, Float64(transactioncost)))
     if !isinf(btoa)
         push!(vb, FixedCapacity("input2", energy, btoa))
         push!(vb, Nosy.CapacityMultiplier("input2", gettimeseries(s, b.name * ">" * a.name, "transfer_capacities", digits=2)))
-        push!(vb, VariableCost(:transaction, "input2", energy, Float64(transactioncost)))
     end
 
     # grid losses balance
@@ -132,10 +132,11 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Nu
 
     # make the IC flow go in one direction only
     if dir
-        bin = balance(c, :input, energy, collapse=false, aggregate=true)
-        bout = balance(c, :output, energy, collapse=false, aggregate=true)
-        for step in eachindex(bin)
-            @constraint(Nosy.sim(s).model, [bin[step], bout[step]] in SOS1())
+        b = balance(c, :input, energy, collapse=false, aggregate=false)
+        b1 = b["input"]
+        b2 = b["input2"]
+        for step in eachindex(b1)
+            @constraint(Nosy.sim(s).model, [b1[step], b2[step]] in SOS1())
         end
     end
     
