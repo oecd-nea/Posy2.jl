@@ -16,7 +16,7 @@ Build, connect and return an electrolyser component.
 
 Arguments:
   * cname: component name prefix.
-  * tech: technology row name in the `electrolysis` tech data sheet.
+  * tech: technology column name in the `electrolysis` tech data sheet.
   * elec: electricity node to connect the component to.
   * h2: hydrogen node to connect the component to.
   * s: snapshot to register the component in.
@@ -112,7 +112,7 @@ Build, connect and return an HT electrolyser component.
 
 Arguments:
   * cname: component name prefix.
-  * tech: technology row name in the `electrolysis` tech data sheet.
+  * tech: technology column name in the `electrolysis` tech data sheet.
   * elec: electricity node to connect the component to.
   * heat: Heat node. It is linked one to one to electrolyser input via `LinkedJointFlow("heat", ...)`.
   * h2: hydrogen node to connect the component to.

@@ -1,11 +1,17 @@
+"""
+    POSY2
+
+High-level country and regional energy-system modelling tools built on
+[`Nosy.jl`](https://github.com/oecd-nea/Nosy.jl). POSY2 provides standard 
+component builders, optional DC power-flow constraints,and post-processing 
+for solved Nosy snapshots.
+"""
 module POSY2
 
 using Nosy
 using JuMP, DataFrames
 using ArgCheck, OrderedCollections
 using XLSX
-
-using Infiltrator
 
 export readtechdata, gettechparam
 export readtimeseries, gettimeseries

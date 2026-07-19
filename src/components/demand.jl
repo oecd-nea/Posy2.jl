@@ -129,7 +129,7 @@ Arguments:
   * days_threshold: Number of first winter days before summer segment in fixed-profile assembly (`0 <= days_threshold <= 183`, used only when `fixed_profile=true`).
 
   * zone: Zone key used to read EV time series (`EV_charging_availability`, `EV_driving_profile`). Required in flexible/V2G modes.
-  * tech: Technology row name in the `storage` tech data sheet for EV parameters (used in flexible/V2G modes).
+  * tech: Technology column name in the `storage` tech data sheet for EV parameters (used in flexible/V2G modes).
   * compensation: V2G compensation in USD/MWh applied to EV discharge output in V2G mode (ignored in non-V2G modes).
   * gridlosses: Optional proportional grid-loss linked flow on EV input in fixed_profile mode (`0 <= gridlosses < 1`).
   * charging_eff: Optional override for `storage.charging_eff` in flexible/V2G modes (`0 < charging_eff <= 1`). If `nothing`, value is read from Excel.

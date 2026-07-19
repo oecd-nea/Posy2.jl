@@ -1,7 +1,5 @@
 using OrderedCollections: LittleDict
 using Nosy: nhours
-using Infiltrator
-
 
 """
     losses(s::Snapshot, compname::String; modifier=energy, collapse=true)

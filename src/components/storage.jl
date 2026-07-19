@@ -17,7 +17,7 @@ NB: no energy capacity at the moment.
 
 Arguments:
   * cname: component name prefix.
-  * tech: technology row name in the `storage` tech data sheet.
+  * tech: technology column name in the `storage` tech data sheet.
   * zone: Zone used for reservoir inflow time series lookup.
   * elec: electricity node to connect the component to.
   * s: snapshot to register the component in.
@@ -159,7 +159,7 @@ Build, connect and return a battery storage component.
 
 Arguments:
   * cname: component name prefix.
-  * tech: technology row name in the `storage` tech data sheet.
+  * tech: technology column name in the `storage` tech data sheet.
   * elec: electricity node to connect the component to.
   * s: snapshot to register the component in.
 
@@ -263,7 +263,7 @@ Build, connect and return a hydrogen storage component.
 
 Arguments:
   * cname: component name prefix.
-  * tech: technology row name in the `storage` tech data sheet.
+  * tech: technology column name in the `storage` tech data sheet.
   * h2: hydrogen node to connect the component to.
   * s: snapshot to register the component in.
 

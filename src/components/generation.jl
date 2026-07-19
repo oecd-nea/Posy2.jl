@@ -47,7 +47,7 @@ Build, connect and return a dispatchable component.
 
 Arguments:
   * cname: component name prefix.
-  * tech: technology row name in the `dispatchable` tech data sheet.
+  * tech: technology column name in the `dispatchable` tech data sheet.
   * elec: Electricity node connected to component output flow.
   * co2: CO2 node connected only when `co2_emission != 0`.
   * s: Target snapshot where the component and behaviors are registered.
@@ -255,7 +255,7 @@ Build, connect and return a nuclear reactor component.
 
 Arguments:
   * cname: component name prefix.
-  * tech: technology row name in the `dispatchable` tech data sheet.
+  * tech: technology column name in the `dispatchable` tech data sheet.
   * elec: electricity node to connect the component to.
   * co2: CO2 node connected when `co2_emission` is non zero.
   * s: snapshot to register the component in.
@@ -550,7 +550,7 @@ Build, connect and return an SMR component.
 
 Arguments:
   * cname: component name prefix.
-  * tech: technology row name in the `dispatchable` tech data sheet.
+  * tech: technology column name in the `dispatchable` tech data sheet.
   * elec: Electricity output node.
   * heat: Auxiliary heat accounting node. SMR adds a linked heat flow at 1:1 with electric output.
   * co2: CO2 node connected when `co2_emission != 0`.
@@ -676,7 +676,7 @@ Build, connect and return a profile based nuclear generation component.
 
 Arguments:
   * cname: component name prefix.
-  * tech: technology row name in the `dispatchable` tech data sheet.
+  * tech: technology column name in the `dispatchable` tech data sheet.
   * elec: electricity node to connect the component to.
   * co2: CO2 node connected when `co2_emission` is non zero.
   * s: snapshot to register the component in.
@@ -770,7 +770,7 @@ Arguments:
   * elec: electricity node to connect the component to.
   * s: snapshot to register the component in.
   * cap: Installed output capacity used to normalize the profile (`cap > 0` required; `nothing` is rejected).
-  * tech: technology row name in the `storage` tech data sheet.
+  * tech: technology column name in the `storage` tech data sheet.
   * overnight_cost: optional CAPEX override for annualization. If `nothing`, read from Excel.
   * om_fixed_cost: optional fixed O&M override. If `nothing`, read from Excel.
   * om_var_cost: optional variable O&M override. If `nothing`, read from Excel.
@@ -844,7 +844,7 @@ Build, connect and return an intermittent source component.
 
 Arguments:
   * cname: component name prefix.
-  * tech: technology row name in the `intermittent` tech data sheet.
+  * tech: technology column name in the `intermittent` tech data sheet.
   * elec: electricity node to connect the component to.
   * co2: CO2 node connected when `co2_emission` is non zero.
   * s: snapshot to register the component in.
@@ -949,7 +949,7 @@ Arguments:
   * s: snapshot to register the component in.
 
   * cap: Installed output capacity used to normalize inflow profile. `makehydroror` requires a numeric positive `cap`; `nothing` is rejected.
-  * tech: technology row name in the `intermittent` tech data sheet.
+  * tech: technology column name in the `intermittent` tech data sheet.
   * weatheryear: Year suffix used to select inflow series `hydro_ror_<year>`.
 
   * intake_mult: Multiplier applied to inflow profile before normalization to `cap`.

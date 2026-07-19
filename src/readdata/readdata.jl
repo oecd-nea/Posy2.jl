@@ -26,6 +26,15 @@ function readexcel(path, fname)
     return saferead(path, fname, mtime)
 end
 
+"""
+    readtechdata(filename="tech_data.xlsx"; data_dir=joinpath(pwd(), "data"))
+
+Open and return the POSY2 technology-parameter Excel workbook at
+`joinpath(data_dir, filename)`.
+
+The workbook is cached by path, filename, and modification time. If another
+application has locked the file, POSY2 reads a temporary copy when possible.
+"""
 readtechdata(filename="tech_data.xlsx"; data_dir=joinpath(pwd(), "data")) = readexcel(data_dir, filename)
 @memoize function gettechdatasheet(xl, sheetname::String) # this function is memoized because gettable is time-consuming
     sns = XLSX.sheetnames(xl)
@@ -34,6 +43,21 @@ readtechdata(filename="tech_data.xlsx"; data_dir=joinpath(pwd(), "data")) = read
     end
     return DataFrame(XLSX.gettable(xl[sheetname], infer_eltypes=true))
 end
+
+"""
+    gettechparam(xl, tech::String, param::String, sheetname::String, digits::Int)
+    gettechparam(s::Snapshot, tech::String, param::String, sheetname::String;
+        digits=6)
+
+Read one technology parameter from `sheetname`. Technology sheets use a
+`tech` column for parameter names and one column per technology; `tech` selects
+the technology column and `param` selects the row.
+
+The snapshot method resolves the workbook through [`POSY2Options`](@ref).
+Numeric values are rounded to `digits`; strings, including semicolon-separated
+construction profiles, are returned unchanged. Missing sheets, columns, rows,
+or values raise `ArgumentError` with workbook context.
+"""
 function gettechparam(xl, tech::String, param::String, sheetname::String, digits::Int)
     df = gettechdatasheet(xl, sheetname)
     tw = "technology workbook, sheet '$(sheetname)'"
@@ -63,6 +87,16 @@ function gettechparam(s::Snapshot, tech::String, param::String, sheetname::Strin
     return gettechparam(xl, tech, param, sheetname, digits)
 end
 
+"""
+    readtimeseries(filename="time_series.xlsx";
+        data_dir=joinpath(pwd(), "data"))
+
+Open and return the POSY2 hourly time-series Excel workbook at
+`joinpath(data_dir, filename)`.
+
+The workbook is cached by path, filename, and modification time. If another
+application has locked the file, POSY2 reads a temporary copy when possible.
+"""
 readtimeseries(filename="time_series.xlsx"; data_dir=joinpath(pwd(), "data")) = readexcel(data_dir, filename)
 @memoize function gettimeseriesdatasheet(xl, sheetname::String) # this function is memoized because gettable is time-consuming
     sns = XLSX.sheetnames(xl)
@@ -71,6 +105,18 @@ readtimeseries(filename="time_series.xlsx"; data_dir=joinpath(pwd(), "data")) = 
     end
     return DataFrame(XLSX.gettable(xl[sheetname], infer_eltypes=true))
 end
+
+"""
+    gettimeseries(xl, title::String, sheetname::String, digits::Int)
+    gettimeseries(s::Snapshot, title::String, sheetname::String; digits=6)
+
+Read and return the complete column `title` from `sheetname` in a POSY2
+time-series workbook.
+
+The snapshot method resolves the workbook through [`POSY2Options`](@ref).
+Values are rounded to `digits`. Missing sheets or columns, and columns
+containing `missing` or `NaN`, raise `ArgumentError` with workbook context.
+"""
 function gettimeseries(xl, title::String, sheetname::String, digits::Int)
     df = gettimeseriesdatasheet(xl, sheetname)
     tw = "time series workbook, sheet '$(sheetname)'"
