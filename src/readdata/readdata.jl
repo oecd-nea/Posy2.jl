@@ -53,7 +53,8 @@ Read one technology parameter from `sheetname`. Technology sheets use a
 `tech` column for parameter names and one column per technology; `tech` selects
 the technology column and `param` selects the row.
 
-The snapshot method resolves the workbook through [`POSY2Options`](@ref).
+The snapshot method resolves the workbook through [`POSY2Options`](@ref) when
+`tech_mode=:excel`; `:arguments` rejects direct snapshot lookups.
 Numeric values are rounded to `digits`; strings, including semicolon-separated
 construction profiles, are returned unchanged. Missing sheets, columns, rows,
 or values raise `ArgumentError` with workbook context.
@@ -83,6 +84,9 @@ function gettechparam(xl, tech::String, param::String, sheetname::String, digits
 end
 function gettechparam(s::Snapshot, tech::String, param::String, sheetname::String; digits=6)
     opts = posy_options(s)
+    opts.tech_mode === :excel || throw(ArgumentError(
+        "technology parameter '$param' for $sheetname/$tech must be supplied explicitly " *
+        "when tech_mode=:arguments"))
     xl = readtechdata(opts.techdata_file; data_dir=opts.data_dir)
     return gettechparam(xl, tech, param, sheetname, digits)
 end
@@ -113,7 +117,8 @@ end
 Read and return the complete column `title` from `sheetname` in a POSY2
 time-series workbook.
 
-The snapshot method resolves the workbook through [`POSY2Options`](@ref).
+The snapshot method resolves the workbook through [`POSY2Options`](@ref) when
+`timeseries_mode=:excel`; `:arguments` rejects direct snapshot lookups.
 Values are rounded to `digits`. Missing sheets or columns, and columns
 containing `missing` or `NaN`, raise `ArgumentError` with workbook context.
 """
@@ -122,7 +127,7 @@ function gettimeseries(xl, title::String, sheetname::String, digits::Int)
     tw = "time series workbook, sheet '$(sheetname)'"
     if !(title in names(df))
         hint = sheetname == "transfer_capacities" ?
-            " For sheet 'transfer_capacities', expected column names follow 'From>To' between zone/node names (e.g. SE3>SE1)." : ""
+            " For sheet 'transfer_capacities', expected column names follow 'From>To' between zone/node names (e.g. country3>country1)." : ""
         throw(ArgumentError("$(tw): no column '$(title)'.$(hint) Columns: $(join(string.(names(df)), ", "))"))
     end
     for (i, x) in enumerate(df[!, title])
@@ -134,6 +139,54 @@ function gettimeseries(xl, title::String, sheetname::String, digits::Int)
 end
 function gettimeseries(s::Snapshot, title::String, sheetname::String; digits=6)
     opts = posy_options(s)
+    opts.timeseries_mode === :excel || throw(ArgumentError(
+        "time series '$title' from sheet '$sheetname' must be supplied explicitly " *
+        "when timeseries_mode=:arguments"))
     xl = readtimeseries(opts.timeseries_file; data_dir=opts.data_dir)
     return gettimeseries(xl, title, sheetname, digits)
+end
+
+"""
+    _resolve_timeseries(s, value, title, sheetname; keyword="profile", digits=6)
+
+Return an explicitly supplied scalar or vector profile, or load the profile from
+the configured workbook when `value === nothing`. Scalars are expanded to the
+simulation horizon. Explicit vectors must contain exactly one value per hour.
+"""
+function _resolve_timeseries(s::Snapshot,
+                             value,
+                             title::String,
+                             sheetname::String;
+                             keyword::String="profile",
+                             digits::Int=6)
+    if isnothing(value)
+        opts = posy_options(s)
+        opts.timeseries_mode === :excel || throw(ArgumentError(
+            "`$keyword` must be supplied explicitly when timeseries_mode=:arguments " *
+            "(requested '$title' from sheet '$sheetname')"))
+        return gettimeseries(s, title, sheetname; digits=digits)
+    end
+
+    nhours = Nosy.nhours(sim(s))
+    values = if value isa Real && !(value isa Bool)
+        fill(Float64(value), nhours)
+    elseif value isa AbstractVector
+        length(value) == nhours || throw(ArgumentError(
+            "`$keyword` must contain $nhours hourly values, got $(length(value))"))
+        result = Vector{Float64}(undef, nhours)
+        for (i, x) in enumerate(value)
+            (ismissing(x) || !(x isa Real) || x isa Bool) && throw(ArgumentError(
+                "`$keyword` contains a non-numeric value at index $i"))
+            converted = Float64(x)
+            isfinite(converted) || throw(ArgumentError(
+                "`$keyword` contains a non-finite value at index $i"))
+            result[i] = converted
+        end
+        result
+    else
+        throw(ArgumentError("`$keyword` must be a real number or an hourly vector"))
+    end
+
+    all(isfinite, values) || throw(ArgumentError("`$keyword` must contain only finite values"))
+    return round.(values; digits=digits)
 end

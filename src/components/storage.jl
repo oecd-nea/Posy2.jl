@@ -6,6 +6,7 @@ Generate storage components.
     makehydroreservoir(cname::String, tech::String, zone::String, elec::Node,
         cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot;
         renormalize=true, weatheryear=2019, gridlosses=0., simplified=false, intake_mult=1.,
+        inflow_profile=nothing,
         eff::Union{Nothing,Number}=nothing,
         overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing,
         decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing,
@@ -31,6 +32,8 @@ Arguments:
   * gridlosses: Proportional losses linked to charging input flow (`0 <= gridlosses < 1`).
   * simplified: Passed to `LazyStorage(..., simplified=...)`.
   * intake_mult: Multiplier applied to inflow profile.
+  * inflow_profile: Hourly natural-inflow vector or scalar. If `nothing`, read
+    `zone` from `reservoir_inflow_<weatheryear>`.
 
   * eff: Roundtrip charging efficiency (input side conversion).
 
@@ -45,6 +48,7 @@ Arguments:
 function makehydroreservoir(cname::String, tech::String, zone::String, elec::Node, cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot;
     # storage operation controls
     renormalize=true, weatheryear=2019, gridlosses=0., simplified=false, intake_mult=1.,
+    inflow_profile=nothing,
 
     # technical overrides
     eff::Union{Nothing,Number}=nothing,
@@ -86,13 +90,19 @@ function makehydroreservoir(cname::String, tech::String, zone::String, elec::Nod
 
     if isnothing(inflow)
         # no renormalization via inflow
-        _profile = gettimeseries(s, zone, "reservoir_inflow_$weatheryear") * intake_mult
+        _profile = _resolve_timeseries(
+            s, inflow_profile, zone, "reservoir_inflow_$weatheryear";
+            keyword="inflow_profile",
+        ) * intake_mult
         push!(vb, FixedJointFlow("natural", elec.carrier, :input, _profile, mustconnect=false))
     elseif iszero(inflow)
         nothing # no inflow
     else
         # intake profile
-        _profile = gettimeseries(s, zone, "reservoir_inflow_$weatheryear")
+        _profile = _resolve_timeseries(
+            s, inflow_profile, zone, "reservoir_inflow_$weatheryear";
+            keyword="inflow_profile",
+        )
         if renormalize 
             _profile = _profile / sum(_profile) * intake_mult
         end   

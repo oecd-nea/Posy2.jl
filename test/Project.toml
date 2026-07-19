@@ -10,7 +10,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
 
 [sources]
-Nosy = {rev = "v0.2.2", url = "https://github.com/oecd-nea/Nosy.jl.git"}
+Nosy = {rev = "POSY2_refactoring", url = "https://github.com/oecd-nea/Nosy.jl.git"}
 
 [compat]
 ArgCheck = "2"

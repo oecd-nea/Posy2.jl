@@ -1,6 +1,7 @@
 """
     POSY2Options(; data_dir=joinpath(pwd(), "data"),
         techdata_file="tech_data.xlsx", timeseries_file="time_series.xlsx",
+        tech_mode=:excel, timeseries_mode=:excel,
         discountrate=0.05, co2_price=0.0, dcopf=false)
 
 Configure POSY2 input workbooks, economic assumptions, and the optional DC
@@ -9,9 +10,13 @@ power-flow formulation. Pass the resulting object to a Nosy snapshot as
 
 Fields:
 
-- `data_dir`: directory containing the two Excel workbooks.
+- `data_dir`: directory containing the Excel workbooks.
 - `techdata_file`: technology-parameter workbook filename.
 - `timeseries_file`: hourly time-series workbook filename.
+- `tech_mode`: `:excel` to fill missing technology arguments from the workbook,
+  or `:arguments` to require them explicitly.
+- `timeseries_mode`: `:excel` to fill missing profiles from the workbook, or
+  `:arguments` to require them explicitly.
 - `discountrate`: real discount rate used to annualise investment and
   decommissioning costs.
 - `co2_price`: carbon price applied by emitting component builders.
@@ -22,20 +27,51 @@ struct POSY2Options
     data_dir::String
     techdata_file::String
     timeseries_file::String
+    tech_mode::Symbol
+    timeseries_mode::Symbol
     discountrate::Float64
     co2_price::Float64
     dcopf::Bool
+
+    function POSY2Options(data_dir::String,
+                          techdata_file::String,
+                          timeseries_file::String,
+                          tech_mode::Symbol,
+                          timeseries_mode::Symbol,
+                          discountrate::Float64,
+                          co2_price::Float64,
+                          dcopf::Bool)
+        tech_mode in (:excel, :arguments) ||
+            throw(ArgumentError("tech_mode must be :excel or :arguments, got $(repr(tech_mode))"))
+        timeseries_mode in (:excel, :arguments) ||
+            throw(ArgumentError("timeseries_mode must be :excel or :arguments, got $(repr(timeseries_mode))"))
+        new(data_dir, techdata_file, timeseries_file, tech_mode, timeseries_mode,
+            discountrate, co2_price, dcopf)
+    end
 end
 
 POSY2Options(;
     data_dir::String=joinpath(pwd(), "data"),
     techdata_file::String="tech_data.xlsx",
     timeseries_file::String="time_series.xlsx",
+    tech_mode::Symbol=:excel,
+    timeseries_mode::Symbol=:excel,
     discountrate::Float64=0.05,
     co2_price::Float64=0.0,
     dcopf::Bool=false,
 ) =
-    POSY2Options(data_dir, techdata_file, timeseries_file, discountrate, co2_price, dcopf)
+    POSY2Options(data_dir, techdata_file, timeseries_file, tech_mode, timeseries_mode,
+                 discountrate, co2_price, dcopf)
+
+# Preserve the original positional constructor for downstream code.
+POSY2Options(data_dir::String,
+             techdata_file::String,
+             timeseries_file::String,
+             discountrate::Float64,
+             co2_price::Float64,
+             dcopf::Bool) =
+    POSY2Options(data_dir, techdata_file, timeseries_file, :excel, :excel,
+                 discountrate, co2_price, dcopf)
 
 """
     posy_options(s::Snapshot)
@@ -73,6 +109,12 @@ Return whether DC power flow is enabled in the snapshot's
 [`POSY2Options`](@ref).
 """
 dcopf(s::Snapshot) = posy_options(s).dcopf
+
+"""Return the configured technology-input mode (`:excel` or `:arguments`)."""
+tech_mode(s::Snapshot) = posy_options(s).tech_mode
+
+"""Return the configured time-series-input mode (`:excel` or `:arguments`)."""
+timeseries_mode(s::Snapshot) = posy_options(s).timeseries_mode
 
 """
     applydcopf!(s::Snapshot)

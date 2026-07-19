@@ -6,6 +6,7 @@ Generate interconnection components.
     makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, s::Snapshot;
         dir::Bool=false, foreign::Bool=true,
         transactioncost::Number=0.,
+        spot_price=nothing, import_availability=nothing, export_availability=nothing,
     )
 
 Build, connect and return an interconnection component based on a price time series.
@@ -22,6 +23,10 @@ Arguments:
   * foreign: if `true`, tag interconnector as `:foreign`.
 
   * transactioncost: per unit transaction adder on both directions.
+  * spot_price: Hourly foreign spot-price vector or scalar.
+  * import_availability: Hourly multiplier for the foreign-to-local direction.
+  * export_availability: Hourly multiplier for the local-to-foreign direction.
+    Each series falls back to its workbook column when `nothing`.
 """
 function makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, s::Snapshot;
     # operation flags
@@ -29,21 +34,33 @@ function makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, 
 
     # economic controls
     transactioncost::Number=0.,
+    spot_price=nothing, import_availability=nothing, export_availability=nothing,
 )
     vb = []
+    _imports = _resolve_timeseries(
+        s, import_availability, zone * ">" * elec.name, "transfer_capacities";
+        keyword="import_availability",
+    )
+    _exports = _resolve_timeseries(
+        s, export_availability, elec.name * ">" * zone, "transfer_capacities";
+        keyword="export_availability",
+    )
+    _spot = _resolve_timeseries(
+        s, spot_price, zone, "spot_price"; keyword="spot_price", digits=2,
+    )
 
     # imports
     m = DispatchableSource(elec.carrier)
     push!(vb, FixedCapacity("output", energy, mcap))
-    push!(vb, Nosy.CapacityMultiplier("output", gettimeseries(s, zone * ">" * elec.name, "transfer_capacities")))
-    push!(vb, VariableCost(:imports, "output", energy, Float64.(gettimeseries(s, zone, "spot_price", digits=2))))
+    push!(vb, Nosy.CapacityMultiplier("output", _imports))
+    push!(vb, VariableCost(:imports, "output", energy, _spot))
     push!(vb, VariableCost(:transaction, "output", energy, Float64(transactioncost)))
 
     # exports
     push!(vb, FreeJointFlow("input", elec.carrier, :input))
     push!(vb, FixedCapacity("input", energy, xcap))
-    push!(vb, Nosy.CapacityMultiplier("input", gettimeseries(s, elec.name * ">" * zone, "transfer_capacities")))
-    push!(vb, VariableCost(:exports, "input", energy, -1 * Float64.(gettimeseries(s, zone, "spot_price", digits=2))))
+    push!(vb, Nosy.CapacityMultiplier("input", _exports))
+    push!(vb, VariableCost(:exports, "input", energy, -1 .* _spot))
     push!(vb, VariableCost(:transaction, "input", energy, Float64(transactioncost)))
 
     c = Component("IC_" * zone * "_" * elec.name, m, vb)
@@ -74,6 +91,7 @@ end
         dir::Bool=false, foreign::Bool=false, dc::Bool=false,
         transactioncost::Number=0., lossfactor::Number=0.,
         susceptance::Union{Nothing,Number}=nothing,
+        atob_availability=nothing, btoa_availability=nothing,
     )
 
 Build, connect and return an interconnection component linking two nodes.
@@ -95,6 +113,9 @@ Arguments:
   * lossfactor: proportional losses applied on conversion.
   * susceptance: AC susceptance for DC power flow (must be negative); stored in
     `Snapshot.options[:ic_susceptance]` (required for KVL when `POSY2Options.dcopf` is true).
+  * atob_availability: Hourly `a -> b` multiplier vector or scalar.
+  * btoa_availability: Hourly `b -> a` multiplier vector or scalar. A finite
+    direction falls back to its workbook column when the keyword is `nothing`.
 """
 function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Number, s::Snapshot;
     # operation flags
@@ -103,6 +124,7 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Nu
     # economic / physical controls
     transactioncost::Number=0., lossfactor::Number=0.,
     susceptance::Union{Nothing,Number}=nothing,
+    atob_availability=nothing, btoa_availability=nothing,
 )
     vb = []
 
@@ -112,7 +134,10 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Nu
     push!(vb, VariableCost(:transaction, "input", energy, Float64(transactioncost)))
     if !isinf(atob)
         push!(vb, FixedCapacity("input", energy, atob))
-        push!(vb, Nosy.CapacityMultiplier("input", gettimeseries(s, a.name * ">" * b.name, "transfer_capacities", digits=2)))
+        push!(vb, Nosy.CapacityMultiplier("input", _resolve_timeseries(
+            s, atob_availability, a.name * ">" * b.name, "transfer_capacities";
+            keyword="atob_availability", digits=2,
+        )))
     end
 
     # b -> a
@@ -121,7 +146,10 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Nu
     push!(vb, VariableCost(:transaction, "input2", energy, Float64(transactioncost)))
     if !isinf(btoa)
         push!(vb, FixedCapacity("input2", energy, btoa))
-        push!(vb, Nosy.CapacityMultiplier("input2", gettimeseries(s, b.name * ">" * a.name, "transfer_capacities", digits=2)))
+        push!(vb, Nosy.CapacityMultiplier("input2", _resolve_timeseries(
+            s, btoa_availability, b.name * ">" * a.name, "transfer_capacities";
+            keyword="btoa_availability", digits=2,
+        )))
     end
 
     # grid losses balance

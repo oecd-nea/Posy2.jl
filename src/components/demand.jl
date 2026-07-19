@@ -6,7 +6,8 @@ using ArgCheck: @argcheck
 
 """
     makedemand(cname::String, zone::String, n::Node, s::Snapshot;
-        coeff=1.0, shift::Int=0, yearlyconstant::Number=0., gridlosses=0.,
+        profile=nothing, coeff=1.0, shift::Int=0,
+        yearlyconstant::Number=0., gridlosses=0.,
     )
 
 Build, connect and return a component based on the Demand template.
@@ -16,19 +17,23 @@ Arguments:
   * zone: time series name in the time series workbook (`demand` sheet).
   * n: demand node to connect the component to.
   * s: snapshot to register the component in.
+  * profile: Hourly demand vector, or a scalar expanded across the simulation
+    mesh. If `nothing`, read `zone` from the `demand` sheet.
   * coeff: multiplicative factor applied to the profile part of demand.
   * shift: circular shift of demand profile (e.g. align first day to Monday).
   * yearlyconstant: flat yearly demand term distributed over 8760 hours (`yearlyconstant >= 0`).
   * gridlosses: optional proportional grid loss joint flow on demand input (`0 <= gridlosses < 1`).
 """
-function makedemand(cname::String, zone::String, n::Node, s::Snapshot; coeff=1.0, shift::Int=0, yearlyconstant::Number=0., gridlosses=0.)
+function makedemand(cname::String, zone::String, n::Node, s::Snapshot;
+                    profile=nothing, coeff=1.0, shift::Int=0,
+                    yearlyconstant::Number=0., gridlosses=0.)
     inputs = demand_input(coeff=coeff, yearlyconstant=yearlyconstant, gridlosses=gridlosses)
     validate_demand_input(inputs)
     _gridlosses = Float64(gridlosses)
     if iszero(coeff)
         var = 0.
     else
-        var = coeff * gettimeseries(s, zone, "demand") 
+        var = coeff * _resolve_timeseries(s, profile, zone, "demand"; keyword="profile")
         circshift!(var, shift)
     end
 
@@ -105,6 +110,7 @@ end
         offhours1=nothing, offhours2=nothing, minratio=nothing, days_threshold::Integer=104,
         zone::Union{Nothing,String}=nothing, tech::String="EV",
         compensation::Number=0., gridlosses=0.,
+        charging_availability=nothing, driving_profile=nothing,
         charging_eff::Union{Nothing,Number}=nothing, self_discharge::Union{Nothing,Number}=nothing, min_level_morning::Union{Nothing,Number}=nothing,
         max_charging_power_per_ev::Union{Nothing,Number}=nothing, max_dispatch_power_per_ev::Union{Nothing,Number}=nothing,
         battery_capacity_per_ev::Union{Nothing,Number}=nothing, yearly_consumption_per_ev::Union{Nothing,Number}=nothing,
@@ -128,7 +134,12 @@ Arguments:
   * minratio: Relative charging level during off-hours (`0 <= minratio <= 1`). Required when `fixed_profile=true`; ignored otherwise.
   * days_threshold: Number of first winter days before summer segment in fixed-profile assembly (`0 <= days_threshold <= 183`, used only when `fixed_profile=true`).
 
-  * zone: Zone key used to read EV time series (`EV_charging_availability`, `EV_driving_profile`). Required in flexible/V2G modes.
+  * zone: Zone key used to read EV time series. Required in flexible/V2G modes
+    unless both series are supplied explicitly.
+  * charging_availability: Hourly charging-station availability vector or
+    scalar. If `nothing`, read it from the configured time-series workbook.
+  * driving_profile: Hourly driving vector or scalar. If `nothing`, read it
+    from the configured time-series workbook.
   * tech: Technology column name in the `storage` tech data sheet for EV parameters (used in flexible/V2G modes).
   * compensation: V2G compensation in USD/MWh applied to EV discharge output in V2G mode (ignored in non-V2G modes).
   * gridlosses: Optional proportional grid-loss linked flow on EV input in fixed_profile mode (`0 <= gridlosses < 1`).
@@ -147,6 +158,7 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
 
     # flexible / V2G inputs
     zone::Union{Nothing,String}=nothing, tech::String="EV", compensation::Number=0., gridlosses=0.,
+    charging_availability=nothing, driving_profile=nothing,
     charging_eff::Union{Nothing,Number}=nothing, self_discharge::Union{Nothing,Number}=nothing, min_level_morning::Union{Nothing,Number}=nothing,
     max_charging_power_per_ev::Union{Nothing,Number}=nothing, max_dispatch_power_per_ev::Union{Nothing,Number}=nothing,
     battery_capacity_per_ev::Union{Nothing,Number}=nothing, yearly_consumption_per_ev::Union{Nothing,Number}=nothing,)
@@ -192,8 +204,9 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
         connect!(s, c, elec)
         return c
     else
-        @argcheck !isnothing(zone) "zone is required when smart_charging or vehicle_to_grid is enabled."
-        @argcheck zone isa String "zone must be a String."
+        @argcheck !isnothing(zone) || (!isnothing(charging_availability) && !isnothing(driving_profile)) "zone is required unless both EV profiles are supplied explicitly."
+        @argcheck isnothing(zone) || zone isa String "zone must be a String."
+        profile_zone = isnothing(zone) ? elec.name : zone
 
         # efficiency on storage output port (V2G discharge); grid charging uses input at efficiency 1
         eff = isnothing(charging_eff) ? gettechparam(s, tech, "charging_eff", "storage") : charging_eff
@@ -221,10 +234,16 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
         max_battery_capacity = number_ev * battery_cap_per_ev
 
         # profile for being connected to charging station
-        chargingstationprofile = gettimeseries(s, zone, "EV_charging_availability")
+        chargingstationprofile = _resolve_timeseries(
+            s, charging_availability, profile_zone, "EV_charging_availability";
+            keyword="charging_availability",
+        )
 
         # generate consumption by applying normalized profile to yearly consumption
-        driving = gettimeseries(s, zone, "EV_driving_profile")
+        driving = _resolve_timeseries(
+            s, driving_profile, profile_zone, "EV_driving_profile";
+            keyword="driving_profile",
+        )
         @argcheck sum(driving) > 0 "EV_driving_profile must have a strictly positive sum."
         driving = driving ./ sum(driving)
         consumption = driving * _yearly

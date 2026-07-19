@@ -32,7 +32,7 @@ export applydcopf!
 export eac
 export selfcost
 export printsnapshot
-export POSY2Options, posy_options, discountrate, co2_price
+export POSY2Options, posy_options, discountrate, co2_price, tech_mode, timeseries_mode
 
 include("tools/_includes.jl")
 include("readdata/_includes.jl")

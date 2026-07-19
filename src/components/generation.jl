@@ -665,7 +665,8 @@ end
 
 """
     makenuclearprofile(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
-        cap=nothing, weatheryear=2019, co2price=co2_price(s),
+        cap=nothing, weatheryear=2019, profile=nothing,
+        co2price=co2_price(s),
         overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
         decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing,
         construction_profile=nothing, decommissioning_profile=nothing, om_var_cost::Union{Nothing,Number}=nothing,
@@ -683,6 +684,8 @@ Arguments:
 
   * cap: Fixed output capacity. If `nothing`, output capacity is optimized.
   * weatheryear: Year suffix used to select profile series `profiles_<year>`.
+  * profile: Hourly output multiplier vector or scalar. If `nothing`, read the
+    configured profile workbook column.
 
   * co2price: CO2 cost coefficient applied to emitted CO2 flow.
 
@@ -698,7 +701,7 @@ Arguments:
 """
 function makenuclearprofile(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / profile
-    cap=nothing, weatheryear=2019,
+    cap=nothing, weatheryear=2019, profile=nothing,
 
     co2price=co2_price(s),
 
@@ -707,7 +710,10 @@ function makenuclearprofile(cname::String, tech::String, elec::Node, co2::Node, 
     decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
     om_var_cost::Union{Nothing,Number}=nothing, fuel_cost::Union{Nothing,Number}=nothing, co2_emission::Union{Nothing,Number}=nothing,
 )
-    m = ProfileSource(elec.carrier, gettimeseries(s, tech * "_" * elec.name, "profiles_" * string(weatheryear)))
+    m = ProfileSource(elec.carrier, _resolve_timeseries(
+        s, profile, tech * "_" * elec.name, "profiles_" * string(weatheryear);
+        keyword="profile",
+    ))
     vb = []
     _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "dispatchable") : overnight_cost
     _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "dispatchable") : lifetime
@@ -756,7 +762,7 @@ end
 
 """
     makereservoirprofile(cname::String, zone::String, elec::Node, s::Snapshot;
-        cap=nothing, tech::String="Hydro reservoir",
+        cap=nothing, tech::String="Hydro reservoir", output_profile=nothing,
         overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
         om_var_cost::Union{Nothing,Number}=nothing, decommissioning::Union{Nothing,Number}=nothing,
         lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
@@ -771,6 +777,8 @@ Arguments:
   * s: snapshot to register the component in.
   * cap: Installed output capacity used to normalize the profile (`cap > 0` required; `nothing` is rejected).
   * tech: technology column name in the `storage` tech data sheet.
+  * output_profile: Hourly reservoir output vector or scalar. If `nothing`,
+    read `zone` from `fixed_reservoir_output`.
   * overnight_cost: optional CAPEX override for annualization. If `nothing`, read from Excel.
   * om_fixed_cost: optional fixed O&M override. If `nothing`, read from Excel.
   * om_var_cost: optional variable O&M override. If `nothing`, read from Excel.
@@ -781,7 +789,7 @@ Arguments:
 """
 function makereservoirprofile(cname::String, zone::String, elec::Node, s::Snapshot;
     # capacity / profile
-    cap=nothing, tech::String="Hydro reservoir",
+    cap=nothing, tech::String="Hydro reservoir", output_profile=nothing,
 
     # technical / economic overrides
     overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
@@ -790,7 +798,10 @@ function makereservoirprofile(cname::String, zone::String, elec::Node, s::Snapsh
 )
     if cap isa Number
         @argcheck cap > 0 "makereservoirprofile requires `cap > 0` for profile normalization."
-        m = ProfileSource(elec.carrier, gettimeseries(s, zone, "fixed_reservoir_output") / cap)
+        m = ProfileSource(elec.carrier, _resolve_timeseries(
+            s, output_profile, zone, "fixed_reservoir_output";
+            keyword="output_profile",
+        ) / cap)
     elseif isnothing(cap)
         throw(ArgumentError("makereservoirprofile requires numeric `cap` (cannot be `nothing`) because profile is normalized by cap."))
     else
@@ -832,7 +843,8 @@ end
 
 """
     makeintermittentsource(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
-        cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing, weatheryear=2019,
+        cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
+        weatheryear=2019, profile=nothing,
         co2price=co2_price(s),
         overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
         decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
@@ -854,6 +866,8 @@ Arguments:
   * maxcap: Bounds for optimized capacity when `cap === nothing`.
   * ini: Optional initial snapshot used to inherit fixed capacity.
   * weatheryear: Year suffix used to select profile series `profiles_<year>`.
+  * profile: Hourly capacity-factor vector or scalar. If `nothing`, read the
+    `<tech>_<node>` workbook column.
 
   * co2price: CO2 cost coefficient applied to emitted CO2 flow.
 
@@ -870,7 +884,8 @@ Arguments:
 """
 function makeintermittentsource(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / profile
-    cap=nothing, mincap=nothing, maxcap=nothing, ini::Union{Nothing,Snapshot}=nothing, weatheryear=2019,
+    cap=nothing, mincap=nothing, maxcap=nothing, ini::Union{Nothing,Snapshot}=nothing,
+    weatheryear=2019, profile=nothing,
 
     co2price=co2_price(s),
 
@@ -880,7 +895,10 @@ function makeintermittentsource(cname::String, tech::String, elec::Node, co2::No
     connection_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing,
     fuel_cost::Union{Nothing,Number}=nothing, co2_emission::Union{Nothing,Number}=nothing,
 )
-    m = ProfileSource(elec.carrier, gettimeseries(s, tech * "_" * elec.name, "profiles_" * string(weatheryear)))
+    m = ProfileSource(elec.carrier, _resolve_timeseries(
+        s, profile, tech * "_" * elec.name, "profiles_" * string(weatheryear);
+        keyword="profile",
+    ))
     vb = []
     _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "intermittent") : construction_profile
     _dcp = isnothing(decommissioning_profile) ? gettechparam(s, tech, "decommissioning_profile", "intermittent") : decommissioning_profile
@@ -935,7 +953,8 @@ end
 
 """
     makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
-        cap=nothing, tech::String="Hydro ror", weatheryear=2019, intake_mult=1.,
+        cap=nothing, tech::String="Hydro ror", weatheryear=2019,
+        inflow_profile=nothing, intake_mult=1.,
         overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing,
         decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
     )
@@ -951,6 +970,8 @@ Arguments:
   * cap: Installed output capacity used to normalize inflow profile. `makehydroror` requires a numeric positive `cap`; `nothing` is rejected.
   * tech: technology column name in the `intermittent` tech data sheet.
   * weatheryear: Year suffix used to select inflow series `hydro_ror_<year>`.
+  * inflow_profile: Hourly run-of-river inflow vector or scalar. If `nothing`,
+    read `zone` from the selected workbook sheet.
 
   * intake_mult: Multiplier applied to inflow profile before normalization to `cap`.
 
@@ -964,7 +985,7 @@ Arguments:
 """
 function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     # capacity / profile
-    cap=nothing, tech::String="Hydro ror", weatheryear=2019,
+    cap=nothing, tech::String="Hydro ror", weatheryear=2019, inflow_profile=nothing,
 
     intake_mult=1.,
 
@@ -980,7 +1001,10 @@ function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     else
         throw(ArgumentError("makehydroror `cap` must be a Number."))
     end
-    _profile = gettimeseries(s, zone, "hydro_ror_$weatheryear")
+    _profile = _resolve_timeseries(
+        s, inflow_profile, zone, "hydro_ror_$weatheryear";
+        keyword="inflow_profile",
+    )
     m = ProfileSource(elec.carrier, _profile * intake_mult / cap, cutoff=1.)
     vb = []
     if cap isa Number
