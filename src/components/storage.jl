@@ -103,10 +103,10 @@ function makehydroreservoir(cname::String, tech::String, zone::String, elec::Nod
             s, inflow_profile, zone, "reservoir_inflow_$weatheryear";
             keyword="inflow_profile",
         )
-        if renormalize 
-            _profile = _profile / sum(_profile) * intake_mult
-        end   
-        push!(vb, FixedJointFlow("natural", elec.carrier, :input, _profile * inflow, mustconnect=false))
+        if renormalize
+            _profile = _profile / sum(_profile)
+        end
+        push!(vb, FixedJointFlow("natural", elec.carrier, :input, _profile * inflow * intake_mult, mustconnect=false))
     end
     
     if cap_discharging isa Number

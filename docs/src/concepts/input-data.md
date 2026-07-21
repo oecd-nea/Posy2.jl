@@ -318,10 +318,9 @@ The principal series semantics are:
   required fixed capacity and applies `intake_mult`.
 - `reservoir_inflow_<year>` contains natural inflow. `inflow=nothing` uses the
   raw profile multiplied by `intake_mult`; `inflow=0` avoids the lookup; and a
-  non-zero numeric `inflow` scales the profile. With `renormalize=true`, POSY2
-  first normalises the profile to sum to one and applies `intake_mult`.
-  Currently, `intake_mult` is not applied in the non-zero,
-  `renormalize=false` branch.
+  non-zero numeric `inflow` scales the profile and always applies
+  `intake_mult`. With `renormalize=true`, POSY2 first normalises the profile to
+  sum to one before that scaling.
 - EV charging availability is a capacity multiplier. The driving profile is
   normalised to the requested annual EV consumption and must have a positive
   sum.

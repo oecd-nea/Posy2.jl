@@ -25,9 +25,9 @@ leaves the level without a capacity behaviour.
 
 Inflow comes from sheet `reservoir_inflow_<weatheryear>`, column `<zone>`.
 `inflow=nothing` uses the profile multiplied by `intake_mult`, `inflow=0`
-omits natural inflow, and another numeric value scales it. With
-`renormalize=true`, the series is first divided by its annual sum and
-multiplied by `intake_mult`.
+omits natural inflow, and another numeric value scales the profile by
+`inflow * intake_mult`. With `renormalize=true`, the series is first divided
+by its annual sum before that scaling.
 
 `eff` defaults to `roundtrip_eff` in technology column `tech` of sheet
 `storage`. It applies to grid charging; natural inflow and discharge have unit

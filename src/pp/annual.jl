@@ -250,16 +250,24 @@ function __dataline_cap(s::Snapshot, nodeswith::Vector{Symbol}, nodeswithout::Ve
     for (nodename,_) in allnodes
         v = Any[nodename]
         d = allnode_comps[nodename]
-        compbytech = Dict(only(get(comp.tags, :tech, String[])) => comp for (_, comp) in d)
+        dbytech = Dict{String,Vector{Component}}()
+        for (_, comp) in d
+            tech = only(get(comp.tags, :tech, String[]))
+            push!(get!(dbytech, tech, Component[]), comp)
+        end
         for cname in allcomps
-            comp = get(compbytech, cname, nothing)
-            if comp === nothing
+            comps = get(dbytech, cname, Component[])
+            if isempty(comps)
                 push!(v, 0.)
-            elseif Nosy.hasport(comp, portname)
-                cap = capacity(comp, portname)
-                push!(v, isnothing(cap) ? Inf : cap / coeff)
             else
-                push!(v, 0.)
+                local total = 0.0
+                for comp in comps
+                    if Nosy.hasport(comp, portname)
+                        cap = capacity(comp, portname)
+                        total += isnothing(cap) ? Inf : cap / coeff
+                    end
+                end
+                push!(v, total)
             end
         end
         push!(df, permutedims(v))
@@ -446,19 +454,27 @@ function __dataline_yearly(s::Snapshot, modifier::Function, nodeswith::Vector{Sy
     for (nodename,_) in allnodes
         v = Any[nodename]
         d = allnode_comps[nodename]
-        compbytech = Dict(only(get(comp.tags, :tech, String[])) => comp for (_, comp) in d)
+        dbytech = Dict{String,Vector{Component}}()
+        for (_, comp) in d
+            tech = only(get(comp.tags, :tech, String[]))
+            push!(get!(dbytech, tech, Component[]), comp)
+        end
         for cname in allcomps
-            comp = get(compbytech, cname, nothing)
-            if comp === nothing
+            comps = get(dbytech, cname, Component[])
+            if isempty(comps)
                 push!(v, 0.)
             else
-                bout = balance(comp, :output, modifier, collapse=true, aggregate=false)
-                if haskey(bout, portname)
-                    push!(v, bout[portname] / factor)
-                else
-                    bin = balance(comp, :input, modifier, collapse=true, aggregate=false)
-                    push!(v, haskey(bin, portname) ? bin[portname] / factor : 0.)
+                local total = 0.0
+                for comp in comps
+                    bout = balance(comp, :output, modifier, collapse=true, aggregate=false)
+                    if haskey(bout, portname)
+                        total += bout[portname] / factor
+                    else
+                        bin = balance(comp, :input, modifier, collapse=true, aggregate=false)
+                        total += haskey(bin, portname) ? bin[portname] / factor : 0.
+                    end
                 end
+                push!(v, total)
             end
         end
         push!(df, permutedims(v))
