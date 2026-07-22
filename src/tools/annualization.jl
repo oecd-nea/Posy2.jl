@@ -11,7 +11,8 @@ function eac(overnight::Number, discountrate::Number, lifetime, constructionprof
     if ismissing(constructionprofile)
         throw(ArgumentError("construction profile is missing"))
     else
-        return overnight * construction_factor(discountrate, constructionprofile) * corrected_crf(discountrate, lifetime)
+        annualized = iszero(discountrate) ? (1 / lifetime) : corrected_crf(discountrate, lifetime)
+        return overnight * construction_factor(discountrate, constructionprofile) * annualized
     end
 end
 

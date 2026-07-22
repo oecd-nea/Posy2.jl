@@ -256,32 +256,24 @@ using HiGHS
         )
     end
 
-    # losses are reported per electricity node; zone curtailment is a non negative snapshot total.
+    # Zone loss totals equal that zone's component losses. Aggregate=true equals the sum of zone totals.
     let
-        snap, elec1, elec2, h2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makeelectrolyser(
-            "EL", "PEM", elec1, h2, snap;
-            cap=10.0, gridlosses=0.0, eff=0.8,
-            overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
-            construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
-        )
+        snap, elec1, elec2, _, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0, gridlosses=0.05)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; lossfactor=0.05)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
         los = POSY2.losses(s; aggregate=false, collapse=true)
+        dem_loss = POSY2.losses(s, "Other consumption ZONE1"; collapse=true)
+        ic_loss = POSY2.losses(s, "IC_ZONE1_ZONE2"; collapse=true)
+        ccgt_loss = POSY2.losses(s, "CCGT ZONE2"; collapse=true)
         @test haskey(los, "ZONE1")
         @test haskey(los, "ZONE2")
-        @test isapprox(
-            los["ZONE1"],
-            POSY2.losses(s, "EL ZONE1"; collapse=true) + POSY2.losses(s, "IC_ZONE1_ZONE2"; collapse=true);
-            rtol=1e-12,
-        )
-        @test isapprox(los["ZONE2"], POSY2.losses(s, "CCGT ZONE2"; collapse=true); rtol=1e-12)
-        curt = POSY2.curtailment(s; collapse=true)
-        @test curt == 0.0
+        @test isapprox(los["ZONE1"], dem_loss + ic_loss; rtol=1e-12)
+        @test isapprox(los["ZONE2"], ccgt_loss + ic_loss; rtol=1e-12)
+        @test isapprox(POSY2.losses(s; aggregate=true, collapse=true), sum(values(los)); rtol=1e-12)
     end
 
     # Foreign price IC: ATC columns exist for both directions; gentimeseries stores ATC in GW (/1000).

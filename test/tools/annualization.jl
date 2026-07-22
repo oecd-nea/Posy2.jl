@@ -27,6 +27,7 @@ using Test
 
         # Zero discount rate should annualize over lifetime without NaN.
         @test isapprox(POSY2.decom_cost(1000.0, 0.1, 25, 0.0, 1.0), 4.0; rtol=1e-10)
+        @test isapprox(POSY2.eac(1000.0, 0.0, 20, 1.0), 50.0; rtol=1e-10)
     end
 
     # Validation: sum near 1, non negative shares, numeric parse required.

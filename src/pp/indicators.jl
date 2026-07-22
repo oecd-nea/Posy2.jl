@@ -184,6 +184,9 @@ function losses(s; aggregate=false, collapse=true)
     for (nname, _) in getnodes(s, with=[:electricity])
         d[nname] = sum([losses(s, cname, modifier=energy, collapse=collapse) for (cname, c) in getcomponents(s, nname)])
     end
-    aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
+    if aggregate
+        ini = collapse ? 0.0 : zeros(Nosy.nhours(sim(s)))
+        return sum(values(d); init=ini)
+    end
     return d
 end

@@ -43,18 +43,20 @@ using DataFrames
         return snap, elec1, elec2, elec3, co2
     end
 
-    # Aggregated cost dataline: Physical + Trade equals Total and matches snapshot selfcost (Bn USD).
+    # Aggregated costs: Trade is interconnection columns and Physical is the rest. Total matches selfcost.
     let
-        snap, elec1, elec2, co2 = makesnapshot()
+        snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
         d = POSY2._dataline_costs_aggregated(s; showforeign=false)
-        @test isapprox(d.d["Physical"] + d.d["Trade"], d.d["Total"]; rtol=1e-12)
+        df = POSY2.selfcosts(s)
+        allrow = first(df[df[!, :component] .== "all", :])
+        trade = (allrow.imports + allrow.exports + allrow[Symbol("congestion rent")]) / 1e9
+        @test isapprox(d.d["Trade"], trade; rtol=1e-12)
+        @test isapprox(d.d["Physical"], d.d["Total"] - trade; rtol=1e-12)
         @test isapprox(POSY2.selfcost(s) / 1e9, d.d["Total"]; rtol=1e-12)
     end
 

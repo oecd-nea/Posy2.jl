@@ -668,11 +668,11 @@ function _all_ic_directed_flows(s::Snapshot; collapse=true)
 end
 
 """
-    imports_internal(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-Return a Dict of the time series associated with internal (non-foreign) imports of `modifier` in node named `nodename` of Snapshot `s`.
+    imports_internal(s::Snapshot, nodename::String; collapse=true)
+Return a Dict of the energy time series associated with internal (non-foreign) imports in node named `nodename` of Snapshot `s`.
 If `collapse`, return a Dict of values instead.
 """
-function imports_internal(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+function imports_internal(s::Snapshot, nodename::String; collapse=true)
     selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
     d = LittleDict{String, Union{Float64, Nosy.AbstractTimeSeries{Float64}}}()
     for (_, c) in getcomponents(s, with=[:function => "interconnection"])
@@ -688,11 +688,11 @@ function imports_internal(s::Snapshot, nodename::String; modifier=energy, collap
 end
 
 """
-    exports_internal(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-Return a Dict of the time series associated with internal (non-foreign) exports of `modifier` in node named `nodename` of Snapshot `s`.
+    exports_internal(s::Snapshot, nodename::String; collapse=true)
+Return a Dict of the energy time series associated with internal (non-foreign) exports in node named `nodename` of Snapshot `s`.
 If `collapse`, return a Dict of values instead.
 """
-function exports_internal(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+function exports_internal(s::Snapshot, nodename::String; collapse=true)
     selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
     d = LittleDict{String, Union{Float64, Nosy.AbstractTimeSeries{Float64}}}()
     for (_, c) in getcomponents(s, with=[:function => "interconnection"])
@@ -708,11 +708,11 @@ function exports_internal(s::Snapshot, nodename::String; modifier=energy, collap
 end
 
 """
-    imports_all(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-Return a Dict of the time series associated with all (internal and foreign) imports of `modifier` in node named `nodename` of Snapshot `s`.
+    imports_all(s::Snapshot, nodename::String; collapse=true)
+Return a Dict of the energy time series associated with all (internal and foreign) imports in node named `nodename` of Snapshot `s`.
 If `collapse`, return a Dict of values instead.
 """
-function imports_all(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+function imports_all(s::Snapshot, nodename::String; collapse=true)
     d = LittleDict{String, Union{Float64, Nosy.AbstractTimeSeries{Float64}}}()
     for (_, c) in getcomponents(s, with=[:function => "interconnection"])
         for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
@@ -726,11 +726,11 @@ function imports_all(s::Snapshot, nodename::String; modifier=energy, collapse=tr
 end
 
 """
-    exports_all(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-Return a Dict of the time series associated with all (internal and foreign) exports of `modifier` in node named `nodename` of Snapshot `s`.
+    exports_all(s::Snapshot, nodename::String; collapse=true)
+Return a Dict of the energy time series associated with all (internal and foreign) exports in node named `nodename` of Snapshot `s`.
 If `collapse`, return a Dict of values instead.
 """
-function exports_all(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+function exports_all(s::Snapshot, nodename::String; collapse=true)
     d = LittleDict{String, Union{Float64, Nosy.AbstractTimeSeries{Float64}}}()
     for (_, c) in getcomponents(s, with=[:function => "interconnection"])
         for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
@@ -744,11 +744,11 @@ function exports_all(s::Snapshot, nodename::String; modifier=energy, collapse=tr
 end
 
 """
-    imports_foreign(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-Return a Dict of the time series associated with external (foreign) imports of `modifier` in node named `nodename` of Snapshot `s`.
+    imports_foreign(s::Snapshot, nodename::String; collapse=true)
+Return a Dict of the energy time series associated with external (foreign) imports in node named `nodename` of Snapshot `s`.
 If `collapse`, return a Dict of values instead.
 """
-function imports_foreign(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+function imports_foreign(s::Snapshot, nodename::String; collapse=true)
     selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
     d = LittleDict{String, Union{Float64, Nosy.AbstractTimeSeries{Float64}}}()
     for (_, c) in getcomponents(s, with=[:function => "interconnection"])
@@ -763,11 +763,11 @@ function imports_foreign(s::Snapshot, nodename::String; modifier=energy, collaps
 end
 
 """
-    exports_foreign(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-Return a Dict of the time series associated with external (foreign) exports of `modifier` in node named `nodename` of Snapshot `s`.
+    exports_foreign(s::Snapshot, nodename::String; collapse=true)
+Return a Dict of the energy time series associated with external (foreign) exports in node named `nodename` of Snapshot `s`.
 If `collapse`, return a Dict of values instead.
 """
-function exports_foreign(s::Snapshot, nodename::String; modifier=energy, collapse=true)
+function exports_foreign(s::Snapshot, nodename::String; collapse=true)
     selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
     d = LittleDict{String, Union{Float64, Nosy.AbstractTimeSeries{Float64}}}()
     for (_, c) in getcomponents(s, with=[:function => "interconnection"])
@@ -1235,7 +1235,7 @@ function _dataline_costs_aggregated(s; showforeign=true)
 
     _total = first(dfcosts[dfcosts[!,"component"] .== "all", "total"])
 
-    _iccols = ("imports", "exports", "congestionrent")
+    _iccols = ("imports", "exports", "congestion rent")
     local _ic = 0.
     for cname in _iccols
         if cname in names(dfcosts)
