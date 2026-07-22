@@ -46,6 +46,19 @@ using HiGHS
         @test length(node_map) == 1
     end
 
+    # Parallel AC on the same unordered pair is rejected (either argument order).
+    # Parallel DC and mixed AC+DC on the same pair are allowed.
+    let
+        s, elec1, elec2 = makesnapshot()
+        makenodeinterco("IC", elec1, elec2, Inf, Inf, s; dc=false)
+        @test_throws ArgumentError makenodeinterco("IC2", elec1, elec2, Inf, Inf, s; dc=false)
+        @test_throws ArgumentError makenodeinterco("IC2", elec2, elec1, Inf, Inf, s; dc=false)
+        c_dc = makenodeinterco("HVDC", elec1, elec2, Inf, Inf, s; dc=true)
+        @test Nosy.hastag(c_dc, :function, "DC")
+        c_dc2 = makenodeinterco("HVDC2", elec1, elec2, Inf, Inf, s; dc=true)
+        @test Nosy.hastag(c_dc2, :function, "DC")
+    end
+
     # Price interconnection succeeds when zone series exist in the fixture.
     let
         s, elec1, _ = makesnapshot()

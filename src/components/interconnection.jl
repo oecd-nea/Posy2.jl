@@ -116,6 +116,10 @@ Arguments:
   * atob_availability: Hourly `a -> b` multiplier vector or scalar.
   * btoa_availability: Hourly `b -> a` multiplier vector or scalar. A finite
     direction falls back to its workbook column when the keyword is `nothing`.
+
+A second `AC` node interconnection on the same unordered node pair is rejected
+(shared susceptance registry). Parallel `DC` links and mixed `AC`+`DC` on the
+same pair are allowed.
 """
 function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Number, s::Snapshot;
     # operation flags
@@ -173,6 +177,19 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Nu
     end
     foreign && tag!(c, :function, "foreign") # IC between self and other country
     dc ? tag!(c, :function, "DC") : tag!(c, :function, "AC") # AC or DC
+
+    # Parallel AC shares one susceptance registry key per pair; parallel DC / AC+DC are OK.
+    if !dc
+        pair = Set([a.name, b.name])
+        for (_, existing) in getcomponents(s; with=[:function => "nodeinterconnection"])
+            same_pair = Set(get(existing.tags, :zone, String[])) == pair
+            existing_ac = !hastag(existing, :function, "DC")
+            if same_pair && existing_ac
+                throw(ArgumentError("an AC node interconnection already exists between $(a.name) and $(b.name); parallel AC ICs are not supported"))
+            end
+        end
+    end
+
     if !dc && !isnothing(susceptance)
         _register_ic_susceptance!(s, a.name, b.name, susceptance)
     end

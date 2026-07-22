@@ -46,7 +46,8 @@ end
 
 # Return net power flow between two nodes (from -> to).
 # Net flow = forward flow - reverse flow (bidirectional interconnections).
-# Multiple ICs can connect the same two nodes, so we sum their net flows.
+# `node_map` is AC-only (DC excluded from KVL). Nets on the same pair are summed.
+# Parallel AC is rejected at build, so usually one IC matches.
 function _net_ic_flow(s::Snapshot, from::String, to::String, node_map::Dict{String, Tuple{String, String}})
     net = nothing
     for (cname, (ic_from, ic_to)) in node_map

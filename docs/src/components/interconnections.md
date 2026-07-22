@@ -45,6 +45,10 @@ The reverse direction is `b -> a`:
 - `input2` withdraws from node `b` and carries capacity `btoa`;
 - `output2` delivers to node `a` after `lossfactor`.
 
+Only one `AC` node interconnection is allowed between a given unordered pair of
+nodes; a second `AC` call for the same pair raises an error. Parallel `DC`
+links and mixed `AC`+`DC` on the same pair are allowed.
+
 For a finite direction, `transactioncost` is applied to its sending flow. The
 current implementation omits this cost when the corresponding capacity is
 `Inf`. The unconnected `grid losses ic` output records proportional losses for

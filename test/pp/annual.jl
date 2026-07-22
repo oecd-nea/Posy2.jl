@@ -100,10 +100,32 @@ using DataFrames
 
         line = POSY2._dataline_ic_cap(s)
         @test line.unit == "GW"
-        v_fwd = line.d[line.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
-        v_rev = line.d[line.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
-        @test isapprox(v_fwd, 2.0; rtol=1e-12)
-        @test isapprox(v_rev, 3.0; rtol=1e-12)
+        @test isapprox(line.d[line.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], 2.0; rtol=1e-12)
+        @test isapprox(line.d[line.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1], 3.0; rtol=1e-12)
+    end
+
+    # Same directed pair with AC + DC: capacity and volume cells sum both ICs.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("AC", elec1, elec2, 2_000.0, 2_000.0, snap; dc=false)
+        makenodeinterco("DC", elec1, elec2, 500.0, 500.0, snap; dc=true)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        cap = POSY2._dataline_ic_cap(s)
+        @test isapprox(cap.d[cap.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], 2.5; rtol=1e-12)
+        @test isapprox(cap.d[cap.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1], 2.5; rtol=1e-12)
+
+        ac = Nosy.getcomponent(s, "AC_ZONE1_ZONE2")
+        dc = Nosy.getcomponent(s, "DC_ZONE1_ZONE2")
+        ac_fwd = balance(ac, :input, energy, collapse=true, aggregate=false)["input"]
+        dc_fwd = balance(dc, :input, energy, collapse=true, aggregate=false)["input"]
+        vol = POSY2._dataline_ic_vol_detailed(s)
+        v = vol.d[vol.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
+        @test isapprox(v, (ac_fwd + dc_fwd) / 1e6; rtol=1e-12)
     end
 
     # IC exists but no injection: corridor cell is 0.0 (flow is zero), not missing.

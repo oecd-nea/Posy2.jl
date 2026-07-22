@@ -659,7 +659,9 @@ function _all_ic_directed_flows(s::Snapshot; collapse=true)
     flows = Dict{Tuple{String, String}, FlowT}()
     for (_, c) in getcomponents(s, with=[:function => "interconnection"])
         for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
-            flows[(_from, _to)] = flow
+            # Same directed pair: sum parallel IC flows (e.g. AC+DC or DC+DC).
+            key = (_from, _to)
+            flows[key] = haskey(flows, key) ? flows[key] .+ flow : flow
         end
     end
     return flows
@@ -678,7 +680,7 @@ function imports_internal(s::Snapshot, nodename::String; modifier=energy, collap
             _to == nodename || continue
             _from == nodename && continue
             haskey(selfnodes, _from) || continue
-            d[_from] = flow
+            d[_from] = haskey(d, _from) ? d[_from] .+ flow : flow
         end
     end
     collapse && return sum(values(d), init=0.0)
@@ -698,7 +700,7 @@ function exports_internal(s::Snapshot, nodename::String; modifier=energy, collap
             _from == nodename || continue
             _to == nodename && continue
             haskey(selfnodes, _to) || continue
-            d[_to] = flow
+            d[_to] = haskey(d, _to) ? d[_to] .+ flow : flow
         end
     end
     collapse && return sum(values(d), init=0.0)
@@ -716,7 +718,7 @@ function imports_all(s::Snapshot, nodename::String; modifier=energy, collapse=tr
         for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
             _to == nodename || continue
             _from == nodename && continue
-            d[_from] = flow
+            d[_from] = haskey(d, _from) ? d[_from] .+ flow : flow
         end
     end
     collapse && return sum(values(d), init=0.0)
@@ -734,7 +736,7 @@ function exports_all(s::Snapshot, nodename::String; modifier=energy, collapse=tr
         for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
             _from == nodename || continue
             _to == nodename && continue
-            d[_to] = flow
+            d[_to] = haskey(d, _to) ? d[_to] .+ flow : flow
         end
     end
     collapse && return sum(values(d), init=0.0)
@@ -753,7 +755,7 @@ function imports_foreign(s::Snapshot, nodename::String; modifier=energy, collaps
         for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
             _to == nodename || continue
             haskey(selfnodes, _from) && continue
-            d[_from] = flow
+            d[_from] = haskey(d, _from) ? d[_from] .+ flow : flow
         end
     end
     collapse && return sum(values(d), init=0.0)
@@ -772,7 +774,7 @@ function exports_foreign(s::Snapshot, nodename::String; modifier=energy, collaps
         for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
             _from == nodename || continue
             haskey(selfnodes, _to) && continue
-            d[_to] = flow
+            d[_to] = haskey(d, _to) ? d[_to] .+ flow : flow
         end
     end
     collapse && return sum(values(d), init=0.0)
@@ -791,7 +793,8 @@ function imports_foreign(s; collapse=true)
         for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
             haskey(selfnodes, _to) || continue
             haskey(selfnodes, _from) && continue
-            dv[string(_from, " > ", _to)] = flow
+            key = string(_from, " > ", _to)
+            dv[key] = haskey(dv, key) ? dv[key] .+ flow : flow
         end
     end
     return dv
@@ -810,7 +813,8 @@ function imports_internal(s; collapse=true)
             haskey(selfnodes, _to) || continue
             haskey(selfnodes, _from) || continue
             _from == _to && continue
-            dv[string(_from, " > ", _to)] = flow
+            key = string(_from, " > ", _to)
+            dv[key] = haskey(dv, key) ? dv[key] .+ flow : flow
         end
     end
     return dv
@@ -828,7 +832,8 @@ function imports_all(s; collapse=true)
         for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
             haskey(allnodes, _to) || continue
             _from == _to && continue
-            dv[string(_from, " > ", _to)] = flow
+            key = string(_from, " > ", _to)
+            dv[key] = haskey(dv, key) ? dv[key] .+ flow : flow
         end
     end
     return dv
@@ -846,7 +851,8 @@ function exports_foreign(s; collapse=true)
         for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
             haskey(selfnodes, _from) || continue
             haskey(selfnodes, _to) && continue
-            dv[string(_from, " > ", _to)] = flow
+            key = string(_from, " > ", _to)
+            dv[key] = haskey(dv, key) ? dv[key] .+ flow : flow
         end
     end
     return dv
@@ -865,7 +871,8 @@ function exports_internal(s; collapse=true)
             haskey(selfnodes, _from) || continue
             haskey(selfnodes, _to) || continue
             _from == _to && continue
-            dv[string(_from, " > ", _to)] = flow
+            key = string(_from, " > ", _to)
+            dv[key] = haskey(dv, key) ? dv[key] .+ flow : flow
         end
     end
     return dv
@@ -883,7 +890,8 @@ function exports_all(s; collapse=true)
         for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
             haskey(allnodes, _from) || continue
             _from == _to && continue
-            dv[string(_from, " > ", _to)] = flow
+            key = string(_from, " > ", _to)
+            dv[key] = haskey(dv, key) ? dv[key] .+ flow : flow
         end
     end
     return dv
@@ -918,10 +926,16 @@ function _dataline_ic_cap(s)
         c = Nosy.getcomponent(s, cname)
         (_from, _to) = _fromto_ic_internal(s, c)
         if Nosy.hascapacitybehavior(c, "input")
-            df[df[!,"From \\ To"] .== _from, _to] .= capacity(c, "input") / 1E3
+            v = capacity(c, "input") / 1E3
+            rows = df[!, "From \\ To"] .== _from
+            old = first(df[rows, _to])
+            df[rows, _to] .= ismissing(old) ? v : old + v
         end
         if Nosy.hascapacitybehavior(c, "input2")
-            df[df[!,"From \\ To"] .== _to, _from] .= capacity(c, "input2") / 1E3
+            v = capacity(c, "input2") / 1E3
+            rows = df[!, "From \\ To"] .== _to
+            old = first(df[rows, _from])
+            df[rows, _from] .= ismissing(old) ? v : old + v
         end
     end
 
@@ -929,10 +943,16 @@ function _dataline_ic_cap(s)
         c = Nosy.getcomponent(s, cname)
         (_from, _to) = ext_fromto[cname]
         if Nosy.hascapacitybehavior(c, "output")
-            df[df[!,"From \\ To"] .== _from, _to] .= capacity(c, "output") / 1E3
+            v = capacity(c, "output") / 1E3
+            rows = df[!, "From \\ To"] .== _from
+            old = first(df[rows, _to])
+            df[rows, _to] .= ismissing(old) ? v : old + v
         end
         if Nosy.hascapacitybehavior(c, "input")
-            df[df[!,"From \\ To"] .== _to, _from] .= capacity(c, "input") / 1E3
+            v = capacity(c, "input") / 1E3
+            rows = df[!, "From \\ To"] .== _to
+            old = first(df[rows, _from])
+            df[rows, _from] .= ismissing(old) ? v : old + v
         end
     end
 
@@ -1019,7 +1039,11 @@ function _ic_vol_detailed(s; collapse=true, addtotal=false)
         for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
             row = string(_from, " >")
             col = "> " * _to
-            df[df[!, "From \\ To"] .== row, col] .= Ref(flow)
+            rows = df[!, "From \\ To"] .== row
+            # `_ic_quasinodes` can list a price-neighbor name twice when it matches an
+            # electricity node; keep duplicate rows in sync (same as previous .= Ref(flow)).
+            old = first(df[rows, col])
+            df[rows, col] .= Ref(ismissing(old) ? flow : old .+ flow)
         end
     end
 
