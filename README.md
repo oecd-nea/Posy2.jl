@@ -2,8 +2,8 @@
 
 POSY2 is a country- and regional-level power system capacity expansion and
 dispatch model developed at the OECD Nuclear Energy Agency (OECD-NEA). Built on
-[Nosy.jl](https://github.com/oecd-nea/Nosy.jl), it provides a higher-level Julia
-workflow for assembling power and multi-vector energy system studies, solving
+[Nosy.jl](https://github.com/oecd-nea/Nosy.jl), it provides a Julia workflow
+to assemble power and multi-vector energy system studies, solving
 LP and MILP formulations through JuMP-compatible optimisers, and analysing the
 resulting costs, capacities, dispatch, storage, prices, and interconnection
 flows.
@@ -45,17 +45,18 @@ POSY2 adds a power system modelling layer on top of Nosy:
 - `POSY2Options` configures technology data, time-series data, the discount
   rate, the CO2 price, and optional DC power flow. Call `applydcopf!` before
   optimisation to add KVL constraints when DC power flow is enabled.
-- High-level constructors assemble and connect common technologies, including
+- High-level constructors(`make*`) assemble and connect common technologies, including
   demand, dispatchable and intermittent generation, nuclear power, hydro,
   batteries, demand response, electrolysers, hydrogen storage, and
   interconnections.
-- Fixed or optimisable capacity, operating costs, unit commitment, ramping,
-  storage, emissions, and grid losses are represented with Nosy behaviours and
-  joint flows.
 - Technology assumptions and hourly profiles can be read directly from Excel,
   while keyword arguments allow individual values to be overridden.
+- Investment and decommissioning costs are annualised before being attached 
+  as Nosy fixed costs.
 - Solved snapshots can be inspected in Julia or exported to an Excel workbook
   with `printsnapshot`.
+
+Carriers, nodes, behaviours, optimisation, and generic metrics remain provided by Nosy.
 
 ## Basic Example
 
@@ -81,30 +82,11 @@ snapshot = Snapshot(
 )
 
 # Create electricity and CO2 nodes.
-electricity = Node(
-    "grid",
-    EnergyCarrier("electricity", sim),
-    rule=:curtailed,
-    evalprice=true,
-    losses=0.0,
-    tags=[:electricity],
-)
-co2 = Node(
-    "CO2",
-    CO2Carrier("CO2", sim),
-    rule=:curtailed,
-    tags=[:co2],
-)
+electricity = Node("grid", EnergyCarrier("electricity", sim); rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+co2 = Node("CO2", CO2Carrier("CO2", sim); rule=:curtailed, tags=[:co2])
 
 # Add a flat 100 MW demand: 100 MW × 8760 hours.
-makedemand(
-    "Load",
-    "unused",
-    electricity,
-    snapshot;
-    coeff=0.0,
-    yearlyconstant=876_000.0,
-)
+makedemand("Load", "unused", electricity, snapshot; coeff=0.0, yearlyconstant=876_000.0)
 
 # Add a dispatchable generator with optimisable capacity.
 makedispatchable(
@@ -134,20 +116,8 @@ result = extract(snapshot)
 # Inspect results.
 cost(result)
 capacity(result, "Plant grid") # 100.0 MW
-balance(
-    result,
-    "Plant grid",
-    :output,
-    energy;
-    collapse=true,
-    aggregate=true,
-) # 876000.0 MWh
+balance(result, "Plant grid", :output, energy; collapse=true, aggregate=true) # 876000.0 MWh
 ```
-
-For a larger model definition with nuclear and wind generation, demand
-response, interconnections, and DC power flow, see
-[`example/example1.jl`](example/example1.jl). It expects scenario workbooks in
-`data/`.
 
 ## Underlying Toolkit: Nosy
 

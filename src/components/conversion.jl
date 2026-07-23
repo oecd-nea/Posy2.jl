@@ -15,27 +15,27 @@ Generate conversion components.
 Build, connect and return an electrolyser component.
 
 Arguments:
-  * cname: component name prefix.
-  * tech: technology column name in the `electrolysis` tech data sheet.
-  * elec: electricity node to connect the component to.
-  * h2: hydrogen node to connect the component to.
-  * s: snapshot to register the component in.
+  * `cname`: component name prefix.
+  * `tech`: technology column name in the `electrolysis` tech data sheet.
+  * `elec`: electricity node to connect the component to.
+  * `h2`: hydrogen node to connect the component to.
+  * `s`: snapshot to register the component in.
 
-  * cap: Fixed electrolyser input capacity. If `nothing`, input capacity is optimized.
-  * mincap: Bounds for optimized input capacity when `cap === nothing`.
-  * maxcap: Bounds for optimized input capacity when `cap === nothing`.
-  * ini: Optional initial snapshot used to inherit fixed input capacity.
+  * `cap`: Fixed electrolyser input capacity. If `nothing`, input capacity is optimized.
+  * `mincap`: Bounds for optimized input capacity when `cap === nothing`.
+  * `maxcap`: Bounds for optimized input capacity when `cap === nothing`.
+  * `ini`: Optional initial snapshot used to inherit fixed input capacity.
 
-  * gridlosses: Proportional losses linked to electricity input flow (`0 <= gridlosses < 1`).
-  * eff: Electricity to hydrogen conversion ratio in `BasicConverter`. If `nothing`, read from Excel (`electrolysis.efficiency`).
+  * `gridlosses`: Proportional losses linked to electricity input flow (`0 <= gridlosses < 1`).
+  * `eff`: Electricity to hydrogen conversion ratio in `BasicConverter`. If `nothing`, read `efficiency` from the `electrolysis` sheet.
 
-  * overnight_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * om_fixed_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * decommissioning: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * lifetime: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
-  * construction_profile: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
-  * om_var_cost: Variable O&M coefficient on input energy flow.
+  * `overnight_cost`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `om_fixed_cost`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `lifetime`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
+  * `construction_profile`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
+  * `om_var_cost`: Variable O&M coefficient on input energy flow.
 """
 function makeelectrolyser(cname::String, tech::String, elec::Node, h2::Node, s::Snapshot;
     # capacity / expansion
@@ -111,28 +111,28 @@ end
 Build, connect and return an HT electrolyser component.
 
 Arguments:
-  * cname: component name prefix.
-  * tech: technology column name in the `electrolysis` tech data sheet.
-  * elec: electricity node to connect the component to.
-  * heat: Heat node. It is linked one to one to electrolyser input via `LinkedJointFlow("heat", ...)`.
-  * h2: hydrogen node to connect the component to.
-  * s: snapshot to register the component in.
+  * `cname`: component name prefix.
+  * `tech`: technology column name in the `electrolysis` tech data sheet.
+  * `elec`: electricity node to connect the component to.
+  * `heat`: Heat node. It is linked one to one to electrolyser input via `LinkedJointFlow("heat", ...)`.
+  * `h2`: hydrogen node to connect the component to.
+  * `s`: snapshot to register the component in.
 
-  * cap: Fixed electrolyser input capacity. If `nothing`, input capacity is optimized.
-  * mincap: Bounds for optimized input capacity when `cap === nothing`.
-  * maxcap: Bounds for optimized input capacity when `cap === nothing`.
-  * ini: Optional initial snapshot used to inherit fixed input capacity.
+  * `cap`: Fixed electrolyser input capacity. If `nothing`, input capacity is optimized.
+  * `mincap`: Bounds for optimized input capacity when `cap === nothing`.
+  * `maxcap`: Bounds for optimized input capacity when `cap === nothing`.
+  * `ini`: Optional initial snapshot used to inherit fixed input capacity.
 
-  * gridlosses: Proportional losses linked to electricity input flow (`0 <= gridlosses < 1`).
-  * eff: Electricity to hydrogen conversion ratio in `BasicConverter`. If `nothing`, read from Excel (`electrolysis.efficiency`).
+  * `gridlosses`: Proportional losses linked to electricity input flow (`0 <= gridlosses < 1`).
+  * `eff`: Electricity to hydrogen conversion ratio in `BasicConverter`. If `nothing`, read `efficiency` from the `electrolysis` sheet.
 
-  * overnight_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * om_fixed_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * decommissioning: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * lifetime: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
-  * construction_profile: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
-  * om_var_cost: Variable O&M coefficient on input energy flow.
+  * `overnight_cost`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `om_fixed_cost`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `lifetime`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
+  * `construction_profile`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
+  * `om_var_cost`: Variable O&M coefficient on input energy flow.
 """
 function makeHTelectrolyser(cname::String, tech::String, elec::Node, heat::Node, h2::Node, s::Snapshot;
     # capacity / expansion

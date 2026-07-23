@@ -34,8 +34,8 @@ year-specific logic and should not yet be treated as mesh-agnostic.
 
 ## Carriers And Nodes
 
-POSY2 does not create the study nodes automatically. Create Nosy carriers and
-nodes first, then pass the nodes to the component builders.
+Component builders expect existing Nosy carriers and nodes. 
+Create those first, then pass the nodes into the builders.
 
 ```julia
 power = EnergyCarrier("electricity", s)
@@ -66,12 +66,13 @@ DC power-flow graph. Tag external neighbour nodes with `:foreign`; leave nodes
 inside the system boundary without that tag. This distinction is also used by
 [`selfcost`](@ref).
 
-`evalprice=true` asks Nosy to retain a node's balance dual after a continuous
-solve. It is needed for marginal-price reporting and for interconnection
-accounting based on local prices.
+`evalprice=true` tells Nosy to store the node's electricity marginal price
+(the dual of the power balance constraint) after a continuous solve. Enable it
+if the node's price will be used later, for example in price reports or
+price-based interconnection accounting.
 
-A curtailed electricity node permits supply to exceed consumption. A default
-balanced node instead requires exact equality. Choose the rule according to
+A node with `rule=:curtailed` allows supply to exceed consumption. The default
+balanced node requires exact equality. Choose the rule according to
 the commodity and whether free curtailment is meaningful.
 
 ## Component Builders
@@ -235,8 +236,8 @@ neighbour itself is outside the model.
 
 [`makenodeinterco`](@ref) connects two explicit Nosy nodes with directional
 flows. It can apply directional capacities, time-varying transfer-capacity
-multipliers, losses, transaction costs, and an optional one-direction-at-a-time
-SOS1 relation. The current node-interconnection implementation of that relation
+multipliers, losses, transaction costs, and an optional SOS1 one direction at a time
+relation. The current node-interconnection implementation of that relation
 can suppress all transfer; leave `dir=false` until the limitation described in
 [Interconnections](../components/interconnections.md) is corrected.
 

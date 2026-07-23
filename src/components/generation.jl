@@ -10,10 +10,10 @@ using ArgCheck: @argcheck
 Build, connect and return a flat hydrogen purchase component.
 
 Arguments:
-  * cname: component name prefix.
-  * n: hydrogen node to connect the component to.
-  * val: yearly purchased hydrogen amount, converted internally to a flat hourly capacity (`val / 8760`).
-  * s: snapshot to register the component in.
+  * `cname`: component name prefix.
+  * `n`: hydrogen node to connect the component to.
+  * `val`: yearly purchased hydrogen amount, converted internally to a flat hourly capacity (`val / 8760`).
+  * `s`: snapshot to register the component in.
 """
 function makeflathydrogenpurchase(cname::String, n::Node, val::Number, s::Snapshot)
     m = ProfileSource(n.carrier, 1.)
@@ -46,45 +46,45 @@ end
 Build, connect and return a dispatchable component.
 
 Arguments:
-  * cname: component name prefix.
-  * tech: technology column name in the `dispatchable` tech data sheet.
-  * elec: Electricity node connected to component output flow.
-  * co2: CO2 node connected only when `co2_emission != 0`.
-  * s: Target snapshot where the component and behaviors are registered.
+  * `cname`: component name prefix.
+  * `tech`: technology column name in the `dispatchable` tech data sheet.
+  * `elec`: Electricity node connected to component output flow.
+  * `co2`: CO2 node connected only when `co2_emission != 0`.
+  * `s`: Target snapshot where the component and behaviors are registered.
 
-  * cap: Fixed output capacity in model power units. If `0`, the function returns `nothing`. If `nothing`, output capacity is a decision variable.
-  * mincap: Lower/upper bounds for variable capacity when `cap === nothing`.
-  * maxcap: Lower/upper bounds for variable capacity when `cap === nothing`.
-  * ini: Optional initial snapshot. If provided, capacity/UC state is inherited from the matching component.
-  * capacitymultiplier: Time varying multiplier applied to output capacity (capacity basis, not energy basis).
+  * `cap`: Fixed output capacity in model power units. If `0`, the function returns `nothing`. If `nothing`, output capacity is a decision variable.
+  * `mincap`: Lower/upper bounds for variable capacity when `cap === nothing`.
+  * `maxcap`: Lower/upper bounds for variable capacity when `cap === nothing`.
+  * `ini`: Optional initial snapshot. If provided, capacity/UC state is inherited from the matching component.
+  * `capacitymultiplier`: Time varying multiplier applied to output capacity (capacity basis, not energy basis).
 
-  * integeruc: If `true`, UC commitment variables are integer (mixed integer UC).
-  * uc: Enables UC constraints and UC linked costs (`no_load_cost`, `startup_cost`).
-  * fuelnode: If provided, fuel is modeled as an input flow linked by efficiency. If `nothing`, fuel is modeled as a variable cost on output energy (`fuel_cost`).
+  * `integeruc`: If `true`, UC commitment variables are integer (mixed integer UC).
+  * `uc`: Enables UC constraints and UC linked costs (`no_load_cost`, `startup_cost`).
+  * `fuelnode`: If provided, fuel is modeled as an input flow linked by efficiency. If `nothing`, fuel is modeled as a variable cost on output energy (`fuel_cost`).
 
-  * co2price: CO2 cost coefficient used with emitted CO2 flow.
+  * `co2price`: CO2 cost coefficient used with emitted CO2 flow.
 
-  * overnight_cost: Overnight CAPEX input used by `eac(...)` (Excel default when `nothing`).
-  * om_fixed_cost: Fixed O&M cost on output capacity (`FixedCost(:fom, "output", ...)`; Excel default when `nothing`).
-  * decommissioning: Decommissioning cost ratio used in `decom_cost(...)` (Excel default when `nothing`).
-  * lifetime: Asset lifetime used by annualization/decommissioning calculations (`> 0`, integer-valued).
-  * construction_profile: Construction cost share profile passed to `eac(...)` (Excel default when `nothing`).
-  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)` (Excel default when `nothing`).
-  * connection_cost: Connection cost ratio applied on annualized investment.
-  * om_var_cost: Variable O&M cost on output energy flow (`VariableCost(:vom, "output", ...)`).
-  * fuel_cost: Direct fuel variable cost on output energy. Used only when `fuelnode === nothing`.
-  * no_load_cost: UC no load cost applied per committed output state and time step. Used only when `uc=true`.
-  * startup_cost: UC startup cost applied to startup events. Used only when `uc=true`.
-  * co2_emission: CO2 emission factor linked from output energy to CO2 flow (`output * co2_emission / 1000`).
-  * efficiency: Fuel to output conversion efficiency for linked fuel flow. Required when `fuelnode` is provided.
-  * unit_size: Unit block size for discrete capacity representation. `0` is treated as no unit size constraint.
-  * ramp_up: Max ramp up as a fraction of unit capacity per hour. Passed to `Ramping(...)` as `ramp_up * unit_size`. Excel default when `nothing`. Used only when `unit_size > 0`.
-  * ramp_down: Max ramp down as a fraction of unit capacity per hour. Same scaling as `ramp_up`. Excel default when `nothing`. Used only when `unit_size > 0`.
-  * min_power: UC minimum generation fraction while committed. Used only when `uc=true`.
-  * min_uptime: UC minimum uptime constraint. Used only when `uc=true`.
-  * min_downtime: UC minimum downtime constraint. Used only when `uc=true`.
-  * startup_duration: UC startup duration parameter. Used only when `uc=true`.
-  * shutdown_duration: UC shutdown duration parameter. Used only when `uc=true`.
+  * `overnight_cost`: Overnight CAPEX input used by `eac(...)` (Excel default when `nothing`).
+  * `om_fixed_cost`: Fixed O&M cost on output capacity (`FixedCost(:fom, "output", ...)`; Excel default when `nothing`).
+  * `decommissioning`: Decommissioning cost ratio used in `decom_cost(...)` (Excel default when `nothing`).
+  * `lifetime`: Asset lifetime used by annualization/decommissioning calculations (`> 0`, integer-valued).
+  * `construction_profile`: Construction cost share profile passed to `eac(...)` (Excel default when `nothing`).
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)` (Excel default when `nothing`).
+  * `connection_cost`: Connection cost ratio applied on annualized investment.
+  * `om_var_cost`: Variable O&M cost on output energy flow (`VariableCost(:vom, "output", ...)`).
+  * `fuel_cost`: Direct fuel variable cost on output energy. Used only when `fuelnode === nothing`.
+  * `no_load_cost`: UC no load cost applied per committed output state and time step. Used only when `uc=true`.
+  * `startup_cost`: UC startup cost applied to startup events. Used only when `uc=true`.
+  * `co2_emission`: CO2 emission factor linked from output energy to CO2 flow (`output * co2_emission / 1000`).
+  * `efficiency`: Fuel to output conversion efficiency for linked fuel flow. Required when `fuelnode` is provided.
+  * `unit_size`: Unit block size for discrete capacity representation. `0` is treated as no unit size constraint.
+  * `ramp_up`: Max ramp up as a fraction of unit capacity per hour. Passed to `Ramping(...)` as `ramp_up * unit_size`. Excel default when `nothing`. Used only when `unit_size > 0`.
+  * `ramp_down`: Max ramp down as a fraction of unit capacity per hour. Same scaling as `ramp_up`. Excel default when `nothing`. Used only when `unit_size > 0`.
+  * `min_power`: UC minimum generation fraction while committed. Used only when `uc=true`.
+  * `min_uptime`: minimum consecutive online time in hours after a start. Used only when `uc=true`.
+  * `min_downtime`: minimum consecutive offline time in hours after a shutdown. Used only when `uc=true`.
+  * `startup_duration`: offline-to-online transition duration in hours. Used only when `uc=true`.
+  * `shutdown_duration`: online-to-offline transition duration in hours. Used only when `uc=true`.
 """
 function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / expansion
@@ -254,51 +254,51 @@ end
 Build, connect and return a nuclear reactor component.
 
 Arguments:
-  * cname: component name prefix.
-  * tech: technology column name in the `dispatchable` tech data sheet.
-  * elec: electricity node to connect the component to.
-  * co2: CO2 node connected when `co2_emission` is non zero.
-  * s: snapshot to register the component in.
+  * `cname`: component name prefix.
+  * `tech`: technology column name in the `dispatchable` tech data sheet.
+  * `elec`: electricity node to connect the component to.
+  * `co2`: CO2 node connected when `co2_emission` is non zero.
+  * `s`: snapshot to register the component in.
 
-  * cap: Fixed output capacity. If `nothing`, capacity can be optimized with optional bounds.
-  * mincap: Bounds applied when `cap === nothing`.
-  * maxcap: Bounds applied when `cap === nothing`.
-  * integercap: Integer flag for capacity expansion variable.
-  * ini: Optional initial snapshot for inherited capacity/UC settings.
-  * warmstart: Warm start value passed to variable capacity behavior when used.
+  * `cap`: Fixed output capacity. If `nothing`, capacity can be optimized with optional bounds.
+  * `mincap`: Bounds applied when `cap === nothing`.
+  * `maxcap`: Bounds applied when `cap === nothing`.
+  * `integercap`: Integer flag for capacity expansion variable.
+  * `ini`: Optional initial snapshot for inherited capacity/UC settings.
+  * `warmstart`: Warm start value passed to variable capacity behavior when used.
 
-  * uc: Enables UC constraints and UC linked costs. Reloading logic is only modeled when `uc=true`; if `uc=false` and any reloading argument is provided, a warning is emitted and reloading is ignored.
-  * integeruc: Integer UC commitment variables.
-  * startupmask: Optional masks restricting UC startup/shutdown availability over time.
-  * shutdownmask: Optional masks restricting UC startup/shutdown availability over time.
+  * `uc`: Enables UC constraints and UC linked costs. Reloading logic is only modeled when `uc=true`; if `uc=false` and any reloading argument is provided, a warning is emitted and reloading is ignored.
+  * `integeruc`: Integer UC commitment variables.
+  * `startupmask`: Optional masks restricting UC startup/shutdown availability over time.
+  * `shutdownmask`: Optional masks restricting UC startup/shutdown availability over time.
 
-  * reload_duration: Duration of planned reload outage. If `nothing`, read from Excel. Must be >= 0; reloading constraints are enabled only when this value is > 0.
-  * reloadmask: Interval between allowed reload windows. Non default parameter (not read from Excel). When reloading is enabled, it must be provided , strictly positive, and integer-valued.
-  * reload_fraction_per_year: Minimum yearly reload requirement (fraction per unit per year). If `nothing`, read from Excel. Must be >= 0; reloading constraints are enabled only when this value is > 0.
+  * `reload_duration`: Duration of planned reload outage. If `nothing`, read from Excel. Must be >= 0; reloading constraints are enabled only when this value is > 0.
+  * `reloadmask`: Interval between allowed reload windows. Non default parameter (not read from Excel). When reloading is enabled, it must be provided , strictly positive, and integer-valued.
+  * `reload_fraction_per_year`: Minimum yearly reload requirement (fraction per unit per year). If `nothing`, read from Excel. Must be >= 0; reloading constraints are enabled only when this value is > 0.
 
-  * fuelnode: If provided, fuel is represented as linked input flow using `efficiency`. If `nothing`, `fuel_cost` is applied as output variable cost.
-  * co2price: CO2 price coefficient for emitted CO2 flow.
+  * `fuelnode`: If provided, fuel is represented as linked input flow using `efficiency`. If `nothing`, `fuel_cost` is applied as output variable cost.
+  * `co2price`: CO2 price coefficient for emitted CO2 flow.
 
-  * overnight_cost: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
-  * om_fixed_cost: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
-  * decommissioning: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
-  * lifetime: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
-  * construction_profile: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
-  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
-  * connection_cost: Ratio applied to annualized investment for connection cost.
-  * om_var_cost: Variable cost coefficients on output energy (fuel cost used directly only when `fuelnode === nothing`).
-  * fuel_cost: Variable cost coefficients on output energy (fuel cost used directly only when `fuelnode === nothing`).
-  * waste_cost: Variable cost coefficients on output energy (fuel cost used directly only when `fuelnode === nothing`).
-  * no_load_cost: UC specific costs added only when `uc=true`.
-  * startup_cost: UC specific costs added only when `uc=true`.
-  * co2_emission: Emission factor linking output energy to CO2 output flow.
-  * efficiency: Fuel to output efficiency for linked fuel input mode.
-  * unit_size: Unit block size for discrete capacity representation.
-  * min_power: UC operating constraints and transition timing parameters (used only when `uc=true`).
-  * min_uptime: UC operating constraints and transition timing parameters (used only when `uc=true`).
-  * min_downtime: UC operating constraints and transition timing parameters (used only when `uc=true`).
-  * startup_duration: UC operating constraints and transition timing parameters (used only when `uc=true`).
-  * shutdown_duration: UC operating constraints and transition timing parameters (used only when `uc=true`).
+  * `overnight_cost`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
+  * `om_fixed_cost`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
+  * `lifetime`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
+  * `construction_profile`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
+  * `connection_cost`: Ratio applied to annualized investment for connection cost.
+  * `om_var_cost`: Variable cost coefficients on output energy (fuel cost used directly only when `fuelnode === nothing`).
+  * `fuel_cost`: Variable cost coefficients on output energy (fuel cost used directly only when `fuelnode === nothing`).
+  * `waste_cost`: Variable cost coefficients on output energy (fuel cost used directly only when `fuelnode === nothing`).
+  * `no_load_cost`: UC specific costs added only when `uc=true`.
+  * `startup_cost`: UC specific costs added only when `uc=true`.
+  * `co2_emission`: Emission factor linking output energy to CO2 output flow.
+  * `efficiency`: Fuel to output efficiency for linked fuel input mode.
+  * `unit_size`: Unit block size for discrete capacity representation.
+  * `min_power`: UC minimum generation fraction while committed. Used only when `uc=true`.
+  * `min_uptime`: minimum consecutive online time in hours after a start. Used only when `uc=true`.
+  * `min_downtime`: minimum consecutive offline time in hours after a shutdown. Used only when `uc=true`.
+  * `startup_duration`: offline-to-online transition duration in hours. Used only when `uc=true`.
+  * `shutdown_duration`: online-to-offline transition duration in hours. Used only when `uc=true`.
 """
 function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / expansion
@@ -549,34 +549,34 @@ end
 Build, connect and return an SMR component.
 
 Arguments:
-  * cname: component name prefix.
-  * tech: technology column name in the `dispatchable` tech data sheet.
-  * elec: Electricity output node.
-  * heat: Auxiliary heat accounting node. SMR adds a linked heat flow at 1:1 with electric output.
-  * co2: CO2 node connected when `co2_emission != 0`.
-  * s: snapshot to register the component in.
+  * `cname`: component name prefix.
+  * `tech`: technology column name in the `dispatchable` tech data sheet.
+  * `elec`: Electricity output node.
+  * `heat`: Auxiliary heat accounting node. SMR adds a linked heat flow at 1:1 with electric output.
+  * `co2`: CO2 node connected when `co2_emission != 0`.
+  * `s`: snapshot to register the component in.
 
-  * cap: Fixed output capacity. If `nothing`, optimize capacity with optional bounds.
-  * mincap: Capacity bounds used when `cap === nothing`.
-  * maxcap: Capacity bounds used when `cap === nothing`.
-  * integercap: Integer expansion flag for capacity decision.
-  * ini: Optional initial snapshot for inherited capacity.
-  * warmstart: Warm start value passed to variable capacity behavior.
+  * `cap`: Fixed output capacity. If `nothing`, optimize capacity with optional bounds.
+  * `mincap`: Capacity bounds used when `cap === nothing`.
+  * `maxcap`: Capacity bounds used when `cap === nothing`.
+  * `integercap`: Integer expansion flag for capacity decision.
+  * `ini`: Optional initial snapshot for inherited capacity.
+  * `warmstart`: Warm start value passed to variable capacity behavior.
 
-  * co2price: CO2 cost coefficient used for linked CO2 flow cost.
+  * `co2price`: CO2 cost coefficient used for linked CO2 flow cost.
 
-  * overnight_cost: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms. If `nothing`, values are read from Excel.
-  * om_fixed_cost: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms. If `nothing`, values are read from Excel.
-  * decommissioning: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms. If `nothing`, values are read from Excel.
-  * lifetime: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms (`> 0`, integer-valued). If `nothing`, values are read from Excel.
-  * construction_profile: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms. If `nothing`, values are read from Excel.
-  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. If `nothing`, read from Excel.
-  * connection_cost: Ratio applied on annualized investment as connection cost.
-  * om_var_cost: Variable O&M cost on output energy flow.
-  * fuel_cost: Fuel variable cost on output energy flow.
-  * waste_cost: Nuclear waste variable cost on output energy flow.
-  * co2_emission: Emission factor linking output energy to CO2 output flow.
-  * unit_size: Unit block size for discrete capacity representation.
+  * `overnight_cost`: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms. If `nothing`, values are read from Excel.
+  * `om_fixed_cost`: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms. If `nothing`, values are read from Excel.
+  * `decommissioning`: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms. If `nothing`, values are read from Excel.
+  * `lifetime`: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms (`> 0`, integer-valued). If `nothing`, values are read from Excel.
+  * `construction_profile`: CAPEX/FOM/lifetime inputs for annualization and decommissioning terms. If `nothing`, values are read from Excel.
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. If `nothing`, read from Excel.
+  * `connection_cost`: Ratio applied on annualized investment as connection cost.
+  * `om_var_cost`: Variable O&M cost on output energy flow.
+  * `fuel_cost`: Fuel variable cost on output energy flow.
+  * `waste_cost`: Nuclear waste variable cost on output energy flow.
+  * `co2_emission`: Emission factor linking output energy to CO2 output flow.
+  * `unit_size`: Unit block size for discrete capacity representation.
 """
 function makesmr(cname::String, tech::String, elec::Node, heat::Node, co2::Node, s::Snapshot;
     # capacity / expansion
@@ -676,28 +676,28 @@ end
 Build, connect and return a profile based nuclear generation component.
 
 Arguments:
-  * cname: component name prefix.
-  * tech: technology column name in the `dispatchable` tech data sheet.
-  * elec: electricity node to connect the component to.
-  * co2: CO2 node connected when `co2_emission` is non zero.
-  * s: snapshot to register the component in.
+  * `cname`: component name prefix.
+  * `tech`: technology column name in the `dispatchable` tech data sheet.
+  * `elec`: electricity node to connect the component to.
+  * `co2`: CO2 node connected when `co2_emission` is non zero.
+  * `s`: snapshot to register the component in.
 
-  * cap: Fixed output capacity. If `nothing`, output capacity is optimized.
-  * weatheryear: Year suffix used to select profile series `profiles_<year>`.
-  * profile: Hourly output multiplier vector or scalar. If `nothing`, read the
+  * `cap`: Fixed output capacity. If `nothing`, output capacity is optimized.
+  * `weatheryear`: Year suffix used to select profile series `profiles_<year>`.
+  * `profile`: Hourly output multiplier vector or scalar. If `nothing`, read the
     configured profile workbook column.
 
-  * co2price: CO2 cost coefficient applied to emitted CO2 flow.
+  * `co2price`: CO2 cost coefficient applied to emitted CO2 flow.
 
-  * overnight_cost: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms. Excel defaults are used when values are `nothing`.
-  * om_fixed_cost: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms. Excel defaults are used when values are `nothing`.
-  * decommissioning: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms. Excel defaults are used when values are `nothing`.
-  * lifetime: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
-  * construction_profile: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms. Excel defaults are used when values are `nothing`.
-  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
-  * om_var_cost: Variable O&M coefficient on output energy flow.
-  * fuel_cost: Fuel variable cost coefficient on output energy flow.
-  * co2_emission: Emission factor linking output energy to CO2 output flow.
+  * `overnight_cost`: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms. Excel defaults are used when values are `nothing`.
+  * `om_fixed_cost`: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning`: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms. Excel defaults are used when values are `nothing`.
+  * `lifetime`: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
+  * `construction_profile`: CAPEX/FOM/lifetime inputs for annualized investment and decommissioning terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
+  * `om_var_cost`: Variable O&M coefficient on output energy flow.
+  * `fuel_cost`: Fuel variable cost coefficient on output energy flow.
+  * `co2_emission`: Emission factor linking output energy to CO2 output flow.
 """
 function makenuclearprofile(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / profile
@@ -762,7 +762,7 @@ end
 
 """
     makereservoirprofile(cname::String, zone::String, elec::Node, s::Snapshot;
-        cap=nothing, tech::String="Hydro reservoir", output_profile=nothing,
+        cap=nothing, tech::String="Hydro res", output_profile=nothing,
         overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
         om_var_cost::Union{Nothing,Number}=nothing, decommissioning::Union{Nothing,Number}=nothing,
         lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
@@ -771,25 +771,25 @@ end
 Build, connect and return a profile-based hydro reservoir generation component.
 
 Arguments:
-  * cname: component name prefix.
-  * zone: time-series zone used to read `fixed_reservoir_output`.
-  * elec: electricity node to connect the component to.
-  * s: snapshot to register the component in.
-  * cap: Installed output capacity used to normalize the profile (`cap > 0` required; `nothing` is rejected).
-  * tech: technology column name in the `storage` tech data sheet.
-  * output_profile: Hourly reservoir output vector or scalar. If `nothing`,
+  * `cname`: component name prefix.
+  * `zone`: time-series zone used to read `fixed_reservoir_output`.
+  * `elec`: electricity node to connect the component to.
+  * `s`: snapshot to register the component in.
+  * `cap`: Installed output capacity used to normalize the profile (`cap > 0` required; `nothing` is rejected).
+  * `tech`: technology column name in the `storage` tech data sheet (default `"Hydro res"`).
+  * `output_profile`: Hourly reservoir output vector or scalar. If `nothing`,
     read `zone` from `fixed_reservoir_output`.
-  * overnight_cost: optional CAPEX override for annualization. If `nothing`, read from Excel.
-  * om_fixed_cost: optional fixed O&M override. If `nothing`, read from Excel.
-  * om_var_cost: optional variable O&M override. If `nothing`, read from Excel.
-  * decommissioning: optional decommissioning ratio override. If `nothing`, read from Excel.
-  * lifetime: optional lifetime override (`> 0`, integer-valued). If `nothing`, read from Excel.
-  * construction_profile: optional construction profile override used in annualization.
-  * decommissioning_profile: optional decommissioning profile override passed to `decom_cost(...)`.
+  * `overnight_cost`: optional CAPEX override for annualization. If `nothing`, read from Excel.
+  * `om_fixed_cost`: optional fixed O&M override. If `nothing`, read from Excel.
+  * `om_var_cost`: optional variable O&M override. If `nothing`, read from Excel.
+  * `decommissioning`: optional decommissioning ratio override. If `nothing`, read from Excel.
+  * `lifetime`: optional lifetime override (`> 0`, integer-valued). If `nothing`, read from Excel.
+  * `construction_profile`: optional construction profile override used in annualization.
+  * `decommissioning_profile`: optional decommissioning profile override passed to `decom_cost(...)`.
 """
 function makereservoirprofile(cname::String, zone::String, elec::Node, s::Snapshot;
     # capacity / profile
-    cap=nothing, tech::String="Hydro reservoir", output_profile=nothing,
+    cap=nothing, tech::String="Hydro res", output_profile=nothing,
 
     # technical / economic overrides
     overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
@@ -855,32 +855,32 @@ end
 Build, connect and return an intermittent source component.
 
 Arguments:
-  * cname: component name prefix.
-  * tech: technology column name in the `intermittent` tech data sheet.
-  * elec: electricity node to connect the component to.
-  * co2: CO2 node connected when `co2_emission` is non zero.
-  * s: snapshot to register the component in.
+  * `cname`: component name prefix.
+  * `tech`: technology column name in the `intermittent` tech data sheet.
+  * `elec`: electricity node to connect the component to.
+  * `co2`: CO2 node connected when `co2_emission` is non zero.
+  * `s`: snapshot to register the component in.
 
-  * cap: Fixed output capacity. If `nothing`, capacity is optimized.
-  * mincap: Bounds for optimized capacity when `cap === nothing`.
-  * maxcap: Bounds for optimized capacity when `cap === nothing`.
-  * ini: Optional initial snapshot used to inherit fixed capacity.
-  * weatheryear: Year suffix used to select profile series `profiles_<year>`.
-  * profile: Hourly capacity-factor vector or scalar. If `nothing`, read the
+  * `cap`: Fixed output capacity. If `nothing`, capacity is optimized.
+  * `mincap`: Bounds for optimized capacity when `cap === nothing`.
+  * `maxcap`: Bounds for optimized capacity when `cap === nothing`.
+  * `ini`: Optional initial snapshot used to inherit fixed capacity.
+  * `weatheryear`: Year suffix used to select profile series `profiles_<year>`.
+  * `profile`: Hourly capacity-factor vector or scalar. If `nothing`, read the
     `<tech>_<node>` workbook column.
 
-  * co2price: CO2 cost coefficient applied to emitted CO2 flow.
+  * `co2price`: CO2 cost coefficient applied to emitted CO2 flow.
 
-  * overnight_cost: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * om_fixed_cost: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * decommissioning: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * lifetime: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
-  * construction_profile: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
-  * connection_cost: Ratio applied to annualized investment as connection fixed cost.
-  * om_var_cost: Variable O&M coefficient on output energy flow.
-  * fuel_cost: Fuel variable cost coefficient on output energy flow.
-  * co2_emission: Emission factor linking output energy to CO2 output flow.
+  * `overnight_cost`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `om_fixed_cost`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `lifetime`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
+  * `construction_profile`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
+  * `connection_cost`: Ratio applied to annualized investment as connection fixed cost.
+  * `om_var_cost`: Variable O&M coefficient on output energy flow.
+  * `fuel_cost`: Fuel variable cost coefficient on output energy flow.
+  * `co2_emission`: Emission factor linking output energy to CO2 output flow.
 """
 function makeintermittentsource(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / profile
@@ -962,26 +962,26 @@ end
 Build, connect and return a run of river hydro component.
 
 Arguments:
-  * cname: component name prefix.
-  * zone: Time series zone used to read hydro inflow profile.
-  * elec: electricity node to connect the component to.
-  * s: snapshot to register the component in.
+  * `cname`: component name prefix.
+  * `zone`: Time series zone used to read hydro inflow profile.
+  * `elec`: electricity node to connect the component to.
+  * `s`: snapshot to register the component in.
 
-  * cap: Installed output capacity used to normalize inflow profile. `makehydroror` requires a numeric positive `cap`; `nothing` is rejected.
-  * tech: technology column name in the `intermittent` tech data sheet.
-  * weatheryear: Year suffix used to select inflow series `hydro_ror_<year>`.
-  * inflow_profile: Hourly run-of-river inflow vector or scalar. If `nothing`,
+  * `cap`: Installed output capacity used to normalize inflow profile. `makehydroror` requires a numeric positive `cap`; `nothing` is rejected.
+  * `tech`: technology column name in the `intermittent` tech data sheet.
+  * `weatheryear`: Year suffix used to select inflow series `hydro_ror_<year>`.
+  * `inflow_profile`: Hourly run-of-river inflow vector or scalar. If `nothing`,
     read `zone` from the selected workbook sheet.
 
-  * intake_mult: Multiplier applied to inflow profile before normalization to `cap`.
+  * `intake_mult`: Multiplier applied to inflow profile before normalization to `cap`.
 
-  * overnight_cost: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
-  * om_fixed_cost: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
-  * om_var_cost: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
-  * decommissioning: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
-  * lifetime: Cost/lifetime overrides for fixed and variable hydro cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
-  * construction_profile: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
-  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
+  * `overnight_cost`: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
+  * `om_fixed_cost`: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
+  * `om_var_cost`: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning`: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
+  * `lifetime`: Cost/lifetime overrides for fixed and variable hydro cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
+  * `construction_profile`: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
 """
 function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     # capacity / profile

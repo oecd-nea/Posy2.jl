@@ -66,7 +66,7 @@ features that make a POSY2 study discrete or otherwise harder to solve include:
 
 - `integercap=true` for nuclear or SMR capacity;
 - `integeruc=true` with unit commitment;
-- one-direction-at-a-time price interconnections using `dir=true`;
+- one direction at a time price interconnections using `dir=true`;
 - combinations of these decisions over a full 8760-hour horizon.
 
 `uc=true` with `integeruc=false` retains the unit-commitment equations but

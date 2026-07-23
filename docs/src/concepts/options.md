@@ -99,8 +99,7 @@ between scenarios.
 
 Profile-backed builders expose direct series keywords as well. A profile can
 be an hourly vector matching the simulation mesh, or a scalar that POSY2
-expands across the whole mesh. See [Input Workbooks](input-data.md) for the
-complete mapping between builder keywords and workbook columns.
+expands across the whole mesh. 
 
 See [Input Workbooks](input-data.md) for the workbook layout and exact lookup
 keys.
@@ -169,8 +168,7 @@ Interconnections tagged as DC are excluded because their flow is controllable
 and does not obey the AC cycle equations.
 
 The susceptance registry is stored in `snapshot.options[:ic_susceptance]`.
-This entry is managed by [`makenodeinterco`](@ref); users should not need to
-create it directly.
+This entry is managed by [`makenodeinterco`](@ref).
 
 When `dcopf=false`, `applydcopf!` returns without changing the model. Calling it
 in every study therefore provides one consistent build sequence for both

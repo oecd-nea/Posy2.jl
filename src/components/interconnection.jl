@@ -10,22 +10,22 @@ Generate interconnection components.
     )
 
 Build, connect and return an interconnection component based on a price time series.
-If `dir` is true, apply a one way constraint at every timestep.
+If `dir` is true, apply a one direction at a time constraint at every timestep.
 
 Arguments:
-  * zone: priced counterparty zone name for spot price and transfer capacity time series
-  * elec: local electricity node to connect the interconnector to.
-  * mcap: import side fixed capacity.
-  * xcap: export side fixed capacity.
-  * s: snapshot to register the component in.
+  * `zone`: priced counterparty zone name for spot price and transfer capacity time series
+  * `elec`: local electricity node to connect the interconnector to.
+  * `mcap`: import side fixed capacity.
+  * `xcap`: export side fixed capacity.
+  * `s`: snapshot to register the component in.
 
-  * dir: if `true`, apply SOS1 one direction at a time flow constraint.
-  * foreign: if `true`, tag interconnector as `:foreign`.
+  * `dir`: if `true`, apply SOS1 one direction at a time flow constraint.
+  * `foreign`: if `true`, tag interconnector as `:foreign`.
 
-  * transactioncost: per unit transaction adder on both directions.
-  * spot_price: Hourly foreign spot-price vector or scalar.
-  * import_availability: Hourly multiplier for the foreign-to-local direction.
-  * export_availability: Hourly multiplier for the local-to-foreign direction.
+  * `transactioncost`: per unit transaction adder on both directions.
+  * `spot_price`: Hourly foreign spot-price vector or scalar.
+  * `import_availability`: Hourly multiplier for the foreign-to-local direction.
+  * `export_availability`: Hourly multiplier for the local-to-foreign direction.
     Each series falls back to its workbook column when `nothing`.
 """
 function makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, s::Snapshot;
@@ -97,24 +97,24 @@ end
 Build, connect and return an interconnection component linking two nodes.
 
 Arguments:
-  * cname: interconnector name prefix.
-  * a: first node linked by the interconnector.
-  * b: second node linked by the interconnector.
-  * atob: directional capacity for `a -> b` (`Inf` disables capacity limit).
-  * btoa: directional capacity for `b -> a` (`Inf` disables capacity limit).
-  * s: snapshot to register the component in.
+  * `cname`: interconnector name prefix.
+  * `a`: first node linked by the interconnector.
+  * `b`: second node linked by the interconnector.
+  * `atob`: directional capacity for `a -> b` (`Inf` disables capacity limit).
+  * `btoa`: directional capacity for `b -> a` (`Inf` disables capacity limit).
+  * `s`: snapshot to register the component in.
 
-  * dir: apply an SOS1 one-direction-at-a-time constraint.
-  * foreign: if `true`, tag interconnector as `:foreign`.
-  * dc: if `true`, tag as `:DC`; otherwise tag as `:AC`.
+  * `dir`: apply an SOS1 one direction at a time flow constraint.
+  * `foreign`: if `true`, tag interconnector as `:foreign`.
+  * `dc`: if `true`, tag as `:DC`; otherwise tag as `:AC`.
 
-  * transactioncost: per-unit transaction adder on each finite-capacity
+  * `transactioncost`: per unit transaction adder on each finite-capacity
     direction.
-  * lossfactor: proportional losses applied on conversion.
-  * susceptance: AC susceptance for DC power flow (must be negative); stored in
+  * `lossfactor`: proportional losses applied on conversion.
+  * `susceptance`: AC susceptance for DC power flow (must be negative); stored in
     `Snapshot.options[:ic_susceptance]` (required for KVL when `POSY2Options.dcopf` is true).
-  * atob_availability: Hourly `a -> b` multiplier vector or scalar.
-  * btoa_availability: Hourly `b -> a` multiplier vector or scalar. A finite
+  * `atob_availability`: Hourly `a -> b` multiplier vector or scalar.
+  * `btoa_availability`: Hourly `b -> a` multiplier vector or scalar. A finite
     direction falls back to its workbook column when the keyword is `nothing`.
 
 A second `AC` node interconnection on the same unordered node pair is rejected

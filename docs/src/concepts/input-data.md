@@ -182,10 +182,12 @@ The common dispatchable rows are:
 | [`makedispatchable`](@ref) | Common | Fuel, unit commitment, and ramping |
 | [`makenuclear`](@ref) | Common plus `waste_cost` | Fuel, unit commitment, and reloads |
 | [`makesmr`](@ref) | Common plus `fuel_cost` and `waste_cost` | None |
+| `POSY2.makenuclearprofile` | Common without `connection_cost` and `unit_size`; always includes `fuel_cost` | None |
 
 For the fuel group, `makedispatchable` and `makenuclear` read `fuel_cost`
 without `fuelnode`, or `efficiency` with `fuelnode`. `makesmr` always reads
-`fuel_cost`; it has no fuel-node efficiency mode.
+`fuel_cost`; it has no fuel-node efficiency mode. `POSY2.makenuclearprofile`
+always reads `fuel_cost` and has no fuel-node efficiency mode.
 
 For `makedispatchable` and `makenuclear`, `uc=true` reads `no_load_cost` and
 `startup_cost`. When no initial snapshot supplies unit-commitment behaviour,
@@ -199,9 +201,9 @@ an argument-only scheduling interval and has no workbook row.
 `ramp_up` and `ramp_down` are used by `makedispatchable` only when
 `unit_size > 0`; zero ramp values omit the corresponding constraint.
 
-The non-exported `POSY2.makenuclearprofile` reads `overnight_cost`,
+The `POSY2.makenuclearprofile` reads `overnight_cost`,
 `lifetime`, both profiles, `om_fixed_cost`, `om_var_cost`, `fuel_cost`,
-`decommissioning`, and `co2_emission`. It does not use all common rows.
+`decommissioning`, and `co2_emission`.
 
 ### Intermittent Sheet
 
@@ -229,7 +231,7 @@ keyword can select another column.
 | [`makebatteries`](@ref) | Battery rows |
 | [`makehydrogenstorage`](@ref) | Hydrogen-storage rows |
 | [`makeEV`](@ref), smart or V2G | EV-fleet rows |
-| `POSY2.makereservoirprofile` | Reservoir-profile rows; not exported |
+| `POSY2.makereservoirprofile` | Reservoir-profile rows |
 
 Reservoir rows are `roundtrip_eff`, `overnight_cost`, `lifetime`, both
 profiles, `om_fixed_cost`, `om_var_cost`, and `decommissioning`.
@@ -244,6 +246,12 @@ EV-fleet rows are `charging_eff`, `self_discharge`, `min_level_morning`,
 
 Reservoir-profile rows are `overnight_cost`, `lifetime`, both profiles,
 `om_fixed_cost`, `om_var_cost`, and `decommissioning`.
+
+`POSY2.makereservoirprofile` defaults to technology column `Hydro res`, but
+its `tech` keyword can select another column.
+
+In smart-charging or V2G mode, [`makeEV`](@ref) defaults to technology column
+`EV`, but its `tech` keyword can select another column.
 
 The `roundtrip_eff` row maps to the builder keyword `eff`. EV rows ending in
 power, capacity, or consumption map to the corresponding `*_per_ev` override
@@ -297,17 +305,17 @@ The time-series lookup key depends on the builder:
 | `demand` | `<zone>` | [`makedemand`](@ref) when `coeff != 0` |
 | `profiles_<year>` | `<tech>_<node-name>` | Intermittent and internal nuclear profile |
 | `hydro_ror_<year>` | `<zone>` | [`makehydroror`](@ref) |
-| `reservoir_inflow_<year>` | `<zone>` | [`makehydroreservoir`](@ref) unless `inflow == 0` |
-| `fixed_reservoir_output` | `<zone>` | Non-exported reservoir-profile builder |
+| `reservoir_inflow_<year>` | `<zone>` | [`makehydroreservoir`](@ref) when inflow is enabled (`inflow != 0`) |
+| `fixed_reservoir_output` | `<zone>` | `POSY2.makereservoirprofile` (absolute output; divided by `cap`) |
 | `EV_charging_availability` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
 | `EV_driving_profile` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
 | `spot_price` | `<foreign-zone>` | [`makepriceinterco`](@ref) |
-| `transfer_capacities` | `<from>><to>` | Price and finite-capacity node interconnections |
+| `transfer_capacities` | `From>To` | Price IC always; node IC when that direction's capacity is finite |
 
 For example, technology `Onwind` connected to electricity node `country1` in
 weather year 2019 requests column `Onwind_country1` from sheet `profiles_2019`.
-Transfer columns have no spaces: a country1-to-country2 direction is
-`country1>country2`.
+Transfer columns use a single `>` with no spaces: a country1-to-country2
+direction is `country1>country2`.
 
 The principal series semantics are:
 
@@ -315,22 +323,28 @@ The principal series semantics are:
   circularly shifts it, and `yearlyconstant / 8760` is then added.
 - `profiles_<year>` contains a profile that multiplies installed capacity.
 - `hydro_ror_<year>` contains absolute inflow. The builder divides it by the
-  required fixed capacity and applies `intake_mult`.
+  required fixed capacity, applies `intake_mult`, and cuts capacity factors
+  above one (`cutoff=1`).
 - `reservoir_inflow_<year>` contains natural inflow. `inflow=nothing` uses the
-  raw profile multiplied by `intake_mult`; `inflow=0` avoids the lookup; and a
+  raw profile multiplied by `intake_mult`; `inflow=0` disables inflow entirely
+  (no sheet read; an explicit `inflow_profile` is also ignored); and a
   non-zero numeric `inflow` scales the profile and always applies
   `intake_mult`. With `renormalize=true`, POSY2 first normalises the profile to
-  sum to one before that scaling.
+  sum to one before that scaling, but only when `inflow` is a non-zero number;
+  `renormalize` is ignored when `inflow=nothing`.
+- `fixed_reservoir_output` contains absolute hourly output. The
+  `POSY2.makereservoirprofile` divides it by `cap` to form a capacity factor.
 - EV charging availability is a capacity multiplier. The driving profile is
   normalised to the requested annual EV consumption and must have a positive
   sum.
-- `transfer_capacities` contains directional availability multipliers. A
-  finite `atob` reads `<a>><b>` and a finite `btoa` reads `<b>><a>`;
-  an infinite direction of [`makenodeinterco`](@ref) reads no column.
+- `transfer_capacities` contains directional availability multipliers. For
+  [`makenodeinterco`](@ref), a finite `atob` reads `a>b` and a finite `btoa`
+  reads `b>a`; an infinite direction reads no column.
 - [`makepriceinterco`](@ref) uses both directional transfer series and the
   foreign-zone spot price. Each can be supplied explicitly or read from its
-  Excel fallback. Spot prices and node-interconnection multipliers are rounded
-  to two decimal places by those builders.
+  Excel fallback. Spot prices and node-interconnection availability
+  multipliers are rounded to two decimal places. price-interconnection
+  transfer series keep the default six-digit rounding unless overridden.
 
 POSY2 does not impose bounds on capacity-factor or transfer-multiplier columns
 at read time. Validate such data before a production run.

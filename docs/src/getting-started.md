@@ -13,8 +13,7 @@ for Nosy v0.3.0, and an LP or MILP solver compatible with
 use [HiGHS](https://highs.dev/) because it is open source and supports the
 linear examples used here. Other
 [JuMP-compatible solvers](https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers)
-can be supplied to the Nosy `Sim` in the same way. Some solvers require a
-separate installation and licence.
+can be used the same way. Please note: some solvers require a separate installation and licence.
 
 Use a Julia environment in which POSY2, Nosy, and the selected solver are
 already available.
@@ -22,8 +21,9 @@ already available.
 ## Minimal Workflow
 
 The following model has a flat 100 MW electricity demand and one dispatchable
-plant with optimisable capacity. Every technology value used by the builder is
-provided explicitly, so the placeholder workbook names are never opened.
+plant with optimisable capacity. The example below supplies every builder
+argument explicitly (`tech_mode=:arguments` and `timeseries_mode=:arguments`),
+so no Excel workbook is read.
 
 ```julia
 using POSY2
@@ -52,32 +52,11 @@ snapshot = Snapshot(s, Dict(:posy => options))
 power = EnergyCarrier("electricity", s)
 carbon = CO2Carrier("CO2", s)
 
-grid = Node(
-    "grid",
-    power;
-    rule=:curtailed,
-    evalprice=true,
-    losses=0.0,
-    tags=[:electricity],
-)
-atmosphere = Node(
-    "CO2",
-    carbon;
-    rule=:curtailed,
-    tags=[:co2],
-)
+grid = Node("grid", power; rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+atmosphere = Node("CO2", carbon; rule=:curtailed, tags=[:co2])
 
 # Add a flat 100 MW demand: 100 MW × 8760 hours.
-makedemand(
-    "Load",
-    "unused",
-    grid,
-    snapshot;
-    coeff=0.0,
-    shift=0,
-    yearlyconstant=876_000.0,
-    gridlosses=0.0,
-)
+makedemand("Load", "unused", grid, snapshot; coeff=0.0, shift=0, yearlyconstant=876_000.0, gridlosses=0.0)
 
 # Add a dispatchable generator with optimisable capacity.
 makedispatchable(
@@ -133,20 +112,13 @@ The solved capacity and annual generation are therefore:
 capacity(result, "Plant grid")
 # 100.0
 
-balance(
-    result,
-    "Plant grid",
-    :output,
-    energy;
-    collapse=true,
-    aggregate=true,
-)
+balance(result, "Plant grid", :output, energy; collapse=true, aggregate=true)
 # 876000.0
 ```
 
-The original `snapshot` contains JuMP variables and affine expressions. The
-extracted `result` has the same component and node structure, but its variables
-are replaced with solution values when optimisation succeeds.
+The original `snapshot` contains JuMP variables and expressions. The extracted
+`result` has the same structure, but is populated with optimal values when the
+optimisation succeeds.
 
 ## Inspecting Results
 
@@ -163,21 +135,13 @@ costs(result)
 table(result, capacity)
 
 # Hourly plant output.
-balance(
-    result,
-    "Plant grid",
-    :output,
-    energy;
-    collapse=false,
-    aggregate=true,
-)
+balance(result, "Plant grid", :output, energy; collapse=false, aggregate=true)
 
 # Electricity marginal prices, because evalprice=true on the node.
 dualprice(result.nodes["grid"])
 ```
 
-For workbook-backed studies, replace the placeholder filenames with real input
-workbooks, select `:excel` for the relevant input mode, and leave a builder
-keyword as `nothing` when its value should be read from that workbook. The
-[Input Workbooks](concepts/input-data.md) page describes the expected sheets
-and columns.
+To use Excel instead, set the workbook filenames, switch `tech_mode` /
+`timeseries_mode` to `:excel`, and leave each workbook-backed keyword as
+`nothing`. Values you pass explicitly still override Excel. Sheet and column
+details are in [Input Workbooks](concepts/input-data.md).

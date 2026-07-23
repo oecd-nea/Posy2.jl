@@ -13,16 +13,16 @@ using ArgCheck: @argcheck
 Build, connect and return a component based on the Demand template.
 
 Arguments:
-  * cname: component name prefix.
-  * zone: time series name in the time series workbook (`demand` sheet).
-  * n: demand node to connect the component to.
-  * s: snapshot to register the component in.
-  * profile: Hourly demand vector, or a scalar expanded across the simulation
+  * `cname`: component name prefix.
+  * `zone`: time series name in the time series workbook (`demand` sheet).
+  * `n`: demand node to connect the component to.
+  * `s`: snapshot to register the component in.
+  * `profile`: Hourly demand vector, or a scalar expanded across the simulation
     mesh. If `nothing`, read `zone` from the `demand` sheet.
-  * coeff: multiplicative factor applied to the profile part of demand.
-  * shift: circular shift of demand profile (e.g. align first day to Monday).
-  * yearlyconstant: flat yearly demand term distributed over 8760 hours (`yearlyconstant >= 0`).
-  * gridlosses: optional proportional grid loss joint flow on demand input (`0 <= gridlosses < 1`).
+  * `coeff`: multiplicative factor applied to the profile part of demand.
+  * `shift`: circular shift of demand profile (e.g. align first day to Monday).
+  * `yearlyconstant`: flat yearly demand term distributed over 8760 hours (`yearlyconstant >= 0`).
+  * `gridlosses`: optional proportional grid loss joint flow on demand input (`0 <= gridlosses < 1`).
 """
 function makedemand(cname::String, zone::String, n::Node, s::Snapshot;
                     profile=nothing, coeff=1.0, shift::Int=0,
@@ -56,10 +56,10 @@ end
 Build, connect and return a flat hydrogen demand component.
 
 Arguments:
-  * cname: component name prefix.
-  * n: hydrogen demand node to connect the component to.
-  * val: total yearly hydrogen demand. Must satisfy `val >= 0`.
-  * s: snapshot to register the component in.
+  * `cname`: component name prefix.
+  * `n`: hydrogen demand node to connect the component to.
+  * `val`: total yearly hydrogen demand. Must satisfy `val >= 0`.
+  * `s`: snapshot to register the component in.
 """
 function makeflathydrogendemand(cname::String, n::Node, val::Number, s::Snapshot)
     inputs = demand_input(val=val)
@@ -82,10 +82,10 @@ end
 Build, connect and return a flexible hydrogen demand component.
 
 Arguments:
-  * cname: component name prefix.
-  * n: hydrogen demand node to connect the component to.
-  * val: total yearly hydrogen demand enforced through `YearlySum("input", val, :equal)`. Must satisfy `val >= 0`.
-  * s: snapshot to register the component in.
+  * `cname`: component name prefix.
+  * `n`: hydrogen demand node to connect the component to.
+  * `val`: total yearly hydrogen demand enforced through `YearlySum("input", val, :equal)`. Must satisfy `val >= 0`.
+  * `s`: snapshot to register the component in.
 """
 function makeflexhydrogendemand(cname::String, n::Node, val::Number, s::Snapshot)
     inputs = demand_input(val=val)
@@ -119,37 +119,37 @@ end
 Build, connect and return an EV component.
 
 Arguments:
-  * cname: Component name prefix.
-  * yearly: Yearly EV electricity consumption (MWh/year). Must be non-negative.
-  * elec: Electricity node to connect EV charging/discharging flows.
-  * s: Target snapshot where the EV component and behaviors are registered.
+  * `cname`: Component name prefix.
+  * `yearly`: Yearly EV electricity consumption (MWh/year). Must be non-negative.
+  * `elec`: Electricity node to connect EV charging/discharging flows.
+  * `s`: Target snapshot where the EV component and behaviors are registered.
 
-  * fixed_profile: Enable fixed-profile EV demand mode (deterministic hourly charging profile).
-  * smart_charging: Enable flexible charging mode (charging only, no discharge to grid).
-  * vehicle_to_grid: Enable flexible charging + grid discharge (V2G) mode.
+  * `fixed_profile`: Enable fixed-profile EV demand mode (deterministic hourly charging profile).
+  * `smart_charging`: Enable flexible charging mode (charging only, no discharge to grid).
+  * `vehicle_to_grid`: Enable flexible charging + grid discharge (V2G) mode.
     Exactly one of `fixed_profile`, `smart_charging`, `vehicle_to_grid` must be `true`.
 
-  * offhours1: Winter off-hour indices (0-23). Required when `fixed_profile=true`; ignored otherwise.
-  * offhours2: Summer off-hour indices (0-23). Required when `fixed_profile=true`; ignored otherwise.
-  * minratio: Relative charging level during off-hours (`0 <= minratio <= 1`). Required when `fixed_profile=true`; ignored otherwise.
-  * days_threshold: Number of first winter days before summer segment in fixed-profile assembly (`0 <= days_threshold <= 183`, used only when `fixed_profile=true`).
+  * `offhours1`: Winter off-hour indices (0-23). Required when `fixed_profile=true`; ignored otherwise.
+  * `offhours2`: Summer off-hour indices (0-23). Required when `fixed_profile=true`; ignored otherwise.
+  * `minratio`: Relative charging level during off-hours (`0 <= minratio <= 1`). Required when `fixed_profile=true`; ignored otherwise.
+  * `days_threshold`: Number of first winter days before summer segment in fixed-profile assembly (`0 <= days_threshold <= 183`, used only when `fixed_profile=true`).
 
-  * zone: Zone key used to read EV time series. Required in flexible/V2G modes
+  * `zone`: Zone key used to read EV time series. Required in flexible/V2G modes
     unless both series are supplied explicitly.
-  * charging_availability: Hourly charging-station availability vector or
+  * `charging_availability`: Hourly charging-station availability vector or
     scalar. If `nothing`, read it from the configured time-series workbook.
-  * driving_profile: Hourly driving vector or scalar. If `nothing`, read it
+  * `driving_profile`: Hourly driving vector or scalar. If `nothing`, read it
     from the configured time-series workbook.
-  * tech: Technology column name in the `storage` tech data sheet for EV parameters (used in flexible/V2G modes).
-  * compensation: V2G compensation in USD/MWh applied to EV discharge output in V2G mode (ignored in non-V2G modes).
-  * gridlosses: Optional proportional grid-loss linked flow on EV input in fixed_profile mode (`0 <= gridlosses < 1`).
-  * charging_eff: Optional override for `storage.charging_eff` in flexible/V2G modes (`0 < charging_eff <= 1`). If `nothing`, value is read from Excel.
-  * self_discharge: Optional override for `storage.self_discharge` in flexible/V2G modes (`0 <= self_discharge < 1`). If `nothing`, value is read from Excel.
-  * min_level_morning: Optional override for `storage.min_level_morning` in flexible/V2G modes (`0 <= min_level_morning <= 1`). If `nothing`, value is read from Excel.
-  * max_charging_power_per_ev: Optional override for `storage.max_charging_power` in flexible/V2G modes (`> 0`). If `nothing`, value is read from Excel.
-  * max_dispatch_power_per_ev: Optional override for `storage.max_dispatch_power` in flexible/V2G modes (`>= 0`). If `nothing`, value is read from Excel.
-  * battery_capacity_per_ev: Optional override for `storage.battery_capacity` in flexible/V2G modes (`> 0`). If `nothing`, value is read from Excel.
-  * yearly_consumption_per_ev: Optional override for `storage.yearly_consumption` in flexible/V2G modes (`> 0`). If `nothing`, value is read from Excel.
+  * `tech`: Technology column name in the `storage` tech data sheet for EV parameters (used in flexible/V2G modes).
+  * `compensation`: V2G compensation in USD/MWh applied to EV discharge output in V2G mode (ignored in non-V2G modes).
+  * `gridlosses`: Optional proportional grid-loss linked flow on EV input in fixed_profile mode (`0 <= gridlosses < 1`).
+  * `charging_eff`: Optional override for the `charging_eff` row of the `storage` sheet in flexible/V2G modes (`0 < charging_eff <= 1`). If `nothing`, read from Excel.
+  * `self_discharge`: Optional override for the `self_discharge` row of the `storage` sheet in flexible/V2G modes (`0 <= self_discharge < 1`). If `nothing`, read from Excel.
+  * `min_level_morning`: Optional override for the `min_level_morning` row of the `storage` sheet in flexible/V2G modes (`0 <= min_level_morning <= 1`). If `nothing`, read from Excel.
+  * `max_charging_power_per_ev`: Optional override for the `max_charging_power` row of the `storage` sheet in flexible/V2G modes (`> 0`). If `nothing`, read from Excel.
+  * `max_dispatch_power_per_ev`: Optional override for the `max_dispatch_power` row of the `storage` sheet in flexible/V2G modes (`>= 0`). If `nothing`, read from Excel.
+  * `battery_capacity_per_ev`: Optional override for the `battery_capacity` row of the `storage` sheet in flexible/V2G modes (`> 0`). If `nothing`, read from Excel.
+  * `yearly_consumption_per_ev`: Optional override for the `yearly_consumption` row of the `storage` sheet in flexible/V2G modes (`> 0`). If `nothing`, read from Excel.
 """
 function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_profile::Bool=true, smart_charging::Bool=false, vehicle_to_grid::Bool=false,
 
@@ -301,12 +301,12 @@ end
 Build, connect and return a demand response component.
 
 Arguments:
-  * cname: component name prefix.
-  * elec: electricity node to connect the component to.
-  * capa: optional fixed response capacity (`nothing` means unconstrained).
-  * cost: demand response activation cost coefficient.
-  * s: snapshot to register the component in.
-  * type: variable cost label used for reporting (default `:volDR`).
+  * `cname`: component name prefix.
+  * `elec`: electricity node to connect the component to.
+  * `capa`: optional fixed response capacity (`nothing` means unconstrained).
+  * `cost`: demand response activation cost coefficient.
+  * `s`: snapshot to register the component in.
+  * `type`: variable cost label used for reporting (default `:volDR`).
 """
 function makedemandresponse(cname::String, elec::Node, capa::Union{Nothing,Number}, cost::Number, s::Snapshot; type::Symbol=:volDR)
     m = DispatchableSource(elec.carrier)

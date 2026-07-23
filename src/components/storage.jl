@@ -17,33 +17,33 @@ Build, connect and return a hydro reservoir component.
 NB: no energy capacity at the moment.
 
 Arguments:
-  * cname: component name prefix.
-  * tech: technology column name in the `storage` tech data sheet.
-  * zone: Zone used for reservoir inflow time series lookup.
-  * elec: electricity node to connect the component to.
-  * s: snapshot to register the component in.
-  * cap_discharging: Discharge side capacity (output port). If `nothing`, discharge capacity is optimized.
-  * cap_charging: Charge side capacity (input port). `0` disables charging branch; `nothing` optimizes charging capacity.
-  * cap_reservoir: Storage level capacity (energy stock).
-  * inflow: Natural inflow control: `nothing` uses raw profile, `0` disables inflow, numeric scales annual inflow.
+  * `cname`: component name prefix.
+  * `tech`: technology column name in the `storage` tech data sheet.
+  * `zone`: Zone used for reservoir inflow time series lookup.
+  * `elec`: electricity node to connect the component to.
+  * `s`: snapshot to register the component in.
+  * `cap_discharging`: Discharge side capacity (output port). If `nothing`, discharge capacity is optimized.
+  * `cap_charging`: Charge side capacity (input port). `0` disables charging branch; `nothing` optimizes charging capacity.
+  * `cap_reservoir`: Storage level capacity (energy stock).
+  * `inflow`: Natural inflow control: `nothing` uses raw profile, `0` disables inflow, numeric scales annual inflow.
 
-  * renormalize: If `true`, inflow profile is normalized to sum to 1 before scaling with `inflow`.
-  * weatheryear: Year suffix used to select inflow series `reservoir_inflow_<year>`.
-  * gridlosses: Proportional losses linked to charging input flow (`0 <= gridlosses < 1`).
-  * simplified: Passed to `LazyStorage(..., simplified=...)`.
-  * intake_mult: Multiplier applied to inflow profile.
-  * inflow_profile: Hourly natural-inflow vector or scalar. If `nothing`, read
+  * `renormalize`: If `true`, inflow profile is normalized to sum to 1 before scaling with `inflow`.
+  * `weatheryear`: Year suffix used to select inflow series `reservoir_inflow_<year>`.
+  * `gridlosses`: Proportional losses linked to charging input flow (`0 <= gridlosses < 1`).
+  * `simplified`: Passed to `LazyStorage(..., simplified=...)`.
+  * `intake_mult`: Multiplier applied to inflow profile.
+  * `inflow_profile`: Hourly natural-inflow vector or scalar. If `nothing`, read
     `zone` from `reservoir_inflow_<weatheryear>`.
 
-  * eff: Roundtrip charging efficiency (input side conversion).
+  * `eff`: Roundtrip charging efficiency (input side conversion).
 
-  * overnight_cost: Cost/lifetime overrides for annualized fixed and variable cost terms. Excel defaults are used when values are `nothing`.
-  * om_fixed_cost: Cost/lifetime overrides for annualized fixed and variable cost terms. Excel defaults are used when values are `nothing`.
-  * om_var_cost: Cost/lifetime overrides for annualized fixed and variable cost terms. Excel defaults are used when values are `nothing`.
-  * decommissioning: Cost/lifetime overrides for annualized fixed and variable cost terms. Excel defaults are used when values are `nothing`.
-  * lifetime: Cost/lifetime overrides for annualized fixed and variable cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
-  * construction_profile: Cost/lifetime overrides for annualized fixed and variable cost terms. Excel defaults are used when values are `nothing`.
-  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
+  * `overnight_cost`: Cost/lifetime overrides for annualized fixed and variable cost terms. Excel defaults are used when values are `nothing`.
+  * `om_fixed_cost`: Cost/lifetime overrides for annualized fixed and variable cost terms. Excel defaults are used when values are `nothing`.
+  * `om_var_cost`: Cost/lifetime overrides for annualized fixed and variable cost terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning`: Cost/lifetime overrides for annualized fixed and variable cost terms. Excel defaults are used when values are `nothing`.
+  * `lifetime`: Cost/lifetime overrides for annualized fixed and variable cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
+  * `construction_profile`: Cost/lifetime overrides for annualized fixed and variable cost terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
 """
 function makehydroreservoir(cname::String, tech::String, zone::String, elec::Node, cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot;
     # storage operation controls
@@ -168,30 +168,30 @@ end
 Build, connect and return a battery storage component.
 
 Arguments:
-  * cname: component name prefix.
-  * tech: technology column name in the `storage` tech data sheet.
-  * elec: electricity node to connect the component to.
-  * s: snapshot to register the component in.
+  * `cname`: component name prefix.
+  * `tech`: technology column name in the `storage` tech data sheet.
+  * `elec`: electricity node to connect the component to.
+  * `s`: snapshot to register the component in.
 
-  * capin: Fixed charging/input capacity. If `nothing`, charging capacity is optimized.
-  * mincap: Bounds for optimized `capin` when `capin === nothing`.
-  * maxcap: Bounds for optimized `capin` when `capin === nothing`.
-  * simplified: Passed to `BasicStorage(..., simplified=...)`.
-  * ini: Optional initial snapshot used to inherit fixed charging capacity.
+  * `capin`: Fixed charging/input capacity. If `nothing`, charging capacity is optimized.
+  * `mincap`: Bounds for optimized `capin` when `capin === nothing`.
+  * `maxcap`: Bounds for optimized `capin` when `capin === nothing`.
+  * `simplified`: Passed to `BasicStorage(..., simplified=...)`.
+  * `ini`: Optional initial snapshot used to inherit fixed charging capacity.
 
-  * gridlosses: Proportional losses linked to charging input flow (`0 <= gridlosses < 1`).
+  * `gridlosses`: Proportional losses linked to charging input flow (`0 <= gridlosses < 1`).
 
-  * eff: Roundtrip storage efficiency (`eff_i` in `BasicStorage`).
-  * duration: Storage duration parameter (`Duration(...)` behavior, `duration > 0`). Excel default when `nothing`.
+  * `eff`: Roundtrip storage efficiency (`eff_i` in `BasicStorage`).
+  * `duration`: Storage duration parameter (`Duration(...)` behavior, `duration > 0`). Excel default when `nothing`.
 
-  * overnight_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * om_fixed_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * decommissioning: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * lifetime: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
-  * construction_profile: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
-  * connection_cost: Ratio applied to annualized investment as connection fixed cost.
-  * om_var_cost: Variable O&M coefficient on charging/input energy flow.
+  * `overnight_cost`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `om_fixed_cost`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `lifetime`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
+  * `construction_profile`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
+  * `connection_cost`: Ratio applied to annualized investment as connection fixed cost.
+  * `om_var_cost`: Variable O&M coefficient on charging/input energy flow.
 """
 function makebatteries(cname::String, tech::String, elec::Node, s::Snapshot;
     # capacity / expansion
@@ -272,24 +272,24 @@ end
 Build, connect and return a hydrogen storage component.
 
 Arguments:
-  * cname: component name prefix.
-  * tech: technology column name in the `storage` tech data sheet.
-  * h2: hydrogen node to connect the component to.
-  * s: snapshot to register the component in.
+  * `cname`: component name prefix.
+  * `tech`: technology column name in the `storage` tech data sheet.
+  * `h2`: hydrogen node to connect the component to.
+  * `s`: snapshot to register the component in.
 
-  * cap: Fixed storage level capacity. If `nothing`, level capacity is optimized.
-  * mincap: Bounds for optimized level capacity when `cap === nothing`.
-  * maxcap: Bounds for optimized level capacity when `cap === nothing`.
-  * ini: Optional initial snapshot used to inherit fixed level capacity.
+  * `cap`: Fixed storage level capacity. If `nothing`, level capacity is optimized.
+  * `mincap`: Bounds for optimized level capacity when `cap === nothing`.
+  * `maxcap`: Bounds for optimized level capacity when `cap === nothing`.
+  * `ini`: Optional initial snapshot used to inherit fixed level capacity.
 
-  * eff: Roundtrip storage efficiency (`eff_i` in `BasicStorage`). If `nothing`, read from Excel (`storage.roundtrip_eff`).
+  * `eff`: Roundtrip storage efficiency (`eff_i` in `BasicStorage`). If `nothing`, read `roundtrip_eff` from the `storage` sheet.
 
-  * overnight_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * om_fixed_cost: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * decommissioning: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * lifetime: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
-  * construction_profile: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * decommissioning_profile: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
+  * `overnight_cost`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `om_fixed_cost`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `lifetime`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
+  * `construction_profile`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
 """
 function makehydrogenstorage(cname::String, tech::String, h2::Node, s::Snapshot;
     # capacity / expansion
