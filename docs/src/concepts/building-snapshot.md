@@ -102,6 +102,11 @@ models use charging-availability and driving profiles from the time-series
 workbook. Vehicle-to-grid additionally exposes an output flow and can apply a
 discharge compensation cost.
 
+### Hydrogen
+
+- [`makeflathydrogenpurchase`](@ref) creates a flat, fixed yearly hydrogen
+  supply.
+
 ### Generation
 
 - [`makedispatchable`](@ref) builds a generic dispatchable source with fixed or
@@ -109,14 +114,10 @@ discharge compensation cost.
   ramping, and optional unit commitment.
 - [`makenuclear`](@ref) adds nuclear-specific waste cost, integer capacity,
   warm starts, unit-commitment masks, and optional scheduled reload shutdowns.
-- [`makesmr`](@ref) builds an SMR source with electricity output and a linked
-  heat-accounting output.
 - [`makeintermittentsource`](@ref) combines a weather-year profile with fixed
   or optimisable capacity.
 - [`makehydroror`](@ref) creates fixed-capacity run-of-river hydro from an
   inflow profile.
-- [`makeflathydrogenpurchase`](@ref) creates a flat, fixed yearly hydrogen
-  supply.
 
 An intermittent source always reads its profile from the selected
 `profiles_<year>` sheet. Run-of-river hydro similarly reads a yearly inflow
@@ -137,15 +138,13 @@ inputs.
 
 ### Storage And Conversion
 
-- [`makebatteries`](@ref) builds battery storage with charging-power capacity,
+- [`makebatterystorage`](@ref) builds battery storage with charging-power capacity,
   a duration relation, round-trip efficiency, and optional grid losses.
 - [`makehydroreservoir`](@ref) represents reservoir inflow, pumping,
   generation, and a fixed reservoir level capacity.
 - [`makehydrogenstorage`](@ref) builds simplified hydrogen storage whose level
   capacity can be fixed or optimised.
 - [`makeelectrolyser`](@ref) converts electricity into hydrogen.
-- [`makeHTelectrolyser`](@ref) adds a linked heat input to the electricity and
-  hydrogen conversion.
 
 Battery investment is attached to the charging-power capacity. Its duration
 behaviour links that power capacity to the storage level. Hydrogen storage
@@ -158,23 +157,28 @@ storage efficiency and should not be counted a second time in reporting.
 
 ## Capacity Choices
 
-Most investment builders follow the same convention:
+Investment builders usually set capacity as follows:
 
-- a numeric capacity fixes the relevant capacity;
-- `nothing` creates a capacity decision with optional `mincap` and `maxcap`;
-- an `ini` snapshot can replace the new decision with capacity inherited from
-  a matching solved component.
+- a number fixes that capacity;
+- `nothing` optimises capacity, optionally bounded by `mincap` and `maxcap`;
+- an `ini` snapshot (normally a solved result) can replace the new decision
+  with capacity inherited from a matching component.
 
-The relevant port depends on the technology. Generation uses output capacity,
-batteries and electrolysers use input capacity, and hydrogen storage uses level
-capacity. Some builders have additional requirements or special zero-capacity
-behaviour, so use the individual API entry when constructing generic study
-code.
+Which port that capacity refers to depends on the technology:
 
-Component matching through `ini` relies on POSY2's generated names. Build the
-new scenario with the same component prefix and node name as the initial
-snapshot. The initial object should normally be an extracted result rather
-than an unsolved snapshot.
+- generation uses **output** capacity;
+- batteries and electrolysers use **input** capacity;
+- hydrogen storage uses **level** capacity.
+
+Some builders have extra rules (for example how `cap=0` is handled), so check
+the individual API entry when writing shared study code.
+
+### Inheriting capacity with `ini`
+
+Matching uses POSY2's generated component names. Build the new scenario with
+the same component prefix (`cname`) and node name as in the initial snapshot.
+Prefer an extracted **result** for `ini` over an unsolved snapshot, so the
+inherited capacity values are already numeric.
 
 ## Costs And Annualisation
 
@@ -244,7 +248,10 @@ can suppress all transfer; leave `dir=false` until the limitation described in
 Set `foreign=true` when a node interconnection crosses the boundary used for
 self-system reporting. Set `dc=true` for a controllable DC link. An AC link
 participating in the optional DC power-flow formulation uses `dc=false` and a
-negative `susceptance`.
+negative `susceptance`. Exactly one AC and one DC may share the same unordered
+node pair (either, both, or neither is fine). A second AC or a second DC on
+that pair raises an error. Aggregate equivalent parallel circuits before
+calling [`makenodeinterco`](@ref).
 
 Finite directional capacities on node interconnections use the corresponding
 `From>To` columns of the `transfer_capacities` time-series sheet as

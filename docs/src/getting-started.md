@@ -56,12 +56,12 @@ grid = Node("grid", power; rule=:curtailed, evalprice=true, losses=0.0, tags=[:e
 atmosphere = Node("CO2", carbon; rule=:curtailed, tags=[:co2])
 
 # Add a flat 100 MW demand: 100 MW × 8760 hours.
-makedemand("Load", "unused", grid, snapshot; coeff=0.0, shift=0, yearlyconstant=876_000.0, gridlosses=0.0)
+makedemand("Load", "grid", grid, snapshot; coeff=0.0, shift=0, yearlyconstant=876_000.0, gridlosses=0.0)
 
 # Add a dispatchable generator with optimisable capacity.
 makedispatchable(
-    "Plant",
-    "unused",
+    "CCGT",
+    "CCGT",
     grid,
     atmosphere,
     snapshot;
@@ -109,10 +109,10 @@ The component name combines the builder's name prefix and the node name.
 The solved capacity and annual generation are therefore:
 
 ```julia
-capacity(result, "Plant grid")
+capacity(result, "CCGT grid")
 # 100.0
 
-balance(result, "Plant grid", :output, energy; collapse=true, aggregate=true)
+balance(result, "CCGT grid", :output, energy; collapse=true, aggregate=true)
 # 876000.0
 ```
 
@@ -135,7 +135,7 @@ costs(result)
 table(result, capacity)
 
 # Hourly plant output.
-balance(result, "Plant grid", :output, energy; collapse=false, aggregate=true)
+balance(result, "CCGT grid", :output, energy; collapse=false, aggregate=true)
 
 # Electricity marginal prices, because evalprice=true on the node.
 dualprice(result.nodes["grid"])

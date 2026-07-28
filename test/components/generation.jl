@@ -65,51 +65,6 @@ using HiGHS
         @test_throws ArgumentError makehydroror("Hydro ROR", "ZONE1", elec, s; cap=nothing)
     end
 
-    # A valid flat hydrogen purchase input should create and register the component.
-    let
-        s, elec, _ = makesnapshot()
-        h2 = Node("H2", EnergyCarrier("hydrogen", sim(elec)), rule=:curtailed, tags=[:hydrogen])
-        c = makeflathydrogenpurchase("H2 purchase", h2, 8760.0, s)
-        @test !isnothing(c)
-        @test Nosy.getcomponent(s, "H2 purchase H2") === c
-    end
-
-    # A valid SMR input should create and register the component.
-    let
-        s, elec, co2 = makesnapshot()
-        heat = Node("HEAT", EnergyCarrier("heat", sim(elec)), rule=:curtailed, tags=[:heat])
-        c = makesmr(
-            "SMR", "CCGT", elec, heat, co2, s;
-            cap=100.0,
-            overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=2.0,
-            decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,
-            connection_cost=0.0, fuel_cost=30.0, waste_cost=0.0,
-            co2_emission=0.0, unit_size=0.0,
-        )
-        @test !isnothing(c)
-        @test Nosy.getcomponent(s, "SMR ZONE1") === c
-    end
-
-    # A valid profile-based nuclear input should create and register the component.
-    let
-        s, elec, co2 = makesnapshot()
-        c = POSY2.makenuclearprofile(
-            "Nuclear profile", "Onwind", elec, co2, s;
-            cap=100.0, weatheryear=2019,
-            overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=2.0,
-            decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,
-            fuel_cost=30.0, co2_emission=0.0,
-        )
-        @test !isnothing(c)
-        @test Nosy.getcomponent(s, "Nuclear profile ZONE1") === c
-    end
-
-    # Reservoir profile should fail when cap is missing.
-    let
-        s, elec, _ = makesnapshot()
-        @test_throws ArgumentError POSY2.makereservoirprofile("Reservoir profile", "ZONE1", elec, s; cap=nothing)
-    end
-
     # A valid intermittent source input should create and register the component.
     let
         s, elec, co2 = makesnapshot()

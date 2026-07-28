@@ -47,7 +47,7 @@ using DataFrames
             overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
-        makebatteries(
+        makebatterystorage(
             "Battery", "Battery", elec1, snap;
             capin=100.0,
             eff=0.9, duration=4.0,
@@ -117,7 +117,7 @@ using DataFrames
             overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
-        makebatteries(
+        makebatterystorage(
             "Battery", "Battery", elec1, snap;
             capin=100.0,
             eff=0.9, duration=4.0,

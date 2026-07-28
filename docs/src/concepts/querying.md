@@ -11,7 +11,7 @@ Most POSY2 component names combine the component prefix and principal node:
 makedispatchable("Gas", "CCGT", grid, co2_node, snapshot)
 # "Gas grid"
 
-makebatteries("Battery", "Li-ion", grid, snapshot)
+makebatterystorage("Battery", "Li-ion", grid, snapshot)
 # "Battery grid"
 ```
 

@@ -47,17 +47,42 @@ Nosy.optimize!(snapshot, cost(snapshot))
 
 ## DC Power Flow
 
-When `POSY2Options.dcopf` is true, call [`applydcopf!`](@ref) after every AC
-and DC interconnection has been added and before optimisation:
+If `POSY2Options.dcopf` is true, you must call [`applydcopf!`](@ref) once after
+every AC and DC interconnection has been added and before optimisation.
+Setting the flag alone does not add KVL constraints:
 
 ```julia
 applydcopf!(snapshot)
 Nosy.optimize!(snapshot, cost(snapshot))
 ```
 
-The call adds KVL constraints for the independent cycles of the AC
-interconnection graph. It is a no-op when `dcopf=false`. Call it once for a
-given snapshot; it is a model-construction step, not part of the solver call.
+Nodal carrier balances and interconnection capacity bounds are already
+enforced by the underlying Nosy model; [`applydcopf!`](@ref) only adds the
+Kirchhoff voltage law (KVL) constraints that restrict AC flows.
+
+Set each AC link’s susceptance in [`makenodeinterco`](@ref); use
+one equivalent susceptance if parallel AC circuits were aggregated beforehand.
+Controllable DC links (`dc=true`) are excluded from the cycle basis.
+
+For each independent AC cycle ``C`` and each time step ``t``, and for a
+directed edge ``(i,j)`` oriented consistently with the traversal of ``C``, the
+signed net flow on a bidirectional node interconnection is
+
+```math
+f_{ij,t} = f^{i \to j}_{t} - f^{j \to i}_{t},
+```
+
+where the two directed port flows are the interconnection’s forward and reverse
+transfers (oriented to match ``(i,j)``). ``B_{ij}`` is the (negative)
+susceptance of that AC link. The cycle constraint is
+
+```math
+\sum_{(i,j) \in C} \frac{f_{ij,t}}{B_{ij}} = 0
+\qquad \forall\, C,\, t.
+```
+
+The call is a no-op when `dcopf=false`. Call it once for a given snapshot; it
+is a model-construction step, not part of the solver call.
 
 ## LP And MILP Models
 

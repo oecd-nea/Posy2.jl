@@ -43,28 +43,4 @@ using HiGHS
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "EL ZONE1") === c
     end
-
-    # HT electrolyser should fail when lifetime is not integer-valued.
-    let
-        s, elec, heat, h2 = makesnapshot()
-        @test_throws ArgumentError makeHTelectrolyser(
-            "HTEL", "SOEC", elec, heat, h2, s;
-            eff=0.8,
-            overnight_cost=1200.0, om_fixed_cost=5.0, om_var_cost=1.0,
-            decommissioning=0.1, lifetime=30.5, construction_profile=1.0, decommissioning_profile=1.0,
-        )
-    end
-
-    # A valid HT electrolyser input should create and register the component.
-    let
-        s, elec, heat, h2 = makesnapshot()
-        c = makeHTelectrolyser(
-            "HTEL", "SOEC", elec, heat, h2, s;
-            cap=100.0, gridlosses=0.0, eff=0.8,
-            overnight_cost=1200.0, om_fixed_cost=5.0, om_var_cost=1.0,
-            decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,
-        )
-        @test !isnothing(c)
-        @test Nosy.getcomponent(s, "HTEL ZONE1") === c
-    end
 end

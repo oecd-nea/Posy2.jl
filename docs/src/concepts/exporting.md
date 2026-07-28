@@ -24,6 +24,9 @@ working directory. The output contains four sheets:
 - `Price duration curves`: endogenous and exogenous electricity prices sorted
   from highest to lowest.
 
+Interconnection-specific tables and column conventions are described in
+[Interconnections](../components/interconnections.md#losses-and-reporting).
+
 If the destination already exists, POSY2 moves it to
 `results/old/scenario.xlsx` before writing the new workbook. An older file with
 that backup name is replaced. Use distinct filenames or copy important results

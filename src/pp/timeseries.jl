@@ -64,14 +64,18 @@ function gentimeseries(s::Snapshot)
         df[!,k] = v / 1000.
     end
 
-    # interconnection import/export volumes (column names: from > to)
+    # interconnection volumes (column names: from > to). Same directed pair (e.g. AC+DC on one corridor) is summed.
     for (cname, c) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"])
-        df[!, rewrite_import_from_implicit(s, cname, c)] = balance(c, :output, energy, collapse=false, aggregate=false)["output"] / 1000.
-        df[!, rewrite_export_from_implicit(s, cname, c)] = balance(c, :input, energy, collapse=false, aggregate=false)["input2"] / 1000.
+        col = rewrite_import_from_implicit(s, cname, c)
+        df[!, col] = (col in names(df) ? df[!, col] : 0) .+ balance(c, :output, energy, collapse=false, aggregate=false)["output"] / 1000.
+        col = rewrite_export_from_implicit(s, cname, c)
+        df[!, col] = (col in names(df) ? df[!, col] : 0) .+ balance(c, :input, energy, collapse=false, aggregate=false)["input2"] / 1000.
     end
     for (cname, c) in getcomponents(s, with=[:function => "interconnection", :function => "priceinterconnection"])
-        df[!, rewrite_import_from_implicit(s, cname, c)] = balance(c, :output, energy, collapse=false, aggregate=false)["output"] / 1000.
-        df[!, rewrite_export_from_implicit(s, cname, c)] = balance(c, :input, energy, collapse=false, aggregate=false)["input"] / 1000.
+        col = rewrite_import_from_implicit(s, cname, c)
+        df[!, col] = (col in names(df) ? df[!, col] : 0) .+ balance(c, :output, energy, collapse=false, aggregate=false)["output"] / 1000.
+        col = rewrite_export_from_implicit(s, cname, c)
+        df[!, col] = (col in names(df) ? df[!, col] : 0) .+ balance(c, :input, energy, collapse=false, aggregate=false)["input"] / 1000.
     end
 
     # price from electricity nodes

@@ -106,7 +106,7 @@ using DataFrames
         @test isapprox(line.d[line.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1], 3.0; rtol=1e-12)
     end
 
-    # Same directed pair with AC + DC: capacity and volume cells sum both ICs.
+    # Same directed pair with AC + DC: total capacity/volume sum both; AC/DC tables split.
     let
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
@@ -118,8 +118,19 @@ using DataFrames
         s = extract(snap)
 
         cap = POSY2._dataline_ic_cap(s)
+        @test cap.title == "Interconnection capacity"
         @test isapprox(cap.d[cap.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], 2.5; rtol=1e-12)
         @test isapprox(cap.d[cap.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1], 2.5; rtol=1e-12)
+
+        cap_ac = POSY2._dataline_ic_cap(s; kind=:AC)
+        @test cap_ac.title == "Interconnection capacity (AC)"
+        @test isapprox(cap_ac.d[cap_ac.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], 2.0; rtol=1e-12)
+        @test isapprox(cap_ac.d[cap_ac.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1], 2.0; rtol=1e-12)
+
+        cap_dc = POSY2._dataline_ic_cap(s; kind=:DC)
+        @test cap_dc.title == "Interconnection capacity (DC)"
+        @test isapprox(cap_dc.d[cap_dc.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], 0.5; rtol=1e-12)
+        @test isapprox(cap_dc.d[cap_dc.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1], 0.5; rtol=1e-12)
 
         ac = Nosy.getcomponent(s, "AC_ZONE1_ZONE2")
         dc = Nosy.getcomponent(s, "DC_ZONE1_ZONE2")
@@ -128,6 +139,14 @@ using DataFrames
         vol = POSY2._dataline_ic_vol_detailed(s)
         v = vol.d[vol.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
         @test isapprox(v, (ac_fwd + dc_fwd) / 1e6; rtol=1e-12)
+
+        vol_ac = POSY2._dataline_ic_vol_detailed(s; kind=:AC)
+        @test vol_ac.title == "Interconnection volume (AC)"
+        @test isapprox(vol_ac.d[vol_ac.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], ac_fwd / 1e6; rtol=1e-12)
+
+        vol_dc = POSY2._dataline_ic_vol_detailed(s; kind=:DC)
+        @test vol_dc.title == "Interconnection volume (DC)"
+        @test isapprox(vol_dc.d[vol_dc.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], dc_fwd / 1e6; rtol=1e-12)
     end
 
     # IC exists but no injection: corridor cell is 0.0 (flow is zero), not missing.
@@ -189,6 +208,7 @@ using DataFrames
         s = extract(snap)
 
         line = POSY2._dataline_ic_hours_at_ntc(s)
+        @test line.title == "Hours at NTC (AC or DC)"
         df = line.d
         v_import = df[df[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
         v_export = df[df[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
@@ -208,6 +228,31 @@ using DataFrames
         v21 = df[df[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
         @test ismissing(v12)
         @test ismissing(v21)
+    end
+
+    # AC + DC on one corridor: AC/DC tables are separate; (AC or DC) is the hourly union.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("AC", elec1, elec2, 2_000.0, 2_000.0, snap; dc=false)
+        makenodeinterco("DC", elec1, elec2, 500.0, 500.0, snap; dc=true)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        either = POSY2._dataline_ic_hours_at_ntc(s)
+        line_ac = POSY2._dataline_ic_hours_at_ntc(s; kind=:AC)
+        line_dc = POSY2._dataline_ic_hours_at_ntc(s; kind=:DC)
+        @test either.title == "Hours at NTC (AC or DC)"
+        @test line_ac.title == "Hours at NTC (AC)"
+        @test line_dc.title == "Hours at NTC (DC)"
+
+        either_h = either.d[either.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
+        ac_h = line_ac.d[line_ac.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
+        dc_h = line_dc.d[line_dc.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
+        @test either_h <= ac_h + dc_h
+        @test either_h >= max(ac_h, dc_h)
     end
 
     # Internal price IC selfcosts row: imports/exports/congestion rent match dedicated priceIC helpers.
@@ -292,7 +337,7 @@ using DataFrames
             overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
-        makebatteries(
+        makebatterystorage(
             "Battery", "Battery", elec1, snap;
             capin=100.0,
             eff=0.9, duration=4.0,
@@ -341,7 +386,7 @@ using DataFrames
             overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
-        makebatteries(
+        makebatterystorage(
             "Battery", "Battery", elec1, snap;
             capin=100.0,
             eff=0.9, duration=4.0,
@@ -376,7 +421,7 @@ using DataFrames
             overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
-        makebatteries(
+        makebatterystorage(
             "Battery", "Battery", elec1, snap;
             capin=100.0,
             eff=0.9, duration=4.0,
@@ -421,7 +466,7 @@ using DataFrames
             overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
-        makebatteries(
+        makebatterystorage(
             "Battery", "Battery", elec1, snap;
             capin=100.0,
             eff=0.9, duration=4.0,
@@ -465,7 +510,7 @@ using DataFrames
             overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
-        makebatteries(
+        makebatterystorage(
             "Battery", "Battery", elec1, snap;
             capin=100.0,
             eff=0.9, duration=4.0,
@@ -502,7 +547,7 @@ using DataFrames
             overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
-        makebatteries(
+        makebatterystorage(
             "Battery", "Battery", elec1, snap;
             capin=100.0,
             eff=0.9, duration=4.0,
@@ -565,7 +610,7 @@ using DataFrames
             overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
-        makebatteries(
+        makebatterystorage(
             "Battery", "Battery", elec1, snap;
             capin=100.0,
             eff=0.9, duration=4.0,

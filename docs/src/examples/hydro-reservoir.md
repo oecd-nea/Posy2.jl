@@ -1,8 +1,9 @@
 # Hydro Reservoir
 
 A reservoir plant stores natural inflow and releases it through a turbine. It
-does not consume grid electricity, so its charging capacity is zero. This is
-POSY2's natural-inflow reservoir pattern.
+does not consume grid electricity, so its charging capacity is zero. Demand
+and a costed CCGT complete the system so the optimiser can decide when to use
+stored water.
 
 The example uses both illustrative workbooks: `time_series.xlsx` provides the
 `country1` shape in `reservoir_inflow_2019`, while `tech_data.xlsx` provides
@@ -28,19 +29,10 @@ snapshot = Snapshot(
     )),
 )
 
-electricity = Node(
-    "country1",
-    EnergyCarrier("electricity country1", sim),
-    rule=:curtailed,
-    tags=[:electricity],
-)
+electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=:curtailed, tags=[:electricity])
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
-makedemand(
-    "Demand", "unused", electricity, snapshot;
-    coeff=0.0,
-    yearlyconstant=50.0 * 8760,
-)
+makedemand("Demand", "country1", electricity, snapshot; coeff=0.0, yearlyconstant=50.0 * 8760)
 
 makehydroreservoir(
     "Reservoir hydro",
@@ -57,13 +49,8 @@ makehydroreservoir(
     simplified=true,
 )
 
-# A costed backup plant supplies demand not covered by annual inflow.
-makedispatchable(
-    "Backup", "CCGT", electricity, co2, snapshot;
-    cap=100.0,
-    # Keep capacity continuous for this teaching example.
-    unit_size=0.0,
-)
+# CCGT supplies demand not covered by annual inflow.
+makedispatchable("CCGT", "CCGT", electricity, co2, snapshot; cap=100.0, unit_size=0.0)
 
 optimize!(snapshot, cost(snapshot))
 result = extract(snapshot)
@@ -75,15 +62,46 @@ Snapshot with 3 component(s) and 2 node(s)
 ```
 
 ```jldoctest hydro_reservoir
-julia> round(balance(result, "Reservoir hydro country1", :output, energy; collapse=true, aggregate=true), digits=6)
-350400.0
+julia> balance(result, "Reservoir hydro country1", :output, energy; collapse=true, aggregate=true)
+350399.9999999997
 
-julia> round(balance(result, "Backup country1", :output, energy; collapse=true, aggregate=true), digits=6)
-87600.0
+julia> balance(result, "CCGT country1", :output, energy; collapse=true, aggregate=true)
+87599.99999999999
 ```
 
-Annual natural inflow supplies an average 40 MW, and backup generation supplies
-the remaining 10 MW. With `inflow=nothing`, POSY2 instead uses the workbook
-values as absolute hourly inflows. `intake_mult` can scale either form. The
-reservoir energy capacity must be large enough to shift inflow between its
-arrival and the chosen turbine dispatch.
+Natural inflow averages 40 MW across the year against 50 MW flat demand, so
+hydro supplies most of the energy and the CCGT covers the remaining 10 MW.
+That split alone does not show *when* water is stored. The reservoir `level`
+rises when inflow is banked and falls when the turbine runs;
+`argmax(level)` marks the yearly peak:
+
+```jldoctest hydro_reservoir
+julia> level = balance(result, "Reservoir hydro country1", :level, energy; collapse=false, aggregate=true);
+
+julia> peak = argmax(level)
+3030
+
+julia> level[peak-5:peak+5]
+11-element Vector{Float64}:
+ 350.8957793077647
+ 351.6887452066525
+ 352.31057573157216
+ 352.8037806898941
+ 352.8737252717765
+ 352.89728528588023
+ 352.72501871971684
+ 352.70518538985425
+ 352.4995246715731
+ 352.2040632358564
+ 351.75298533082463
+
+julia> maximum(level)
+352.89728528588023
+```
+
+The plant is therefore both a generator and a reservoir: energy arrives with
+the inflow profile and is dispatched when it displaces the CCGT. With
+`inflow=nothing`, POSY2 uses the workbook values as absolute hourly inflows
+instead of scaling a normalised shape. `intake_mult` can scale either form.
+The reservoir energy capacity must be large enough for that shift between
+arrival and dispatch.

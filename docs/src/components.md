@@ -12,7 +12,8 @@ The builders are grouped by modelling role:
   [`makedemand`](@ref), hydrogen demand, electric vehicles, and demand
   response.
 - [Generation](components/generation.md) covers dispatchable, nuclear,
-  intermittent, hydro, and purchased-hydrogen sources.
+  intermittent, and hydro sources.
+- [Hydrogen](components/hydrogen.md) covers exogenous hydrogen purchase.
 - [Storage And Conversion](components/storage-conversion.md) covers
   reservoirs, batteries, hydrogen storage, and electrolysers.
 - [Interconnections](components/interconnections.md) covers links between

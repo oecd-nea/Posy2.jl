@@ -69,10 +69,14 @@ end
 function addkvl!(s::Snapshot{T}) where T
     # build B-matrix (susceptance matrix) from AC node ICs only
     mat, nodelist, node_map = getic_susceptancematrix(s)
-    isempty(node_map) && return nothing
+    cycles = gencycles(mat)
+    if isempty(node_map) || isempty(cycles)
+        @warn "No AC loops were found. no KVL constraints were added."
+        return nothing
+    end
 
     # find minimal set of independent cycles using cycle basis
-    for c in gencycles(mat)
+    for c in cycles
         # initialize expression for this cycle: sum(flow_ij / B_ij) over all edges in cycle
         exp = Nosy.differentzerovector(T, Nosy.nsteps(s.sim))
         for i in eachindex(c)

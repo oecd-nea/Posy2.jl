@@ -119,10 +119,8 @@ number, expanded to all hours, or a vector with exactly
 |:--------|:---------------|:---------------|
 | [`makedemand`](@ref) | `profile` | `<zone>` in `demand` |
 | [`makeintermittentsource`](@ref) | `profile` | `<tech>_<node>` in `profiles_<year>` |
-| `POSY2.makenuclearprofile` | `profile` | `<tech>_<node>` in `profiles_<year>` |
 | [`makehydroror`](@ref) | `inflow_profile` | `<zone>` in `hydro_ror_<year>` |
 | [`makehydroreservoir`](@ref) | `inflow_profile` | `<zone>` in `reservoir_inflow_<year>` |
-| `POSY2.makereservoirprofile` | `output_profile` | `<zone>` in `fixed_reservoir_output` |
 | [`makeEV`](@ref) | `charging_availability`, `driving_profile` | `<zone>` in the two EV sheets |
 | [`makepriceinterco`](@ref) | `spot_price`, `import_availability`, `export_availability` | Price and directional-transfer columns |
 | [`makenodeinterco`](@ref) | `atob_availability`, `btoa_availability` | Directional-transfer columns |
@@ -131,7 +129,7 @@ For example, this demand never reads `time_series.xlsx`:
 
 ```julia
 makedemand(
-    "Demand", "unused", electricity, snapshot;
+    "Demand", "country1", electricity, snapshot;
     profile=hourly_demand,
 )
 ```
@@ -158,10 +156,10 @@ POSY2 uses four technology sheets:
 
 | Sheet | Modelling role |
 |:------|:---------------|
-| `dispatchable` | Dispatchable, nuclear, and SMR generation |
+| `dispatchable` | Dispatchable and nuclear generation |
 | `intermittent` | Wind, solar, and run-of-river generation |
 | `storage` | Reservoirs, batteries, hydrogen storage, and EV fleets |
-| `electrolysis` | Low- and high-temperature electrolysers |
+| `electrolysis` | Electrolysers |
 
 Every row listed in the tables below has a same-named builder keyword unless
 the notes say otherwise. A row is read only when that keyword remains
@@ -181,13 +179,9 @@ The common dispatchable rows are:
 |:--------|:----------|:-------------------|
 | [`makedispatchable`](@ref) | Common | Fuel, unit commitment, and ramping |
 | [`makenuclear`](@ref) | Common plus `waste_cost` | Fuel, unit commitment, and reloads |
-| [`makesmr`](@ref) | Common plus `fuel_cost` and `waste_cost` | None |
-| `POSY2.makenuclearprofile` | Common without `connection_cost` and `unit_size`; always includes `fuel_cost` | None |
 
 For the fuel group, `makedispatchable` and `makenuclear` read `fuel_cost`
-without `fuelnode`, or `efficiency` with `fuelnode`. `makesmr` always reads
-`fuel_cost`; it has no fuel-node efficiency mode. `POSY2.makenuclearprofile`
-always reads `fuel_cost` and has no fuel-node efficiency mode.
+without `fuelnode`, or `efficiency` with `fuelnode`.
 
 For `makedispatchable` and `makenuclear`, `uc=true` reads `no_load_cost` and
 `startup_cost`. When no initial snapshot supplies unit-commitment behaviour,
@@ -200,10 +194,6 @@ an argument-only scheduling interval and has no workbook row.
 
 `ramp_up` and `ramp_down` are used by `makedispatchable` only when
 `unit_size > 0`; zero ramp values omit the corresponding constraint.
-
-The `POSY2.makenuclearprofile` reads `overnight_cost`,
-`lifetime`, both profiles, `om_fixed_cost`, `om_var_cost`, `fuel_cost`,
-`decommissioning`, and `co2_emission`.
 
 ### Intermittent Sheet
 
@@ -228,10 +218,9 @@ keyword can select another column.
 | Builder | Parameter Set |
 |:--------|:--------------|
 | [`makehydroreservoir`](@ref) | Reservoir rows |
-| [`makebatteries`](@ref) | Battery rows |
+| [`makebatterystorage`](@ref) | Battery rows |
 | [`makehydrogenstorage`](@ref) | Hydrogen-storage rows |
 | [`makeEV`](@ref), smart or V2G | EV-fleet rows |
-| `POSY2.makereservoirprofile` | Reservoir-profile rows |
 
 Reservoir rows are `roundtrip_eff`, `overnight_cost`, `lifetime`, both
 profiles, `om_fixed_cost`, `om_var_cost`, and `decommissioning`.
@@ -243,12 +232,6 @@ profiles, `om_fixed_cost`, and `decommissioning`.
 EV-fleet rows are `charging_eff`, `self_discharge`, `min_level_morning`,
 `max_charging_power`, `max_dispatch_power`, `battery_capacity`, and
 `yearly_consumption`.
-
-Reservoir-profile rows are `overnight_cost`, `lifetime`, both profiles,
-`om_fixed_cost`, `om_var_cost`, and `decommissioning`.
-
-`POSY2.makereservoirprofile` defaults to technology column `Hydro res`, but
-its `tech` keyword can select another column.
 
 In smart-charging or V2G mode, [`makeEV`](@ref) defaults to technology column
 `EV`, but its `tech` keyword can select another column.
@@ -262,7 +245,6 @@ keywords. Fixed-profile EV mode reads no technology data.
 | Builder | Parameter Set |
 |:--------|:--------------|
 | [`makeelectrolyser`](@ref) | Electrolysis rows |
-| [`makeHTelectrolyser`](@ref) | Electrolysis rows |
 
 Electrolysis rows are `efficiency`, `overnight_cost`, `lifetime`, both
 profiles, `decommissioning`, `om_fixed_cost`, and `om_var_cost`.
@@ -303,10 +285,9 @@ The time-series lookup key depends on the builder:
 | Sheet | Expected Column | Used By And Condition |
 |:------|:----------------|:----------------------|
 | `demand` | `<zone>` | [`makedemand`](@ref) when `coeff != 0` |
-| `profiles_<year>` | `<tech>_<node-name>` | Intermittent and internal nuclear profile |
+| `profiles_<year>` | `<tech>_<node-name>` | [`makeintermittentsource`](@ref) |
 | `hydro_ror_<year>` | `<zone>` | [`makehydroror`](@ref) |
 | `reservoir_inflow_<year>` | `<zone>` | [`makehydroreservoir`](@ref) when inflow is enabled (`inflow != 0`) |
-| `fixed_reservoir_output` | `<zone>` | `POSY2.makereservoirprofile` (absolute output; divided by `cap`) |
 | `EV_charging_availability` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
 | `EV_driving_profile` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
 | `spot_price` | `<foreign-zone>` | [`makepriceinterco`](@ref) |
@@ -332,8 +313,6 @@ The principal series semantics are:
   `intake_mult`. With `renormalize=true`, POSY2 first normalises the profile to
   sum to one before that scaling, but only when `inflow` is a non-zero number;
   `renormalize` is ignored when `inflow=nothing`.
-- `fixed_reservoir_output` contains absolute hourly output. The
-  `POSY2.makereservoirprofile` divides it by `cap` to form a capacity factor.
 - EV charging availability is a capacity multiplier. The driving profile is
   normalised to the requested annual EV consumption and must have a positive
   sum.

@@ -38,6 +38,12 @@ builder arguments, or with a mixture of both. Independent `tech_mode` and
 POSY2 includes neutral, illustrative workbooks in [`data/`](data/) for the
 manual and examples; they are not calibrated scenario projections.
 
+## Time Horizon
+
+POSY2 currently assumes a non-leap year of 8760 hourly steps. Nosy supports
+more flexible meshes; POSY2 does not yet. See
+[Full-year Hourly Assumption](docs/src/concepts/input-data.md#full-year-hourly-assumption).
+
 ## Core Ideas
 
 POSY2 adds a power system modelling layer on top of Nosy:

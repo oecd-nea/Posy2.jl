@@ -1,33 +1,37 @@
 # Examples
 
-These examples build components exclusively through POSY2's `make...`
-methods. Nosy still supplies the simulation, snapshot, carriers, and nodes on
-which POSY2 operates, but the examples do not assemble Nosy `Component`
-objects by hand.
+These examples build systems with POSY2's `make...` methods. Nosy still
+provides the simulation, snapshot, carriers, and nodes, but the pages do not
+assemble Nosy `Component` objects by hand.
 
-The examples progress from a single copperplate country to interconnected
-countries and then add DC optimal power flow. Two hydro examples demonstrate
-the distinct natural-inflow reservoir and pumped-storage configurations of
-[`makehydroreservoir`](@ref).
+Each page is a small working study with one idea in focus—an interconnection
+pattern, a storage technology, a hydrogen pathway—while other assets stay as
+supporting pieces. Result queries follow the story: `capacity` and annual
+`balance`/`cost` where totals matter, hourly `balance` where the time pattern
+matters. Price Interconnection adds one figure so the price-based switch
+between imports and domestic generation is visible.
 
 Together, the examples exercise all four input-mode combinations:
 
 | Example | `tech_mode` | `timeseries_mode` | Purpose |
 |:--------|:------------|:------------------|:--------|
-| Copperplate Country | `:excel` | `:excel` | Paired demand, wind profile, Onwind, and CCGT data |
-| Hydro Reservoir | `:excel` | `:excel` | Paired reservoir inflow, Hydro res, and CCGT data |
-| Copperplate Country with Hydrogen | `:excel` | `:arguments` | Workbook PEM/CCGT assumptions with explicit flat demands |
-| Copperplate Country with a Priced Neighbour | `:arguments` | `:excel` | Workbook prices and directional availability without technology lookups |
-| Short network and pumped-storage examples | `:arguments` | `:arguments` | Fully self-contained teaching models |
+| [One Country](examples/one-country.md) | `:excel` | `:excel` | Paired demand, wind profile, Onwind, and CCGT data |
+| [Hydro Reservoir](examples/hydro-reservoir.md) | `:excel` | `:excel` | Paired reservoir inflow with Hydro res and CCGT data |
+| [Dispatchable Generation](examples/dispatchable-generation.md) / [Hydrogen](examples/hydrogen-production.md) | `:excel` | `:arguments` | Workbook technology assumptions with explicit demands |
+| [Price Interconnection](examples/price-interconnection.md), [Battery](examples/battery-storage.md), [Pumped Storage](examples/pumped-storage-hydro.md) | `:arguments` | `:excel` | Workbook series (prices, profiles, or availability) with explicit technology costs |
+| [Two Countries](examples/two-countries.md), [DC OPF](examples/dc-opf.md), [EV](examples/electric-vehicles.md), [Demand Response](examples/demand-response.md) | `:arguments` | `:arguments` | Fully self-contained teaching models |
 
-- [Copperplate Country](examples/copperplate-country.md)
-- [Copperplate Country with Hydrogen](examples/copperplate-hydrogen.md)
-- [Copperplate Country with a Priced Neighbour](examples/copperplate-price-interconnection.md)
-- [Two Copperplate Countries](examples/two-countries.md)
-- [Four Copperplate Countries](examples/four-countries.md)
-- [Four Countries with DC OPF](examples/four-countries-dcopf.md)
+- [One Country](examples/one-country.md)
+- [Two Countries](examples/two-countries.md)
+- [Price Interconnection](examples/price-interconnection.md)
+- [DC OPF](examples/dc-opf.md)
+- [Dispatchable Generation](examples/dispatchable-generation.md)
+- [Battery Storage](examples/battery-storage.md)
 - [Hydro Reservoir](examples/hydro-reservoir.md)
-- [Pumped-storage Hydro](examples/pumped-storage-hydro.md)
+- [Pumped Storage](examples/pumped-storage-hydro.md)
+- [Hydrogen Production](examples/hydrogen-production.md)
+- [Electric Vehicles](examples/electric-vehicles.md)
+- [Demand Response](examples/demand-response.md)
 
 ## Exporting Example Results
 

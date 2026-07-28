@@ -19,13 +19,13 @@ export readtimeseries, gettimeseries
 export makedemand, makeEV
 export makeflathydrogendemand, makeflexhydrogendemand, makeflathydrogenpurchase
 export makedispatchable
-export makenuclear, makesmr
+export makenuclear
 export makeintermittentsource
 export makehydroror, makehydroreservoir
-export makebatteries
+export makebatterystorage
 export makedemandresponse
 export makepriceinterco, makenodeinterco
-export makeelectrolyser, makeHTelectrolyser, makehydrogenstorage
+export makeelectrolyser, makehydrogenstorage
 
 export applydcopf!
 

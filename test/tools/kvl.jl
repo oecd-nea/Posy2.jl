@@ -36,7 +36,7 @@ using HiGHS
         @test length(node_map) == 1
         @test isempty(POSY2.gencycles(POSY2.getic_susceptancematrix(snap)[1]))
 
-        POSY2.applydcopf!(snap)
+        @test_logs (:warn, r"No AC loops were found") POSY2.applydcopf!(snap)
         Nosy.optimize!(snap, cost(snap))
         @test is_solved_and_feasible(sim.model)
 
@@ -63,7 +63,7 @@ using HiGHS
         @test isempty(node_map)
         @test all(iszero, mat)
 
-        POSY2.applydcopf!(snap)
+        @test_logs (:warn, r"No AC loops were found") POSY2.applydcopf!(snap)
         Nosy.optimize!(snap, cost(snap))
         @test is_solved_and_feasible(sim.model)
 

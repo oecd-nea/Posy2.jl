@@ -184,7 +184,7 @@ using HiGHS
         snap, elec1, elec2, _, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makebatteries(
+        makebatterystorage(
             "Battery", "Battery", elec1, snap;
             capin=100.0,
             eff=0.9, duration=4.0,

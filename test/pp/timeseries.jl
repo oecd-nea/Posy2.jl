@@ -128,7 +128,7 @@ using HiGHS
             overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
-        makebatteries(
+        makebatterystorage(
             "Battery", "Battery", elec1, snap;
             capin=100.0,
             eff=0.9, duration=4.0,
@@ -168,7 +168,7 @@ using HiGHS
             overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
-        makebatteries(
+        makebatterystorage(
             "Battery", "Battery", elec1, snap;
             capin=100.0,
             eff=0.9, duration=4.0,
@@ -192,5 +192,28 @@ using HiGHS
             POSY2.imports_internal(s, "ZONE1"; collapse=true) / 1000.0;
             rtol=1e-12,
         )
+    end
+
+    # Same directed pair with AC + DC: timeseries corridor column sums both flows (GW).
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("AC", elec1, elec2, 2_000.0, 2_000.0, snap; dc=false)
+        makenodeinterco("DC", elec1, elec2, 500.0, 500.0, snap; dc=true)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        df = POSY2.gentimeseries(s)
+        ac = Nosy.getcomponent(s, "AC_ZONE1_ZONE2")
+        dc = Nosy.getcomponent(s, "DC_ZONE1_ZONE2")
+        col = POSY2.rewrite_import_from_implicit(s, Nosy.name(ac), ac)
+        @test col == POSY2.rewrite_import_from_implicit(s, Nosy.name(dc), dc)
+        @test count(==(col), names(df)) == 1
+
+        ac_fwd = balance(ac, :output, energy, collapse=false, aggregate=false)["output"] / 1000.0
+        dc_fwd = balance(dc, :output, energy, collapse=false, aggregate=false)["output"] / 1000.0
+        @test isapprox(df[!, col], ac_fwd .+ dc_fwd; rtol=1e-12)
     end
 end

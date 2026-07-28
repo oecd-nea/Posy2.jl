@@ -659,7 +659,7 @@ function _all_ic_directed_flows(s::Snapshot; collapse=true)
     flows = Dict{Tuple{String, String}, FlowT}()
     for (_, c) in getcomponents(s, with=[:function => "interconnection"])
         for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
-            # Same directed pair: sum parallel IC flows (e.g. AC+DC or DC+DC).
+            # Same directed pair: sum flows when AC and DC share a corridor.
             key = (_from, _to)
             flows[key] = haskey(flows, key) ? flows[key] .+ flow : flow
         end
@@ -899,21 +899,27 @@ end
 
 # return a dataframe with interconnectors capacities
 # this includes both interconnection between explicit nodes
-# and interconnection from price time series
-function _dataline_ic_cap(s)
+# and interconnection from price time series when `kind === :all`
+# `kind` is `:all`, `:AC`, or `:DC` (AC/DC tables are node ICs only)
+function _dataline_ic_cap(s; kind::Symbol=:all)
+    kind in (:all, :AC, :DC) || throw(ArgumentError("kind must be :all, :AC, or :DC; got $kind"))
     allcomps_int = Set{String}()
     allcomps_ext = Set{String}()
     allquasinodes = Set{String}()
     allnodes = getnodes(s, with=[:electricity])
     for (cname, c) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"])
-        push!(allcomps_int, cname)
+        if kind === :all || hastag(c, :function, String(kind))
+            push!(allcomps_int, cname)
+        end
     end
     ext_fromto = Dict{String, Tuple{String,String}}()
-    for (cname, c) in getcomponents(s, with=[:function => "interconnection", :function => "priceinterconnection"])
-        push!(allcomps_ext, cname)
-        ft = _fromto_ic_external(s, c)
-        ext_fromto[cname] = ft
-        push!(allquasinodes, ft[1])
+    if kind === :all
+        for (cname, c) in getcomponents(s, with=[:function => "interconnection", :function => "priceinterconnection"])
+            push!(allcomps_ext, cname)
+            ft = _fromto_ic_external(s, c)
+            ext_fromto[cname] = ft
+            push!(allquasinodes, ft[1])
+        end
     end
 
     allquasinodes = vcat(sort(collect(keys(allnodes)))..., sort(collect(allquasinodes))...)    
@@ -964,24 +970,23 @@ function _dataline_ic_cap(s)
 
     # sum over zones
     datacols = names(df)[2:end]
-    df[!,"> Total"] = [sum(df[i, c] for c in datacols if !ismissing(df[i, c])) for i in 1:nrow(df)]
-    _lastrow = permutedims(vcat("Total >", [sum(x for x in c if !ismissing(x)) for c in eachcol(df)[2:end]]))
+    df[!,"> Total"] = [sum((df[i, c] for c in datacols if !ismissing(df[i, c])); init=0.0) for i in 1:nrow(df)]
+    _lastrow = permutedims(vcat("Total >", [sum((x for x in c if !ismissing(x)); init=0.0) for c in eachcol(df)[2:end]]))
     push!(df, _lastrow)
 
+    title = kind === :all ? "Interconnection capacity" : "Interconnection capacity ($kind)"
     return DataLine(
-        "Interconnection capacity",
+        title,
         "GW",
         df
     )
 end
 
 # return a DataLine with the number of hours per year each node interconnection is at its NTC
-# (From \ To matrix; node IC corridors only, same endpoints as the original corridor list)
-function _dataline_ic_hours_at_ntc(s)
-    allcomps_int = Set{String}()
-    for (cname, c) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"])
-        push!(allcomps_int, cname)
-    end
+# Net Transfer Capacity is directional transfer limit. From \ To matrix; node IC corridors only.
+# `kind` is `:either` (hour counts if AC or DC is binding), `:AC`, or `:DC`.
+function _dataline_ic_hours_at_ntc(s; kind::Symbol=:either)
+    kind in (:either, :AC, :DC) || throw(ArgumentError("kind must be :either, :AC, or :DC; got $kind"))
 
     zonenames = sort(collect(keys(getnodes(s, with=[:electricity]))))
     df = DataFrame("From \\ To" => zonenames)
@@ -990,24 +995,38 @@ function _dataline_ic_hours_at_ntc(s)
     end
 
     # Binding: flow and capacity in MW; atol = 1 W.
-    for cname in allcomps_int
-        c = Nosy.getcomponent(s, cname)
+    # Per directed corridor: OR binding masks for `:either`, else the single-kind mask.
+    masks = Dict{Tuple{String, String}, BitVector}()
+
+    for (_, c) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"])
+        if kind === :AC
+            hastag(c, :function, "AC") || continue
+        elseif kind === :DC
+            hastag(c, :function, "DC") || continue
+        end
         (_from, _to) = _fromto_ic_internal(s, c)
         for (port, row_zone, col_zone) in (("input", _from, _to), ("input2", _to, _from))
-            val = if Nosy.hascapacitybehavior(c, port)
-                flow = balance(c, :input, energy, collapse=false, aggregate=false)[port]
-                cap = capacity(c, port, multiplier=true)
-                n = 0
-                for t in eachindex(flow, cap)
-                    cap_t = cap[t]
-                    cap_t > 0 && isapprox(cap_t, flow[t]; atol=1e-6, rtol=0) && (n += 1)
-                end
-                Float64(n)
-            else
-                missing
+            Nosy.hascapacitybehavior(c, port) || continue
+            flow = balance(c, :input, energy, collapse=false, aggregate=false)[port]
+            cap = capacity(c, port, multiplier=true)
+            m = falses(length(eachindex(flow, cap)))
+            i = 0
+            for t in eachindex(flow, cap)
+                i += 1
+                cap_t = cap[t]
+                m[i] = cap_t > 0 && isapprox(cap_t, flow[t]; atol=1e-6, rtol=0)
             end
-            df[df[!, "From \\ To"] .== row_zone, col_zone] .= Ref(val)
+            key = (row_zone, col_zone)
+            if haskey(masks, key)
+                masks[key] .|= m
+            else
+                masks[key] = m
+            end
         end
+    end
+
+    for ((row_zone, col_zone), m) in masks
+        df[df[!, "From \\ To"] .== row_zone, col_zone] .= Ref(Float64(count(m)))
     end
 
     df[!, 1] .*= " >"
@@ -1020,12 +1039,15 @@ function _dataline_ic_hours_at_ntc(s)
     _lastrow = permutedims(vcat("Total >", [sum((x for x in c if !ismissing(x)); init=0.0) for c in eachcol(df)[2:end]],))
     push!(df, _lastrow)
 
-    return DataLine("Hours at NTC", "h/y", df)
+    title = kind === :either ? "Hours at NTC (AC or DC)" : "Hours at NTC ($kind)"
+    return DataLine(title, "h/y", df)
 end
 
 # build an interconnection volume matrix (From \ To layout)
-function _ic_vol_detailed(s; collapse=true, addtotal=false)
-    allquasinodes = _ic_quasinodes(s)
+# `kind` is `:all`, `:AC`, or `:DC` (AC/DC tables are node ICs only; price ICs in `:all`)
+function _ic_vol_detailed(s; collapse=true, addtotal=false, kind::Symbol=:all)
+    kind in (:all, :AC, :DC) || throw(ArgumentError("kind must be :all, :AC, or :DC; got $kind"))
+    allquasinodes = kind === :all ? _ic_quasinodes(s) : sort(collect(keys(getnodes(s, with=[:electricity]))))
 
     df = DataFrame("From \\ To" => allquasinodes .* " >")
     for k in allquasinodes
@@ -1036,6 +1058,10 @@ function _ic_vol_detailed(s; collapse=true, addtotal=false)
     end
 
     for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        if kind !== :all
+            hastag(c, :function, "nodeinterconnection") || continue
+            hastag(c, :function, String(kind)) || continue
+        end
         for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
             row = string(_from, " >")
             col = "> " * _to
@@ -1049,8 +1075,8 @@ function _ic_vol_detailed(s; collapse=true, addtotal=false)
 
     if addtotal
         datacols = names(df)[2:end]
-        df[!, "> Total"] = [sum(df[i, c] for c in datacols if !ismissing(df[i, c])) for i in 1:nrow(df)]
-        _lastrow = permutedims(vcat("Total >", [sum(x for x in c if !ismissing(x)) for c in eachcol(df)[2:end]]))
+        df[!, "> Total"] = [sum((df[i, c] for c in datacols if !ismissing(df[i, c])); init=0.0) for i in 1:nrow(df)]
+        _lastrow = permutedims(vcat("Total >", [sum((x for x in c if !ismissing(x)); init=0.0) for c in eachcol(df)[2:end]]))
         push!(df, _lastrow)
     end
 
@@ -1059,16 +1085,17 @@ end
 
 # return a line containing dataframe with interconnection volumes
 # this includes both interconnection between explicit nodes
-# and interconnection from price time series
-function _dataline_ic_vol_detailed(s)
+# and interconnection from price time series when `kind === :all`
+function _dataline_ic_vol_detailed(s; kind::Symbol=:all)
     
-    df = _ic_vol_detailed(s, addtotal=true)
+    df = _ic_vol_detailed(s, addtotal=true, kind=kind)
 
     # divide the values by 1E6 (MWh -> TWh)
     df = (x -> x isa Number ? x / 1E6 : x).(df)
 
+    title = kind === :all ? "Interconnection volume" : "Interconnection volume ($kind)"
     return DataLine(
-        "Interconnection volume",
+        title,
         "TWh/y",
         df
     )
@@ -1476,7 +1503,11 @@ function _annual_post_processing_self(s::Snapshot)
         x->_dataline_elec_storage_discharge_cap(x, showforeign=false),
         x->_dataline_elec_storage_cap_level(x; showforeign=false), 
         _dataline_ic_cap,
+        x->_dataline_ic_cap(x; kind=:AC),
+        x->_dataline_ic_cap(x; kind=:DC),
         _dataline_ic_hours_at_ntc,
+        x->_dataline_ic_hours_at_ntc(x; kind=:AC),
+        x->_dataline_ic_hours_at_ntc(x; kind=:DC),
         x->_dataline_yearly_production(x, showforeign=false),
         x->_dataline_yearly_charging(x, showforeign=false),
         x->_dataline_yearly_discharging(x, showforeign=false),
@@ -1484,6 +1515,8 @@ function _annual_post_processing_self(s::Snapshot)
         # x->_dataline_yearly_ev_consumption(x, showforeign=false),
         x->_dataline_yearly_electrolysis(x, showforeign=false),
         _dataline_ic_vol_detailed,
+        x->_dataline_ic_vol_detailed(x; kind=:AC),
+        x->_dataline_ic_vol_detailed(x; kind=:DC),
         x->_dataline_imports_vol(x),
         x->_dataline_exports_vol(x),
         x->_dataline_net_ic_vol(x),
@@ -1512,7 +1545,11 @@ function _annual_post_processing_all(s::Snapshot)
         x->_dataline_elec_storage_discharge_cap(x, showforeign=true),
         x->_dataline_elec_storage_cap_level(x; showforeign=true),
         _dataline_ic_cap,
+        x->_dataline_ic_cap(x; kind=:AC),
+        x->_dataline_ic_cap(x; kind=:DC),
         _dataline_ic_hours_at_ntc,
+        x->_dataline_ic_hours_at_ntc(x; kind=:AC),
+        x->_dataline_ic_hours_at_ntc(x; kind=:DC),
         x->_dataline_yearly_production(x, showforeign=true),
         x->_dataline_yearly_charging(x, showforeign=true),
         x->_dataline_yearly_discharging(x, showforeign=true),
@@ -1520,6 +1557,8 @@ function _annual_post_processing_all(s::Snapshot)
         # x->_dataline_yearly_ev_consumption(x, showforeign=true),
         x->_dataline_yearly_electrolysis(x, showforeign=true),
         _dataline_ic_vol_detailed,
+        x->_dataline_ic_vol_detailed(x; kind=:AC),
+        x->_dataline_ic_vol_detailed(x; kind=:DC),
         x->_dataline_capacityfactors(x, showforeign=true),
         x->_dataline_electrolysers_capacityfactors(x, showforeign=true),
         x->_dataline_yearly_co2(x, showforeign=true),

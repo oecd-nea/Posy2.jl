@@ -156,7 +156,7 @@ function makehydroreservoir(cname::String, tech::String, zone::String, elec::Nod
 end
 
 """
-    makebatteries(cname::String, tech::String, elec::Node, s::Snapshot;
+    makebatterystorage(cname::String, tech::String, elec::Node, s::Snapshot;
         capin=nothing, mincap=nothing, maxcap=nothing, simplified=false, ini=nothing,
         gridlosses=0.,
         eff::Union{Nothing,Number}=nothing, duration::Union{Nothing,Number}=nothing,
@@ -193,7 +193,7 @@ Arguments:
   * `connection_cost`: Ratio applied to annualized investment as connection fixed cost.
   * `om_var_cost`: Variable O&M coefficient on charging/input energy flow.
 """
-function makebatteries(cname::String, tech::String, elec::Node, s::Snapshot;
+function makebatterystorage(cname::String, tech::String, elec::Node, s::Snapshot;
     # capacity / expansion
     capin=nothing, mincap=nothing, maxcap=nothing, simplified::Bool=false, ini::Union{Nothing,Snapshot}=nothing, gridlosses=0.,
 

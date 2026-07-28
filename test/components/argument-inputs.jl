@@ -55,17 +55,9 @@ using HiGHS
             "Solar", "unused", electricity, carbon, s;
             cap=80.0, profile=0.42, intermittent_costs...,
         ))
-        @test !isnothing(POSY2.makenuclearprofile(
-            "Nuclear profile", "unused", electricity, carbon, s;
-            cap=90.0, profile=fill(0.81, 24), generation_costs...,
-        ))
         @test !isnothing(makehydroror(
             "Hydro ROR", "unused", electricity, s;
             cap=70.0, inflow_profile=fill(35.0, 24), hydro_costs...,
-        ))
-        @test !isnothing(POSY2.makereservoirprofile(
-            "Reservoir profile", "unused", electricity, s;
-            cap=60.0, output_profile=fill(25.0, 24), hydro_costs...,
         ))
         @test !isnothing(makehydroreservoir(
             "Reservoir", "unused", "unused", electricity,

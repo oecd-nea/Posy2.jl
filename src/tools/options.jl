@@ -121,6 +121,7 @@ timeseries_mode(s::Snapshot) = posy_options(s).timeseries_mode
 
 When `POSY2Options.dcopf` is true, add KVL (DC power flow) constraints.
 Otherwise do nothing. Call before `Nosy.optimize!`.
+Warns if called with `dcopf=true` but no AC loops exist to constrain.
 """
 function applydcopf!(s::Snapshot)
     dcopf(s) || return nothing

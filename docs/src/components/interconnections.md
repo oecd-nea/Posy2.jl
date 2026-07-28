@@ -45,9 +45,10 @@ The reverse direction is `b -> a`:
 - `input2` withdraws from node `b` and carries capacity `btoa`;
 - `output2` delivers to node `a` after `lossfactor`.
 
-Only one `AC` node interconnection is allowed between a given unordered pair of
-nodes; a second `AC` call for the same pair raises an error. Parallel `DC`
-links and mixed `AC`+`DC` on the same pair are allowed.
+Exactly one `AC` and one `DC` may share the same unordered node pair
+(either, both, or neither is fine). A second `AC` or a second `DC` on
+that pair raises an error. Aggregate equivalent parallel circuits
+before calling the builder.
 
 For a finite direction, `transactioncost` is applied to its sending flow. The
 current implementation omits this cost when the corresponding capacity is
@@ -96,7 +97,15 @@ Node-interconnection losses are recorded once on the component. Annual node
 reports allocate half to each connected node to avoid double counting.
 Directed flow reports use labels of the form `from > to`; price-interconnection
 labels combine the `:neighbor` tag and connected local node, while node links
-derive their endpoints from port carriers.
+derive their endpoints from port carriers. Annual Excel tables include
+interconnection capacity and volume for all links, then AC-only and DC-only
+node-interconnection views (price interconnections appear only in the total
+tables). Hours at NTC (Net Transfer Capacity, the directional transfer limit)
+are reported as `(AC or DC)` (hour counts if either link
+is binding), then `(AC)` and `(DC)` separately. In the hourly time-series sheet,
+the same directed `from > to` label is used; when AC and DC share a corridor
+their flows are summed into one column (there are no separate AC/DC time-series
+columns).
 
 Give each explicit electricity node a distinct carrier name. Endpoint discovery
 uses those carrier names rather than parsing underscores or other punctuation

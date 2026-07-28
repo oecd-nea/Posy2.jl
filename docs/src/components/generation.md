@@ -1,9 +1,9 @@
 # Generation
 
-Generation builders create dispatchable, nuclear, profile-based, hydro, and
-purchased-hydrogen sources. Costed electricity sources attach annualised
-investment and decommissioning costs, fixed operation and maintenance, and the
-applicable variable costs.
+Generation builders create dispatchable, nuclear, intermittent, and hydro
+sources. Costed electricity sources attach annualised investment and
+decommissioning costs, fixed operation and maintenance, and the applicable
+variable costs.
 
 See [Component Builders](../components.md) for shared naming, workbook,
 capacity, port, and tagging conventions.
@@ -58,19 +58,6 @@ The component carries `generation` and `dispatchable` function tags. Direct
 emissions are controlled by `co2_emission`; the builder does not infer a
 `carbonfree` tag from the technology name.
 
-## Small Modular Reactor With Heat
-
-[`makesmr`](@ref) creates dispatchable electricity output and a linked `heat`
-output at a one-to-one ratio. The heat port is an accounting flow used with the
-high-temperature electrolyser formulation. It must be connected to the heat
-node supplied to the builder.
-
-Capacity can be fixed, optimised within bounds, or inherited with `ini`; an
-optimised capacity supports `integercap` and `warmstart`. Costs and technical
-defaults come from the `dispatchable` technology column, including fuel and
-waste costs. The builder does not add the nuclear unit-commitment or reload
-formulation. Its function tags are `generation` and `dispatchable`.
-
 ## Intermittent Generation
 
 [`makeintermittentsource`](@ref) creates a profile source. It reads availability
@@ -98,29 +85,8 @@ Cost defaults come from technology column `tech` in sheet `intermittent`; the
 default column name is `Hydro ror`. Capacity is fixed, not optimisable. The
 component is tagged `generation`, `intermittent`, and `carbonfree`.
 
-## Purchased Hydrogen
-
-[`makeflathydrogenpurchase`](@ref) represents an exogenous hydrogen supply. It
-creates fixed `output` capacity `val / 8760` with a constant profile, so `val`
-is the total annual hydrogen-energy purchase. It reads no workbook and adds no
-cost. Add an explicit Nosy cost behaviour when purchases should affect the
-objective.
-
-The generated name is `"$cname $(n.name)"`; the function tags are `hydrogen`
-and `purchase`.
-
-## Non-exported Profile Builders
-
-`POSY2.makenuclearprofile` and `POSY2.makereservoirprofile` exist as
-module-qualified, non-exported implementation helpers. They are exercised by
-limited tests but are not part of the exported POSY2 API. Treat them as
-experimental and subject to change; new user documentation should prefer the
-exported builders above.
-
 ## API Entries
 
 See the [API Reference](../api.md) for [`makedispatchable`](@ref),
-[`makenuclear`](@ref), [`makesmr`](@ref),
-[`makeintermittentsource`](@ref), [`makehydroror`](@ref), and
-[`makeflathydrogenpurchase`](@ref).
-
+[`makenuclear`](@ref), [`makeintermittentsource`](@ref), and
+[`makehydroror`](@ref).

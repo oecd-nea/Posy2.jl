@@ -58,7 +58,7 @@ Use `integeruc=true` only when discrete commitment is important to the study.
 The relaxed formulation with `uc=true, integeruc=false` is faster but is not
 equivalent to integer commitment.
 
-Integer nuclear or SMR capacity decisions (`integercap=true`) also turn the
+Integer nuclear capacity decisions (`integercap=true`) also turn the
 capacity expansion into a MILP. Large unit sizes can make the investment
 problem combinatorial even when dispatch itself is simple.
 
@@ -84,7 +84,7 @@ snapshot.
 
 ## Storage Simplifications
 
-[`makebatteries`](@ref) and [`makehydroreservoir`](@ref) expose a
+[`makebatterystorage`](@ref) and [`makehydroreservoir`](@ref) expose a
 `simplified=true` option that selects Nosy's simpler storage balance
 formulation. [`makehydrogenstorage`](@ref) always uses the simplified
 formulation because it is intended for medium- or long-term inventory.

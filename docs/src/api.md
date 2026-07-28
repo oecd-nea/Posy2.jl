@@ -39,22 +39,25 @@ makedemandresponse
 ## Generation
 
 ```@docs
-makeflathydrogenpurchase
 makedispatchable
 makenuclear
-makesmr
 makeintermittentsource
 makehydroror
+```
+
+## Hydrogen
+
+```@docs
+makeflathydrogenpurchase
 ```
 
 ## Storage And Conversion
 
 ```@docs
 makehydroreservoir
-makebatteries
+makebatterystorage
 makehydrogenstorage
 makeelectrolyser
-makeHTelectrolyser
 ```
 
 ## Interconnections

@@ -26,7 +26,7 @@ using HiGHS
     # Battery duration should fail when it is zero.
     let
         s, elec, _ = makesnapshot()
-        @test_throws ArgumentError makebatteries(
+        @test_throws ArgumentError makebatterystorage(
             "Battery", "Battery", elec, s;
             eff=0.9, duration=0.0,
             overnight_cost=1000.0, lifetime=20, construction_profile=1.0, decommissioning_profile=1.0,
@@ -36,7 +36,7 @@ using HiGHS
     # A valid battery input should create and register the component.
     let
         s, elec, _ = makesnapshot()
-        c = makebatteries(
+        c = makebatterystorage(
             "Battery", "Battery", elec, s;
             capin=100.0,
             eff=0.9, duration=4.0,

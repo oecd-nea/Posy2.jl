@@ -1,6 +1,7 @@
 include("generation.jl")
 include("storage.jl")
 include("conversion.jl")
+include("hydrogen.jl")
 include("demand.jl")
 include("interconnection.jl")
 include("argument-inputs.jl")

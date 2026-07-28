@@ -38,7 +38,7 @@ The generated component is tagged `generation`, `storage`, and `carbonfree`.
 
 ## Batteries
 
-[`makebatteries`](@ref) creates electricity storage with `input`, `output`, and
+[`makebatterystorage`](@ref) creates electricity storage with `input`, `output`, and
 `level` ports. `capin` is charging power: a number fixes it and `nothing`
 creates a decision bounded by `mincap` and `maxcap`. When `ini` is supplied,
 the builder fixes charging power to the matching solved component's capacity.
@@ -85,20 +85,8 @@ The generated name is `"$cname $(elec.name)"`. Function tags are `demand`,
 `electrolysis`, and `hydrogen`, allowing electrical consumption to appear in
 demand reporting.
 
-## High-temperature Electrolysers
-
-[`makeHTelectrolyser`](@ref) has the same electrical input, hydrogen output,
-capacity semantics, efficiency, and `electrolysis` workbook defaults. It also
-adds a `heat` input equal one-to-one with electricity input. Pair it with a
-heat-supplying component such as [`makesmr`](@ref) and connect both to the same
-heat node.
-
-This builder carries the `electrolysis` and `hydrogen` function tags. Unlike
-the conventional electrolyser, it does not add the `demand` function tag;
-electrolysis-specific reporting still recognises it.
-
 ## API Entries
 
 See the [API Reference](../api.md) for [`makehydroreservoir`](@ref),
-[`makebatteries`](@ref), [`makehydrogenstorage`](@ref),
-[`makeelectrolyser`](@ref), and [`makeHTelectrolyser`](@ref).
+[`makebatterystorage`](@ref), [`makehydrogenstorage`](@ref), and
+[`makeelectrolyser`](@ref).
