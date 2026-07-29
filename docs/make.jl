@@ -46,6 +46,7 @@ makedocs(
                 "Storage and Conversion" => "components/storage-conversion.md",
                 "Interconnections" => "components/interconnections.md",
             ],
+            "Extending POSY2" => "concepts/extending.md",
             "Optimizing a Snapshot" => "concepts/optimizing.md",
             "Querying a Snapshot" => "concepts/querying.md",
             "Exporting Results" => "concepts/exporting.md",

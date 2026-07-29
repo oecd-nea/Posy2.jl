@@ -9,6 +9,8 @@ high-level component builders, and Nosy's optimisation and querying workflow.
   time-series conventions.
 - [Building a Snapshot](concepts/building-snapshot.md): simulations, carriers,
   nodes, component builders, costs, tags, and interconnections.
+- [Extending POSY2](concepts/extending.md): design flow for custom builders—
+  physical model, behaviours, wrapper conventions, and common mistakes.
 - [Optimising a Snapshot](concepts/optimizing.md): objectives, DC power flow,
   solution status, extraction, and multi-stage studies.
 - [Querying a Snapshot](concepts/querying.md): capacities, balances, costs,
