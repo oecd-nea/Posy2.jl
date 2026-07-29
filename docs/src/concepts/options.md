@@ -112,6 +112,46 @@ profile, asset lifetime, and discount rate into an equivalent annual cost.
 Construction profiles can be provided as one numeric value or as a
 semicolon-separated sequence whose entries sum approximately to one.
 
+In compact form, annualised investment is written as
+
+```math
+A^{\mathrm{inv}} = C_0 \, \phi^{\mathrm{build}} \, \mathrm{CRF}^*(r, L)
+```
+
+where ``C_0`` is the overnight cost, ``r`` is `discountrate`, ``L`` is
+`lifetime`, and ``\phi^{\mathrm{build}}`` is the construction-profile
+adjustment factor implied by `construction_profile`. The corrected annualisation
+factor used by POSY2 is
+
+```math
+\mathrm{CRF}^*(r,L)
+=
+\frac{\mathrm{CRF}(r,L)}{1+r}
+```
+
+where ``\mathrm{CRF}(r,L)`` is the standard capital recovery factor:
+
+```math
+\mathrm{CRF}(r,L)
+=
+\begin{cases}
+1/L, & r = 0 \\
+\dfrac{r}{1-(1+r)^{-L}}, & r > 0
+\end{cases}
+```
+
+The corresponding annualised decommissioning term is
+
+```math
+A^{\mathrm{decom}}
+=
+C_0 \, \delta \, (1+r)^{-L} \, \phi^{\mathrm{decom}} \, \mathrm{CRF}^*(r, L)
+```
+
+where ``\delta`` is the `decommissioning` ratio and
+``\phi^{\mathrm{decom}}`` is the decommissioning-profile adjustment factor
+implied by `decommissioning_profile`.
+
 ```julia
 eac(4_000_000.0, discountrate(snapshot), 60, "0.3;0.4;0.3")
 ```
@@ -133,7 +173,7 @@ default.
 The `dcopf` flag controls whether [`applydcopf!`](@ref) adds Kirchhoff voltage
 law constraints. Setting the flag does not add constraints by itself.
 
-For a DC power-flow study:
+For a DC power flow study:
 
 1. Set `dcopf=true` in `POSY2Options`.
 2. Build electricity nodes with the `:electricity` tag.
@@ -172,4 +212,4 @@ This entry is managed by [`makenodeinterco`](@ref).
 
 When `dcopf=false`, `applydcopf!` returns without changing the model. Calling it
 in every study therefore provides one consistent build sequence for both
-transport and DC power-flow formulations.
+transport and DC power flow formulations.

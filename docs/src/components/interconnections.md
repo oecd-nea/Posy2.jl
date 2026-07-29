@@ -88,7 +88,7 @@ stores `zone` as the `:neighbor` value, and stores the local node as `:zone`.
 modelled system. Set it to false when the price series represents another
 internal zone.
 
-Price interconnections do not participate in DC power-flow cycle constraints:
+Price interconnections do not participate in DC power flow cycle constraints:
 they have no second explicit electrical node or susceptance.
 
 ## Losses And Reporting

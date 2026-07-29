@@ -22,7 +22,7 @@ convenient POSY2 workflow and still extend a study directly with Nosy and JuMP.
 - Represent fixed or optimisable capacity, unit commitment, ramping, storage,
   demand response, electric vehicles, hydrogen, and CO2.
 - Connect several zones with price-based or node-based interconnections.
-- Add an optional cycle-based DC power-flow formulation for AC networks.
+- Add an optional cycle-based DC power flow formulation for AC networks.
 - Solve LP and MILP formulations with JuMP-compatible optimisers.
 - Inspect costs, capacities, balances, prices, and interconnection flows, then
   export standard post-processing tables to an Excel workbook.

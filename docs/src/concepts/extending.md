@@ -232,29 +232,27 @@ filters; see [Querying A Snapshot](querying.md). Workbook parameter columns
 versus the `:tech` reporting label are covered in
 [Component Builders](../components.md).
 
-## When Results Look Odd
-
-These are the usual places to look when a custom component solves but does not
-show up where you expect—or when capacity, balance, or cost queries look off.
-
-- **`:function`** — annual sheets select components by modelling role
-  (`generation`, `storage`, ...).
-- **Archetype** — storage needs a `level`; extra side flows often mean
-  `LazyStorage`; flexible consumption is not the same as a fixed `Demand`
-  series.
-- **Carriers and port names** — connect each port to a node of the matching
-  carrier, using conventional names (`output`, `input`, `level`, ...).
-- **Plant-size port** — capacity (and fixed costs on capacity) sit on the port
-  that represents plant size for that technology.
-- **`connect!`** — the component joins nodal balances only after its ports are
-  connected.
-- **Unique names** — lookups and `ini` inheritance key off the component name.
-- **`:tech` and `:zone`** — filters and annual aggregation group by these tags.
-
-## See Also
-
-- [Component Builders](../components.md) — naming, capacity semantics, ports, and tags
-- [Building A Snapshot](building-snapshot.md) — carriers, nodes, and builder catalogue
-- [Querying A Snapshot](querying.md) — balances, costs, and tag filters
-- [Exporting Results](exporting.md) — standard Excel post-processing
-- Nosy documentation — archetypes, behaviours, and `connect!`
+> Note: 
+> These are the usual places to look when a custom component solves but does
+> not show up where you expect, or when capacity, balance, or cost queries
+> look off.
+>
+> - **`:function`**: annual sheets select components by modelling role
+>   (`generation`, `storage`, ...).
+> - **Archetype**: storage needs a `level`; extra side flows often mean
+>   `LazyStorage`; flexible consumption is not the same as a fixed `Demand`
+>   series.
+> - **Carriers and port names**: connect each port to a node of the matching
+>   carrier, using conventional names (`output`, `input`, `level`, ...).
+> - **Plant-size port**: capacity (and fixed costs on capacity) sit on the
+>   port that represents plant size for that technology.
+> - **`connect!`**: the component joins nodal balances only after its ports are
+>   connected.
+> - **Unique names**: lookups and `ini` inheritance key off the component
+>   name.
+> - **`:tech` and `:zone`**: filters and annual aggregation group by these
+>   tags.
+>
+> Related pages: [Component Builders](../components.md), [Building A
+> Snapshot](building-snapshot.md), [Querying A Snapshot](querying.md),
+> [Exporting Results](exporting.md), and the and the [Nosy documentation](https://oecd-nea.github.io/Nosy.jl/dev/).

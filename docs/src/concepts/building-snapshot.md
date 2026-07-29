@@ -62,7 +62,7 @@ co2_node = Node(
 ```
 
 The `:electricity` tag is used by POSY2 post-processing and the optional
-DC power-flow graph. Tag external neighbour nodes with `:foreign`; leave nodes
+DC power flow graph. Tag external neighbour nodes with `:foreign`; leave nodes
 inside the system boundary without that tag. This distinction is also used by
 [`selfcost`](@ref).
 
@@ -247,7 +247,7 @@ can suppress all transfer; leave `dir=false` until the limitation described in
 
 Set `foreign=true` when a node interconnection crosses the boundary used for
 self-system reporting. Set `dc=true` for a controllable DC link. An AC link
-participating in the optional DC power-flow formulation uses `dc=false` and a
+participating in the optional DC power flow formulation uses `dc=false` and a
 negative `susceptance`. Exactly one AC and one DC may share the same unordered
 node pair (either, both, or neither is fine). A second AC or a second DC on
 that pair raises an error. Aggregate equivalent parallel circuits before

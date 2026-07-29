@@ -74,7 +74,7 @@ that imports and exports cannot occur simultaneously. This can increase solver
 work. The current node-interconnection implementation of `dir=true` can
 suppress all transfer; leave it disabled until the constraint is corrected.
 
-The optional DC power-flow formulation adds one KVL relation per independent
+The optional DC power flow formulation adds one KVL relation per independent
 cycle of the AC network, not one relation for every possible cycle. Tree
 networks therefore receive no additional KVL constraints. DC links are
 excluded from the AC cycle graph.
