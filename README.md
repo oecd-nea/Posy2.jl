@@ -80,10 +80,11 @@ sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 snapshot = Snapshot(
     sim,
     Dict(:posy => POSY2Options(
-        tech_mode=:arguments,
-        timeseries_mode=:arguments,
-        discountrate=0.05,
-        co2_price=0.0,
+        tech_mode=:arguments,       # no Excel tech workbook
+        timeseries_mode=:arguments, # no Excel time-series workbook
+        discountrate=0.05,          # discount rate for annualisation
+        co2_price=0.0,              # CO2 price added to emitting plant costs
+        dcopf=false,                # set true and call applydcopf! for AC KVL
     )),
 )
 
@@ -101,28 +102,28 @@ makedispatchable(
     electricity,
     co2,
     snapshot;
-    maxcap=200.0,
-    overnight_cost=1_000.0,
-    om_fixed_cost=10.0,
-    decommissioning=0.1,
-    lifetime=30,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
+    maxcap=200.0,                   # upper bound on capacity (MW)
+    overnight_cost=1_000.0,         # overnight investment cost
+    om_fixed_cost=10.0,             # fixed O&M
+    decommissioning=0.1,            # decommissioning as fraction of overnight
+    lifetime=30,                    # economic lifetime (years)
+    construction_profile=1.0,       # one-year construction spend
+    decommissioning_profile=1.0,    # one-year decommissioning spend
     connection_cost=0.0,
-    om_var_cost=2.0,
-    fuel_cost=50.0,
-    co2_emission=0.0,
+    om_var_cost=2.0,                # variable O&M (per MWh)
+    fuel_cost=50.0,                 # fuel cost (per MWh)
+    co2_emission=0.0,               # tCO2 per MWh
     unit_size=0.0,
 )
 
-# Minimise total system cost and extract the solution.
-optimize!(snapshot, cost(snapshot))
-result = extract(snapshot)
+# Minimise total system cost and extract the solved values.
+optimize!(snapshot, cost(snapshot)) # minimise total system cost
+result = extract(snapshot)          # snapshot with numeric solution values
 
 # Inspect results.
-cost(result)
+cost(result) # total cost, per year
 capacity(result, "Plant grid") # 100.0 MW
-balance(result, "Plant grid", :output, energy; collapse=true, aggregate=true) # 876000.0 MWh
+balance(result, "Plant grid", :output, energy; collapse=true, aggregate=true) # 876000.0 MWh/year
 ```
 
 ## Underlying Toolkit: Nosy
