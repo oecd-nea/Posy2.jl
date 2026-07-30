@@ -1009,12 +1009,10 @@ function _dataline_ic_hours_at_ntc(s; kind::Symbol=:either)
             Nosy.hascapacitybehavior(c, port) || continue
             flow = balance(c, :input, energy, collapse=false, aggregate=false)[port]
             cap = capacity(c, port, multiplier=true)
-            m = falses(length(eachindex(flow, cap)))
-            i = 0
-            for t in eachindex(flow, cap)
-                i += 1
-                cap_t = cap[t]
-                m[i] = cap_t > 0 && isapprox(cap_t, flow[t]; atol=1e-6, rtol=0)
+            m = falses(length(flow))
+            for t in eachindex(flow)
+                cap_t = cap isa Number ? cap : cap[t]
+                m[t] = cap_t > 0 && isapprox(cap_t, flow[t]; atol=1e-6, rtol=0)
             end
             key = (row_zone, col_zone)
             if haskey(masks, key)
