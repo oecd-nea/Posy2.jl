@@ -3,7 +3,7 @@ Generate storage components.
 """
 
 """
-    makehydroreservoir(cname::String, tech::String, zone::String, elec::Node,
+    makehydroreservoir(cname::String, techkey::String, zone::String, elec::Node,
         cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot;
         renormalize=true, weatheryear=2019, gridlosses=0., simplified=false, intake_mult=1.,
         inflow_profile=nothing,
@@ -18,7 +18,7 @@ NB: no energy capacity at the moment.
 
 Arguments:
   * `cname`: component name prefix.
-  * `tech`: technology column name in the `storage` tech data sheet.
+  * `techkey`: technology column name in the `storage` tech data sheet.
   * `zone`: Zone used for reservoir inflow time series lookup.
   * `elec`: electricity node to connect the component to.
   * `s`: snapshot to register the component in.
@@ -45,7 +45,7 @@ Arguments:
   * `construction_profile`: Cost/lifetime overrides for annualized fixed and variable cost terms. Excel defaults are used when values are `nothing`.
   * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
 """
-function makehydroreservoir(cname::String, tech::String, zone::String, elec::Node, cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot;
+function makehydroreservoir(cname::String, techkey::String, zone::String, elec::Node, cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot;
     # storage operation controls
     renormalize=true, weatheryear=2019, gridlosses=0., simplified=false, intake_mult=1.,
     inflow_profile=nothing,
@@ -58,12 +58,12 @@ function makehydroreservoir(cname::String, tech::String, zone::String, elec::Nod
     om_var_cost::Union{Nothing,Number}=nothing, decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing,
     construction_profile=nothing, decommissioning_profile=nothing,
 )
-    _eff = isnothing(eff) ? gettechparam(s, tech, "roundtrip_eff", "storage") : eff
-    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "storage") : overnight_cost
-    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "storage") : lifetime
-    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "storage") : om_fixed_cost
-    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "storage") : decommissioning
-    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "storage") : om_var_cost
+    _eff = isnothing(eff) ? gettechparam(s, techkey, "roundtrip_eff", "storage") : eff
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "storage") : overnight_cost
+    _lt_raw = isnothing(lifetime) ? gettechparam(s, techkey, "lifetime", "storage") : lifetime
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, techkey, "om_fixed_cost", "storage") : om_fixed_cost
+    _decom = isnothing(decommissioning) ? gettechparam(s, techkey, "decommissioning", "storage") : decommissioning
+    _vom = isnothing(om_var_cost) ? gettechparam(s, techkey, "om_var_cost", "storage") : om_var_cost
     inputs = component_input(
         gridlosses=gridlosses, efficiency=_eff, overnight_cost=_oc_raw, lifetime=_lt_raw,
         om_fixed_cost=_fom, decommissioning=_decom, om_var_cost=_vom,
@@ -80,8 +80,8 @@ function makehydroreservoir(cname::String, tech::String, zone::String, elec::Nod
     # costs
     _oc = _oc_raw * 1000.
     _lt = Int(_lt_raw)
-    _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "storage") : construction_profile
-    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, tech, "decommissioning_profile", "storage") : decommissioning_profile
+    _cp = isnothing(construction_profile) ? gettechparam(s, techkey, "construction_profile", "storage") : construction_profile
+    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, techkey, "decommissioning_profile", "storage") : decommissioning_profile
     _inv = eac(_oc , discountrate(s), _lt, _cp)
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))
@@ -156,7 +156,7 @@ function makehydroreservoir(cname::String, tech::String, zone::String, elec::Nod
 end
 
 """
-    makebatterystorage(cname::String, tech::String, elec::Node, s::Snapshot;
+    makebatterystorage(cname::String, techkey::String, elec::Node, s::Snapshot;
         capin=nothing, mincap=nothing, maxcap=nothing, simplified=false, ini=nothing,
         gridlosses=0.,
         eff::Union{Nothing,Number}=nothing, duration::Union{Nothing,Number}=nothing,
@@ -169,7 +169,7 @@ Build, connect and return a battery storage component.
 
 Arguments:
   * `cname`: component name prefix.
-  * `tech`: technology column name in the `storage` tech data sheet.
+  * `techkey`: technology column name in the `storage` tech data sheet.
   * `elec`: electricity node to connect the component to.
   * `s`: snapshot to register the component in.
 
@@ -193,7 +193,7 @@ Arguments:
   * `connection_cost`: Ratio applied to annualized investment as connection fixed cost.
   * `om_var_cost`: Variable O&M coefficient on charging/input energy flow.
 """
-function makebatterystorage(cname::String, tech::String, elec::Node, s::Snapshot;
+function makebatterystorage(cname::String, techkey::String, elec::Node, s::Snapshot;
     # capacity / expansion
     capin=nothing, mincap=nothing, maxcap=nothing, simplified::Bool=false, ini::Union{Nothing,Snapshot}=nothing, gridlosses=0.,
 
@@ -205,14 +205,14 @@ function makebatterystorage(cname::String, tech::String, elec::Node, s::Snapshot
     decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
     connection_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing,
 )
-    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "storage") : overnight_cost
-    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "storage") : lifetime
-    _eff = isnothing(eff) ? gettechparam(s, tech, "roundtrip_eff", "storage") : eff
-    _dur = isnothing(duration) ? gettechparam(s, tech, "duration", "storage") : duration
-    _conn = isnothing(connection_cost) ? gettechparam(s, tech, "connection_cost", "storage") : connection_cost
-    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "storage") : om_fixed_cost
-    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "storage") : decommissioning
-    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "storage") : om_var_cost
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "storage") : overnight_cost
+    _lt_raw = isnothing(lifetime) ? gettechparam(s, techkey, "lifetime", "storage") : lifetime
+    _eff = isnothing(eff) ? gettechparam(s, techkey, "roundtrip_eff", "storage") : eff
+    _dur = isnothing(duration) ? gettechparam(s, techkey, "duration", "storage") : duration
+    _conn = isnothing(connection_cost) ? gettechparam(s, techkey, "connection_cost", "storage") : connection_cost
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, techkey, "om_fixed_cost", "storage") : om_fixed_cost
+    _decom = isnothing(decommissioning) ? gettechparam(s, techkey, "decommissioning", "storage") : decommissioning
+    _vom = isnothing(om_var_cost) ? gettechparam(s, techkey, "om_var_cost", "storage") : om_var_cost
     inputs = component_input(
         gridlosses=gridlosses, overnight_cost=_oc_raw, lifetime=_lt_raw, efficiency=_eff,
         duration=_dur, connection_cost=_conn, om_fixed_cost=_fom, decommissioning=_decom, om_var_cost=_vom,
@@ -222,8 +222,8 @@ function makebatterystorage(cname::String, tech::String, elec::Node, s::Snapshot
     _gridlosses = Float64(gridlosses)
     _oc = _oc_raw * 1000.
     _lt = Int(_lt_raw)
-    _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "storage") : construction_profile
-    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, tech, "decommissioning_profile", "storage") : decommissioning_profile
+    _cp = isnothing(construction_profile) ? gettechparam(s, techkey, "construction_profile", "storage") : construction_profile
+    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, techkey, "decommissioning_profile", "storage") : decommissioning_profile
     _inv = eac(_oc, discountrate(s), _lt, _cp)
     _eff = Float64(_eff)
     m = BasicStorage(elec.carrier, eff_i=_eff, simplified=simplified)
@@ -262,7 +262,7 @@ function makebatterystorage(cname::String, tech::String, elec::Node, s::Snapshot
 end
 
 """
-    makehydrogenstorage(cname::String, tech::String, h2::Node, s::Snapshot;
+    makehydrogenstorage(cname::String, techkey::String, h2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
         eff::Union{Nothing,Number}=nothing,
         overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
@@ -273,7 +273,7 @@ Build, connect and return a hydrogen storage component.
 
 Arguments:
   * `cname`: component name prefix.
-  * `tech`: technology column name in the `storage` tech data sheet.
+  * `techkey`: technology column name in the `storage` tech data sheet.
   * `h2`: hydrogen node to connect the component to.
   * `s`: snapshot to register the component in.
 
@@ -291,7 +291,7 @@ Arguments:
   * `construction_profile`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Excel defaults are used when values are `nothing`.
   * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
 """
-function makehydrogenstorage(cname::String, tech::String, h2::Node, s::Snapshot;
+function makehydrogenstorage(cname::String, techkey::String, h2::Node, s::Snapshot;
     # capacity / expansion
     cap=nothing, mincap=nothing, maxcap=nothing, ini::Union{Nothing,Snapshot}=nothing,
 
@@ -302,11 +302,11 @@ function makehydrogenstorage(cname::String, tech::String, h2::Node, s::Snapshot;
     overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
     decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
 )
-    _eff = isnothing(eff) ? gettechparam(s, tech, "roundtrip_eff", "storage") : eff
-    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "storage") : overnight_cost
-    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "storage") : lifetime
-    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "storage") : om_fixed_cost
-    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "storage") : decommissioning
+    _eff = isnothing(eff) ? gettechparam(s, techkey, "roundtrip_eff", "storage") : eff
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "storage") : overnight_cost
+    _lt_raw = isnothing(lifetime) ? gettechparam(s, techkey, "lifetime", "storage") : lifetime
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, techkey, "om_fixed_cost", "storage") : om_fixed_cost
+    _decom = isnothing(decommissioning) ? gettechparam(s, techkey, "decommissioning", "storage") : decommissioning
     inputs = component_input(
         efficiency=_eff, overnight_cost=_oc_raw, lifetime=_lt_raw,
         om_fixed_cost=_fom, decommissioning=_decom,
@@ -318,8 +318,8 @@ function makehydrogenstorage(cname::String, tech::String, h2::Node, s::Snapshot;
     vb = []
     _oc = _oc_raw * 1000.
     _lt = Int(_lt_raw)
-    _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "storage") : construction_profile
-    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, tech, "decommissioning_profile", "storage") : decommissioning_profile
+    _cp = isnothing(construction_profile) ? gettechparam(s, techkey, "construction_profile", "storage") : construction_profile
+    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, techkey, "decommissioning_profile", "storage") : decommissioning_profile
     _inv = eac(_oc, discountrate(s), _lt, _cp)
     push!(vb, FixedCost(:investment, "level", energy, _inv))
     push!(vb, FixedCost(:fom, "level", energy, _fom * 1000.))

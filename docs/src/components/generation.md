@@ -15,8 +15,8 @@ capacity, port, and tagging conventions.
 investment, connection, fixed O&M, decommissioning, variable O&M, and direct
 fuel costs are attached there.
 
-The common technical and economic defaults come from technology column `tech`
-in sheet `dispatchable`. A numeric `cap` fixes output capacity; `nothing`
+The common technical and economic defaults come from the technology column
+named by `techkey` in sheet `dispatchable`. A numeric `cap` fixes output capacity; `nothing`
 creates a capacity decision bounded by `mincap` and `maxcap`. This builder has
 one special convention: `cap=0` omits the component and returns `nothing`.
 `capacitymultiplier` can impose a time-varying availability on output.
@@ -62,11 +62,11 @@ emissions are controlled by `co2_emission`; the builder does not infer a
 
 [`makeintermittentsource`](@ref) creates a profile source. It reads availability
 from sheet `profiles_<weatheryear>`, column
-`<tech>_<electricity-node-name>`. The profile multiplies the `output` capacity.
+`<techkey>_<electricity-node-name>`. The profile multiplies the `output` capacity.
 
 `cap` fixes capacity; `nothing` creates a decision bounded by `mincap` and
 `maxcap`; and `ini` inherits the named component's capacity. Technical and cost
-defaults come from technology column `tech` in sheet `intermittent`.
+defaults come from the technology column named by `techkey` in sheet `intermittent`.
 Non-zero emissions create the same linked CO2 flow as for dispatchable
 generation.
 
@@ -81,9 +81,10 @@ that classification is appropriate for the study.
 because the builder divides the inflow by capacity to form a profile. It then
 multiplies that profile by `intake_mult` and caps it at one.
 
-Cost defaults come from technology column `tech` in sheet `intermittent`; the
-default column name is `Hydro ror`. Capacity is fixed, not optimisable. The
-component is tagged `generation`, `intermittent`, and `carbonfree`.
+Cost defaults come from the technology column named by `techkey` in sheet
+`intermittent`; the default column name is `Hydro ror`. Capacity is fixed, not
+optimisable. The component is tagged `generation`, `intermittent`, and
+`carbonfree`.
 
 ## API Entries
 

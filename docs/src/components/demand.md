@@ -67,7 +67,8 @@ these time-series columns for `zone`:
   level;
 - `EV_driving_profile` allocates annual driving consumption across the year.
 
-Per-vehicle values come from technology column `tech` in the `storage` sheet:
+Per-vehicle values come from the technology column named by `techkey` in the
+`storage` sheet:
 `charging_eff`, `self_discharge`, `min_level_morning`, `max_charging_power`,
 `max_dispatch_power`, `battery_capacity`, and `yearly_consumption`. Each has a
 corresponding keyword override. The fleet size is `yearly` divided by annual

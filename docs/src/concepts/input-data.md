@@ -63,8 +63,8 @@ Technology sheets use one row per parameter and one column per technology:
 | `om_var_cost` | `2` | `3` | `0` |
 
 The first column must be named exactly `tech`. Despite that heading, its cells
-are **parameter names**. The `tech` argument passed to a builder selects a
-technology **column**. For example, `tech="CCGT"` and
+are **parameter names**. The `techkey` argument passed to a builder selects a
+technology **column**. For example, `techkey="CCGT"` and
 `param="overnight_cost"` select the value at row `overnight_cost`, column
 `CCGT`.
 
@@ -118,7 +118,7 @@ number, expanded to all hours, or a vector with exactly
 | Builder | Direct Keyword | Excel Fallback |
 |:--------|:---------------|:---------------|
 | [`makedemand`](@ref) | `profile` | `<zone>` in `demand` |
-| [`makeintermittentsource`](@ref) | `profile` | `<tech>_<node>` in `profiles_<year>` |
+| [`makeintermittentsource`](@ref) | `profile` | `<techkey>_<node>` in `profiles_<year>` |
 | [`makehydroror`](@ref) | `inflow_profile` | `<zone>` in `hydro_ror_<year>` |
 | [`makehydroreservoir`](@ref) | `inflow_profile` | `<zone>` in `reservoir_inflow_<year>` |
 | [`makeEV`](@ref) | `charging_availability`, `driving_profile` | `<zone>` in the two EV sheets |
@@ -210,7 +210,7 @@ Intermittent-source rows are `overnight_cost`, `lifetime`,
 Run-of-river rows are `overnight_cost`, `lifetime`, both profiles,
 `om_fixed_cost`, `om_var_cost`, and `decommissioning`.
 
-`makehydroror` defaults to technology column `Hydro ror`, but its `tech`
+`makehydroror` defaults to technology column `Hydro ror`, but its `techkey`
 keyword can select another column.
 
 ### Storage Sheet
@@ -234,7 +234,7 @@ EV-fleet rows are `charging_eff`, `self_discharge`, `min_level_morning`,
 `yearly_consumption`.
 
 In smart-charging or V2G mode, [`makeEV`](@ref) defaults to technology column
-`EV`, but its `tech` keyword can select another column.
+`EV`, but its `techkey` keyword can select another column.
 
 The `roundtrip_eff` row maps to the builder keyword `eff`. EV rows ending in
 power, capacity, or consumption map to the corresponding `*_per_ev` override
@@ -285,7 +285,7 @@ The time-series lookup key depends on the builder:
 | Sheet | Expected Column | Used By And Condition |
 |:------|:----------------|:----------------------|
 | `demand` | `<zone>` | [`makedemand`](@ref) when `coeff != 0` |
-| `profiles_<year>` | `<tech>_<node-name>` | [`makeintermittentsource`](@ref) |
+| `profiles_<year>` | `<techkey>_<node-name>` | [`makeintermittentsource`](@ref) |
 | `hydro_ror_<year>` | `<zone>` | [`makehydroror`](@ref) |
 | `reservoir_inflow_<year>` | `<zone>` | [`makehydroreservoir`](@ref) when inflow is enabled (`inflow != 0`) |
 | `EV_charging_availability` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |

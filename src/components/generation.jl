@@ -5,7 +5,7 @@ Generate generation-side components.
 using ArgCheck: @argcheck
 
 """
-    makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
+    makedispatchable(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing, capacitymultiplier=nothing,
         integeruc=false, uc=false, fuelnode=nothing,
         co2price=co2_price(s),
@@ -22,7 +22,7 @@ Build, connect and return a dispatchable component.
 
 Arguments:
   * `cname`: component name prefix.
-  * `tech`: technology column name in the `dispatchable` tech data sheet.
+  * `techkey`: technology column name in the `dispatchable` tech data sheet.
   * `elec`: Electricity node connected to component output flow.
   * `co2`: CO2 node connected only when `co2_emission != 0`.
   * `s`: Target snapshot where the component and behaviors are registered.
@@ -61,7 +61,7 @@ Arguments:
   * `startup_duration`: offline-to-online transition duration in hours. Used only when `uc=true`.
   * `shutdown_duration`: online-to-offline transition duration in hours. Used only when `uc=true`.
 """
-function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
+function makedispatchable(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / expansion
     cap=nothing, mincap=nothing, maxcap=nothing, ini::Union{Nothing,Snapshot}=nothing, capacitymultiplier=nothing,
 
@@ -80,16 +80,16 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
     min_power::Union{Nothing,Number}=nothing, min_uptime::Union{Nothing,Number}=nothing,
     min_downtime::Union{Nothing,Number}=nothing, startup_duration::Union{Nothing,Number}=nothing, shutdown_duration::Union{Nothing,Number}=nothing,
 )
-    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "dispatchable") : overnight_cost
-    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "dispatchable") : lifetime
-    _conn = isnothing(connection_cost) ? gettechparam(s, tech, "connection_cost", "dispatchable") : connection_cost
-    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "dispatchable") : om_fixed_cost
-    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "dispatchable") : om_var_cost
-    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "dispatchable") : decommissioning
-    _co2_em = isnothing(co2_emission) ? gettechparam(s, tech, "co2_emission", "dispatchable") : co2_emission
-    _usize_raw = isnothing(unit_size) ? gettechparam(s, tech, "unit_size", "dispatchable") : unit_size
-    _fuel = isnothing(fuelnode) ? (isnothing(fuel_cost) ? gettechparam(s, tech, "fuel_cost", "dispatchable") : fuel_cost) : nothing
-    _eff = isnothing(fuelnode) ? nothing : (isnothing(efficiency) ? gettechparam(s, tech, "efficiency", "dispatchable") : efficiency)
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "dispatchable") : overnight_cost
+    _lt_raw = isnothing(lifetime) ? gettechparam(s, techkey, "lifetime", "dispatchable") : lifetime
+    _conn = isnothing(connection_cost) ? gettechparam(s, techkey, "connection_cost", "dispatchable") : connection_cost
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, techkey, "om_fixed_cost", "dispatchable") : om_fixed_cost
+    _vom = isnothing(om_var_cost) ? gettechparam(s, techkey, "om_var_cost", "dispatchable") : om_var_cost
+    _decom = isnothing(decommissioning) ? gettechparam(s, techkey, "decommissioning", "dispatchable") : decommissioning
+    _co2_em = isnothing(co2_emission) ? gettechparam(s, techkey, "co2_emission", "dispatchable") : co2_emission
+    _usize_raw = isnothing(unit_size) ? gettechparam(s, techkey, "unit_size", "dispatchable") : unit_size
+    _fuel = isnothing(fuelnode) ? (isnothing(fuel_cost) ? gettechparam(s, techkey, "fuel_cost", "dispatchable") : fuel_cost) : nothing
+    _eff = isnothing(fuelnode) ? nothing : (isnothing(efficiency) ? gettechparam(s, techkey, "efficiency", "dispatchable") : efficiency)
     inputs = component_input(
         overnight_cost=_oc_raw, lifetime=_lt_raw, connection_cost=_conn, om_fixed_cost=_fom,
         om_var_cost=_vom, decommissioning=_decom, co2_emission=_co2_em, unit_size=_usize_raw,
@@ -101,8 +101,8 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
     vb = []
     _oc = _oc_raw * 1000.
     _lt = Int(_lt_raw)
-    _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "dispatchable") : construction_profile
-    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, tech, "decommissioning_profile", "dispatchable") : decommissioning_profile
+    _cp = isnothing(construction_profile) ? gettechparam(s, techkey, "construction_profile", "dispatchable") : construction_profile
+    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, techkey, "decommissioning_profile", "dispatchable") : decommissioning_profile
     _inv = eac(_oc , discountrate(s), _lt, _cp)
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:connection, "output", energy, _inv * _conn))
@@ -151,11 +151,11 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
 
     if uc
         if isnothing(ini)
-            _min_power = isnothing(min_power) ? gettechparam(s, tech, "min_power", "dispatchable") : min_power
-            _min_uptime = isnothing(min_uptime) ? gettechparam(s, tech, "min_uptime", "dispatchable") : min_uptime
-            _min_downtime = isnothing(min_downtime) ? gettechparam(s, tech, "min_downtime", "dispatchable") : min_downtime
-            _startup_dur = isnothing(startup_duration) ? gettechparam(s, tech, "startup_duration", "dispatchable") : startup_duration
-            _shutdown_dur = isnothing(shutdown_duration) ? gettechparam(s, tech, "shutdown_duration", "dispatchable") : shutdown_duration
+            _min_power = isnothing(min_power) ? gettechparam(s, techkey, "min_power", "dispatchable") : min_power
+            _min_uptime = isnothing(min_uptime) ? gettechparam(s, techkey, "min_uptime", "dispatchable") : min_uptime
+            _min_downtime = isnothing(min_downtime) ? gettechparam(s, techkey, "min_downtime", "dispatchable") : min_downtime
+            _startup_dur = isnothing(startup_duration) ? gettechparam(s, techkey, "startup_duration", "dispatchable") : startup_duration
+            _shutdown_dur = isnothing(shutdown_duration) ? gettechparam(s, techkey, "shutdown_duration", "dispatchable") : shutdown_duration
             @argcheck _min_power isa Number "min_power must be Number."
             @argcheck _min_uptime isa Number "min_uptime must be Number."
             @argcheck _min_downtime isa Number "min_downtime must be Number."
@@ -172,8 +172,8 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
         else
             push!(vb, UnitCommitment(first(Nosy.getbehaviors(ini.components[cname * " " * elec.name], Nosy.FleetUnitCommitmentBehavior))))
         end
-        _noload = isnothing(no_load_cost) ? gettechparam(s, tech, "no_load_cost", "dispatchable") : no_load_cost
-        _startup = isnothing(startup_cost) ? gettechparam(s, tech, "startup_cost", "dispatchable") : startup_cost
+        _noload = isnothing(no_load_cost) ? gettechparam(s, techkey, "no_load_cost", "dispatchable") : no_load_cost
+        _startup = isnothing(startup_cost) ? gettechparam(s, techkey, "startup_cost", "dispatchable") : startup_cost
         @argcheck _noload isa Number "no_load_cost must be Number."
         @argcheck _startup isa Number "startup_cost must be Number."
         push!(vb, NoLoadCost(:noload, "output", _noload))
@@ -181,8 +181,8 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
     end
 
     if !isnothing(_usize)
-        _ru = isnothing(ramp_up) ? gettechparam(s, tech, "ramp_up", "dispatchable") : ramp_up
-        _rd = isnothing(ramp_down) ? gettechparam(s, tech, "ramp_down", "dispatchable") : ramp_down
+        _ru = isnothing(ramp_up) ? gettechparam(s, techkey, "ramp_up", "dispatchable") : ramp_up
+        _rd = isnothing(ramp_down) ? gettechparam(s, techkey, "ramp_down", "dispatchable") : ramp_down
         @argcheck _ru isa Number "ramp_up must be Number."
         @argcheck _rd isa Number "ramp_down must be Number."
         @argcheck _ru >= 0 "ramp_up must be non negative."
@@ -212,7 +212,7 @@ function makedispatchable(cname::String, tech::String, elec::Node, co2::Node, s:
 end
 
 """
-    makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
+    makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, integercap=false, ini=nothing, warmstart=nothing,
         uc=false, integeruc=false, startupmask=nothing, shutdownmask=nothing,
         reload_duration::Union{Nothing,Number}=nothing, reloadmask::Union{Nothing,Number}=nothing, reload_fraction_per_year::Union{Nothing,Number}=nothing,
@@ -230,7 +230,7 @@ Build, connect and return a nuclear reactor component.
 
 Arguments:
   * `cname`: component name prefix.
-  * `tech`: technology column name in the `dispatchable` tech data sheet.
+  * `techkey`: technology column name in the `dispatchable` tech data sheet.
   * `elec`: electricity node to connect the component to.
   * `co2`: CO2 node connected when `co2_emission` is non zero.
   * `s`: snapshot to register the component in.
@@ -275,7 +275,7 @@ Arguments:
   * `startup_duration`: offline-to-online transition duration in hours. Used only when `uc=true`.
   * `shutdown_duration`: online-to-offline transition duration in hours. Used only when `uc=true`.
 """
-function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
+function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / expansion
     cap=nothing, mincap=nothing, maxcap=nothing, integercap=false, ini::Union{Nothing,Snapshot}=nothing, warmstart=nothing,
 
@@ -300,17 +300,17 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
 )
     m = DispatchableSource(elec.carrier)
     vb = []
-    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "dispatchable") : overnight_cost
-    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "dispatchable") : lifetime
-    _conn = isnothing(connection_cost) ? gettechparam(s, tech, "connection_cost", "dispatchable") : connection_cost
-    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "dispatchable") : om_fixed_cost
-    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "dispatchable") : om_var_cost
-    _waste = isnothing(waste_cost) ? gettechparam(s, tech, "waste_cost", "dispatchable") : waste_cost
-    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "dispatchable") : decommissioning
-    _co2_em = isnothing(co2_emission) ? gettechparam(s, tech, "co2_emission", "dispatchable") : co2_emission
-    _usize_raw = isnothing(unit_size) ? gettechparam(s, tech, "unit_size", "dispatchable") : unit_size
-    _fuel = isnothing(fuelnode) ? (isnothing(fuel_cost) ? gettechparam(s, tech, "fuel_cost", "dispatchable") : fuel_cost) : nothing
-    _eff = isnothing(fuelnode) ? nothing : (isnothing(efficiency) ? gettechparam(s, tech, "efficiency", "dispatchable") : efficiency)
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "dispatchable") : overnight_cost
+    _lt_raw = isnothing(lifetime) ? gettechparam(s, techkey, "lifetime", "dispatchable") : lifetime
+    _conn = isnothing(connection_cost) ? gettechparam(s, techkey, "connection_cost", "dispatchable") : connection_cost
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, techkey, "om_fixed_cost", "dispatchable") : om_fixed_cost
+    _vom = isnothing(om_var_cost) ? gettechparam(s, techkey, "om_var_cost", "dispatchable") : om_var_cost
+    _waste = isnothing(waste_cost) ? gettechparam(s, techkey, "waste_cost", "dispatchable") : waste_cost
+    _decom = isnothing(decommissioning) ? gettechparam(s, techkey, "decommissioning", "dispatchable") : decommissioning
+    _co2_em = isnothing(co2_emission) ? gettechparam(s, techkey, "co2_emission", "dispatchable") : co2_emission
+    _usize_raw = isnothing(unit_size) ? gettechparam(s, techkey, "unit_size", "dispatchable") : unit_size
+    _fuel = isnothing(fuelnode) ? (isnothing(fuel_cost) ? gettechparam(s, techkey, "fuel_cost", "dispatchable") : fuel_cost) : nothing
+    _eff = isnothing(fuelnode) ? nothing : (isnothing(efficiency) ? gettechparam(s, techkey, "efficiency", "dispatchable") : efficiency)
     inputs = component_input(
         overnight_cost=_oc_raw, lifetime=_lt_raw, connection_cost=_conn, om_fixed_cost=_fom,
         om_var_cost=_vom, waste_cost=_waste, decommissioning=_decom, co2_emission=_co2_em,
@@ -320,8 +320,8 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
 
     _oc = _oc_raw * 1000.
     _lt = Int(_lt_raw)
-    _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "dispatchable") : construction_profile
-    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, tech, "decommissioning_profile", "dispatchable") : decommissioning_profile
+    _cp = isnothing(construction_profile) ? gettechparam(s, techkey, "construction_profile", "dispatchable") : construction_profile
+    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, techkey, "decommissioning_profile", "dispatchable") : decommissioning_profile
     _inv = eac(_oc , discountrate(s), _lt, _cp)
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:connection, "output", energy, _inv * _conn))
@@ -363,14 +363,14 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
     # special case: cycling constraints for nuclear
     _reload_on = false
     if !uc && (!isnothing(reload_duration) || !isnothing(reloadmask) || !isnothing(reload_fraction_per_year))
-        @warn "Because uc=false for nuclear component, reloading is not modeled." component=cname tech=tech
+        @warn "Because uc=false for nuclear component, reloading is not modeled." component=cname techkey=techkey
     end
     if uc
-        _reload_fraction = isnothing(reload_fraction_per_year) ? gettechparam(s, tech, "reload_fraction_per_year", "dispatchable") : reload_fraction_per_year
+        _reload_fraction = isnothing(reload_fraction_per_year) ? gettechparam(s, techkey, "reload_fraction_per_year", "dispatchable") : reload_fraction_per_year
         @argcheck _reload_fraction isa Number "reload_fraction_per_year must be Number."
         @argcheck _reload_fraction >= 0 "reload_fraction_per_year must be >= 0."
         if _reload_fraction > 0
-            _reload_duration = isnothing(reload_duration) ? gettechparam(s, tech, "reload_duration", "dispatchable") : reload_duration
+            _reload_duration = isnothing(reload_duration) ? gettechparam(s, techkey, "reload_duration", "dispatchable") : reload_duration
             @argcheck _reload_duration isa Number "reload_duration must be Number."
             @argcheck _reload_duration >= 0 "reload_duration must be >= 0."
             _reload_on = (_reload_fraction > 0) && (_reload_duration > 0)
@@ -383,16 +383,16 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
                 _reload_mask = Int(_reload_mask_raw)
             end
         end
-        _noload = isnothing(no_load_cost) ? gettechparam(s, tech, "no_load_cost", "dispatchable") : no_load_cost
-        _startup = isnothing(startup_cost) ? gettechparam(s, tech, "startup_cost", "dispatchable") : startup_cost
+        _noload = isnothing(no_load_cost) ? gettechparam(s, techkey, "no_load_cost", "dispatchable") : no_load_cost
+        _startup = isnothing(startup_cost) ? gettechparam(s, techkey, "startup_cost", "dispatchable") : startup_cost
         @argcheck _noload isa Number "no_load_cost must be Number."
         @argcheck _startup isa Number "startup_cost must be Number."
         if isnothing(ini)
-            _min_power = isnothing(min_power) ? gettechparam(s, tech, "min_power", "dispatchable") : min_power
-            _min_uptime = isnothing(min_uptime) ? gettechparam(s, tech, "min_uptime", "dispatchable") : min_uptime
-            _min_downtime = isnothing(min_downtime) ? gettechparam(s, tech, "min_downtime", "dispatchable") : min_downtime
-            _startup_dur = isnothing(startup_duration) ? gettechparam(s, tech, "startup_duration", "dispatchable") : startup_duration
-            _shutdown_dur = isnothing(shutdown_duration) ? gettechparam(s, tech, "shutdown_duration", "dispatchable") : shutdown_duration
+            _min_power = isnothing(min_power) ? gettechparam(s, techkey, "min_power", "dispatchable") : min_power
+            _min_uptime = isnothing(min_uptime) ? gettechparam(s, techkey, "min_uptime", "dispatchable") : min_uptime
+            _min_downtime = isnothing(min_downtime) ? gettechparam(s, techkey, "min_downtime", "dispatchable") : min_downtime
+            _startup_dur = isnothing(startup_duration) ? gettechparam(s, techkey, "startup_duration", "dispatchable") : startup_duration
+            _shutdown_dur = isnothing(shutdown_duration) ? gettechparam(s, techkey, "shutdown_duration", "dispatchable") : shutdown_duration
             @argcheck _min_power isa Number "min_power must be Number."
             @argcheck _min_uptime isa Number "min_uptime must be Number."
             @argcheck _min_downtime isa Number "min_downtime must be Number."
@@ -437,7 +437,7 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
     tag!(c, :zone, elec.name)
     if uc
         _ucb = first(Nosy.getbehaviors(c, Nosy.AbstractFleetUnitCommitmentBehavior))
-        if tech in ("Nuclear", "Nuclear flexible",)
+        if techkey in ("Nuclear", "Nuclear flexible",)
             # reduce capabilities of short shutdown
             if _reload_on
                 for h in 1:8760
@@ -477,7 +477,7 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
                 end
                 @constraint(s.sim.model, sum_reload >= _reload_fraction * nbunits(c))
             end
-        elseif tech == "SMR"
+        elseif techkey == "SMR"
             # reloading of nuclear fuel
             if _reload_on
                 sum_reload = AffExpr(0.)
@@ -512,7 +512,7 @@ function makenuclear(cname::String, tech::String, elec::Node, co2::Node, s::Snap
 end
 
 """
-    makeintermittentsource(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
+    makeintermittentsource(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
         weatheryear=2019, profile=nothing,
         co2price=co2_price(s),
@@ -526,7 +526,7 @@ Build, connect and return an intermittent source component.
 
 Arguments:
   * `cname`: component name prefix.
-  * `tech`: technology column name in the `intermittent` tech data sheet.
+  * `techkey`: technology column name in the `intermittent` tech data sheet.
   * `elec`: electricity node to connect the component to.
   * `co2`: CO2 node connected when `co2_emission` is non zero.
   * `s`: snapshot to register the component in.
@@ -537,7 +537,7 @@ Arguments:
   * `ini`: Optional initial snapshot used to inherit fixed capacity.
   * `weatheryear`: Year suffix used to select profile series `profiles_<year>`.
   * `profile`: Hourly capacity-factor vector or scalar. If `nothing`, read the
-    `<tech>_<node>` workbook column.
+    `<techkey>_<node>` workbook column.
 
   * `co2price`: CO2 cost coefficient applied to emitted CO2 flow.
 
@@ -552,7 +552,7 @@ Arguments:
   * `fuel_cost`: Fuel variable cost coefficient on output energy flow.
   * `co2_emission`: Emission factor linking output energy to CO2 output flow.
 """
-function makeintermittentsource(cname::String, tech::String, elec::Node, co2::Node, s::Snapshot;
+function makeintermittentsource(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / profile
     cap=nothing, mincap=nothing, maxcap=nothing, ini::Union{Nothing,Snapshot}=nothing,
     weatheryear=2019, profile=nothing,
@@ -566,20 +566,20 @@ function makeintermittentsource(cname::String, tech::String, elec::Node, co2::No
     fuel_cost::Union{Nothing,Number}=nothing, co2_emission::Union{Nothing,Number}=nothing,
 )
     m = ProfileSource(elec.carrier, _resolve_timeseries(
-        s, profile, tech * "_" * elec.name, "profiles_" * string(weatheryear);
+        s, profile, techkey * "_" * elec.name, "profiles_" * string(weatheryear);
         keyword="profile",
     ))
     vb = []
-    _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "intermittent") : construction_profile
-    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, tech, "decommissioning_profile", "intermittent") : decommissioning_profile
-    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "intermittent") : overnight_cost
-    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "intermittent") : lifetime
-    _conn = isnothing(connection_cost) ? gettechparam(s, tech, "connection_cost", "intermittent") : connection_cost
-    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "intermittent") : om_fixed_cost
-    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "intermittent") : om_var_cost
-    _fuel = isnothing(fuel_cost) ? gettechparam(s, tech, "fuel_cost", "intermittent") : fuel_cost
-    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "intermittent") : decommissioning
-    _co2_em = isnothing(co2_emission) ? gettechparam(s, tech, "co2_emission", "intermittent") : co2_emission
+    _cp = isnothing(construction_profile) ? gettechparam(s, techkey, "construction_profile", "intermittent") : construction_profile
+    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, techkey, "decommissioning_profile", "intermittent") : decommissioning_profile
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "intermittent") : overnight_cost
+    _lt_raw = isnothing(lifetime) ? gettechparam(s, techkey, "lifetime", "intermittent") : lifetime
+    _conn = isnothing(connection_cost) ? gettechparam(s, techkey, "connection_cost", "intermittent") : connection_cost
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, techkey, "om_fixed_cost", "intermittent") : om_fixed_cost
+    _vom = isnothing(om_var_cost) ? gettechparam(s, techkey, "om_var_cost", "intermittent") : om_var_cost
+    _fuel = isnothing(fuel_cost) ? gettechparam(s, techkey, "fuel_cost", "intermittent") : fuel_cost
+    _decom = isnothing(decommissioning) ? gettechparam(s, techkey, "decommissioning", "intermittent") : decommissioning
+    _co2_em = isnothing(co2_emission) ? gettechparam(s, techkey, "co2_emission", "intermittent") : co2_emission
     inputs = component_input(
         overnight_cost=_oc_raw, lifetime=_lt_raw, connection_cost=_conn, om_fixed_cost=_fom,
         om_var_cost=_vom, fuel_cost=_fuel, decommissioning=_decom, co2_emission=_co2_em,
@@ -623,7 +623,7 @@ end
 
 """
     makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
-        cap=nothing, tech::String="Hydro ror", weatheryear=2019,
+        cap=nothing, techkey::String="Hydro ror", weatheryear=2019,
         inflow_profile=nothing, intake_mult=1.,
         overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing, om_var_cost::Union{Nothing,Number}=nothing,
         decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
@@ -638,7 +638,7 @@ Arguments:
   * `s`: snapshot to register the component in.
 
   * `cap`: Installed output capacity used to normalize inflow profile. `makehydroror` requires a numeric positive `cap`; `nothing` is rejected.
-  * `tech`: technology column name in the `intermittent` tech data sheet.
+  * `techkey`: technology column name in the `intermittent` tech data sheet.
   * `weatheryear`: Year suffix used to select inflow series `hydro_ror_<year>`.
   * `inflow_profile`: Hourly run-of-river inflow vector or scalar. If `nothing`,
     read `zone` from the selected workbook sheet.
@@ -655,7 +655,7 @@ Arguments:
 """
 function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     # capacity / profile
-    cap=nothing, tech::String="Hydro ror", weatheryear=2019, inflow_profile=nothing,
+    cap=nothing, techkey::String="Hydro ror", weatheryear=2019, inflow_profile=nothing,
 
     intake_mult=1.,
 
@@ -682,11 +682,11 @@ function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     end
 
     # costs
-    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "intermittent") : overnight_cost
-    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "intermittent") : lifetime
-    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "intermittent") : om_fixed_cost
-    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "intermittent") : decommissioning
-    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "intermittent") : om_var_cost
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "intermittent") : overnight_cost
+    _lt_raw = isnothing(lifetime) ? gettechparam(s, techkey, "lifetime", "intermittent") : lifetime
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, techkey, "om_fixed_cost", "intermittent") : om_fixed_cost
+    _decom = isnothing(decommissioning) ? gettechparam(s, techkey, "decommissioning", "intermittent") : decommissioning
+    _vom = isnothing(om_var_cost) ? gettechparam(s, techkey, "om_var_cost", "intermittent") : om_var_cost
     inputs = component_input(
         overnight_cost=_oc_raw, lifetime=_lt_raw, om_fixed_cost=_fom,
         decommissioning=_decom, om_var_cost=_vom,
@@ -695,8 +695,8 @@ function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
 
     _oc = _oc_raw * 1000.
     _lt = Int(_lt_raw)
-    _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "intermittent") : construction_profile
-    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, tech, "decommissioning_profile", "intermittent") : decommissioning_profile
+    _cp = isnothing(construction_profile) ? gettechparam(s, techkey, "construction_profile", "intermittent") : construction_profile
+    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, techkey, "decommissioning_profile", "intermittent") : decommissioning_profile
     _inv = eac(_oc , discountrate(s), _lt, _cp)
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))

@@ -29,8 +29,8 @@ omits natural inflow, and another numeric value scales the profile by
 `inflow * intake_mult`. With `renormalize=true`, the series is first divided
 by its annual sum before that scaling.
 
-`eff` defaults to `roundtrip_eff` in technology column `tech` of sheet
-`storage`. It applies to grid charging; natural inflow and discharge have unit
+`eff` defaults to `roundtrip_eff` in the technology column named by `techkey`
+of sheet `storage`. It applies to grid charging; natural inflow and discharge have unit
 efficiency. `gridlosses` adds a proportional linked input flow. Cost defaults
 come from the same technology column and are attached to discharge capacity.
 
@@ -74,7 +74,8 @@ The component is named `"$cname $(h2.name)"` and tagged `hydrogen` and
 
 [`makeelectrolyser`](@ref) creates a converter with electricity `input` and
 hydrogen `output`. The output-to-input ratio is `eff`, which defaults to
-`efficiency` in technology column `tech` of sheet `electrolysis`.
+`efficiency` in the technology column named by `techkey` of sheet
+`electrolysis`.
 
 Capacity and all cost behaviours are attached to electricity `input`. A
 numeric `cap` fixes input power; `nothing` creates a decision bounded by

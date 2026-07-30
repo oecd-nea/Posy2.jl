@@ -3,7 +3,7 @@ Generate conversion components.
 """
 
 """
-    makeelectrolyser(cname::String, tech::String, elec::Node, h2::Node, s::Snapshot;
+    makeelectrolyser(cname::String, techkey::String, elec::Node, h2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
         gridlosses=0.,
         eff::Union{Nothing,Number}=nothing,
@@ -16,7 +16,7 @@ Build, connect and return an electrolyser component.
 
 Arguments:
   * `cname`: component name prefix.
-  * `tech`: technology column name in the `electrolysis` tech data sheet.
+  * `techkey`: technology column name in the `electrolysis` tech data sheet.
   * `elec`: electricity node to connect the component to.
   * `h2`: hydrogen node to connect the component to.
   * `s`: snapshot to register the component in.
@@ -37,7 +37,7 @@ Arguments:
   * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
   * `om_var_cost`: Variable O&M coefficient on input energy flow.
 """
-function makeelectrolyser(cname::String, tech::String, elec::Node, h2::Node, s::Snapshot;
+function makeelectrolyser(cname::String, techkey::String, elec::Node, h2::Node, s::Snapshot;
     # capacity / expansion
     cap=nothing, mincap=nothing, maxcap=nothing, ini::Union{Nothing,Snapshot}=nothing, gridlosses=0.,
 
@@ -49,12 +49,12 @@ function makeelectrolyser(cname::String, tech::String, elec::Node, h2::Node, s::
     decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
     om_var_cost::Union{Nothing,Number}=nothing,
 )
-    _eff = isnothing(eff) ? gettechparam(s, tech, "efficiency", "electrolysis") : eff
-    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech, "overnight_cost", "electrolysis") : overnight_cost
-    _lt_raw = isnothing(lifetime) ? gettechparam(s, tech, "lifetime", "electrolysis") : lifetime
-    _decom = isnothing(decommissioning) ? gettechparam(s, tech, "decommissioning", "electrolysis") : decommissioning
-    _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech, "om_fixed_cost", "electrolysis") : om_fixed_cost
-    _vom = isnothing(om_var_cost) ? gettechparam(s, tech, "om_var_cost", "electrolysis") : om_var_cost
+    _eff = isnothing(eff) ? gettechparam(s, techkey, "efficiency", "electrolysis") : eff
+    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "electrolysis") : overnight_cost
+    _lt_raw = isnothing(lifetime) ? gettechparam(s, techkey, "lifetime", "electrolysis") : lifetime
+    _decom = isnothing(decommissioning) ? gettechparam(s, techkey, "decommissioning", "electrolysis") : decommissioning
+    _fom = isnothing(om_fixed_cost) ? gettechparam(s, techkey, "om_fixed_cost", "electrolysis") : om_fixed_cost
+    _vom = isnothing(om_var_cost) ? gettechparam(s, techkey, "om_var_cost", "electrolysis") : om_var_cost
     inputs = component_input(
         gridlosses=gridlosses, efficiency=_eff, overnight_cost=_oc_raw, lifetime=_lt_raw,
         decommissioning=_decom, om_fixed_cost=_fom, om_var_cost=_vom,
@@ -67,8 +67,8 @@ function makeelectrolyser(cname::String, tech::String, elec::Node, h2::Node, s::
     vb = []
     _oc = _oc_raw * 1000.
     _lt = Int(_lt_raw)
-    _cp = isnothing(construction_profile) ? gettechparam(s, tech, "construction_profile", "electrolysis") : construction_profile
-    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, tech, "decommissioning_profile", "electrolysis") : decommissioning_profile
+    _cp = isnothing(construction_profile) ? gettechparam(s, techkey, "construction_profile", "electrolysis") : construction_profile
+    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, techkey, "decommissioning_profile", "electrolysis") : decommissioning_profile
     _inv = eac(_oc, discountrate(s), _lt, _cp)
     push!(vb, FixedCost(:investment, "input", energy, _inv))
     push!(vb, FixedCost(:decommissioning, "input", energy, decom_cost(_oc, _decom, _lt, discountrate(s), _dcp)))

@@ -108,7 +108,7 @@ end
     makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot;
         fixed_profile::Bool=true, smart_charging::Bool=false, vehicle_to_grid::Bool=false,
         offhours1=nothing, offhours2=nothing, minratio=nothing, days_threshold::Integer=104,
-        zone::Union{Nothing,String}=nothing, tech::String="EV",
+        zone::Union{Nothing,String}=nothing, techkey::String="EV",
         compensation::Number=0., gridlosses=0.,
         charging_availability=nothing, driving_profile=nothing,
         charging_eff::Union{Nothing,Number}=nothing, self_discharge::Union{Nothing,Number}=nothing, min_level_morning::Union{Nothing,Number}=nothing,
@@ -140,7 +140,7 @@ Arguments:
     scalar. If `nothing`, read it from the configured time-series workbook.
   * `driving_profile`: Hourly driving vector or scalar. If `nothing`, read it
     from the configured time-series workbook.
-  * `tech`: Technology column name in the `storage` tech data sheet for EV parameters (used in flexible/V2G modes).
+  * `techkey`: Technology column name in the `storage` tech data sheet for EV parameters (used in flexible/V2G modes).
   * `compensation`: V2G compensation in USD/MWh applied to EV discharge output in V2G mode (ignored in non-V2G modes).
   * `gridlosses`: Optional proportional grid-loss linked flow on EV input in fixed_profile mode (`0 <= gridlosses < 1`).
   * `charging_eff`: Optional override for the `charging_eff` row of the `storage` sheet in flexible/V2G modes (`0 < charging_eff <= 1`). If `nothing`, read from Excel.
@@ -157,7 +157,7 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
     offhours1=nothing, offhours2=nothing, minratio=nothing, days_threshold::Integer=104,
 
     # flexible / V2G inputs
-    zone::Union{Nothing,String}=nothing, tech::String="EV", compensation::Number=0., gridlosses=0.,
+    zone::Union{Nothing,String}=nothing, techkey::String="EV", compensation::Number=0., gridlosses=0.,
     charging_availability=nothing, driving_profile=nothing,
     charging_eff::Union{Nothing,Number}=nothing, self_discharge::Union{Nothing,Number}=nothing, min_level_morning::Union{Nothing,Number}=nothing,
     max_charging_power_per_ev::Union{Nothing,Number}=nothing, max_dispatch_power_per_ev::Union{Nothing,Number}=nothing,
@@ -209,16 +209,16 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
         profile_zone = isnothing(zone) ? elec.name : zone
 
         # efficiency on storage output port (V2G discharge); grid charging uses input at efficiency 1
-        eff = isnothing(charging_eff) ? gettechparam(s, tech, "charging_eff", "storage") : charging_eff
+        eff = isnothing(charging_eff) ? gettechparam(s, techkey, "charging_eff", "storage") : charging_eff
         # hourly self-discharge
-        sd = isnothing(self_discharge) ? gettechparam(s, tech, "self_discharge", "storage") : self_discharge
+        sd = isnothing(self_discharge) ? gettechparam(s, techkey, "self_discharge", "storage") : self_discharge
         # min level of the average fleet battery at 7am
-        min_level_ratio_morning = isnothing(min_level_morning) ? gettechparam(s, tech, "min_level_morning", "storage") : min_level_morning
+        min_level_ratio_morning = isnothing(min_level_morning) ? gettechparam(s, techkey, "min_level_morning", "storage") : min_level_morning
         # assumptions about EV (per vehicle parameters from Excel or overrides)
-        max_charging_per_ev = isnothing(max_charging_power_per_ev) ? gettechparam(s, tech, "max_charging_power", "storage") : max_charging_power_per_ev
-        max_dispatch_per_ev = isnothing(max_dispatch_power_per_ev) ? gettechparam(s, tech, "max_dispatch_power", "storage") : max_dispatch_power_per_ev
-        battery_cap_per_ev = isnothing(battery_capacity_per_ev) ? gettechparam(s, tech, "battery_capacity", "storage") : battery_capacity_per_ev
-        yearly_per_ev = isnothing(yearly_consumption_per_ev) ? gettechparam(s, tech, "yearly_consumption", "storage") : yearly_consumption_per_ev
+        max_charging_per_ev = isnothing(max_charging_power_per_ev) ? gettechparam(s, techkey, "max_charging_power", "storage") : max_charging_power_per_ev
+        max_dispatch_per_ev = isnothing(max_dispatch_power_per_ev) ? gettechparam(s, techkey, "max_dispatch_power", "storage") : max_dispatch_power_per_ev
+        battery_cap_per_ev = isnothing(battery_capacity_per_ev) ? gettechparam(s, techkey, "battery_capacity", "storage") : battery_capacity_per_ev
+        yearly_per_ev = isnothing(yearly_consumption_per_ev) ? gettechparam(s, techkey, "yearly_consumption", "storage") : yearly_consumption_per_ev
         inputs = demand_input(
             yearly=yearly, compensation=compensation, charging_eff=eff, self_discharge=sd,
             min_level_morning=min_level_ratio_morning, max_charging_power=max_charging_per_ev,

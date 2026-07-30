@@ -21,14 +21,14 @@ The builders are grouped by modelling role:
 
 ## Common Arguments
 
-Most builders start with a component name, a technology name, one or more
+Most builders start with a component name, a technology-data key, one or more
 nodes, and a snapshot. These names have distinct purposes:
 
 - `cname` is the technology label used in the component name and its `:tech`
   tag. Annual reports group components by this value.
-- `tech` is an exact **technology column** in the relevant technology workbook
-  sheet. Parameter names occupy rows in the column headed `tech`; `tech` is not
-  a row name.
+- `techkey` is an exact **technology column** in the relevant technology
+  workbook sheet. Parameter names occupy rows in the column headed `tech`;
+  `techkey` is not a row name.
 - A zone argument selects a column in a time-series sheet. It need not equal a
   node name unless the builder's documented column convention requires that.
 - Nodes determine the carriers and balances to which the component is
@@ -44,7 +44,7 @@ the [Interconnections](components/interconnections.md) page.
 ## Workbook Defaults And Keyword Overrides
 
 An optional technical or economic keyword set to `nothing` is normally read
-from the technology column selected by `tech`. Passing a value overrides that
+from the technology column selected by `techkey`. Passing a value overrides that
 one workbook cell. This makes it possible to share a central assumption set and
 change only the values that define a sensitivity.
 
