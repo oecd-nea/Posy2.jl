@@ -71,7 +71,8 @@ has `4 - 4 + 1 = 1` independent loop (`A -> B -> C -> D -> A`).
 network would add one constraint for every independent AC cycle.
 
 For a bidirectional node interconnection, `aggregate=false` keeps the two ports
-separate (`input` and `input2`). Net flow in the declared direction is
+separate (`input` and `input2`). Because this example uses the default zero
+`lossfactor`, its net midpoint flow in the declared direction is
 `input - input2`. Under DCOPF those flows are fixed by KVL:
 
 ```jldoctest dc_opf

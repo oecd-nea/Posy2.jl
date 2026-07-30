@@ -44,8 +44,9 @@ function gencycles(mat::Matrix{Float64})
     return cycle_basis(g)
 end
 
-# Return net power flow between two nodes (from -> to).
-# Net flow = forward flow - reverse flow (bidirectional interconnections).
+# Return net midpoint power flow between two nodes (from -> to).
+# Each directional midpoint flow is the average of its sending- and receiving-end
+# flows, so half of the proportional interconnection loss is applied in KVL.
 # `node_map` is AC-only (DC excluded from KVL). Nets on the same pair are summed.
 # Parallel AC is rejected at build, so usually one IC matches.
 function _net_ic_flow(s::Snapshot, from::String, to::String, node_map::Dict{String, Tuple{String, String}})
@@ -53,8 +54,10 @@ function _net_ic_flow(s::Snapshot, from::String, to::String, node_map::Dict{Stri
     for (cname, (ic_from, ic_to)) in node_map
         (ic_from, ic_to) == (from, to) || (ic_from, ic_to) == (to, from) || continue
         c = Nosy.getcomponent(s, cname)
-        fwd = balance(c, :input, energy, collapse=false, aggregate=false)["input"]
-        rev = balance(c, :input, energy, collapse=false, aggregate=false)["input2"]
+        inputs = balance(c, :input, energy, collapse=false, aggregate=false)
+        outputs = balance(c, :output, energy, collapse=false, aggregate=false)
+        fwd = (inputs["input"] + outputs["output"]) / 2
+        rev = (inputs["input2"] + outputs["output2"]) / 2
         # determine IC orientation to compute net flow correctly
         flow = (ic_from == from && ic_to == to) ? (fwd - rev) : (rev - fwd)
         net = isnothing(net) ? flow : (net .+ flow)
@@ -89,7 +92,7 @@ function addkvl!(s::Snapshot{T}) where T
             bij >= 0.0 &&
                 throw(AssertionError("No AC node IC between nodes $from and $to"))
             # KVL: sum(flow_ij / B_ij) = 0
-            # flow_ij is net flow (forward - reverse) for bidirectional ICs
+            # flow_ij is net midpoint flow (forward - reverse) for bidirectional ICs
             # divide by susceptance B_ij to get voltage drop: V = flow / B
             add_to_expression!.(exp, (_net_ic_flow(s, from, to, node_map) / bij).data)
         end

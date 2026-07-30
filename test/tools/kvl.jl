@@ -117,6 +117,46 @@ using HiGHS
         @test all(isapprox.(src_hourly.data, dmd2_hourly.data .+ dmd3_hourly.data; atol=1e-6))
     end
 
+    # Lossy AC loop: KVL uses midpoint flows, with half of each directional loss
+    # deducted from its sending-end flow.
+    let
+        snap, sim = makesnapshot()
+
+        n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        n3 = Node("ZONE3", EnergyCarrier("electricity ZONE3", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+
+        src = Component("src", DispatchableSource(n1.carrier), [
+            VariableCost(:fuel, "output", energy, 1.0),
+            FixedCapacity("output", energy, 100.0),
+        ])
+        connect!(snap, src, n1)
+        connect!(snap, Component("dmd2", Demand(n2.carrier, fill(1.0, 24)), []), n2)
+        connect!(snap, Component("dmd3", Demand(n3.carrier, fill(1.0, 24)), []), n3)
+
+        b12, b23, b31 = -1.5, -0.7, -2.0
+        loss12, loss23, loss31 = 0.10, 0.20, 0.30
+        makenodeinterco("IC", n1, n2, Inf, Inf, snap; susceptance=b12, lossfactor=loss12)
+        makenodeinterco("IC", n2, n3, Inf, Inf, snap; susceptance=b23, lossfactor=loss23)
+        makenodeinterco("IC", n3, n1, Inf, Inf, snap; susceptance=b31, lossfactor=loss31)
+
+        POSY2.applydcopf!(snap)
+        Nosy.optimize!(snap, cost(snap))
+        @test is_solved_and_feasible(sim.model)
+
+        _, _, node_map = POSY2.getic_susceptancematrix(snap)
+        f12 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE1", "ZONE2", node_map))
+        f23 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE2", "ZONE3", node_map))
+        f31 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE3", "ZONE1", node_map))
+        @test all(isapprox.(f12 ./ b12 .+ f23 ./ b23 .+ f31 ./ b31, 0.0; atol=1e-6))
+
+        c12 = Nosy.getcomponent(snap, "IC_ZONE1_ZONE2")
+        inputs12 = balance(c12, :input, energy, collapse=false, aggregate=false)
+        gross12 = JuMP.value.(inputs12["input"] - inputs12["input2"])
+        @test all(isapprox.(f12, (1.0 - loss12 / 2) .* gross12; atol=1e-6))
+        @test any(abs.(gross12) .> 1e-6)
+    end
+
     # Mixed AC/DC mesh: B-matrix keeps three AC edges only; KVL holds on the triangle while the DC spur is outside cycles.
     let
         snap, sim = makesnapshot()

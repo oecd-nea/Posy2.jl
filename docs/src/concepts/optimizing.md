@@ -65,16 +65,26 @@ one equivalent susceptance if parallel AC circuits were aggregated beforehand.
 Controllable DC links (`dc=true`) are excluded from the cycle basis.
 
 For each independent AC cycle ``C`` and each time step ``t``, and for a
-directed edge ``(i,j)`` oriented consistently with the traversal of ``C``, the
-signed net flow on a bidirectional node interconnection is
+directed edge ``(i,j)`` oriented consistently with the traversal of ``C``, KVL
+uses the signed net midpoint flow
 
 ```math
-f_{ij,t} = f^{i \to j}_{t} - f^{j \to i}_{t},
+f_{ij,t} =
+\frac{f^{i \to j,\mathrm{send}}_t + f^{i \to j,\mathrm{receive}}_t}{2}
+-
+\frac{f^{j \to i,\mathrm{send}}_t + f^{j \to i,\mathrm{receive}}_t}{2}.
 ```
 
-where the two directed port flows are the interconnection’s forward and reverse
-transfers (oriented to match ``(i,j)``). ``B_{ij}`` is the (negative)
-susceptance of that AC link. The cycle constraint is
+With proportional loss factor ``\lambda_{ij}`` in both directions, this is
+
+```math
+f_{ij,t} =
+\left(1-\frac{\lambda_{ij}}{2}\right)
+\left(f^{i \to j,\mathrm{send}}_t-f^{j \to i,\mathrm{send}}_t\right).
+```
+
+This reduces to forward minus reverse transfer when `lossfactor=0`.
+``B_{ij}`` is the (negative) susceptance of that AC link. The cycle constraint is
 
 ```math
 \sum_{(i,j) \in C} \frac{f_{ij,t}}{B_{ij}} = 0
