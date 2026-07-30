@@ -5,11 +5,12 @@ than by the component builders. The most important performance decisions are
 therefore the temporal horizon, use of integer variables, interconnection
 formulation, and solver configuration.
 
-## Work With Functions
-
-The usual Julia performance guidance applies: put model construction and
-reporting code inside functions, keep input types stable, and avoid repeatedly
-reconstructing identical intermediate data.
+If model construction itself becomes noticeable, the usual Julia advice
+applies: put model construction and reporting code inside functions, keep
+input types stable, and avoid repeatedly reconstructing identical intermediate
+data. See Julia's
+[Performance Tips](https://docs.julialang.org/en/v1/manual/performance-tips/)
+for general advice.
 
 ```julia
 function build_scenario(optimizer, options)
@@ -20,26 +21,18 @@ function build_scenario(optimizer, options)
 end
 ```
 
-See Julia's
-[Performance Tips](https://docs.julialang.org/en/v1/manual/performance-tips/)
-for general advice.
-
-## Workbook Reads
-
 POSY2 caches workbook reads using the path, filename, and file modification
-time. Technology sheets are also cached because converting an
-Excel table to a DataFrame can be noticeable in a large build.
+time. Technology sheets are also cached because converting an Excel table to a
+DataFrame can be noticeable in a large build. Keep scenario workbooks unchanged
+while a model is being built; editing a file changes its modification time and
+correctly causes POSY2 to read it again. Supplying explicit builder overrides
+can avoid lookups for scalar parameters, but profile-driven builders still
+require their time-series data.
 
-Keep scenario workbooks unchanged while a model is being built. Editing a file
-changes its modification time and correctly causes POSY2 to read it again.
-Supplying explicit builder overrides can avoid lookups for scalar parameters,
-but profile-driven builders still require their time-series data.
-
-## Variable Names
-
-Explicit JuMP variable names help diagnose infeasibility, but name creation can
-be noticeable in very large models. Disable string names immediately after
-creating the simulation if they are not needed:
+In problems with a very large number of variables, JuMP string names can take
+a non-negligible time. Names help diagnose infeasibility, but if they are not
+needed, disable them immediately after creating the simulation and before
+building components:
 
 ```julia
 import JuMP
@@ -48,8 +41,32 @@ s = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 JuMP.set_string_names_on_creation(model(s), false)
 ```
 
-Do this before building components. Keep names enabled while developing or
-when solver conflict reports are part of the workflow.
+Keep names enabled while developing or when solver conflict reports are part
+of the workflow.
+
+Nosy also exposes model-generation options through `Sim`, including objective
+coefficient cleanup, constraint scaling, small-bound cleanup, and the ability
+to disable the scaling bridge. See the Nosy performance documentation for the
+full behaviour of these levers.
+
+```julia
+s = Sim(
+    HiGHS.Optimizer;
+    mesh=TimeMesh(),
+    objthreshold=1e-8,
+    constraint_scaling=true,
+    expthreshold=0.0,
+    scalingtarget=1.0,
+    boundthreshold=0.0,
+)
+```
+
+The default zero thresholds preserve the mathematical model. Positive
+thresholds may remove small but meaningful terms when model units differ
+substantially, so validate any cleanup setting before production use.
+
+The sections below mostly target solver time by reducing model size or
+changing formulation choices in POSY2 builders.
 
 ## Integer Decisions
 
@@ -79,8 +96,6 @@ cycle of the AC network, not one relation for every possible cycle. Tree
 networks therefore receive no additional KVL constraints. DC links are
 excluded from the AC cycle graph.
 
-Call [`applydcopf!`](@ref) only after the network is complete and only once per
-snapshot.
 
 ## Storage Simplifications
 
@@ -104,28 +119,6 @@ Reducing the horizon solely for a quick structural prototype can still be
 useful when the chosen builders are mesh-compatible, but such a run is not an
 approximation of annual costs, storage cycles, unit commitment, or seasonal
 profiles.
-
-## Nosy Model Cleanup
-
-Nosy exposes model-generation options through `Sim`. These include objective
-coefficient cleanup, constraint scaling, small-bound cleanup, and the ability
-to disable the scaling bridge.
-
-```julia
-s = Sim(
-    HiGHS.Optimizer;
-    mesh=TimeMesh(),
-    objthreshold=1e-8,
-    constraint_scaling=true,
-    expthreshold=0.0,
-    scalingtarget=1.0,
-    boundthreshold=0.0,
-)
-```
-
-The default zero thresholds preserve the mathematical model. Positive
-thresholds may remove small but meaningful terms when model units differ
-substantially, so validate any cleanup setting before production use.
 
 ## Reporting
 
