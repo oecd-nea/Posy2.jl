@@ -96,6 +96,8 @@ Snapshot with 4 component(s) and 1 node(s)
 
 ```
 
+Expected results:
+
 ```jldoctest pumped_storage
 julia> pump = balance(result, "Pumped hydro country1", :input, energy; collapse=false, aggregate=true);
 

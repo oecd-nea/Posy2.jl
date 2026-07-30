@@ -87,10 +87,7 @@ Snapshot with 4 component(s) and 1 node(s)
 
 ```
 
-Annual charge (`:input`) and discharge (`:output`) recover the stated 85%
-round-trip efficiency. Peak charge stays below the 50 MW charger; peak
-discharge nearly fills that rating. Oil still supplies most of the year
-because the battery only shifts a slice of the solar surplus:
+Expected results:
 
 ```jldoctest battery_storage
 julia> charge = balance(result, "Battery country1", :input, energy; collapse=false, aggregate=true);
@@ -112,6 +109,37 @@ julia> maximum(charge), maximum(discharge)
 
 julia> balance(result, "Oil country1", :output, energy; collapse=true, aggregate=true)
 303143.4761450002
+```
+
+Annual charge (`:input`) and discharge (`:output`) recover the stated 85%
+round-trip efficiency. Peak charge stays below the 50 MW charger; peak
+discharge nearly fills that rating. Oil still supplies most of the year
+because the battery only shifts a slice of the solar surplus. The storage
+`level` rises while charging and falls while discharging;
+`argmax(level)` marks a peak within that daily shift:
+
+```jldoctest battery_storage
+julia> level = balance(result, "Battery country1", :level, energy; collapse=false, aggregate=true);
+
+julia> peak = argmax(level)
+4073
+
+julia> level[peak-5:peak+5]
+11-element Vector{Float64}:
+  66.8928325
+  99.4533575
+ 129.719605
+ 152.7203925
+ 162.30631
+ 162.877425
+ 160.2777575
+ 137.30159
+  92.07839
+  67.23169
+  67.23169
+
+julia> maximum(level)
+162.877425
 ```
 
 `duration=4.0` sets energy capacity from the charge rating

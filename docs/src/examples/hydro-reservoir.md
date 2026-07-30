@@ -26,6 +26,8 @@ snapshot = Snapshot(
         data_dir=example_data_dir,
         techdata_file="tech_data.xlsx",
         timeseries_file="time_series.xlsx",
+        tech_mode=:excel,
+        timeseries_mode=:excel,
     )),
 )
 
@@ -67,12 +69,18 @@ julia> balance(result, "Reservoir hydro country1", :output, energy; collapse=tru
 
 julia> balance(result, "CCGT country1", :output, energy; collapse=true, aggregate=true)
 87599.99999999999
+
+julia> balance(result, "Reservoir hydro country1", :input, energy; collapse=true, aggregate=false)["natural"]
+350399.9999999993
 ```
 
-Natural inflow averages 40 MW across the year against 50 MW flat demand, so
-hydro supplies most of the energy and the CCGT covers the remaining 10 MW.
-That split alone does not show *when* water is stored. The reservoir `level`
-rises when inflow is banked and falls when the turbine runs;
+Annual natural inflow equals annual turbine output here: both the `natural`
+and `output` ports have unit efficiency. The builder's configurable `eff`
+applies only to grid pumping through the `input` port, which is unused here
+because charging capacity is zero. That inflow is the `40 × 8760` MWh passed
+to the builder—40 MW on average against 50 MW flat demand—so the CCGT covers
+the remaining 10 MW. The reservoir shifts natural inflow across time: `level`
+rises when inflow is stored and falls when the turbine generates;
 `argmax(level)` marks the yearly peak:
 
 ```jldoctest hydro_reservoir
