@@ -193,7 +193,15 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
         ) * maxlevel
 
         m = Demand(elec.carrier, series)
-        vb = []
+        vb = Any[
+            FixedJointFlow(
+                "driving",
+                EnergyCarrier(cname, sim(elec)),
+                :output,
+                series;
+                mustconnect=false,
+            ),
+        ]
         !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x -> x[1] * _gridlosses))
         c = Component(cname * " " * elec.name, m, vb)
         tag!(c, :tech, cname)

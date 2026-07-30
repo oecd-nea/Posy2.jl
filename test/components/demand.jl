@@ -71,6 +71,18 @@ using HiGHS
         )
     end
 
+    # Fixed-profile EV reporting requires the same non-connected driving port as
+    # smart-charging and vehicle-to-grid EVs.
+    let
+        s, elec, _ = makesnapshot()
+        c = makeEV(
+            "EV", 1000.0, elec, s;
+            fixed_profile=true, smart_charging=false, vehicle_to_grid=false,
+            offhours1=[0, 1], offhours2=[2, 3], minratio=0.2,
+        )
+        @test Nosy.hasport(c, "driving")
+    end
+
     # A valid demand response input should create and register the component.
     let
         s, elec, _ = makesnapshot()

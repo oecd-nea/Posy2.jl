@@ -39,6 +39,11 @@ using DataFrames
         snap, elec1, elec2, co2 = makesnapshot()
         h2 = Node("H2", EnergyCarrier("hydrogen", sim(snap)), rule=:curtailed, tags=[:hydrogen])
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makeEV(
+            "EV", 1000.0, elec1, snap;
+            fixed_profile=true, smart_charging=false, vehicle_to_grid=false,
+            offhours1=[0, 1], offhours2=[2, 3], minratio=0.2,
+        )
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makeelectrolyser(
