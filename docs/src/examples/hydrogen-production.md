@@ -79,12 +79,12 @@ julia> h2
 julia> h2 / elec
 0.5799999999999859
 
-julia> table(result, capacity)
-1×4 DataFrame
- Row │ Electrolyser country1  H2 storage H2 country1  Hydrogen demand H2 country1  Solar country1
-     │ Float64                Float64                 Float64                      Float64
-─────┼────────────────────────────────────────────────────────────────────────────────────────────
-   1 │               217.856                  4704.0                          0.0         754.032
+julia> table(result, capacity)[:, ["Electrolyser country1", "H2 storage H2 country1", "Solar country1"]]
+1×3 DataFrame
+ Row │ Electrolyser country1  H2 storage H2 country1  Solar country1
+     │ Float64                Float64                 Float64
+─────┼───────────────────────────────────────────────────────────────
+   1 │               217.856                  4704.0         754.032
 ```
 
 PV is oversized relative to mean electrolyser load so winter weeks stay

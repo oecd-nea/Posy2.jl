@@ -76,15 +76,15 @@ O&M on that plant dominate the objective. Wind costs are mostly annualised
 investment plus variable O&M on its generation:
 
 ```jldoctest one_country
-julia> costs(result)[:, [:component, :investment, :fuel, :vom, :decommissioning, :total]]
-4×6 DataFrame
- Row │ component              investment  fuel       vom        decommissioning  total
-     │ String                 Float64     Float64    Float64    Float64          Float64
-─────┼─────────────────────────────────────────────────────────────────────────────────────
-   1 │ CCGT country1           6.05249e7  2.46745e8  3.66499e7        6.19494e5  3.44539e8
-   2 │ Demand country1         0.0        0.0        0.0              0.0        0.0
-   3 │ Onshore wind country1   4.08402e7  0.0        1.57913e7        5.60623e5  5.71922e7
-   4 │ all                     1.01365e8  2.46745e8  5.24412e7        1.18012e6  4.01731e8
+julia> costs(result)[:, [:component, :investment, :fuel, :total]]
+4×4 DataFrame
+ Row │ component              investment  fuel       total
+     │ String                 Float64     Float64    Float64
+─────┼─────────────────────────────────────────────────────────
+   1 │ CCGT country1           6.05249e7  2.46745e8  3.44539e8
+   2 │ Demand country1         0.0        0.0        0.0
+   3 │ Onshore wind country1   4.08402e7  0.0        5.71922e7
+   4 │ all                     1.01365e8  2.46745e8  4.01731e8
 ```
 
 Write the solved result with [`printsnapshot`](@ref) if you want the standard

@@ -81,57 +81,15 @@ julia> dr = balance(result, "DR COUNTRY", :output, energy; collapse=false, aggre
 
 julia> oil = balance(result, "Oil COUNTRY", :output, energy; collapse=false, aggregate=true);
 
-julia> dr[1:24]
-24-element Vector{Float64}:
+julia> dr[12:14]
+3-element Vector{Float64}:
   0.0
-  0.0
-  0.0
-  0.0
-  0.0
-  0.0
-  0.0
-  0.0
-  0.0
-  0.0
-  0.0
-  0.0
- 30.0
- 30.0
- 30.0
- 30.0
- 30.0
- 30.0
- 30.0
- 30.0
- 30.0
- 30.0
  30.0
  30.0
 
-julia> oil[1:24]
-24-element Vector{Float64}:
+julia> oil[12:14]
+3-element Vector{Float64}:
   0.0
-  0.0
-  0.0
-  0.0
-  0.0
-  0.0
-  0.0
-  0.0
-  0.0
-  0.0
-  0.0
-  0.0
- 50.0
- 50.0
- 50.0
- 50.0
- 50.0
- 50.0
- 50.0
- 50.0
- 50.0
- 50.0
  50.0
  50.0
 ```

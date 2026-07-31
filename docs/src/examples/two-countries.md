@@ -114,13 +114,13 @@ load, and expensive gas fills only a residual:
 
 ```jldoctest two_countries
 julia> balance(result, "CCGT country1", :output, energy; collapse=true, aggregate=true)
-1.2296100731717663e7
+1.2296100731717668e7
 
 julia> balance(result, "Solar country2", :output, energy; collapse=true, aggregate=true)
 1.6419079848000023e6
 
 julia> balance(result, "Battery country2", :output, energy; collapse=true, aggregate=true)
-341063.21818000014
+341063.21817999927
 
 julia> balance(result, "Gas country2", :output, energy; collapse=true, aggregate=true)
 1.149265248220001e6
@@ -144,11 +144,11 @@ net export from country 1 is their difference:
 ```jldoctest two_countries
 julia> annual_trade = balance(result, "IC_country1_country2", :input, energy; collapse=true, aggregate=false)
 Dict{String, Float64} with 2 entries:
-  "input" => 5.87027e6
-  "input2" => 13670.5
+  "input"  => 5.87087e6
+  "input2" => 14275.7
 
 julia> annual_trade["input"] - annual_trade["input2"]
-5.856596189717642e6
+5.856596189717646e6
 ```
 
 Country 1's CCGT (1500 MW) covers its own workbook demand and still has spare
@@ -167,7 +167,7 @@ julia> hourly_trade = balance(result, "IC_country1_country2", :input, energy; co
 julia> net = hourly_trade["input"] .- hourly_trade["input2"];
 
 julia> maximum(net)
-925.445
+930.716
 
 julia> minimum(net)
 -319.08820000000003
