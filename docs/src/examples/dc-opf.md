@@ -194,25 +194,21 @@ julia> balance(result, "CCGT A", :output, energy; collapse=true, aggregate=true)
 julia> printsnapshot(result, "dc-opf.xlsx")
 ```
 
+That writes `results/dc-opf.xlsx`. The screenshot below is the same
+interconnection-volume view as in the transport case.
+
 ![DC OPF interconnection volume from printsnapshot](../assets/dc-opf.png)
 
-**Transport vs DC OPF.** Put `transport.xlsx` and `dc-opf.xlsx` next to each
-other (or compare the two figures). Both scenarios use only AC corridors, so
-the DC volume table is empty and all reported interconnection volume is AC.
-Transport has many feasible flow solutions that satisfy nodal balance. DC OPF
-restricts this solution space by enforcing KVL, so the resulting flow pattern
-is determined by the network susceptances. In the tables:
+**Transport vs DC OPF.** Put the two workbooks (or the two figures) side by
+side. Both runs use only AC corridors, so the DC volume table is empty and all
+reported interconnection volume is AC. Generation and demand are the same;
+what changes is the network model. Transport keeps any flow pattern that
+satisfies nodal balance, including circulating exchanges that cancel in the
+net. DC OPF adds KVL, so flows on the meshed AC links must also be consistent
+with the line susceptances. The Excel tables are the resulting interconnection
+volumes under each model.
 
-- under DC OPF the matrix is much quieter: exports leave A on `A -> B`,
-  `A -> C`, and `A -> D`, with only a small `C -> B` exchange;
-- the directed total falls to about `0.03 TWh/y` (from about `0.038 TWh/y` in
-  transport): many transport-feasible patterns with extra loop-flow degrees of
-  freedom are no longer admissible once KVL holds;
-- individual corridors move: for example `A -> B` rises while `A -> D` falls
-  relative to the transport screenshot, as the two AC loops share flow
-  according to the susceptances rather than an arbitrary LP extreme point.
-
-Same plants and demands, different network model; the Excel volume tables make
+Same plants and demands, different network physics; the volume tables make
 that comparison direct.
 
 ## Controllable DC links

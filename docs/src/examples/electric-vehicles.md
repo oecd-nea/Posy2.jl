@@ -130,6 +130,9 @@ julia> balance(result, "Oil country1", :output, energy; collapse=true, aggregate
 ```
 
 Oil still covers residual demand on the node; the cars never export power.
+Over two active days the same story shows in time: charging gathers when solar
+is in surplus, the fixed driving profile keeps its shape, and `level` rises
+on the charge pulses then falls as driving draws the stock down.
 
 ![Smart charging: grid charging, driving demand, and battery level over two days](../assets/electric-vehicles-smart.svg)
 
@@ -266,8 +269,9 @@ julia> balance(result, "Oil country1", :output, energy; collapse=true, aggregate
 4.413555100666671e6
 ```
 
-In the figure, charging lines up with the lower dual and V2G discharge with the
-oil-priced hours, while driving keeps its own fixed shape.
+Over two days that pattern is visible together: charging gathers when the dual
+is low, V2G discharge appears when the dual equals the oil `fuel_cost`, and
+driving keeps the same fixed shape while `level` tracks both.
 
 ![V2G: grid charging, V2G discharge, dual price, driving demand, and battery level over two days](../assets/electric-vehicles-v2g.svg)
 
