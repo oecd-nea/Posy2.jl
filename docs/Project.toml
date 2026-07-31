@@ -8,7 +8,7 @@ POSY2 = "e28d6228-85f0-4f5e-8e43-1e181ce309a6"
 XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
 
 [sources]
-Nosy = {rev = "POSY2_refactoring", url = "https://github.com/oecd-nea/Nosy.jl.git"}
+Nosy = {rev = "main", url = "https://github.com/oecd-nea/Nosy.jl.git"}
 POSY2 = {path = ".."}
 
 [compat]
@@ -16,6 +16,6 @@ DataFrames = "1"
 Documenter = "1"
 HiGHS = "1"
 JuMP = "1"
-Nosy = "0.2.2"
+Nosy = "0.3.0"
 XLSX = "0.10"
 julia = "1.11 - 1.12"

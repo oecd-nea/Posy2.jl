@@ -65,7 +65,9 @@ function __write_to_sheet!(sh, d::DataLine{<:AbstractDict}, row=1)
     local c = 1
     for (k,v) in d.d
         sh[XLSX.CellRef(row+2,c)] = k
-        sh[XLSX.CellRef(row+3,c)] = _round(v)
+        if !isnothing(v) && !ismissing(v)
+            sh[XLSX.CellRef(row+3,c)] = _round(v)
+        end
         c += 1
     end
     return row + 6

@@ -35,7 +35,7 @@ elsewhere when retaining several revisions.
 `printsnapshot` rejects an unsolved snapshot. The current standard report also
 assumes a complete 8760-hour result, at least one interconnection, and the
 POSY2 node and component tags described in
-[Building A Snapshot](building-snapshot.md). Use direct Nosy queries for an
+[Tags And Post-Processing](tags.md). Use direct Nosy queries for an
 isolated model without interconnections.
 
 Marginal-price and self-system interconnection tables require dual prices.

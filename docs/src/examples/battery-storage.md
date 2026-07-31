@@ -142,6 +142,22 @@ julia> maximum(level)
 162.877425
 ```
 
+The same hourly loop is in the Excel report. Write it with
+[`printsnapshot`](@ref):
+
+```jldoctest battery_storage
+julia> printsnapshot(result, "battery-storage.xlsx")
+```
+
+That creates `results/battery-storage.xlsx`. In the **Time series** sheet, the
+`charging Battery country1`, `discharging Battery country1`, and
+`levelBattery country1` columns (GW / GWh) show the same charge–store–discharge
+pattern as the `balance` queries above. The figure below is one full day around
+the level peak at hour 4073: daytime PV surplus fills the battery, level peaks,
+then evening discharge covers the solar drop before oil takes over again.
+
+![Battery charge, discharge, and level over one day from the printsnapshot Time series sheet](../assets/battery-storage.png)
+
 `duration=4.0` sets energy capacity from the charge rating
 (`capin * duration`). The example is about that charge–store–discharge loop on
 one node, not about sizing a full storage fleet.

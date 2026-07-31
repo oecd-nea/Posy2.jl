@@ -6,10 +6,10 @@ assemble Nosy `Component` objects by hand.
 
 Each page is a small working study with one idea in focus—an interconnection
 pattern, a storage technology, a hydrogen pathway—while other assets stay as
-supporting pieces. Result queries follow the story: `capacity` and annual
-`balance`/`cost` where totals matter, hourly `balance` where the time pattern
-matters. Price Interconnection adds one figure so the price-based switch
-between imports and domestic generation is visible.
+supporting pieces. After the solve, each example includes a short analysis
+matched to that idea: capacity and annual `balance`/`cost` where totals
+matter, hourly series (and occasionally a figure) where the time pattern
+matters.
 
 Together, the examples exercise all four input-mode combinations:
 
@@ -17,9 +17,10 @@ Together, the examples exercise all four input-mode combinations:
 |:--------|:------------|:------------------|:--------|
 | [One Country](examples/one-country.md) | `:excel` | `:excel` | Paired demand, wind profile, Onwind, and CCGT data |
 | [Hydro Reservoir](examples/hydro-reservoir.md) | `:excel` | `:excel` | Paired reservoir inflow with Hydro res and CCGT data |
-| [Dispatchable Generation](examples/dispatchable-generation.md) / [Hydrogen](examples/hydrogen-production.md) | `:excel` | `:arguments` | Workbook technology assumptions with explicit demands |
-| [Price Interconnection](examples/price-interconnection.md), [Battery](examples/battery-storage.md), [Pumped Storage](examples/pumped-storage-hydro.md) | `:arguments` | `:excel` | Workbook series (prices, profiles, or availability) with explicit technology costs |
-| [Two Countries](examples/two-countries.md), [DC OPF](examples/dc-opf.md), [EV](examples/electric-vehicles.md), [Demand Response](examples/demand-response.md) | `:arguments` | `:arguments` | Fully self-contained teaching models |
+| [Hydrogen Production](examples/hydrogen-production.md) | `:excel` | `:excel` | Workbook PV, demand shape, and PEM data with scaled H₂ demand and storage |
+| [Dispatchable Generation](examples/dispatchable-generation.md) | `:excel` | `:arguments` | Workbook technology assumptions with explicit demands |
+| [Price Interconnection](examples/price-interconnection.md), [Battery](examples/battery-storage.md), [Pumped Storage](examples/pumped-storage-hydro.md), [Two Countries](examples/two-countries.md), [EV](examples/electric-vehicles.md) | `:arguments` | `:excel` | Workbook series (prices, profiles, demand, or availability) with explicit technology costs |
+| [DC OPF](examples/dc-opf.md), [Demand Response](examples/demand-response.md) | `:arguments` | `:arguments` | Fully self-contained teaching models |
 
 - [One Country](examples/one-country.md)
 - [Two Countries](examples/two-countries.md)

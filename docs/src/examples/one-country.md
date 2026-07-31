@@ -60,12 +60,38 @@ julia> table(result, capacity)
    1 │       927.129              0.0                  400.0
 ```
 
-Wind is fixed at the stated 400 MW; the CCGT capacity is chosen to cover the
-residual after wind. Write the solved result with
-[`printsnapshot`](@ref) if you want the standard Excel report:
+Wind capacity is fixed by the builder at 400 MW. The CCGT is free to expand
+up to `maxcap`, and the optimiser installs about 927 MW so that residual demand
+after wind can still be met in every hour.
 
-```julia
-printsnapshot(result, "one-country.xlsx")
+That capacity choice shows up in the hourly dispatch. Over a sample week from
+the solved year, wind (bottom) and CCGT (top) stack to the black demand line:
+when wind is strong the CCGT layer shrinks; when wind is weak the CCGT fills
+the residual, up to the capacity above.
+
+![Stacked wind and CCGT versus demand over one week](../assets/one-country-week.svg)
+
+Because the CCGT covers most of the residual energy, workbook fuel and variable
+O&M on that plant dominate the objective. Wind costs are mostly annualised
+investment plus variable O&M on its generation:
+
+```jldoctest one_country
+julia> costs(result)[:, [:component, :investment, :fuel, :vom, :decommissioning, :total]]
+4×6 DataFrame
+ Row │ component              investment  fuel       vom        decommissioning  total
+     │ String                 Float64     Float64    Float64    Float64          Float64
+─────┼─────────────────────────────────────────────────────────────────────────────────────
+   1 │ CCGT country1           6.05249e7  2.46745e8  3.66499e7        6.19494e5  3.44539e8
+   2 │ Demand country1         0.0        0.0        0.0              0.0        0.0
+   3 │ Onshore wind country1   4.08402e7  0.0        1.57913e7        5.60623e5  5.71922e7
+   4 │ all                     1.01365e8  2.46745e8  5.24412e7        1.18012e6  4.01731e8
+```
+
+Write the solved result with [`printsnapshot`](@ref) if you want the standard
+Excel report:
+
+```jldoctest one_country
+julia> printsnapshot(result, "one-country.xlsx")
 ```
 
 That creates `results/one-country.xlsx` with annual indicators, time series,

@@ -49,6 +49,7 @@ makedocs(
             "Extending POSY2" => "concepts/extending.md",
             "Optimizing a Snapshot" => "concepts/optimizing.md",
             "Querying a Snapshot" => "concepts/querying.md",
+            "Tags and Post-Processing" => "concepts/tags.md",
             "Exporting Results" => "concepts/exporting.md",
         ],
         "Performance" => "performance.md",

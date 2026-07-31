@@ -129,7 +129,8 @@ distinct carrier names.
 
 Custom Nosy components are valid in a POSY2 snapshot. To include them in POSY2
 reports, give them compatible tags and conventional port names. The individual
-component pages list the tags created by each builder. For the design sequence
-when adding a technology—physical model, behaviours, naming, tags, and
-connection—see [Extending POSY2](concepts/extending.md).
+component pages list the tags created by each builder. For which tags select
+which Excel rows, see [Tags And Post-Processing](concepts/tags.md). For the
+design sequence when adding a technology—physical model, behaviours, naming,
+tags, and connection—see [Extending POSY2](concepts/extending.md).
 

@@ -179,6 +179,10 @@ self_nodes = getnodes(
 Filtering by tags is preferable to parsing names, particularly for
 interconnections that belong to two zones.
 
+For the reporting consequence of each `:function` and node tag—which annual
+rows and indicators include a tagged component—see
+[Tags And Post-Processing](tags.md).
+
 ## Standard Reports
 
 [`printsnapshot`](@ref) generates the full POSY2 post-processing workbook,

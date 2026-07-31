@@ -46,6 +46,8 @@ function _selfinterconnectioncost(s::Snapshot, cname::String, sense::Symbol, sno
     # evaluating cost = volume * price
     # the price is defined as the SELF price! (not the other node price)
     vprice = Nosy.dualprice(snode) # Nosy.dualprice(nnode)
+    # dualprice is nothing when nodal prices were not evaluated (e.g. evalprice=false)
+    isnothing(vprice) && return missing
     if sense == :import
         vol = balance(snode, :input, energy, collapse=false, aggregate=false)[cname] # flow going in self node to IC component
     elseif sense == :export
@@ -128,7 +130,11 @@ selfinterconnectionrevenue_price(s::Snapshot, cname::String) = _selfinterconnect
 # congestion rent at pre-resolved self and neighbor nodes
 function _selfcongestionrent_node(s::Snapshot, cname::String, snode::Node, nnode::Node)
     # price difference
-    pricediff = Nosy.dualprice(snode) - Nosy.dualprice(nnode)
+    ps = Nosy.dualprice(snode)
+    pn = Nosy.dualprice(nnode)
+    # dualprice is nothing when nodal prices were not evaluated (e.g. evalprice=false)
+    (isnothing(ps) || isnothing(pn)) && return missing
+    pricediff = ps - pn
 
     # can't use capacity because it can be asymmetric
     # bidirectional flow
@@ -162,6 +168,8 @@ function _selfcongestionrent_price(s::Snapshot, cname::String, node::Node)
         :export => capacity(c, "input", multiplier=true),
     )
     nodeprice = Nosy.dualprice(node)
+    # dualprice is nothing when nodal prices were not evaluated (e.g. evalprice=false)
+    isnothing(nodeprice) && return missing
     return 1/2 * (sum(abs.(dmaxed[:import] .* dcap[:import] .* (dprice[:import] - nodeprice))) + sum(abs.(dmaxed[:export] .* dcap[:export] .* (dprice[:export] - nodeprice))))
 end
 
@@ -208,8 +216,8 @@ function selfcosts(s::Snapshot; removezero::Bool=false, addtotal::Bool=true)
         !(cname in _vselfcompname) && deleteat!(df, df[!,:component] .== cname)
     end
 
-    # add "congestion rent" column
-    df[!,"congestion rent"] = zeros(nrow(df))
+    # add "congestion rent" column (allow missing when dualprice is unavailable)
+    df[!,"congestion rent"] = Vector{Union{Missing,Float64}}(zeros(nrow(df)))
 
     # check imports and exports columns are already present
     if !("imports" in names(df))
@@ -218,7 +226,9 @@ function selfcosts(s::Snapshot; removezero::Bool=false, addtotal::Bool=true)
     if !("exports" in names(df))
         df[!,"exports"] = zeros(nrow(df))
     end
-    
+    df[!,"imports"] = Vector{Union{Missing,Float64}}(df[!,"imports"])
+    df[!,"exports"] = Vector{Union{Missing,Float64}}(df[!,"exports"])
+
     # iterate on node-based IC with neighbors
     # outer loop on foreign nodes, inner loop on components
     for (nname, _) in getnodes(s, with=[:electricity, :foreign])
@@ -244,7 +254,7 @@ function selfcosts(s::Snapshot; removezero::Bool=false, addtotal::Bool=true)
         end
     end
 
-    # add totals
+    # add totals (missing propagates when a self-price revaluation was unavailable)
     if addtotal
         push!(df, LittleDict(:component => "all", (Symbol(cname) => sum(df[!,cname]) for cname in names(df)[2:end])...))
         df[!,:total] = sum(c for c in eachcol(df)[2:end])

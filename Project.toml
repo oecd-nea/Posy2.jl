@@ -14,7 +14,7 @@ OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
 
 [sources]
-Nosy = {rev = "POSY2_refactoring", url = "https://github.com/oecd-nea/Nosy.jl.git"}
+Nosy = {rev = "main", url = "https://github.com/oecd-nea/Nosy.jl.git"}
 
 [compat]
 ArgCheck = "2.5.0"

@@ -1,16 +1,34 @@
 # Dispatchable Generation
 
-This page tours [`makenuclear`](@ref) and [`makedispatchable`](@ref) together:
-capacity expansion under workbook costs, and nuclear fuel reloading under unit
-commitment. Flat 100 MW demand keeps the dispatch readable. Both plants use
-`maxcap` rather than a fixed `cap`, so the optimiser chooses how much to build.
+This page combines [`makenuclear`](@ref) and [`makedispatchable`](@ref) in one
+system to show why nuclear fuel reloading matters for system planning. Unlike
+gas-fired plants, nuclear units need periodic **refuelling** outages (and the
+maintenance that usually accompanies them). Those outages last many consecutive
+hours—often weeks in reality—so the system needs enough dispatchable backup to
+keep supply while the reactor is offline. This example shows why that backup
+capacity matters.
 
-Technology costs and multi-year profiles come from `tech_data.xlsx`
-(`tech_mode=:excel`). Reloading is not active in that workbook by default, so
-the nuclear plant sets `uc=true` with explicit
-`reload_fraction_per_year`, `reload_duration`, and `reloadmask`. Reloading
-needs a full-year mesh. `integeruc=true` keeps commitment on/off so the reload
-window stays sharp.
+Other technologies also have planned outages, but usually for different reasons.
+Coal and CCGT plants schedule maintenance; they do not stop for weeks because
+they need to reload fuel—gas and coal are supplied continuously while the plant
+runs. Wind, solar, and hydro have no refuelling concept at all. POSY2 therefore
+gives nuclear dedicated reload parameters that model this **refuelling
+outage**, rather than a generic maintenance switch shared by every generator.
+
+In POSY2 the outage is mandatory, not an economic choice. The optimiser may
+pick when to reload (subject to `reloadmask`), but not whether to
+reload or how long the required downtime lasts: `reload_fraction_per_year`
+and `reload_duration` fix the obligation. What this example highlights is that
+scheduling decision when the long zero-output window falls and the backup
+capacity needed to cover it.
+
+Flat 100 MW demand keeps the numbers readable. Both plants use `maxcap` rather
+than a fixed `cap`, so the optimiser also chooses how much capacity to build.
+Technology costs come from `tech_data.xlsx` (`tech_mode=:excel`). Reloading is
+not active in that workbook by default, so the nuclear plant sets `uc=true`
+with explicit `reload_fraction_per_year`, `reload_duration`, and `reloadmask`.
+Reloading needs a full-year mesh. `integeruc=true` keeps commitment on/off so
+the outage stays sharp.
 
 ```jldoctest dispatchable_generation; output = false
 using POSY2
@@ -41,9 +59,9 @@ makenuclear(
     unit_size=100.0,
     uc=true,
     integeruc=true,
-    reload_fraction_per_year=1.0,
-    reload_duration=48.0,
-    reloadmask=720,
+    reload_fraction_per_year=1.0,  # ≥1 reload per unit per year
+    reload_duration=720.0,         # each reload lasts 720 h (~30 days)
+    reloadmask=2920,               # reload may start only every 2920 h
     min_power=0.5,
     min_uptime=24.0,
     min_downtime=24.0,
@@ -65,12 +83,12 @@ result = extract(snapshot)
 # output
 
 Snapshot with 3 component(s) and 2 node(s)
-
+    
 ```
 
-The build-out is 100 MW nuclear plus 100 MW CCGT. Nuclear is cheaper for the
-flat year, but the required reload outage needs a second plant while it is
-offline:
+The build-out is 100 MW nuclear plus 100 MW CCGT. Nuclear is cheaper for most
+of the year, but the required reload outage forces a second plant that can
+cover the full 100 MW demand while nuclear is offline:
 
 ```jldoctest dispatchable_generation
 julia> table(result, capacity)
@@ -81,10 +99,24 @@ julia> table(result, capacity)
    1 │        100.0             0.0            100.0
 ```
 
-Allowed reload starts follow `reloadmask`; the optimiser picks which allowed
-window to use. `findfirst(iszero, nuclear)` and `findlast(iszero, nuclear)`
-return the first and last hours of that outage. Slicing a few steps around
-those indices shows the one-hour 50 MW ramp hand-off with the CCGT:
+`reload_duration=720` is the fixed planned downtime (about 30 days)—the
+optimiser cannot shorten it. `reloadmask` only restricts **which hours** may
+start a reload; among those candidates the model chooses the timing that fits
+the year best. The annual picture makes the disruption clear: nuclear runs near
+100 MW for most of the 8760 hours, then drops for a contiguous block of about a
+month while the CCGT takes the flat demand.
+
+![Annual nuclear and CCGT dispatch with a month-long reload outage](../assets/dispatchable-reload-year.svg)
+
+Zooming on the same outage shows the hand-off at each end: a one-hour 50 MW
+ramp (`min_power=0.5`) between nuclear and the CCGT.
+
+![Zoom around the nuclear reload outage](../assets/dispatchable-reload.svg)
+
+`findfirst(iszero, nuclear)` and `findlast(iszero, nuclear)` locate that
+window. The zero-output interval is a little longer than `reload_duration`
+alone because unit-commitment shutdown, minimum-downtime, and startup
+conditions sit around the reload block:
 
 ```jldoctest dispatchable_generation
 julia> nuclear = balance(result, "Nuclear COUNTRY", :output, energy; collapse=false, aggregate=true);
@@ -92,7 +124,7 @@ julia> nuclear = balance(result, "Nuclear COUNTRY", :output, energy; collapse=fa
 julia> ccgt = balance(result, "CCGT COUNTRY", :output, energy; collapse=false, aggregate=true);
 
 julia> i0, i1 = findfirst(iszero, nuclear), findlast(iszero, nuclear)
-(8642, 8700)
+(5842, 6564)
 
 julia> nuclear[i0-2:i0+1]
 4-element Vector{Float64}:
@@ -123,13 +155,12 @@ julia> ccgt[i1-1:i1+2]
    0.0
 
 julia> count(iszero, nuclear)
-59
+723
 ```
 
-Nuclear is offline for 59 hours in that window; the CCGT covers the flat demand
-then. Workbook-derived fixed costs (annualised) scale with the chosen
-capacities. `costs(result)` reports every objective tag; the investment and
-decommissioning columns are the ones that matter here:
+Without the CCGT capacity the system could not meet demand through that
+outage. Workbook-derived fixed costs (annualised) scale with the chosen
+capacities; investment and decommissioning are the columns that matter here:
 
 ```jldoctest dispatchable_generation
 julia> costs(result)[:, [:component, :investment, :decommissioning]]

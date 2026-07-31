@@ -55,7 +55,7 @@ carbon = CO2Carrier("CO2", s)
 grid = Node("grid", power; rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
 atmosphere = Node("CO2", carbon; rule=:curtailed, tags=[:co2])
 
-# Add a flat 100 MW demand: 100 MW × 8760 hours.
+# Add a flat 100 MW demand: 100 MW * 8760 hours.
 makedemand("Load", "grid", grid, snapshot; coeff=0.0, shift=0, yearlyconstant=876_000.0, gridlosses=0.0)
 
 # Add a dispatchable generator with optimisable capacity.

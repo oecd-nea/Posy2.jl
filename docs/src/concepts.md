@@ -16,5 +16,7 @@ high-level component builders, and Nosy's optimisation and querying workflow.
   studies.
 - [Querying a Snapshot](concepts/querying.md): capacities, balances, costs,
   prices, tags, and self-system cost.
+- [Tags and Post-Processing](concepts/tags.md): which tags select which Excel
+  rows and indicators, and the defaults set by builders.
 - [Exporting Results](concepts/exporting.md): standard Excel reporting,
   snapshot serialization, and optimisation-model export.

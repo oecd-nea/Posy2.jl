@@ -231,6 +231,9 @@ getcomponents(
 )
 ```
 
+Which `:function` values appear in which Excel blocks is described in
+[Tags And Post-Processing](tags.md).
+
 ## Interconnections
 
 [`makepriceinterco`](@ref) represents a neighbouring zone through exogenous

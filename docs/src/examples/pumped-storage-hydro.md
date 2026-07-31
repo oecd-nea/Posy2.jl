@@ -4,7 +4,9 @@ Pumped storage has both grid-charging and turbine capacities but no natural
 inflow. Unlike the [Hydro Reservoir](hydro-reservoir.md) pattern, the plant
 can lift water with electricity and generate later.
 [`makehydroreservoir`](@ref) still builds the plant; the difference is a
-positive charging capacity and zero inflow.
+positive charging capacity and zero inflow. The default `TimeMesh()` is
+circular, so the reservoir level wraps from the last hour into the first.
+Year-end and year-start are continuous.
 
 The study pairs flat demand with workbook PV
 ([`makeintermittentsource`](@ref) reading `PV_country1` from

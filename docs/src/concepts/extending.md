@@ -1,7 +1,8 @@
 # Extending POSY2
 
-A POSY2 component builder assembles a Nosy physical model, attaches
-optimisation behaviours, then wraps the result with POSY2 naming and tags so
+This page is about building custom POSY2 component builders on top of the
+**Nosy compositional API**: assemble a Nosy physical model, attach
+optimisation behaviours, then wrap the result with POSY2 naming and tags so
 querying and post-processing recognise it. Existing builders such as
 [`makedispatchable`](@ref) and [`makeelectrolyser`](@ref) are complete examples
 of that pattern—open them once the design steps below are clear.
@@ -52,7 +53,7 @@ families:
 - **Sink** — consumes a carrier through `input` (the demand / load side).
 - **Storage** — carries a `level` state over time, with charge/discharge-style
   ports.
-- **Converter** — transforms one carrier into another (`input` → `output`).
+- **Converter** — transforms one carrier into another (`input` -> `output`).
 
 ### Nosy archetypes
 
@@ -176,30 +177,39 @@ usually added this way before capacity or cost goes on those ports.
 
 ## Builder Template
 
-Fill in the Nosy pieces that match the technology; keep the POSY2 steps.
+The five steps from [Design Flow](#Design-Flow), filled in for a simple
+**load-shifting** example. It reuses the battery `BasicStorage` machine and
+prices the shifting flow (opex) instead of capacity (capex). That approximates
+load shifting via net load; a fixed `Demand` series itself does not move.
+Swap the archetype, behaviours, and tags for other technologies.
 
 ```julia
-function makeXXX(cname::String, node::Node, s::Snapshot)
-    # 1. Physical model — archetype on the node's carrier(s)
-    m = # DispatchableSource / ProfileSource / Demand / ProfileSink /
-        # BasicSink / BasicStorage / LazyStorage / BasicConverter / ...
+function makeloadshifting(cname::String, elec::Node, s::Snapshot;
+    power_cap::Number, duration::Number, shift_cost::Number,
+)
+    # 1. Physical model — BasicStorage: charge / discharge / level
+    #    (same Nosy machine as a battery; eff_i=1 means no round-trip loss)
+    m = BasicStorage(elec.carrier; eff_i=1.0)
 
     # 2. Behaviours — only what this technology needs
     vb = []
-    # push!(vb, FixedCapacity("output", energy, cap))
-    # push!(vb, FixedCost(:investment, "output", energy, inv))
-    # push!(vb, VariableCost(:vom, "output", energy, vom))
+    push!(vb, Duration(duration))                          # energy stock <-> power
+    push!(vb, FixedCapacity("input", energy, power_cap))   # max shifting power
+    # no FixedCost(:investment, ...) — flexibility is not a capex asset here
+    push!(vb, VariableCost(:vom, "input", energy, shift_cost))  # cost on the shifting flow
 
     # 3. Component with the POSY2 name convention
-    c = Component("$cname $(node.name)", m, vb)
+    c = Component("$cname $(elec.name)", m, vb)
 
     # 4. Tags that querying and post-processing rely on
     tag!(c, :tech, cname)
-    tag!(c, :zone, node.name)
-    tag!(c, :function, "generation")  # or storage, demand, ...
+    tag!(c, :zone, elec.name)
+    tag!(c, :function, "demand")        # demand side role
+    tag!(c, :function, "loadshifting")  # custom label for filters / reports
+    tag!(c, :function, "virtual")
 
-    # 5. Register and connect ports to the correct nodes
-    connect!(s, c, node)
+    # 5. Register and connect ports to the correct node
+    connect!(s, c, elec)
     return c
 end
 ```
@@ -227,12 +237,13 @@ snapshot.
 | `:function` | modelling role | Post-processing family (`generation`, `storage`, `demand`, `interconnection`, ...) |
 
 Annual post-processing filters by `:function`, then aggregates by `:tech`.
-Node tags (`:electricity`, `:hydrogen`, `:foreign`) matter for reporting
-filters; see [Querying A Snapshot](querying.md). Workbook parameter columns
-versus the `:tech` reporting label are covered in
-[Component Builders](../components.md).
+The full consequence map (which tag enters which Excel block) is in
+[Tags And Post-Processing](tags.md). Node tags (`:electricity`, `:hydrogen`,
+`:foreign`) also matter for reporting filters; see
+[Querying A Snapshot](querying.md). Workbook parameter columns versus the
+`:tech` reporting label are covered in [Component Builders](../components.md).
 
-> Note: 
+> Note:
 > These are the usual places to look when a custom component solves but does
 > not show up where you expect, or when capacity, balance, or cost queries
 > look off.
@@ -255,4 +266,5 @@ versus the `:tech` reporting label are covered in
 >
 > Related pages: [Component Builders](../components.md), [Building A
 > Snapshot](building-snapshot.md), [Querying A Snapshot](querying.md),
-> [Exporting Results](exporting.md), and the and the [Nosy documentation](https://oecd-nea.github.io/Nosy.jl/dev/).
+> [Tags And Post-Processing](tags.md), [Exporting Results](exporting.md), and
+> the [Nosy documentation](https://oecd-nea.github.io/Nosy.jl/dev/).

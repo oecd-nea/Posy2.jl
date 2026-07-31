@@ -639,4 +639,55 @@ using DataFrames
         POSY2._removezerorows!(df)
         @test df.component == ["B"]
     end
+
+    # No evalprice: dualprice is nothing; earnings and price-received cells are missing.
+    let
+        sim = tsim()
+        snap = Snapshot(sim, posyopts())
+        elec = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, losses=0.0, tags=[:electricity])
+        co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
+        makedemand("Other consumption", "ZONE1", elec, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec, co2, snap; cap=200.0, construction_profile=1.0, decommissioning_profile=1.0)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        @test isnothing(Nosy.dualprice(elec))
+        earn_line = POSY2._dataline_yearly_earnings(s; showforeign=true)
+        price_line = POSY2._dataline_yearly_price_received(s; showforeign=true)
+        @test "CCGT" in names(earn_line.d)
+        zone_earn = first(earn_line.d[earn_line.d.zone .== "ZONE1", :CCGT])
+        zone_price = first(price_line.d[price_line.d.zone .== "ZONE1", :CCGT])
+        @test ismissing(zone_earn)
+        @test ismissing(zone_price)
+        @test ismissing(first(earn_line.d[earn_line.d.zone .== "Total", :CCGT]))
+        @test ismissing(first(price_line.d[price_line.d.zone .== "ZONE1", Symbol("Weighted average")]))
+        @test POSY2._gensnapshotpp(s) isa AbstractDict
+    end
+
+    # No evalprice with foreign IC: selfcosts import/export/rent and aggregated Trade/Physical are missing.
+    let
+        sim = tsim()
+        snap = Snapshot(sim, posyopts())
+        elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, losses=0.0, tags=[:electricity])
+        elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, losses=0.0, tags=[:electricity, :foreign])
+        co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; transactioncost=1.)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        @test isnothing(Nosy.dualprice(elec1))
+        df = POSY2.selfcosts(s)
+        cname = "IC_ZONE1_ZONE2"
+        row = first(df[df[!, :component] .== cname, :])
+        @test ismissing(row.imports)
+        @test ismissing(row.exports)
+        @test ismissing(row[Symbol("congestion rent")])
+        agg = POSY2._dataline_costs_aggregated(s; showforeign=false)
+        @test ismissing(agg.d["Trade"])
+        @test ismissing(agg.d["Physical"])
+        @test POSY2._gensnapshotpp(s) isa AbstractDict
+    end
 end
