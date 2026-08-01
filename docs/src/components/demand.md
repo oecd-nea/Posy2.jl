@@ -89,14 +89,19 @@ carries `generation`, so its discharge appears in production reporting.
 
 ## Demand Response
 
-[`makedemandresponse`](@ref) creates a virtual dispatchable source connected to
-the electricity node. Its `output` represents avoided demand. A numeric `capa`
-adds fixed response capacity; `nothing` leaves the output unconstrained by a
-capacity behaviour.
+[`makedemandresponse`](@ref) represents demand response as negative
+consumption at the electricity node. Its positive `output` is an unconnected
+accounting flow used for capacity, activation cost, and reporting. A linked
+`negative consumption` input equal to
+`-(1 - elec.losses) * output` is connected instead, so the existing consumption
+components remain unchanged while demand response enters the nodal balance
+from the demand side. With zero node losses this is exactly `-output`. A
+numeric `capa` adds fixed response capacity; `nothing` leaves the positive
+output unconstrained by a capacity behaviour.
 
-`cost` is the activation cost. It is multiplied by `1 - elec.losses` so that
-demand response does not itself incur the node's grid losses. `type` selects
-the variable-cost category used by reports and defaults to `:volDR`.
+`cost` is the activation cost per unit of the positive `output` flow and is
+applied directly. `type` selects the variable-cost category used by reports
+and defaults to `:volDR`.
 
 The generated component is named `"$cname $(elec.name)"` and carries the
 `virtual` and `demandresponse` function tags.

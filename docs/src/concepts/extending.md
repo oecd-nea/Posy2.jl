@@ -79,10 +79,10 @@ Port naming follows [Component Builders](../components.md): sources use
 `output` / `level` (`LazyStorage` may add further ports as joint flows);
 linked carrier flows use names such as `fuel`, `co2`, and `grid losses`.
 
-Some POSY2 builders are intentional modelling exceptions. Demand response is
-demand-side flexibility modelled as a `DispatchableSource` rather than a sink;
-interconnections are their own family ([`makenodeinterco`](@ref) uses
-`BasicConverter`, [`makepriceinterco`](@ref) uses `DispatchableSource`).
+Some POSY2 builders compose archetypes with joint flows. Demand response uses
+a zero `Demand` host plus a linked negative input; interconnections are their
+own family ([`makenodeinterco`](@ref) uses `BasicConverter`,
+[`makepriceinterco`](@ref) uses `DispatchableSource`).
 
 | Builder | Archetype | Capacity port(s) | Typical costs on | Typical `:function` |
 |:--------|:----------|:-----------------|:-----------------|:--------------------|
@@ -95,7 +95,7 @@ interconnections are their own family ([`makenodeinterco`](@ref) uses
 | [`makeEV`](@ref) | `Demand` (fixed) or `LazyStorage` (smart / V2G) | mode-dependent | V2G VOM on `output` | `demand` / `ev` / ... |
 | [`makeelectrolyser`](@ref) | `BasicConverter` | `input` | `input` | `electrolysis`, ... |
 | [`makeflathydrogenpurchase`](@ref) | `ProfileSource` | `output` | — | `hydrogen`, `purchase` |
-| [`makedemandresponse`](@ref) | `DispatchableSource` | `output` | `output` | `demandresponse`, `virtual` |
+| [`makedemandresponse`](@ref) | zero `Demand` + linked negative input | `output` (unconnected) | `output` | `demandresponse`, `virtual` |
 
 See [Component Builders](../components.md) for the full catalogue and the exact
 ports each builder connects. For archetype details beyond POSY2 wrappers, see

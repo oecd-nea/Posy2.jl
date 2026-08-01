@@ -5,7 +5,7 @@ using JuMP
 using HiGHS
 
 @testset "Demand components" begin
-    function makesnapshot()
+    function makesnapshot(; losses=0.0)
         sim = Sim(Model(HiGHS.Optimizer))
         set_silent(sim.model)
         opts = Dict(
@@ -18,7 +18,7 @@ using HiGHS
             ),
         )
         snap = Snapshot(sim, opts)
-        elec = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        elec = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=losses, tags=[:electricity])
         h2 = Node("H2", EnergyCarrier("hydrogen", sim), rule=:curtailed, tags=[:hydrogen])
         return snap, elec, h2
     end
@@ -89,5 +89,43 @@ using HiGHS
         c = makedemandresponse("DR", elec, 100.0, 50.0, s)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "DR ZONE1") === c
+    end
+
+    # Demand response keeps a positive output for reporting while connecting
+    # its negative to the demand side of the electricity node.
+    let
+        s, elec, _ = makesnapshot()
+        makedemand("Demand", "ZONE1", elec, s; coeff=1.0)
+        c = makedemandresponse("DR", elec, 100.0, 50.0, s)
+
+        @test Nosy.getcomponent(s, "DR ZONE1") === c
+        @test Nosy.hasport(c, "output")
+        @test Nosy.hasport(c, "negative consumption")
+
+        Nosy.optimize!(s, cost(s))
+        result = extract(s)
+        dr = Nosy.getcomponent(result, "DR ZONE1")
+        output = balance(dr, :output, energy; collapse=true, aggregate=true)
+        inputs = balance(dr, :input, energy; collapse=true, aggregate=false)
+
+        @test isapprox(output, 100.0 * 8760; rtol=1e-12)
+        @test inputs["input"] == 0.0
+        @test isapprox(inputs["negative consumption"], -output; rtol=1e-12)
+        @test isapprox(POSY2.demandresponse(result, "ZONE1"), output; rtol=1e-12)
+        @test isapprox(POSY2.demand(result, "ZONE1"; aggregate=true, collapse=true), 100.0 * 8760; rtol=1e-12)
+    end
+
+    # A 100 MW delivered response requires 125 MW activation when node losses
+    # are 20%, while cost applies to the full positive activation output.
+    let
+        s, elec, _ = makesnapshot(losses=0.2)
+        makedemand("Demand", "ZONE1", elec, s; coeff=1.0)
+        makedemandresponse("DR", elec, 125.0, 50.0, s)
+        Nosy.optimize!(s, cost(s))
+        result = extract(s)
+        output = POSY2.demandresponse(result, "ZONE1")
+
+        @test isapprox(output, 125.0 * 8760; rtol=1e-12)
+        @test isapprox(cost(result), 50.0 * 125.0 * 8760; rtol=1e-12)
     end
 end

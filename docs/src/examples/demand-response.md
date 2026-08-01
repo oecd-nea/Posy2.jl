@@ -1,9 +1,8 @@
 # Demand Response
 
 [`makedemandresponse`](@ref) is a costed, capacity-limited flexibility on the
-demand side. In POSY2 it appears as a virtual dispatchable source: its
-`:output` is avoided demand, not a physical generator. It runs only when that
-is cheaper than the alternatives on the node.
+demand side. Its connected flow is negative consumption. 
+It runs only when that is cheaper than the alternatives on the node.
 
 Daytime PV from [`makeintermittentsource`](@ref) covers the flat 80 MW load
 while the sun is up. At night the residual is shared between demand response

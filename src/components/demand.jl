@@ -306,7 +306,14 @@ end
 """
     makedemandresponse(cname::String, elec::Node, capa::Union{Nothing,Number}, cost::Number, s::Snapshot; type::Symbol=:volDR)
 
-Build, connect and return a demand response component.
+Build, connect and return a demand response component represented as negative
+consumption.
+
+The positive `output` is an unconnected accounting flow used for capacity,
+cost, and reporting. The connected `negative consumption` input is
+`-(1 - elec.losses) * output`; when node losses are zero, it is exactly
+`-output`. Consequently, activation enters the nodal balance on the demand
+side without modifying existing demand components.
 
 Arguments:
   * `cname`: component name prefix.
@@ -317,12 +324,19 @@ Arguments:
   * `type`: variable cost label used for reporting (default `:volDR`).
 """
 function makedemandresponse(cname::String, elec::Node, capa::Union{Nothing,Number}, cost::Number, s::Snapshot; type::Symbol=:volDR)
-    m = DispatchableSource(elec.carrier)
-    vb = []
+    # Demand provides a zero-valued input that anchors this demand-side
+    # component. `output` remains positive for capacity, cost, and reporting,
+    # but is not connected to the electricity node. Only its negative linked
+    # input participates in the nodal balance.
+    m = Demand(elec.carrier, 0.0)
+    vb = Any[
+        FreeJointFlow("output", elec.carrier, :output; mustconnect=false),
+        LinkedJointFlow("negative consumption", elec.carrier, :input, "output", x -> -x[1] * (1 - elec.losses)),
+    ]
     if !isnothing(capa)
         push!(vb, FixedCapacity("output", energy, capa))
     end
-    push!(vb, VariableCost(type, "output", energy, cost * (1-elec.losses))) # do not include demand response in losses
+    push!(vb, VariableCost(type, "output", energy, cost))
 
     c = Component(cname * " " * elec.name, m, vb)
     tag!(c, :tech, cname)

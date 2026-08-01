@@ -94,7 +94,7 @@ extended with Nosy before the snapshot is finalised.
 - [`makeEV`](@ref) supports one of three mutually exclusive modes: fixed
   charging, smart charging, or vehicle-to-grid operation.
 - [`makedemandresponse`](@ref) represents demand response as dispatchable
-  virtual supply with an activation cost.
+  negative consumption with an activation cost.
 
 For fixed-profile EV demand, the off-hour sets and minimum off-hour charging
 ratio define the annual charging shape. Smart charging and vehicle-to-grid
