@@ -1,13 +1,9 @@
 # Battery Storage
 
-Flat demand with workbook PV leaves evenings short of solar.
-[`makebatterystorage`](@ref) shifts surplus daytime energy forward on the same
-electricity node. An oil plant covers hours that the battery cannot reach.
-
-The PV profile is read from `time_series.xlsx` (`PV_country1` in
-`profiles_2019`) through [`makeintermittentsource`](@ref). Storage and oil
-costs stay as argument-mode teaching values (`tech_mode=:arguments`,
-`timeseries_mode=:excel`).
+Flat demand with variable PV leaves evenings short of solar.
+With a battery [`makebatterystorage`](@ref) shifts daytime surplus forward on
+the same electricity node so less oil is needed in the evening. An oil plant
+covers hours the battery cannot reach. Capacities are fixed.
 
 ```jldoctest battery_storage; output = false
 using POSY2
@@ -15,6 +11,7 @@ using Nosy
 using HiGHS
 import JuMP: set_silent
 
+# Simulation and POSY2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
 example_data_dir = joinpath(pkgdir(POSY2), "data")
@@ -26,11 +23,14 @@ snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
     timeseries_mode=:excel,
 )))
 
+# Electricity node and CO2 sink
 electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=:curtailed, tags=[:electricity])
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
+# Flat 50 MW demand so evenings short of solar come from the PV shape alone
 makedemand("Demand", "country1", electricity, snapshot; coeff=0.0, yearlyconstant=50.0 * 8760)
 
+# Fixed 100 MW PV
 makeintermittentsource(
     "Solar", "PV", electricity, co2, snapshot;
     cap=100.0,
@@ -47,6 +47,7 @@ makeintermittentsource(
     co2_emission=0.0,
 )
 
+# Fixed battery: 50 MW charge rating, 85% round-trip, 4 h energy duration
 makebatterystorage(
     "Battery", "Battery", electricity, snapshot;
     capin=50.0,
@@ -62,6 +63,7 @@ makebatterystorage(
     om_var_cost=0.0,
 )
 
+# Fixed 50 MW oil backup for hours storage cannot cover
 makedispatchable(
     "Oil", "Oil", electricity, co2, snapshot;
     cap=50.0,
@@ -78,6 +80,7 @@ makedispatchable(
     unit_size=0.0,
 )
 
+# Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))
 result = extract(snapshot)
 
@@ -87,77 +90,44 @@ Snapshot with 4 component(s) and 1 node(s)
 
 ```
 
-Expected results:
+Annual battery charge (`:input`) and discharge (`:output`) recover the stated
+85% round-trip efficiency. The gap is storage loss. Oil still covers most of the
+year because the battery only shifts a slice of the daytime surplus.
 
 ```jldoctest battery_storage
-julia> charge = balance(result, "Battery country1", :input, energy; collapse=false, aggregate=true);
-
-julia> discharge = balance(result, "Battery country1", :output, energy; collapse=false, aggregate=true);
-
-julia> balance(result, "Battery country1", :input, energy; collapse=true, aggregate=true)
+julia> charge = balance(result, "Battery country1", :input, energy; collapse=true, aggregate=true)
 12021.6263
 
-julia> balance(result, "Battery country1", :output, energy; collapse=true, aggregate=true)
+julia> discharge = balance(result, "Battery country1", :output, energy; collapse=true, aggregate=true)
 10218.382355000003
 
-julia> round(balance(result, "Battery country1", :output, energy; collapse=true, aggregate=true) /
-            balance(result, "Battery country1", :input, energy; collapse=true, aggregate=true); digits=2)
-0.85
-
-julia> maximum(charge), maximum(discharge)
-(38.3065, 49.984)
-
-julia> balance(result, "Oil country1", :output, energy; collapse=true, aggregate=true)
-303143.4761450002
+julia> discharge / charge
+0.8500000000000003
 ```
 
-Annual charge (`:input`) and discharge (`:output`) recover the stated 85%
-round-trip efficiency. Peak charge stays below the 50 MW charger; peak
-discharge nearly fills that rating. Oil still supplies most of the year
-because the battery only shifts a slice of the solar surplus. The storage
-`level` rises while charging and falls while discharging;
-`argmax(level)` marks a peak within that daily shift:
-
-```jldoctest battery_storage
-julia> level = balance(result, "Battery country1", :level, energy; collapse=false, aggregate=true);
-
-julia> peak = argmax(level)
-4073
-
-julia> level[peak-5:peak+5]
-11-element Vector{Float64}:
-  66.8928325
-  99.4533575
- 129.719605
- 152.7203925
- 162.30631
- 162.877425
- 160.2777575
- 137.30159
-  92.07839
-  67.23169
-  67.23169
-
-julia> maximum(level)
-162.877425
-```
-
-The same hourly loop is in the Excel report. Write it with
-[`printsnapshot`](@ref):
+Write the solved result with [`printsnapshot`](@ref) to open the workbook report:
 
 ```jldoctest battery_storage
 julia> printsnapshot(result, "battery-storage.xlsx")
 ```
 
-That creates `results/battery-storage.xlsx`. In the **Time series** sheet, the
-`charging Battery country1`, `discharging Battery country1`, and
-`levelBattery country1` columns (GW / GWh) show the same charge–store–discharge
-pattern as the `balance` queries above. The figure below is one full day around
-the level peak at hour 4073: daytime PV surplus fills the battery, level peaks,
-then evening discharge covers the solar drop before oil takes over again.
+On the `Time series` sheet look at the rows where `Hour` is 4065–4077
+(GW / GWh). Daytime PV surplus charges the battery and the level rises. After
+the level peaks the battery discharges as solar falls. Oil takes over again
+when discharge stops:
 
-![Battery charge, discharge, and level over one day from the printsnapshot Time series sheet](../assets/battery-storage.png)
-
-`duration=4.0` sets energy capacity from the charge rating
-(`capin * duration`). The example is about that charge–store–discharge loop on
-one node, not about sizing a full storage fleet.
+| Hour | Solar country1 | charging Battery country1 | level Battery country1 | discharging Battery country1 | Oil country1 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 4065 | 0.0579648 | 0.0079648 | 0 | 0 | 0 |
+| 4066 | 0.0726536 | 0.0226536 | 0.01301282 | 0 | 0 |
+| 4067 | 0.0829082 | 0.0329082 | 0.036626585 | 0 | 0 |
+| 4068 | 0.0883065 | 0.0383065 | 0.0668928325 | 0 | 0 |
+| 4069 | 0.0883065 | 0.0383065 | 0.0994533575 | 0 | 0 |
+| 4070 | 0.0829082 | 0.0329082 | 0.129719605 | 0 | 0 |
+| 4071 | 0.0712113 | 0.0212113 | 0.1527203925 | 0 | 0 |
+| 4072 | 0.0513438 | 0.0013438 | 0.16230631 | 0 | 0 |
+| 4073 | 0.0376847 | 0 | 0.162877425 | 0 | 0.0123153 |
+| 4074 | 0.0232514 | 0 | 0.1602777575 | 0.005199335 | 0.021549265 |
+| 4075 | 0.009247 | 0 | 0.13730159 | 0.040753 | 0 |
+| 4076 | 0.0003066 | 0 | 0.09207839 | 0.0496934 | 0 |
+| 4077 | 0 | 0 | 0.06723169 | 0 | 0.05 |

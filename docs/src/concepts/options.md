@@ -51,7 +51,7 @@ open the corresponding workbook. The defaults remain `:excel` for backward
 compatibility.
 
 The switches can be mixed. For example, this configuration keeps shared
-technology assumptions in Excel while defining scenario profiles in Julia:
+technology data in a workbook while defining scenario profiles in Julia:
 
 ```julia
 options = POSY2Options(

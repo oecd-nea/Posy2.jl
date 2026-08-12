@@ -143,13 +143,13 @@ Arguments:
   * `techkey`: Technology column name in the `storage` tech data sheet for EV parameters (used in flexible/V2G modes).
   * `compensation`: V2G compensation in USD/MWh applied to EV discharge output in V2G mode (ignored in non-V2G modes).
   * `gridlosses`: Optional proportional grid-loss linked flow on EV input in fixed_profile mode (`0 <= gridlosses < 1`).
-  * `charging_eff`: Optional override for the `charging_eff` row of the `storage` sheet in flexible/V2G modes (`0 < charging_eff <= 1`). If `nothing`, read from Excel.
-  * `self_discharge`: Optional override for the `self_discharge` row of the `storage` sheet in flexible/V2G modes (`0 <= self_discharge < 1`). If `nothing`, read from Excel.
-  * `min_level_morning`: Optional override for the `min_level_morning` row of the `storage` sheet in flexible/V2G modes (`0 <= min_level_morning <= 1`). If `nothing`, read from Excel.
-  * `max_charging_power_per_ev`: Optional override for the `max_charging_power` row of the `storage` sheet in flexible/V2G modes (`> 0`). If `nothing`, read from Excel.
-  * `max_dispatch_power_per_ev`: Optional override for the `max_dispatch_power` row of the `storage` sheet in flexible/V2G modes (`>= 0`). If `nothing`, read from Excel.
-  * `battery_capacity_per_ev`: Optional override for the `battery_capacity` row of the `storage` sheet in flexible/V2G modes (`> 0`). If `nothing`, read from Excel.
-  * `yearly_consumption_per_ev`: Optional override for the `yearly_consumption` row of the `storage` sheet in flexible/V2G modes (`> 0`). If `nothing`, read from Excel.
+  * `charging_eff`: Optional override for the `charging_eff` row of the `storage` sheet in flexible/V2G modes (`0 < charging_eff <= 1`). If `nothing`, read from the technology workbook.
+  * `self_discharge`: Optional override for the `self_discharge` row of the `storage` sheet in flexible/V2G modes (`0 <= self_discharge < 1`). If `nothing`, read from the technology workbook.
+  * `min_level_morning`: Optional override for the `min_level_morning` row of the `storage` sheet in flexible/V2G modes (`0 <= min_level_morning <= 1`). If `nothing`, read from the technology workbook.
+  * `max_charging_power_per_ev`: Optional override for the `max_charging_power` row of the `storage` sheet in flexible/V2G modes (`> 0`). If `nothing`, read from the technology workbook.
+  * `max_dispatch_power_per_ev`: Optional override for the `max_dispatch_power` row of the `storage` sheet in flexible/V2G modes (`>= 0`). If `nothing`, read from the technology workbook.
+  * `battery_capacity_per_ev`: Optional override for the `battery_capacity` row of the `storage` sheet in flexible/V2G modes (`> 0`). If `nothing`, read from the technology workbook.
+  * `yearly_consumption_per_ev`: Optional override for the `yearly_consumption` row of the `storage` sheet in flexible/V2G modes (`> 0`). If `nothing`, read from the technology workbook.
 """
 function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_profile::Bool=true, smart_charging::Bool=false, vehicle_to_grid::Bool=false,
 
@@ -222,7 +222,7 @@ function makeEV(cname::String, yearly::Number, elec::Node, s::Snapshot; fixed_pr
         sd = isnothing(self_discharge) ? gettechparam(s, techkey, "self_discharge", "storage") : self_discharge
         # min level of the average fleet battery at 7am
         min_level_ratio_morning = isnothing(min_level_morning) ? gettechparam(s, techkey, "min_level_morning", "storage") : min_level_morning
-        # assumptions about EV (per vehicle parameters from Excel or overrides)
+        # assumptions about EV (per vehicle parameters from the technology workbook or overrides)
         max_charging_per_ev = isnothing(max_charging_power_per_ev) ? gettechparam(s, techkey, "max_charging_power", "storage") : max_charging_power_per_ev
         max_dispatch_per_ev = isnothing(max_dispatch_power_per_ev) ? gettechparam(s, techkey, "max_dispatch_power", "storage") : max_dispatch_power_per_ev
         battery_cap_per_ev = isnothing(battery_capacity_per_ev) ? gettechparam(s, techkey, "battery_capacity", "storage") : battery_capacity_per_ev

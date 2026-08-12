@@ -202,7 +202,7 @@ using HiGHS
         lev = POSY2.storagelevel(s; aggregate=false)
         @test haskey(char, "charging Battery ZONE1")
         @test haskey(dis, "discharging Battery ZONE1")
-        @test haskey(lev, "levelBattery ZONE1")
+        @test haskey(lev, "level Battery ZONE1")
         @test length(char["charging Battery ZONE1"]) == nh
         collapsed = POSY2.charging(s; aggregate=false, collapse=true)
         hourly = POSY2.charging(s; aggregate=false, collapse=false)

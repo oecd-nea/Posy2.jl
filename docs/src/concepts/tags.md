@@ -2,11 +2,11 @@
 
 POSY2 component builders attach Nosy tags so that reporting code can select
 components without parsing names. Tags do not change the optimisation model.
-They decide **which Excel rows and indicators a component enters** when you
+They decide which report rows and indicators a component enters when you
 call [`printsnapshot`](@ref).
 
-The practical question is always: *what is the consequence of having this
-tag?*
+The practical question is always: what is the consequence of having this
+tag?
 
 ## Tag Kinds
 
@@ -59,8 +59,9 @@ Concrete examples:
   yearly electricity-use rows, not in the generation production table unless
   it also carries `"generation"`.
 
-Missing or wrong tags usually mean a solved component is absent from Excel
-even though balances and costs still look correct in direct Nosy queries.
+Missing or wrong tags usually mean a solved component is absent from the
+workbook report even though balances and costs still look correct in direct
+Nosy queries.
 
 ## Node Tags
 

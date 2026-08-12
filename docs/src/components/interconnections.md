@@ -97,7 +97,7 @@ Node-interconnection losses are recorded once on the component. Annual node
 reports allocate half to each connected node to avoid double counting.
 Directed flow reports use labels of the form `from > to`; price-interconnection
 labels combine the `:neighbor` tag and connected local node, while node links
-derive their endpoints from port carriers. Annual Excel tables include
+derive their endpoints from port carriers. Annual workbook tables include
 interconnection capacity and volume for all links, then AC-only and DC-only
 node-interconnection views (price interconnections appear only in the total
 tables). Hours at NTC (Net Transfer Capacity, the directional transfer limit)

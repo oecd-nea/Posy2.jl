@@ -1,14 +1,16 @@
 # Two Countries
 
-Two electricity regions trade across a [`makenodeinterco`](@ref) link. Country 1
-is CCGT-based with spare cheap capacity. Country 2 is PV- and battery-based,
-with an expensive gas peaker for residual hours. Demand and PV availability
-come from `time_series.xlsx` (`country1` / `country2` demand columns and
-`PV_country2`); technology costs stay as argument-mode teaching values
-(`tech_mode=:arguments`, `timeseries_mode=:excel`).
+Two electricity regions trade across a [`makenodeinterco`](@ref) link:
+
+- Country 1: demand and a large cheap CCGT
+- Country 2: demand, PV, battery, and an expensive gas peaker
+- Interconnection: node link compared without a limit and with a 500 MW limit
 
 The interconnection moves energy from country 1 to country 2 most of the year;
 daytime PV on country 2 can reverse a slice of that flow.
+
+Capacities are fixed and all costs except fuel costs are set to zero, 
+keeping the example focused on dispatch and trade.
 
 ```jldoctest two_countries; output = false
 using POSY2
@@ -16,6 +18,7 @@ using Nosy
 using HiGHS
 import JuMP: set_silent
 
+# Simulation and POSY2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
 example_data_dir = joinpath(pkgdir(POSY2), "data")
@@ -27,13 +30,16 @@ snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
     timeseries_mode=:excel,
 )))
 
+# Electricity nodes for both countries and the CO2 emissions sink
 country1 = Node("country1", EnergyCarrier("electricity country1", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
 country2 = Node("country2", EnergyCarrier("electricity country2", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
+# Hourly electricity demand in both countries
 makedemand("Demand", "country1", country1, snapshot)
 makedemand("Demand", "country2", country2, snapshot)
 
+# Country 1: 1.5 GW low cost CCGT
 makedispatchable(
     "CCGT", "CCGT", country1, co2, snapshot;
     cap=1500.0,
@@ -50,6 +56,7 @@ makedispatchable(
     unit_size=0.0,
 )
 
+# Country 2: 1.2 GW PV
 makeintermittentsource(
     "Solar", "PV", country2, co2, snapshot;
     cap=1200.0,
@@ -66,6 +73,7 @@ makeintermittentsource(
     co2_emission=0.0,
 )
 
+# Country 2: 400 MW, 4 hour duration battery
 makebatterystorage(
     "Battery", "Battery", country2, snapshot;
     capin=400.0,
@@ -81,6 +89,7 @@ makebatterystorage(
     om_var_cost=0.0,
 )
 
+# Country 2: 1 GW Gas
 makedispatchable(
     "Gas", "Gas", country2, co2, snapshot;
     cap=1000.0,
@@ -97,8 +106,10 @@ makedispatchable(
     unit_size=0.0,
 )
 
+# Unlimited bidirectional interconnections
 makenodeinterco("IC", country1, country2, Inf, Inf, snapshot)
 
+# Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))
 result = extract(snapshot)
 
@@ -126,20 +137,17 @@ julia> balance(result, "Gas country2", :output, energy; collapse=true, aggregate
 1.149265248220001e6
 ```
 
-A sample week on country 2 makes the trade-off visible. The figure uses hours
-4141–4308 (about day 173 of the year), chosen so both import-heavy nights and
-daytime reverse export while PV is strong appear in the same week. The top
-panel stacks local plants—PV, then battery discharge, then expensive gas—up to
-the black demand line and fills any shortfall with imports (steel blue), as in
-the price-interconnection example. Local generation that exceeds demand is
-shown above the demand line as hatched yellow export (`2->1`). The lower panel
-shows the same week's net interconnection flow (`input − input2`):
+A sample week on country 2 shows both nights dominated by imports and daytime reverse exports. The upper panel stacks PV, battery discharge, and imports against
+demand. Gas remains off during this week. Supply above demand is used for
+battery charging or reverse exports. The lower panel shows net interconnection
+flow: positive values are imports from country 1, while negative values are
+reverse exports from country 2.
 
-![Country 2 stacked supply and imports to demand, hatched exports above demand, and net interconnection flow over one week](../assets/two-countries-week.svg)
+![Country 2 stacked supply and imports against demand, and net interconnection flow over one week](../assets/two-countries-week.svg)
 
-The annual trade balance is the other half of the story. With
-`aggregate=false`, `input` is country1->country2 and `input2` is the reverse;
-net export from country 1 is their difference:
+To inspect annual trade in each direction, call `balance` with
+`aggregate=false`. For this interconnection, `input` is the flow from country 1
+to country 2 and `input2` is the reverse flow:
 
 ```jldoctest two_countries
 julia> annual_trade = balance(result, "IC_country1_country2", :input, energy; collapse=true, aggregate=false)
@@ -150,29 +158,156 @@ Dict{String, Float64} with 2 entries:
 julia> annual_trade["input"] - annual_trade["input2"]
 5.856596189717646e6
 ```
+Although the flow reverses during some sunny hours, country 1 exports about
+5.86 TWh net over the year.
 
-Country 1's CCGT (1500 MW) covers its own workbook demand and still has spare
-capacity to export. Country 2 meets the rest from PV, battery, imports, and
-only about `1.15e6 MWh` of expensive gas. The link is what lets country 1's
-cheaper plant serve both nodes—and why imports, not gas, usually close the
-gap under demand in the figure.
 
-The lower panel of the same week is that trade as a signed series. Positive
-values are country1->country2 imports into country 2; negative values are
-daytime reverse export while PV is strong.
+## 500 MW transmission limit
 
-```jldoctest two_countries
-julia> hourly_trade = balance(result, "IC_country1_country2", :input, energy; collapse=false, aggregate=false);
+Transfers from country 1 to country 2 exceed 500 MW in the unlimited case. Repeating
+the same study with 500 MW in each direction makes that transfer limit bind.
 
-julia> net = hourly_trade["input"] .- hourly_trade["input2"];
+```jldoctest two_countries; output = false
+using POSY2
+using Nosy
+using HiGHS
+import JuMP: set_silent
 
-julia> maximum(net)
-930.716
+# Simulation and POSY2 input configuration
+sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+set_silent(model(sim))
+example_data_dir = joinpath(pkgdir(POSY2), "data")
+snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
+    data_dir=example_data_dir,
+    techdata_file="tech_data.xlsx",
+    timeseries_file="time_series.xlsx",
+    tech_mode=:arguments,
+    timeseries_mode=:excel,
+)))
 
-julia> minimum(net)
--319.08820000000003
+# Electricity nodes for both countries and the CO2 emissions sink
+country1 = Node("country1", EnergyCarrier("electricity country1", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+country2 = Node("country2", EnergyCarrier("electricity country2", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
+
+# Hourly electricity demand in both countries
+makedemand("Demand", "country1", country1, snapshot)
+makedemand("Demand", "country2", country2, snapshot)
+
+# Country 1: 1.5 GW low cost CCGT
+makedispatchable(
+    "CCGT", "CCGT", country1, co2, snapshot;
+    cap=1500.0,
+    overnight_cost=0.0,
+    om_fixed_cost=0.0,
+    decommissioning=0.0,
+    lifetime=30,
+    construction_profile=1.0,
+    decommissioning_profile=1.0,
+    connection_cost=0.0,
+    om_var_cost=0.0,
+    fuel_cost=47.06,
+    co2_emission=0.0,
+    unit_size=0.0,
+)
+
+# Country 2: 1.2 GW PV
+makeintermittentsource(
+    "Solar", "PV", country2, co2, snapshot;
+    cap=1200.0,
+    weatheryear=2019,
+    overnight_cost=0.0,
+    om_fixed_cost=0.0,
+    decommissioning=0.0,
+    lifetime=25,
+    construction_profile=1.0,
+    decommissioning_profile=1.0,
+    connection_cost=0.0,
+    om_var_cost=0.0,
+    fuel_cost=0.0,
+    co2_emission=0.0,
+)
+
+# Country 2: 400 MW, 4 hour duration battery
+makebatterystorage(
+    "Battery", "Battery", country2, snapshot;
+    capin=400.0,
+    eff=0.85,
+    duration=4.0,
+    overnight_cost=0.0,
+    om_fixed_cost=0.0,
+    decommissioning=0.0,
+    lifetime=10,
+    construction_profile=1.0,
+    decommissioning_profile=1.0,
+    connection_cost=0.0,
+    om_var_cost=0.0,
+)
+
+# Country 2: 1 GW Gas
+makedispatchable(
+    "Gas", "Gas", country2, co2, snapshot;
+    cap=1000.0,
+    overnight_cost=0.0,
+    om_fixed_cost=0.0,
+    decommissioning=0.0,
+    lifetime=30,
+    construction_profile=1.0,
+    decommissioning_profile=1.0,
+    connection_cost=0.0,
+    om_var_cost=0.0,
+    fuel_cost=90.0,
+    co2_emission=0.0,
+    unit_size=0.0,
+)
+
+# Limit transfers to 500 MW in each direction at full availability
+makenodeinterco("IC", country1, country2, 500.0, 500.0, snapshot; atob_availability=1.0, btoa_availability=1.0,)
+
+# Minimise total system cost and extract solved values
+optimize!(snapshot, cost(snapshot))
+result_limited = extract(snapshot)
+
+# output
+
+Snapshot with 7 component(s) and 2 node(s)
+
 ```
 
-A finite directional capacity on `makenodeinterco` would multiply each hour by
-the corresponding `transfer_capacities` column (`country1>country2` or
-`country2>country1`) unless you pass explicit availability multipliers.
+The 500 MW limit prevents country 2 from importing all of the lower-cost
+electricity available from country 1. During hours when the unlimited case
+would import more than 500 MW, the interconnection becomes saturated.
+Country 2 must then run its higher cost gas plant to meet the remaining
+demand. Over the same hours as the unlimited case, this appears as a flat
+500 MW segment in the lower panel and a larger orange gas area in the upper
+panel:
+
+![Country 2 stacked supply and imports under a 500 MW transmission limit, and net interconnection flow over the same week as the unlimited case](../assets/two-countries-week-limited.svg)
+
+The hourly flows confirm that the limit binds:
+
+```jldoctest two_countries
+julia> unlimited_trade = balance(result, "IC_country1_country2", :input, energy; collapse=false, aggregate=false);
+
+julia> limited_trade = balance(result_limited, "IC_country1_country2", :input, energy; collapse=false, aggregate=false);
+
+julia> maximum(unlimited_trade["input"] .- unlimited_trade["input2"])
+930.716
+
+julia> maximum(limited_trade["input"] .- limited_trade["input2"])
+500.0
+```
+
+This congestion raises country 2's annual gas generation from about 1.15 TWh
+to 2.73 TWh:
+
+```jldoctest two_countries
+julia> balance(result, "Gas country2", :output, energy; collapse=true, aggregate=true)
+1.149265248220001e6
+
+julia> balance(result_limited, "Gas country2", :output, energy; collapse=true, aggregate=true)
+2.730122789995005e6
+```
+
+The transmission limit therefore shifts generation from lower cost CCGT in
+country 1 to higher cost gas in country 2.

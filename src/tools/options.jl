@@ -10,7 +10,7 @@ power-flow formulation. Pass the resulting object to a Nosy snapshot as
 
 Fields:
 
-- `data_dir`: directory containing the Excel workbooks.
+- `data_dir`: directory containing the input workbooks.
 - `techdata_file`: technology-parameter workbook filename.
 - `timeseries_file`: hourly time-series workbook filename.
 - `tech_mode`: `:excel` to fill missing technology arguments from the workbook,

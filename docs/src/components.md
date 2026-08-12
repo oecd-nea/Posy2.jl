@@ -26,7 +26,7 @@ nodes, and a snapshot. These names have distinct purposes:
 
 - `cname` is the technology label used in the component name and its `:tech`
   tag. Annual reports group components by this value.
-- `techkey` is an exact **technology column** in the relevant technology
+- `techkey` is an exact technology column in the relevant technology
   workbook sheet. Parameter names occupy rows in the column headed `tech`;
   `techkey` is not a row name.
 - A zone argument selects a column in a time-series sheet. It need not equal a
@@ -130,7 +130,7 @@ distinct carrier names.
 Custom Nosy components are valid in a POSY2 snapshot. To include them in POSY2
 reports, give them compatible tags and conventional port names. The individual
 component pages list the tags created by each builder. For which tags select
-which Excel rows, see [Tags And Post-Processing](concepts/tags.md). For the
+which report rows, see [Tags And Post-Processing](concepts/tags.md). For the
 design sequence when adding a technology—physical model, behaviours, naming,
 tags, and connection—see [Extending POSY2](concepts/extending.md).
 

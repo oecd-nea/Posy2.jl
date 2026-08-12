@@ -4,7 +4,7 @@ using Test
 using JuMP
 using HiGHS
 
-@testset "Argument and Excel input modes" begin
+@testset "Argument and workbook input modes" begin
     function argument_snapshot(; hours=24, tech=:arguments, series=:arguments)
         simulation = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, hours)))
         set_silent(simulation.model)
@@ -107,7 +107,7 @@ using HiGHS
         )
     end
 
-    # The two switches are independent: one source can be Excel and the other arguments.
+    # The two switches are independent: one source can be workbook-backed and the other arguments.
     let
         simulation = Sim(Model(HiGHS.Optimizer))
         set_silent(simulation.model)

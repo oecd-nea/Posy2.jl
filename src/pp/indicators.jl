@@ -140,7 +140,7 @@ function storagelevel(s; aggregate=false)
     dcomps = merge(getcomponents(s, with=[:function => "storage"]), getcomponents(s, with=[:function => "ev"]))
     for (k,v) in dcomps
         if Nosy.hasport(v, "level")
-            d["level" * k] = balance(v, :level, energy, collapse=false, aggregate=true)
+            d["level " * k] = balance(v, :level, energy, collapse=false, aggregate=true)
         end
     end
     aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))

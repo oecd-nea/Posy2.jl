@@ -388,7 +388,7 @@ function _dataline_demandresponse_cap(s; showforeign=true)
     end
     allnode_comps = Dict(nodename => getcomponents(s, nodename, with=[:function => "demandresponse"]) for (nodename, _) in allnodes)
     for (_, d) in allnode_comps
-        # list components connected to this zone (tech tag values, as in Excel sheet)
+        # list components connected to this zone (tech tag values, as in the technology workbook sheet)
         for (_, comp) in d
             cname = only(get(comp.tags, :tech, String[]))
             !(cname in allcomps) && push!(allcomps, cname)

@@ -17,14 +17,14 @@ convenient POSY2 workflow and still extend a study directly with Nosy and JuMP.
 
 - Assemble demand, generation, storage, conversion, and interconnection
   components with consistent naming and tags on top of Nosy.
-- Load technology assumptions and hourly profiles from Excel, or set them
-  from Julia.
+- Load technology assumptions and hourly profiles from input data, or set
+  them from Julia.
 - Run multi-zone capacity expansion and dispatch with price- or node-based
   interconnections and optional DC power flow.
 - Cover power-system features such as unit commitment, demand response,
   electric vehicles, hydrogen, and CO2.
 - Inspect costs, capacities, balances, and prices, then export standard
-  post-processing tables to Excel.
+  post-processing tables to a workbook.
 
 Start with [Getting Started](getting-started.md) for a workbook-free model.
 [Modelling Concepts](concepts.md) explains how POSY2 maps study assumptions to

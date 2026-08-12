@@ -1,28 +1,29 @@
 # Electric Vehicles
 
-[`makeEV`](@ref) can run as a fixed charging shape, smart charging, or
-vehicle-to-grid. Exactly one of `fixed_profile`, `smart_charging`, and
-`vehicle_to_grid` must be `true`. This page shows the two flexible modes side by
-side.
+This example compares smart charging and vehicle-to-grid on the same fleet
+and driving need: how grid charge, discharge, and oil generation change.
 
-In both modes the workbook `EV_driving_profile` is a **fixed** hourly draw: the
-optimiser does not reshape driving. What changes is the grid side. Smart
-charging only chooses when to fill the battery. V2G also chooses when to inject
-power back into the electricity node. In the solved system, charging aligns with
-lower-price hours and discharge with higher-price hours.
+[`makeEV`](@ref) picks that behaviour with exactly one of three flags:
+`fixed_profile`, `smart_charging`, or `vehicle_to_grid`. This page keeps the
+same demand, PV, oil backup, and driving need, and only flips the flag:
+`smart_charging=true` first, then `vehicle_to_grid=true`.
 
-Workbook demand and PV for `country1` set the timing (`timeseries_mode=:excel`).
-Oil and the EV fleet stay as argument-mode teaching values. Charging
-availability also comes from the workbook via `zone="country1"`. Workbook-scale
-assumptions (about 10 kW charge power, 60 kWh battery, 90% efficiency) stay as
-teaching values. The `yearly` argument is the fleet's annual driving energy.
+The setup is:
+
+- country1 demand and 1500 MW of PV
+- a fleet whose annual driving energy is 50,000 MWh
+- oil backup that covers residual load
+
+The driving follows a fixed hourly profile. With smart charging the optimiser only
+chooses when to fill the battery. With V2G it also chooses when to sell power
+back to the node.
 
 ## Smart charging
 
-With `smart_charging=true`, charge hours are free but energy leaves the fleet
-only as driving. The EV `:output` port is that fixed workbook profile on an
-unconnected carrier, not an injection into the electricity node. Stored `level`
-links charge and driving.
+Cars take power from the grid and give it up only as driving. Charge hours are
+free, so the optimiser charges when the dual is low to cover later driving.
+With no grid discharge, annual charge matches annual driving: only the timing
+changes.
 
 ```jldoctest electric_vehicles_smart; output = false
 using POSY2
@@ -30,6 +31,7 @@ using Nosy
 using HiGHS
 import JuMP: set_silent
 
+# Simulation and POSY2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
 example_data_dir = joinpath(pkgdir(POSY2), "data")
@@ -41,11 +43,14 @@ snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
     timeseries_mode=:excel,
 )))
 
-electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=:curtailed, tags=[:electricity])
+# Electricity node (evalprice for dualprice) and CO2 sink
+electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
+# Hourly electricity demand from the time-series workbook
 makedemand("Demand", "country1", electricity, snapshot)
 
+# Fixed 1500 MW PV
 makeintermittentsource(
     "Solar", "PV", electricity, co2, snapshot;
     cap=1500.0,
@@ -62,6 +67,7 @@ makeintermittentsource(
     co2_emission=0.0,
 )
 
+# Smart-charging fleet: 50 000 MWh/year driving; charge only 
 makeEV(
     "EV", 50000.0, electricity, snapshot;
     fixed_profile=false,
@@ -69,13 +75,14 @@ makeEV(
     zone="country1",
     charging_eff=0.9,
     self_discharge=0.0,
-    min_level_morning=0.0,
-    max_charging_power_per_ev=0.01,
-    max_dispatch_power_per_ev=0.0,
-    battery_capacity_per_ev=0.06,
-    yearly_consumption_per_ev=0.02,
+    min_level_morning=0.0,              # fraction of available battery at 7 am
+    max_charging_power_per_ev=0.01,     # MW per vehicle, * fleet size
+    max_dispatch_power_per_ev=0.0,      # unused in smart charging
+    battery_capacity_per_ev=0.06,       # MWh per vehicle, * fleet size
+    yearly_consumption_per_ev=0.02,     # MWh/year per vehicle (sets fleet size)
 )
 
+# Fixed oil backup (continuous UC with startup cost, same plant in both cases)
 makedispatchable(
     "Oil", "Oil", electricity, co2, snapshot;
     cap=1200.0,
@@ -89,9 +96,20 @@ makedispatchable(
     om_var_cost=0.0,
     fuel_cost=68.24,
     co2_emission=0.0,
-    unit_size=0.0,
+    unit_size=100.0,
+    uc=true,
+    startup_cost=6_270.0,
+    no_load_cost=0.0,
+    min_power=0.3,
+    min_uptime=2.0,
+    min_downtime=2.0,
+    startup_duration=1.0,
+    shutdown_duration=1.0,
+    ramp_up=1.0,
+    ramp_down=1.0,
 )
 
+# Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))
 result = extract(snapshot)
 
@@ -101,50 +119,31 @@ Snapshot with 4 component(s) and 1 node(s)
 
 ```
 
-The only `:output` key is `driving`. Annual driving equals `yearly`. In
-smart-charging mode, only the fixed driving output is active. Since the V2G
-output is disabled, `charging_eff` does not affect the annual charge–drive
-balance, so `sum(charge)` equals `sum(driving)`. `level` stores the shift from
-cheap solar hours into later driving:
+Annual driving is the fleet's 50 000 MWh target. Charge totals the same, so
+nothing is sold to the node. Oil still covers residual demand:
 
 ```jldoctest electric_vehicles_smart
-julia> charge = balance(result, "EV country1", :input, energy; collapse=false, aggregate=true);
+julia> driving = balance(result, "EV country1", :output, energy; collapse=true, aggregate=true)
+50000.00000000169
 
-julia> driving = balance(result, "EV country1", :output, energy; collapse=false, aggregate=true);
-
-julia> sort(collect(keys(balance(result, "EV country1", :output, energy; collapse=false, aggregate=false))))
-1-element Vector{String}:
- "driving"
-
-julia> sum(driving)
-50000.000000000015
-
-julia> sum(charge)
-50000.00000000007
-
-julia> maximum(charge)
-459.6835
+julia> charge = balance(result, "EV country1", :input, energy; collapse=true, aggregate=true)
+50000.000000000175
 
 julia> balance(result, "Oil country1", :output, energy; collapse=true, aggregate=true)
-4.674084344000011e6
+4.703344672335719e6
 ```
 
-Oil still covers residual demand on the node; the cars never export power.
-Over two active days the same story shows in time: charging gathers when solar
-is in surplus, the fixed driving profile keeps its shape, and `level` rises
-on the charge pulses then falls as driving draws the stock down.
+Over two days charging lines up with lower duals while the fixed driving
+profile keeps its shape. Nothing is sold back to the node.
 
-![Smart charging: grid charging, driving demand, and battery level over two days](../assets/electric-vehicles-smart.svg)
+![Smart charging: grid charging, dual price, and driving demand over two days](../assets/electric-vehicles-smart.svg)
 
 ## Vehicle-to-grid
 
-The same system with `vehicle_to_grid=true` keeps the **same fixed driving
-profile**, and adds a second `:output` port that injects into the electricity
-node. Discharge is capped by `max_dispatch_power_per_ev` and costs
-`compensation` (USD/MWh). That fee discourages free cycling; discharge remains
-worthwhile when it displaces oil generation. The node uses `evalprice=true` so
-Nosy's `dualprice` can be plotted beside the flows: in the solution, charging
-lines up with lower duals and V2G discharge with higher ones.
+The same fleet keeps the same driving need, and may also inject into the
+electricity node. Discharge adds a `compensation` cost per MWh, so the
+optimiser sells back mainly when the node dual is high enough to cover that
+cost. Charging gathers when the dual is low.
 
 ```jldoctest electric_vehicles_v2g; output = false
 using POSY2
@@ -152,6 +151,7 @@ using Nosy
 using HiGHS
 import JuMP: set_silent
 
+# Simulation and POSY2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
 example_data_dir = joinpath(pkgdir(POSY2), "data")
@@ -163,17 +163,14 @@ snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
     timeseries_mode=:excel,
 )))
 
-electricity = Node(
-    "country1",
-    EnergyCarrier("electricity country1", sim),
-    rule=:curtailed,
-    evalprice=true,
-    tags=[:electricity],
-)
+# Electricity node (evalprice for dualprice) and CO2 sink
+electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
+# Hourly electricity demand from the time-series workbook
 makedemand("Demand", "country1", electricity, snapshot)
 
+# Fixed 1500 MW PV (same as smart-charging case)
 makeintermittentsource(
     "Solar", "PV", electricity, co2, snapshot;
     cap=1500.0,
@@ -190,6 +187,7 @@ makeintermittentsource(
     co2_emission=0.0,
 )
 
+# Same fleet and driving need as smart charging, with grid discharge enabled
 makeEV(
     "EV", 50000.0, electricity, snapshot;
     fixed_profile=false,
@@ -198,14 +196,15 @@ makeEV(
     zone="country1",
     charging_eff=0.9,
     self_discharge=0.0,
-    min_level_morning=0.0,
-    max_charging_power_per_ev=0.01,
-    max_dispatch_power_per_ev=0.01,
-    battery_capacity_per_ev=0.06,
-    yearly_consumption_per_ev=0.02,
-    compensation=20.0,
+    min_level_morning=0.0,              # fraction of available battery at 7 am
+    max_charging_power_per_ev=0.01,     # MW per vehicle, * fleet size
+    max_dispatch_power_per_ev=0.01,     # MW per vehicle V2G rating, * fleet size
+    battery_capacity_per_ev=0.06,       # MWh per vehicle, * fleet size
+    yearly_consumption_per_ev=0.02,     # MWh/year per vehicle (sets fleet size)
+    compensation=20.0,                  # currency/MWh on grid discharge
 )
 
+# Same oil plant as the smart-charging case
 makedispatchable(
     "Oil", "Oil", electricity, co2, snapshot;
     cap=1200.0,
@@ -219,9 +218,20 @@ makedispatchable(
     om_var_cost=0.0,
     fuel_cost=68.24,
     co2_emission=0.0,
-    unit_size=0.0,
+    unit_size=100.0,
+    uc=true,
+    startup_cost=6_270.0,
+    no_load_cost=0.0,
+    min_power=0.3,
+    min_uptime=2.0,
+    min_downtime=2.0,
+    startup_duration=1.0,
+    shutdown_duration=1.0,
+    ramp_up=1.0,
+    ramp_down=1.0,
 )
 
+# Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))
 result = extract(snapshot)
 
@@ -231,62 +241,68 @@ Snapshot with 4 component(s) and 1 node(s)
 
 ```
 
-Driving is still the fixed workbook profile: the fleet keeps the same annual
-driving draw. The new `output` key is grid injection on top of that, so cars
-still drive while the battery also supports the node. The dual price on this
-toy system takes two values: a lower level when surplus solar sets the margin,
-and `68.24` when oil does:
+Driving stays at 50 000 MWh. With V2G the fleet can also sell power back, so
+it cycles like a battery: annual charge rises well above driving, grid
+discharge appears, and oil generation reduces:
 
 ```jldoctest electric_vehicles_v2g
-julia> charge = balance(result, "EV country1", :input, energy; collapse=false, aggregate=true);
+julia> outputs = balance(result, "EV country1", :output, energy; collapse=true, aggregate=false);
 
-julia> outputs = balance(result, "EV country1", :output, energy; collapse=false, aggregate=false);
+julia> driving = outputs["driving"]
+50000.00000000169
 
-julia> driving = outputs["driving"];
+julia> discharge = outputs["output"]
+498812.40140840755
 
-julia> grid = outputs["output"];
-
-julia> price = dualprice(result.nodes["country1"]);
-
-julia> sort(collect(keys(outputs)))
-2-element Vector{String}:
- "driving"
- "output"
-
-julia> sum(driving)
-50000.000000000015
-
-julia> sum(grid)
-260529.24333333326
-
-julia> sum(charge)
-284476.319
-
-julia> round.(extrema(price); digits=2)
-(53.6, 68.24)
+julia> charge = balance(result, "EV country1", :input, energy; collapse=true, aggregate=true)
+498931.1612675679
 
 julia> balance(result, "Oil country1", :output, energy; collapse=true, aggregate=true)
-4.413555100666671e6
+4.389726784859165e6
+
+julia> dualprice(result.nodes["country1"])
+8760-element Nosy.Hourly{Float64}:
+ 68.24
+ 68.24
+ 68.24
+ 68.24
+ 68.24
+ 68.24
+ 68.24
+ 68.24
+ 68.24
+ 68.24
+  ⋮
+ 68.24
+ 68.24
+ 68.24
+ 70.37664864864864
+ 70.37664864864864
+ 70.37664864864864
+ 68.24
+ 68.24
+ 68.24
 ```
 
-Over two days that pattern is visible together: charging gathers when the dual
-is low, V2G discharge appears when the dual equals the oil `fuel_cost`, and
-driving keeps the same fixed shape while `level` tracks both.
+`dualprice` returns that hourly node dual.
 
-![V2G: grid charging, V2G discharge, dual price, driving demand, and battery level over two days](../assets/electric-vehicles-v2g.svg)
+On the same window as above, charge still sits under low duals, but V2G
+discharge appears under high duals when oil is on the margin.
+
+![V2G: grid charging, V2G discharge, dual price, and driving demand over two days](../assets/electric-vehicles-v2g.svg)
 
 ### Comparing the two modes
 
-Same demand, solar, and fixed driving need; only the EV grid mode changes.
-Smart charging has no grid discharge port. V2G adds one, so annual oil falls
-while driving energy stays the same.
+Both runs keep the same country1 demand, 1500 MW of PV, oil backup, and
+50 000 MWh annual driving need. Only the EV mode flag flips from
+`smart_charging=true` to `vehicle_to_grid=true`. Smart charging exposes
+`driving` only. V2G adds a grid `output` (discharge). Driving energy matches in
+both cases. Oil generation reduces under V2G because that discharge can cover
+residual load.
 
 | | Smart | V2G |
 |:---|---:|---:|
 | `:output` ports | `driving` only | `driving` + `output` |
-| Grid discharge (MWh/year) | 0 | 260529 |
-| Oil generation (MWh/year) | 4.674e6 | 4.414e6 |
+| Grid discharge (MWh/year) | 0 | 498812 |
+| Oil generation (MWh/year) | 4.703e6 | 4.390e6 |
 | Driving energy (MWh/year) | 50000 | 50000 |
-
-Fixed-profile mode reuses the same [`makeEV`](@ref) builder with
-`fixed_profile=true` and the off-hour arguments; it is not repeated here.

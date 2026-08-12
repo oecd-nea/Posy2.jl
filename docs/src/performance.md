@@ -22,7 +22,7 @@ end
 ```
 
 POSY2 caches workbook reads using the path, filename, and file modification
-time. Technology sheets are also cached because converting an Excel table to a
+time. Technology sheets are also cached because converting a workbook table to a
 DataFrame can be noticeable in a large build. Keep scenario workbooks unchanged
 while a model is being built; editing a file changes its modification time and
 correctly causes POSY2 to read it again. Supplying explicit builder overrides

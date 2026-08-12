@@ -166,9 +166,9 @@ Investment builders usually set capacity as follows:
 
 Which port that capacity refers to depends on the technology:
 
-- generation uses **output** capacity;
-- batteries and electrolysers use **input** capacity;
-- hydrogen storage uses **level** capacity.
+- generation uses `output` capacity;
+- batteries and electrolysers use `input` capacity;
+- hydrogen storage uses `level` capacity.
 
 Some builders have extra rules (for example how `cap=0` is handled), so check
 the individual API entry when writing shared study code.
@@ -177,7 +177,7 @@ the individual API entry when writing shared study code.
 
 Matching uses POSY2's generated component names. Build the new scenario with
 the same component prefix (`cname`) and node name as in the initial snapshot.
-Prefer an extracted **result** for `ini` over an unsolved snapshot, so the
+Prefer an extracted result for `ini` over an unsolved snapshot, so the
 inherited capacity values are already numeric.
 
 ## Costs And Annualisation
@@ -231,7 +231,7 @@ getcomponents(
 )
 ```
 
-Which `:function` values appear in which Excel blocks is described in
+Which `:function` values appear in which report blocks is described in
 [Tags And Post-Processing](tags.md).
 
 ## Interconnections

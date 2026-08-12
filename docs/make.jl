@@ -60,6 +60,7 @@ makedocs(
             "Price Interconnection" => "examples/price-interconnection.md",
             "DC OPF" => "examples/dc-opf.md",
             "Dispatchable Generation" => "examples/dispatchable-generation.md",
+            "Nuclear" => "examples/nuclear.md",
             "Battery Storage" => "examples/battery-storage.md",
             "Hydro Reservoir" => "examples/hydro-reservoir.md",
             "Pumped Storage" => "examples/pumped-storage-hydro.md",

@@ -1,6 +1,6 @@
 # Modelling Concepts
 
-POSY2 combines a study configuration, Excel or argument-based inputs,
+POSY2 combines a study configuration, workbook or argument-based inputs,
 high-level component builders, and Nosy's optimisation and querying workflow.
 
 - [Study Configuration](concepts/options.md): input paths, economic
@@ -16,7 +16,7 @@ high-level component builders, and Nosy's optimisation and querying workflow.
   studies.
 - [Querying a Snapshot](concepts/querying.md): capacities, balances, costs,
   prices, tags, and self-system cost.
-- [Tags and Post-Processing](concepts/tags.md): which tags select which Excel
+- [Tags and Post-Processing](concepts/tags.md): which tags select which report
   rows and indicators, and the defaults set by builders.
-- [Exporting Results](concepts/exporting.md): standard Excel reporting,
+- [Exporting Results](concepts/exporting.md): standard workbook reporting,
   snapshot serialization, and optimisation-model export.

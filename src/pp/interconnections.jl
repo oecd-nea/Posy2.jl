@@ -16,13 +16,15 @@ end
 # return a Dict of series indicating whether the price interconnection is maxed
 function ispriceicmaxed(c::Component)
     hastag(c, :function, "priceinterconnection") || throw(ArgumentError("expected :function=>\"priceinterconnection\" on $(c.name)"))
-    cin = capacity(c, "input", multiplier=true)
-    cout = capacity(c, "output", multiplier=true)
     bin = balance(c, :input, energy, collapse=false, aggregate=false)["input"]
     bout = balance(c, :output, energy, collapse=false, aggregate=false)["output"]
     d = Dict(
-        :export => isapprox.(cin, bin; atol=1e-6, rtol=0),
-        :import => isapprox.(cout, bout; atol=1e-6, rtol=0)
+        :export => Nosy.hascapacitybehavior(c, "input") ?
+            isapprox.(capacity(c, "input", multiplier=true), bin; atol=1e-6, rtol=0) :
+            falses(length(bin)),
+        :import => Nosy.hascapacitybehavior(c, "output") ?
+            isapprox.(capacity(c, "output", multiplier=true), bout; atol=1e-6, rtol=0) :
+            falses(length(bout)),
     )
     return d
 end
@@ -30,13 +32,15 @@ end
 # return a Dict of series indicating whether the node interconnection is maxed
 function isnodeicmaxed(c::Component)
     hastag(c, :function, "nodeinterconnection") || throw(ArgumentError("expected :function=>\"nodeinterconnection\" on $(c.name)"))
-    cin = capacity(c, "input", multiplier=true)
-    cout = capacity(c, "input2", multiplier=true)
     bin = balance(c, :input, energy, collapse=false, aggregate=false)["input"]
     bout = balance(c, :input, energy, collapse=false, aggregate=false)["input2"]
     d = Dict(
-        :input => isapprox.(cin, bin; atol=1e-6, rtol=0),
-        :input2 => isapprox.(cout, bout; atol=1e-6, rtol=0)
+        :input => Nosy.hascapacitybehavior(c, "input") ?
+            isapprox.(capacity(c, "input", multiplier=true), bin; atol=1e-6, rtol=0) :
+            falses(length(bin)),
+        :input2 => Nosy.hascapacitybehavior(c, "input2") ?
+            isapprox.(capacity(c, "input2", multiplier=true), bout; atol=1e-6, rtol=0) :
+            falses(length(bout)),
     )
     return d
 end

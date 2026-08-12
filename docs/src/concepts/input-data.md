@@ -1,8 +1,8 @@
 # Input Workbooks
 
 POSY2 can read scalar technology assumptions and hourly profiles from two
-Excel workbooks, accept both kinds of input directly through builder keywords,
-or mix those approaches. Technology values and time series are Excel-backed
+input workbooks, accept both kinds of input directly through builder keywords,
+or mix those approaches. Technology values and time series are workbook-backed
 defaults when their corresponding keyword is `nothing` and their input mode is
 `:excel`.
 
@@ -63,8 +63,8 @@ Technology sheets use one row per parameter and one column per technology:
 | `om_var_cost` | `2` | `3` | `0` |
 
 The first column must be named exactly `tech`. Despite that heading, its cells
-are **parameter names**. The `techkey` argument passed to a builder selects a
-technology **column**. For example, `techkey="CCGT"` and
+are parameter names. The `techkey` argument passed to a builder selects a
+technology column. For example, `techkey="CCGT"` and
 `param="overnight_cost"` select the value at row `overnight_cost`, column
 `CCGT`.
 
@@ -115,7 +115,7 @@ Time-series builders use the same rule. Explicit series accept either a real
 number, expanded to all hours, or a vector with exactly
 `Nosy.nhours(sim(snapshot))` finite numeric values. The direct keywords are:
 
-| Builder | Direct Keyword | Excel Fallback |
+| Builder | Direct Keyword | Workbook Fallback |
 |:--------|:---------------|:---------------|
 | [`makedemand`](@ref) | `profile` | `<zone>` in `demand` |
 | [`makeintermittentsource`](@ref) | `profile` | `<techkey>_<node>` in `profiles_<year>` |
@@ -321,7 +321,7 @@ The principal series semantics are:
   reads `b>a`; an infinite direction reads no column.
 - [`makepriceinterco`](@ref) uses both directional transfer series and the
   foreign-zone spot price. Each can be supplied explicitly or read from its
-  Excel fallback. Spot prices and node-interconnection availability
+  workbook fallback. Spot prices and node-interconnection availability
   multipliers are rounded to two decimal places. price-interconnection
   transfer series keep the default six-digit rounding unless overridden.
 
@@ -333,7 +333,7 @@ at read time. Validate such data before a production run.
 Nosy supports custom and heterogeneous meshes, but several POSY2 builders and
 reports currently assume a non-leap year of 8,760 hourly values. Flat annual
 demands divide by 8,760, fixed-profile EVs construct 8,760 entries, nuclear
-reload logic iterates over 8,760 hours, and the Excel report labels 8,760 time
+reload logic iterates over 8,760 hours, and the standard report labels 8,760 time
 rows.
 
 Use 8,760-value workbook columns with Nosy's default

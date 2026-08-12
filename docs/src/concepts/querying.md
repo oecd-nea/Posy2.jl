@@ -145,7 +145,7 @@ solutions.
 
 Price-based interconnections carry an exogenous neighbour price as variable
 import and export costs. These price series are included in POSY2's standard
-Excel post-processing alongside endogenous electricity-node prices.
+workbook post-processing alongside endogenous electricity-node prices.
 
 ## Tags And Filtering
 

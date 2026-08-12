@@ -1,9 +1,9 @@
 # Exporting Results
 
-POSY2 provides a standard Excel report for solved studies. Nosy can also
+POSY2 provides a standard workbook report for solved studies. Nosy can also
 serialize extracted snapshots or write the underlying optimisation model.
 
-## Excel Post-Processing
+## Workbook Post-Processing
 
 [`printsnapshot`](@ref) accepts an extracted `Snapshot{Float64}`:
 

@@ -76,7 +76,7 @@ using DataFrames
         @test dat["Annual values (all)"] isa AbstractVector
     end
 
-    # Excel writer for DataFrame DataLines: missing cells are written as missing, not zero.
+    # Workbook writer for DataFrame DataLines: missing cells are written as missing, not zero.
     let
         df = DataFrame(
             "From \\ To" => ["ZONE1 >", "ZONE2 >"],
@@ -95,7 +95,7 @@ using DataFrames
         end
     end
 
-    # Excel writer for dict DataLines: float values are rounded to three decimals.
+    # Workbook writer for dict DataLines: float values are rounded to three decimals.
     let
         line = POSY2.DataLine("Costs", "B USD", Dict("Physical" => 1.23456, "Trade" => 2.0))
         filepath = joinpath(mktempdir(), "pp_write_dict.xlsx")

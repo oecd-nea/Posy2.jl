@@ -29,7 +29,7 @@ end
 """
     readtechdata(filename="tech_data.xlsx"; data_dir=joinpath(pwd(), "data"))
 
-Open and return the POSY2 technology-parameter Excel workbook at
+Open and return the POSY2 technology-parameter workbook at
 `joinpath(data_dir, filename)`.
 
 The workbook is cached by path, filename, and modification time. If another
@@ -95,7 +95,7 @@ end
     readtimeseries(filename="time_series.xlsx";
         data_dir=joinpath(pwd(), "data"))
 
-Open and return the POSY2 hourly time-series Excel workbook at
+Open and return the POSY2 hourly time-series workbook at
 `joinpath(data_dir, filename)`.
 
 The workbook is cached by path, filename, and modification time. If another
