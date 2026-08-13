@@ -76,7 +76,7 @@ function gettechparam(xl, techkey::String, param::String, sheetname::String, dig
     if ismissing(val) || (val isa AbstractFloat && isnan(val)) ||(val isa AbstractString && isempty(strip(val)))
         throw(ArgumentError("$(tw): empty or missing value for parameter row tech=='$(param)', technology column '$(techkey)'"))
     end
-    if val isa Number
+    if val isa Real
         return round(val, digits=digits)
     else
         return val

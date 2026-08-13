@@ -23,8 +23,8 @@ using HiGHS
         snap = makesnapshot()
         @test discountrate(snap) == 0.05
         @test co2_price(snap) == 50.0
-        @test tech_mode(snap) == :excel
-        @test timeseries_mode(snap) == :excel
+        @test tech_mode(snap) == :arguments
+        @test timeseries_mode(snap) == :arguments
     end
 
     let

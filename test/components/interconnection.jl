@@ -13,6 +13,8 @@ using HiGHS
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
+                tech_mode=:excel,
+                timeseries_mode=:excel,
                 discountrate=0.05,
                 co2_price=50.0,
             ),
@@ -66,6 +68,59 @@ using HiGHS
         @test_throws ArgumentError makenodeinterco("HVDC2", elec1, elec2, Inf, Inf, s; dc=true)
         c_ac = makenodeinterco("AC", elec1, elec2, Inf, Inf, s; dc=false)
         @test Nosy.hastag(c_ac, :function, "AC")
+    end
+
+    # Validation failures occur before component or SOS construction.
+    let
+        s, elec1, elec2 = makesnapshot()
+        model = sim(s).model
+
+        function model_size()
+            return (
+                JuMP.num_variables(model),
+                JuMP.num_constraints(model; count_variable_in_set_constraints=true),
+                length(Nosy.getcomponents(s)),
+            )
+        end
+
+        before = model_size()
+        for lossfactor in (-0.1, 1.0, Inf, NaN)
+            @test_throws ArgumentError makenodeinterco(
+                "Invalid loss", elec1, elec2, Inf, Inf, s;
+                dir=true, lossfactor=lossfactor,
+            )
+            @test model_size() == before
+        end
+
+        @test_throws ArgumentError makenodeinterco(
+            "Self", elec1, elec1, Inf, Inf, s; dir=true,
+        )
+        @test model_size() == before
+
+        @test_throws ArgumentError makenodeinterco(
+            "Invalid B", elec1, elec2, Inf, Inf, s;
+            dir=true, susceptance=1.0,
+        )
+        @test model_size() == before
+
+        makenodeinterco("IC", elec1, elec2, Inf, Inf, s; dc=false)
+        before_duplicate = model_size()
+        @test_throws ArgumentError makenodeinterco(
+            "Parallel", elec1, elec2, Inf, Inf, s; dc=false, dir=true,
+        )
+        @test model_size() == before_duplicate
+
+        @test_throws ArgumentError makenodeinterco(
+            "IC", elec1, elec2, Inf, Inf, s; dc=true, dir=true,
+        )
+        @test model_size() == before_duplicate
+    end
+
+    # Directional SOS construction keeps the second node argument intact.
+    let
+        s, elec1, elec2 = makesnapshot()
+        c = makenodeinterco("Directional", elec1, elec2, Inf, Inf, s; dir=true)
+        @test Nosy.getcomponent(s, "Directional_ZONE1_ZONE2") === c
     end
 
     # Price interconnection succeeds when zone series exist in the fixture.

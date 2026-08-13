@@ -45,6 +45,183 @@ using HiGHS
         decommissioning_profile=1.0,
     )
 
+    @testset "Dispatchable neutral defaults" begin
+        let
+            s, electricity, carbon = argument_snapshot()
+            c = makedispatchable(
+                "Neutral dispatchable", "unused", electricity, carbon, s; cap=10.0,
+            )
+            @test !isnothing(c)
+            capacity_behavior = only(Nosy.getbehaviors(c, Nosy.FixedCapacityBehavior))
+            @test isnothing(capacity_behavior.data.unitsize)
+            @test isempty(Nosy.getbehaviors(c, Nosy.RampingBehavior))
+            @test all(iszero(b.data.val) for b in Nosy.getbehaviors(c, Nosy.FixedCostBehavior))
+            @test all(iszero(b.data.val) for b in Nosy.getbehaviors(c, Nosy.VariableCostBehavior))
+        end
+
+        let
+            s, electricity, carbon = argument_snapshot()
+            fuel = Node("fuel", EnergyCarrier("fuel", sim(s)); rule=:curtailed)
+            @test !isnothing(makedispatchable(
+                "Lossless fuel", "unused", electricity, carbon, s;
+                cap=10.0, fuelnode=fuel,
+            ))
+        end
+
+        let
+            s, electricity, carbon = argument_snapshot()
+            c = makedispatchable(
+                "Neutral UC", "unused", electricity, carbon, s;
+                cap=10.0, unit_size=10.0, uc=true,
+            )
+            @test !isnothing(c)
+            @test !isempty(Nosy.getbehaviors(c, Nosy.AbstractUnitCommitmentBehavior))
+            @test isempty(Nosy.getbehaviors(c, Nosy.RampingBehavior))
+        end
+
+        let
+            s, electricity, carbon = argument_snapshot()
+            err = try
+                makedispatchable(
+                    "UC without units", "unused", electricity, carbon, s;
+                    cap=10.0, unit_size=nothing, uc=true,
+                )
+                nothing
+            catch caught
+                caught
+            end
+            @test err isa ArgumentError
+            @test occursin("unit_size", sprint(showerror, err))
+
+            err = try
+                makedispatchable(
+                    "Ramp without units", "unused", electricity, carbon, s;
+                    cap=10.0, unit_size=nothing, ramp_up=0.5,
+                )
+                nothing
+            catch caught
+                caught
+            end
+            @test err isa ArgumentError
+            @test occursin("unit_size", sprint(showerror, err))
+        end
+
+        let
+            s, electricity, carbon = argument_snapshot()
+            err = try
+                makedispatchable(
+                    "Missing lifetime", "unused", electricity, carbon, s;
+                    cap=10.0, overnight_cost=1_000.0,
+                )
+                nothing
+            catch caught
+                caught
+            end
+            @test err isa ArgumentError
+            @test occursin("lifetime", sprint(showerror, err))
+
+            err = try
+                makedispatchable(
+                    "Missing construction profile", "unused", electricity, carbon, s;
+                    cap=10.0, overnight_cost=1_000.0, lifetime=30,
+                )
+                nothing
+            catch caught
+                caught
+            end
+            @test err isa ArgumentError
+            @test occursin("construction_profile", sprint(showerror, err))
+
+            @test !isnothing(makedispatchable(
+                "No decommissioning", "unused", electricity, carbon, s;
+                cap=10.0, overnight_cost=1_000.0, lifetime=30,
+                construction_profile=1.0,
+            ))
+        end
+
+        let
+            s, electricity, carbon = argument_snapshot()
+            err = try
+                makedispatchable(
+                    "Missing decommissioning profile", "unused", electricity, carbon, s;
+                    cap=10.0, overnight_cost=1_000.0, lifetime=30,
+                    construction_profile=1.0, decommissioning=0.1,
+                )
+                nothing
+            catch caught
+                caught
+            end
+            @test err isa ArgumentError
+            @test occursin("decommissioning_profile", sprint(showerror, err))
+        end
+    end
+
+    @testset "Neutral defaults for remaining builders" begin
+        let
+            s, electricity, carbon = argument_snapshot()
+            hydrogen = Node("H2", EnergyCarrier("hydrogen", sim(s)); rule=:curtailed, tags=[:hydrogen])
+
+            nuclear = makenuclear("Neutral nuclear", "unused", electricity, carbon, s; cap=10.0)
+            battery = makebatterystorage("Neutral battery", "unused", electricity, s; duration=4.0)
+            h2_storage = makehydrogenstorage("Neutral H2 storage", "unused", hydrogen, s)
+            electrolyser = makeelectrolyser("Neutral electrolyser", "unused", electricity, hydrogen, s)
+
+            for component in (nuclear, battery, h2_storage, electrolyser)
+                @test !isnothing(component)
+                @test all(iszero(b.data.val) for b in Nosy.getbehaviors(component, Nosy.FixedCostBehavior))
+                @test all(iszero(b.data.val) for b in Nosy.getbehaviors(component, Nosy.VariableCostBehavior))
+            end
+        end
+
+        let
+            s, electricity, _ = argument_snapshot()
+            ev = makeEV(
+                "Neutral EV", 2_400.0, electricity, s;
+                fixed_profile=false, smart_charging=true,
+                driving_profile=collect(1.0:24.0),
+                max_charging_power_per_ev=0.01,
+                battery_capacity_per_ev=0.06,
+                yearly_consumption_per_ev=2.4,
+            )
+            @test !isnothing(ev)
+        end
+
+        let
+            s, electricity, _ = argument_snapshot()
+            @test !isnothing(makepriceinterco("inactive", electricity, 0.0, 0.0, s))
+        end
+
+        let
+            s, electricity, _ = argument_snapshot()
+            @test !isnothing(makepriceinterco(
+                "active", electricity, 10.0, 0.0, s; spot_price=50.0,
+            ))
+        end
+
+        let
+            s, electricity, _ = argument_snapshot()
+            @test_throws ArgumentError makepriceinterco("active", electricity, 10.0, 0.0, s)
+        end
+
+        let
+            s, electricity, _ = argument_snapshot()
+            other = Node(
+                "country2", EnergyCarrier("electricity country2", sim(s));
+                rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity],
+            )
+            @test !isnothing(makenodeinterco("Inactive", electricity, other, 0.0, 0.0, s))
+        end
+
+        let
+            s, electricity, _ = argument_snapshot()
+            other = Node(
+                "country2", EnergyCarrier("electricity country2", sim(s));
+                rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity],
+            )
+            @test !isnothing(makenodeinterco("Active", electricity, other, 10.0, 0.0, s))
+        end
+    end
+
     # Every profile-backed builder can now run without either workbook.
     let
         s, electricity, carbon = argument_snapshot()
@@ -69,7 +246,7 @@ using HiGHS
             fixed_profile=false, smart_charging=true,
             charging_availability=fill(0.75, 24), driving_profile=collect(1.0:24.0),
             charging_eff=0.9, self_discharge=0.0, min_level_morning=0.2,
-            max_charging_power_per_ev=0.01, max_dispatch_power_per_ev=0.0,
+            max_charging_power_per_ev=0.01,
             battery_capacity_per_ev=0.06, yearly_consumption_per_ev=2.4,
         ))
     end
@@ -102,9 +279,9 @@ using HiGHS
             "Demand nonfinite", "unused", electricity, s;
             profile=vcat(fill(1.0, 23), Inf),
         )
-        @test_throws ArgumentError makeintermittentsource(
+        @test !isnothing(makeintermittentsource(
             "Solar", "unused", electricity, carbon, s; cap=80.0, profile=0.42,
-        )
+        ))
     end
 
     # The two switches are independent: one source can be workbook-backed and the other arguments.

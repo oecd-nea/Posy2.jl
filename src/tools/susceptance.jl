@@ -16,7 +16,7 @@ function _ic_susceptance_registry(s::Snapshot)
 end
 
 # Internal: only called from `makenodeinterco`.
-function _register_ic_susceptance!(s::Snapshot, from::String, to::String, bij::Number)
+function _register_ic_susceptance!(s::Snapshot, from::String, to::String, bij::Real)
     @argcheck bij < 0 "susceptance must be negative"
     _ic_susceptance_registry(s)[(from, to)] = Float64(bij)
     return nothing

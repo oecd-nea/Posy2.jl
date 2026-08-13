@@ -6,10 +6,10 @@ Generate conversion components.
     makeelectrolyser(cname::String, techkey::String, elec::Node, h2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
         gridlosses=0.,
-        eff::Union{Nothing,Number}=nothing,
-        overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
-        decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
-        om_var_cost::Union{Nothing,Number}=nothing,
+        eff::Union{Nothing,Real}=nothing,
+        overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
+        decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
+        om_var_cost::Union{Nothing,Real}=nothing,
     )
 
 Build, connect and return an electrolyser component.
@@ -39,22 +39,60 @@ Arguments:
 """
 function makeelectrolyser(cname::String, techkey::String, elec::Node, h2::Node, s::Snapshot;
     # capacity / expansion
-    cap=nothing, mincap=nothing, maxcap=nothing, ini::Union{Nothing,Snapshot}=nothing, gridlosses=0.,
+    cap::Union{Nothing,Real}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    ini::Union{Nothing,Snapshot}=nothing, gridlosses::Real=0.,
 
     # technical overrides
-    eff::Union{Nothing,Number}=nothing,
+    eff::Union{Nothing,Real}=nothing,
 
     # economic overrides
-    overnight_cost::Union{Nothing,Number}=nothing, om_fixed_cost::Union{Nothing,Number}=nothing,
-    decommissioning::Union{Nothing,Number}=nothing, lifetime::Union{Nothing,Number}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
-    om_var_cost::Union{Nothing,Number}=nothing,
+    overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
+    decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
+    om_var_cost::Union{Nothing,Real}=nothing,
 )
-    _eff = isnothing(eff) ? gettechparam(s, techkey, "efficiency", "electrolysis") : eff
-    _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "electrolysis") : overnight_cost
-    _lt_raw = isnothing(lifetime) ? gettechparam(s, techkey, "lifetime", "electrolysis") : lifetime
-    _decom = isnothing(decommissioning) ? gettechparam(s, techkey, "decommissioning", "electrolysis") : decommissioning
-    _fom = isnothing(om_fixed_cost) ? gettechparam(s, techkey, "om_fixed_cost", "electrolysis") : om_fixed_cost
-    _vom = isnothing(om_var_cost) ? gettechparam(s, techkey, "om_var_cost", "electrolysis") : om_var_cost
+    excel = tech_mode(s) === :excel
+    if excel
+        _eff = isnothing(eff) ? gettechparam(s, techkey, "efficiency", "electrolysis") : eff
+        _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "electrolysis") : overnight_cost
+        _decom = isnothing(decommissioning) ? gettechparam(s, techkey, "decommissioning", "electrolysis") : decommissioning
+        _fom = isnothing(om_fixed_cost) ? gettechparam(s, techkey, "om_fixed_cost", "electrolysis") : om_fixed_cost
+        _vom = isnothing(om_var_cost) ? gettechparam(s, techkey, "om_var_cost", "electrolysis") : om_var_cost
+    else
+        _eff = something(eff, 1.0)
+        _oc_raw = something(overnight_cost, 0.0)
+        _decom = something(decommissioning, 0.0)
+        _fom = something(om_fixed_cost, 0.0)
+        _vom = something(om_var_cost, 0.0)
+    end
+
+    _lt_raw = lifetime
+    _cp = nothing
+    if !iszero(_oc_raw)
+        if isnothing(_lt_raw)
+            _lt_raw = excel ? gettechparam(s, techkey, "lifetime", "electrolysis") : throw(ArgumentError(
+                "`lifetime` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
+            ))
+        end
+        _cp = if isnothing(construction_profile)
+            excel ? gettechparam(s, techkey, "construction_profile", "electrolysis") : throw(ArgumentError(
+                "`construction_profile` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
+            ))
+        else
+            construction_profile
+        end
+    end
+
+    _dcp = nothing
+    if !iszero(_oc_raw) && !iszero(_decom)
+        _dcp = if isnothing(decommissioning_profile)
+            excel ? gettechparam(s, techkey, "decommissioning_profile", "electrolysis") : throw(ArgumentError(
+                "`decommissioning_profile` must be supplied when overnight_cost and decommissioning are non-zero and tech_mode=:arguments",
+            ))
+        else
+            decommissioning_profile
+        end
+    end
+
     inputs = component_input(
         gridlosses=gridlosses, efficiency=_eff, overnight_cost=_oc_raw, lifetime=_lt_raw,
         decommissioning=_decom, om_fixed_cost=_fom, om_var_cost=_vom,
@@ -65,16 +103,17 @@ function makeelectrolyser(cname::String, techkey::String, elec::Node, h2::Node, 
     _eff = Float64(_eff)
     m = BasicConverter(elec.carrier, h2.carrier, ratio=_eff)
     vb = []
-    _oc = _oc_raw * 1000.
-    _lt = Int(_lt_raw)
-    _cp = isnothing(construction_profile) ? gettechparam(s, techkey, "construction_profile", "electrolysis") : construction_profile
-    _dcp = isnothing(decommissioning_profile) ? gettechparam(s, techkey, "decommissioning_profile", "electrolysis") : decommissioning_profile
-    _inv = eac(_oc, discountrate(s), _lt, _cp)
+    _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discountrate(s), Int(_lt_raw), _cp)
+    _decom_cost = if iszero(_oc_raw) || iszero(_decom)
+        0.0
+    else
+        decom_cost(_oc_raw * 1000.0, _decom, Int(_lt_raw), discountrate(s), _dcp)
+    end
     push!(vb, FixedCost(:investment, "input", energy, _inv))
-    push!(vb, FixedCost(:decommissioning, "input", energy, decom_cost(_oc, _decom, _lt, discountrate(s), _dcp)))
+    push!(vb, FixedCost(:decommissioning, "input", energy, _decom_cost))
     push!(vb, FixedCost(:fom, "input", energy, _fom * 1000.))
     push!(vb, VariableCost(:vom, "input", energy, _vom))
-    if cap isa Number
+    if cap isa Real
         push!(vb, FixedCapacity("input", energy, cap))
     elseif isnothing(cap)
         if isnothing(ini)

@@ -3,7 +3,7 @@ Hydrogen supply and related helpers.
 """
 
 """
-    makeflathydrogenpurchase(cname::String, n::Node, val::Number, s::Snapshot)
+    makeflathydrogenpurchase(cname::String, n::Node, val::Real, s::Snapshot)
 
 Build, connect and return a flat hydrogen purchase component.
 
@@ -13,7 +13,8 @@ Arguments:
   * `val`: yearly purchased hydrogen amount, converted internally to a flat hourly capacity (`val / 8760`).
   * `s`: snapshot to register the component in.
 """
-function makeflathydrogenpurchase(cname::String, n::Node, val::Number, s::Snapshot)
+function makeflathydrogenpurchase(cname::String, n::Node, val::Real, s::Snapshot)
+    val >= 0 || throw(ArgumentError("val must be >= 0"))
     m = ProfileSource(n.carrier, 1.)
     vb = []
     push!(vb, FixedCapacity("output", energy, val/8760))

@@ -15,10 +15,14 @@ capacity, port, and tagging conventions.
 investment, connection, fixed O&M, decommissioning, variable O&M, and direct
 fuel costs are attached there.
 
-The common technical and economic defaults come from the technology column
-named by `techkey` in sheet `dispatchable`. A numeric `cap` fixes output capacity; `nothing`
-creates a capacity decision bounded by `mincap` and `maxcap`. This builder has
-one special convention: `cap=0` omits the component and returns `nothing`.
+In `tech_mode=:excel`, common technical and economic defaults come from the
+technology column named by `techkey` in sheet `dispatchable`. In
+`tech_mode=:arguments`, additive costs and emissions default to zero, linked
+fuel defaults to lossless efficiency, and unit sizing and ramping default to
+disabled. Capital lifetime and profiles are required only when their associated
+cost is active. A numeric `cap` fixes output capacity; `nothing` creates a
+capacity decision bounded by `mincap` and `maxcap`. This builder has one special
+convention: `cap=0` omits the component and returns `nothing`.
 `capacitymultiplier` can impose a time-varying availability on output.
 
 If `fuelnode` is absent, `fuel_cost` is a variable cost on electricity output.
@@ -47,8 +51,13 @@ Unit commitment may include planned fuel-reload outages. Reloading is active
 only when `uc=true`, `reload_fraction_per_year` is positive, and
 `reload_duration` is positive. In that case `reloadmask` must be a positive
 integer interval supplied by the caller. `startupmask` and `shutdownmask` can
-further restrict transitions. Reload fraction and duration default to the
-`dispatchable` technology column; `reloadmask` has no workbook default.
+further restrict transitions. In `:excel` mode, reload fraction and duration
+default to the `dispatchable` technology column. In `:arguments` mode they
+default to zero, disabling reload outages; `reloadmask` has no workbook default
+and is needed only when positive reload fraction and duration activate the
+feature. Economic terms and emissions also default to zero in `:arguments`
+mode, and a positive `unit_size` is required only for unit commitment or
+integer capacity expansion.
 
 The specialised reload constraints distinguish the technology names
 `Nuclear`, `Nuclear flexible`, and `SMR`. They also assume an 8,760-hour model
@@ -65,14 +74,14 @@ from sheet `profiles_<weatheryear>`, column
 `<techkey>_<electricity-node-name>`. The profile multiplies the `output` capacity.
 
 `cap` fixes capacity; `nothing` creates a decision bounded by `mincap` and
-`maxcap`; and `ini` inherits the named component's capacity. Technical and cost
-defaults come from the technology column named by `techkey` in sheet `intermittent`.
+`maxcap`; and `ini` inherits the named component's capacity. In `:excel` mode,
+technical and cost defaults come from the technology column named by `techkey`
+in sheet `intermittent`. In `:arguments` mode, costs and emissions default to
+zero and inactive capital data are not required. The production profile
+remains structural whenever capacity is active.
 Non-zero emissions create the same linked CO2 flow as for dispatchable
-generation.
-
-The component is tagged `generation`, `intermittent`, and `carbonfree`.
-Because the last tag is assigned by the builder, use this constructor only when
-that classification is appropriate for the study.
+generation. The component is tagged `generation` and `intermittent`; it also
+receives `carbonfree` when `co2_emission` is zero.
 
 ## Run-of-river Hydro
 
@@ -81,9 +90,11 @@ that classification is appropriate for the study.
 because the builder divides the inflow by capacity to form a profile. It then
 multiplies that profile by `intake_mult` and caps it at one.
 
-Cost defaults come from the technology column named by `techkey` in sheet
-`intermittent`; the default column name is `Hydro ror`. Capacity is fixed, not
-optimisable. The component is tagged `generation`, `intermittent`, and
+In `:excel` mode, cost defaults come from the technology column named by
+`techkey` in sheet `intermittent`; the default column name is `Hydro ror`. In
+`:arguments` mode costs default to zero and inactive capital data are not
+required. Capacity and the inflow profile remain structural. Capacity is fixed,
+not optimisable. The component is tagged `generation`, `intermittent`, and
 `carbonfree`.
 
 ## API Entries

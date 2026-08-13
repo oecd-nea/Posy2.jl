@@ -1017,7 +1017,7 @@ function _dataline_ic_hours_at_ntc(s; kind::Symbol=:either)
             cap = capacity(c, port, multiplier=true)
             m = falses(length(flow))
             for t in eachindex(flow)
-                cap_t = cap isa Number ? cap : cap[t]
+                cap_t = cap isa Real ? cap : cap[t]
                 m[t] = cap_t > 0 && isapprox(cap_t, flow[t]; atol=1e-6, rtol=0)
             end
             key = (row_zone, col_zone)
@@ -1095,7 +1095,7 @@ function _dataline_ic_vol_detailed(s; kind::Symbol=:all)
     df = _ic_vol_detailed(s, addtotal=true, kind=kind)
 
     # divide the values by 1E6 (MWh -> TWh)
-    df = (x -> x isa Number ? x / 1E6 : x).(df)
+    df = (x -> x isa Real ? x / 1E6 : x).(df)
 
     title = kind === :all ? "Interconnection volume" : "Interconnection volume ($kind)"
     return DataLine(
@@ -1179,7 +1179,7 @@ function _dataline_capacityfactors(s; showforeign=true)
     push!(df, _lastrow)
 
     # replace NaN with empty string
-    df = (x->(x isa Number && isnan(x)) ? "" : x).(df)
+    df = (x->(x isa Real && isnan(x)) ? "" : x).(df)
 
     return DataLine(
         "Power plants capacity factors",
@@ -1208,7 +1208,7 @@ function _dataline_electrolysers_capacityfactors(s; showforeign=true)
     push!(df, _lastrow)
 
     # replace NaN with empty string
-    df = (x->(x isa Number && isnan(x)) ? "" : x).(df)
+    df = (x->(x isa Real && isnan(x)) ? "" : x).(df)
 
     return DataLine(
         "Electrolysers capacity factors",
@@ -1534,7 +1534,7 @@ function _dataline_lcoe(s; showforeign=true)
     push!(df, _lastrow)
 
     # replace NaN with empty string
-    df = (x->(x isa Number && isnan(x)) ? "" : x).(df)
+    df = (x->(x isa Real && isnan(x)) ? "" : x).(df)
 
     return DataLine(
         "Power plants LCOE",

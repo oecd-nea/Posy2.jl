@@ -13,6 +13,8 @@ using HiGHS
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
+                tech_mode=:excel,
+                timeseries_mode=:excel,
                 discountrate=0.05,
                 co2_price=50.0,
             ),
@@ -31,6 +33,13 @@ using HiGHS
             eff=0.9, duration=0.0,
             overnight_cost=1000.0, lifetime=20, construction_profile=1.0, decommissioning_profile=1.0,
         )
+    end
+
+    # Storage capacity inputs reject non-real numeric values at the API boundary.
+    let
+        s, elec, h2 = makesnapshot()
+        @test_throws TypeError makebatterystorage("Battery", "Battery", elec, s; capin=1 + im)
+        @test_throws TypeError makehydrogenstorage("H2 Storage", "Hydrogen storage", h2, s; cap=1 + im)
     end
 
     # A valid battery input should create and register the component.
@@ -65,5 +74,37 @@ using HiGHS
         )
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "Hydro reservoir ZONE1") === c
+    end
+
+    # A missing reservoir level capacity explicitly means unlimited storage.
+    let
+        s, elec, _ = makesnapshot()
+        c = makehydroreservoir(
+            "Unlimited reservoir", "Battery", "ZONE1", elec,
+            100.0, 0.0, nothing, nothing, s;
+            inflow_profile=1.0, gridlosses=0.0, eff=0.9,
+            overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=1.0,
+            decommissioning=0.1, lifetime=30.0,
+            construction_profile=1.0, decommissioning_profile=1.0,
+        )
+        level_capacities = filter(
+            b -> b.data.pname == "level",
+            Nosy.getbehaviors(c, Nosy.FixedCapacityBehavior),
+        )
+        @test isempty(level_capacities)
+    end
+
+    # A zero-sum inflow profile cannot be normalized.
+    let
+        s, elec, _ = makesnapshot()
+        @test_throws ArgumentError makehydroreservoir(
+            "Zero inflow reservoir", "Battery", "ZONE1", elec,
+            100.0, 0.0, 500.0, 1_000.0, s;
+            renormalize=true, inflow_profile=0.0,
+            gridlosses=0.0, eff=0.9,
+            overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=1.0,
+            decommissioning=0.1, lifetime=30.0,
+            construction_profile=1.0, decommissioning_profile=1.0,
+        )
     end
 end

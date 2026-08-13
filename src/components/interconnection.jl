@@ -3,9 +3,9 @@ Generate interconnection components.
 """
 
 """
-    makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, s::Snapshot;
+    makepriceinterco(zone::String, elec::Node, mcap::Real, xcap::Real, s::Snapshot;
         dir::Bool=false, foreign::Bool=true,
-        transactioncost::Number=0.,
+        transactioncost::Real=0.,
         spot_price=nothing, import_availability=nothing, export_availability=nothing,
     )
 
@@ -26,40 +26,55 @@ Arguments:
   * `spot_price`: Hourly foreign spot-price vector or scalar.
   * `import_availability`: Hourly multiplier for the foreign-to-local direction.
   * `export_availability`: Hourly multiplier for the local-to-foreign direction.
-    Each series falls back to its workbook column when `nothing`.
+    Availability is resolved only for nonzero-capacity directions. When omitted,
+    it comes from the workbook in `:excel` mode and defaults to one in
+    `:arguments` mode. `spot_price` is required whenever either direction has
+    nonzero capacity.
 """
-function makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, s::Snapshot;
+function makepriceinterco(zone::String, elec::Node, mcap::Real, xcap::Real, s::Snapshot;
     # operation flags
     dir::Bool=false, foreign::Bool=true,
 
     # economic controls
-    transactioncost::Number=0.,
+    transactioncost::Real=0.,
     spot_price=nothing, import_availability=nothing, export_availability=nothing,
 )
     vb = []
-    _imports = _resolve_timeseries(
-        s, import_availability, zone * ">" * elec.name, "transfer_capacities";
-        keyword="import_availability",
-    )
-    _exports = _resolve_timeseries(
-        s, export_availability, elec.name * ">" * zone, "transfer_capacities";
-        keyword="export_availability",
-    )
-    _spot = _resolve_timeseries(
-        s, spot_price, zone, "spot_price"; keyword="spot_price", digits=2,
-    )
+    imports_active = !iszero(mcap)
+    exports_active = !iszero(xcap)
+    _imports = if imports_active
+        input = isnothing(import_availability) && timeseries_mode(s) === :arguments ? 1.0 : import_availability
+        _resolve_timeseries(
+            s, input, zone * ">" * elec.name, "transfer_capacities";
+            keyword="import_availability",
+        )
+    end
+    _exports = if exports_active
+        input = isnothing(export_availability) && timeseries_mode(s) === :arguments ? 1.0 : export_availability
+        _resolve_timeseries(
+            s, input, elec.name * ">" * zone, "transfer_capacities";
+            keyword="export_availability",
+        )
+    end
+    _spot = if imports_active || exports_active
+        _resolve_timeseries(
+            s, spot_price, zone, "spot_price"; keyword="spot_price", digits=2,
+        )
+    else
+        0.0
+    end
 
     # imports
     m = DispatchableSource(elec.carrier)
     push!(vb, FixedCapacity("output", energy, mcap))
-    push!(vb, Nosy.CapacityMultiplier("output", _imports))
+    imports_active && push!(vb, Nosy.CapacityMultiplier("output", _imports))
     push!(vb, VariableCost(:imports, "output", energy, _spot))
     push!(vb, VariableCost(:transaction, "output", energy, Float64(transactioncost)))
 
     # exports
     push!(vb, FreeJointFlow("input", elec.carrier, :input))
     push!(vb, FixedCapacity("input", energy, xcap))
-    push!(vb, Nosy.CapacityMultiplier("input", _exports))
+    exports_active && push!(vb, Nosy.CapacityMultiplier("input", _exports))
     push!(vb, VariableCost(:exports, "input", energy, -1 .* _spot))
     push!(vb, VariableCost(:transaction, "input", energy, Float64(transactioncost)))
 
@@ -87,10 +102,10 @@ function makepriceinterco(zone::String, elec::Node, mcap::Number, xcap::Number, 
 end
 
 """
-    makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Number, s::Snapshot;
+    makenodeinterco(cname::String, a::Node, b::Node, atob::Real, btoa::Real, s::Snapshot;
         dir::Bool=false, foreign::Bool=false, dc::Bool=false,
-        transactioncost::Number=0., lossfactor::Number=0.,
-        susceptance::Union{Nothing,Number}=nothing,
+        transactioncost::Real=0., lossfactor::Real=0.,
+        susceptance::Union{Nothing,Real}=nothing,
         atob_availability=nothing, btoa_availability=nothing,
     )
 
@@ -99,7 +114,8 @@ Build, connect and return an interconnection component linking two nodes.
 Arguments:
   * `cname`: interconnector name prefix.
   * `a`: first node linked by the interconnector.
-  * `b`: second node linked by the interconnector.
+  * `b`: distinct second node linked by the interconnector; self-connections
+    are rejected before model construction.
   * `atob`: directional capacity for `a -> b` (`Inf` disables capacity limit).
   * `btoa`: directional capacity for `b -> a` (`Inf` disables capacity limit).
   * `s`: snapshot to register the component in.
@@ -110,27 +126,58 @@ Arguments:
 
   * `transactioncost`: per unit transaction adder on each finite-capacity
     direction.
-  * `lossfactor`: proportional losses applied on conversion.
+  * `lossfactor`: proportional losses applied on conversion; must be finite and
+    satisfy `0 <= lossfactor < 1`.
   * `susceptance`: AC susceptance for DC power flow (must be negative); stored in
     `Snapshot.options[:ic_susceptance]` (required for KVL when `Posy2Options.dcopf` is true).
   * `atob_availability`: Hourly `a -> b` multiplier vector or scalar.
   * `btoa_availability`: Hourly `b -> a` multiplier vector or scalar. A finite
-    direction falls back to its workbook column when the keyword is `nothing`.
+    nonzero direction reads its workbook column in `:excel` mode when omitted,
+    and defaults to one in `:arguments` mode. Zero- and infinite-capacity
+    directions do not resolve an availability series.
 
 Exactly one `AC` and one `DC` may share the same unordered node pair
 (either, both, or neither is fine). A second `AC` or a second `DC` on
-that pair raises an error. Aggregate equivalent parallel circuits
-before calling this builder.
+that pair raises an error. Component-name collisions are also rejected before
+model construction. Aggregate equivalent parallel circuits before calling
+this builder.
 """
-function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Number, s::Snapshot;
+function makenodeinterco(cname::String, a::Node, b::Node, atob::Real, btoa::Real, s::Snapshot;
     # operation flags
     dir::Bool=false, foreign::Bool=false, dc::Bool=false,
 
     # economic / physical controls
-    transactioncost::Number=0., lossfactor::Number=0.,
-    susceptance::Union{Nothing,Number}=nothing,
+    transactioncost::Real=0., lossfactor::Real=0.,
+    susceptance::Union{Nothing,Real}=nothing,
     atob_availability=nothing, btoa_availability=nothing,
 )
+    @argcheck 0 <= lossfactor < 1 "lossfactor must be in [0, 1)"
+    component_name = string(cname, "_", a.name, "_", b.name)
+    a.name == b.name && throw(ArgumentError("a node interconnection must connect two distinct nodes"))
+    Nosy.hascomponent(s, component_name) && throw(ArgumentError("snapshot already has a component named $component_name"))
+    Nosy.hasnode(s, component_name) && throw(ArgumentError("snapshot already has a node named $component_name"))
+
+    # One AC and one DC may share a pair; a second AC or second DC is rejected.
+    pair = Set([a.name, b.name])
+    for (_, existing) in getcomponents(s; with=[:function => "nodeinterconnection"])
+        Set(get(existing.tags, :zone, String[])) == pair || continue
+        existing_dc = hastag(existing, :function, "DC")
+        if existing_dc == dc
+            kind = dc ? "DC" : "AC"
+            throw(ArgumentError("a $kind node interconnection already exists between $(a.name) and $(b.name); parallel $kind ICs are not supported"))
+        end
+    end
+
+    if !dc && !isnothing(susceptance)
+        @argcheck susceptance < 0 "susceptance must be negative"
+        if haskey(s.options, :ic_susceptance)
+            registry = s.options[:ic_susceptance]
+            registry isa Dict{Tuple{String, String}, Float64} || throw(ArgumentError(
+                ":ic_susceptance must be Dict{Tuple{String,String},Float64}, got $(typeof(registry))",
+            ))
+        end
+    end
+
     vb = []
 
     # a -> b
@@ -139,10 +186,13 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Nu
     push!(vb, VariableCost(:transaction, "input", energy, Float64(transactioncost)))
     if !isinf(atob)
         push!(vb, FixedCapacity("input", energy, atob))
-        push!(vb, Nosy.CapacityMultiplier("input", _resolve_timeseries(
-            s, atob_availability, a.name * ">" * b.name, "transfer_capacities";
-            keyword="atob_availability", digits=2,
-        )))
+        if !iszero(atob)
+            input = isnothing(atob_availability) && timeseries_mode(s) === :arguments ? 1.0 : atob_availability
+            push!(vb, Nosy.CapacityMultiplier("input", _resolve_timeseries(
+                s, input, a.name * ">" * b.name, "transfer_capacities";
+                keyword="atob_availability", digits=2,
+            )))
+        end
     end
 
     # b -> a
@@ -151,23 +201,26 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Nu
     push!(vb, VariableCost(:transaction, "input2", energy, Float64(transactioncost)))
     if !isinf(btoa)
         push!(vb, FixedCapacity("input2", energy, btoa))
-        push!(vb, Nosy.CapacityMultiplier("input2", _resolve_timeseries(
-            s, btoa_availability, b.name * ">" * a.name, "transfer_capacities";
-            keyword="btoa_availability", digits=2,
-        )))
+        if !iszero(btoa)
+            input = isnothing(btoa_availability) && timeseries_mode(s) === :arguments ? 1.0 : btoa_availability
+            push!(vb, Nosy.CapacityMultiplier("input2", _resolve_timeseries(
+                s, input, b.name * ">" * a.name, "transfer_capacities";
+                keyword="btoa_availability", digits=2,
+            )))
+        end
     end
 
     # grid losses balance
     # NB when counting grid losses from interconnectors, make sure to not double count losses as interconnectors belong to multiple nodes
     push!(vb, LinkedJointFlow("grid losses ic", b.carrier, :output, ("input", "input2"), x->(x[1]+x[2])*lossfactor, mustconnect=false))
 
-    c = Component(string(cname, "_", a.name, "_", b.name), m, vb)
+    c = Component(component_name, m, vb)
 
     # make the IC flow go in one direction only
     if dir
-        b = balance(c, :input, energy, collapse=false, aggregate=false)
-        b1 = b["input"]
-        b2 = b["input2"]
+        flows = balance(c, :input, energy, collapse=false, aggregate=false)
+        b1 = flows["input"]
+        b2 = flows["input2"]
         for step in eachindex(b1)
             @constraint(Nosy.sim(s).model, [b1[step], b2[step]] in SOS1())
         end
@@ -179,27 +232,15 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Nu
     foreign && tag!(c, :function, "foreign") # IC between self and other country
     dc ? tag!(c, :function, "DC") : tag!(c, :function, "AC") # AC or DC
 
-    # One AC and one DC may share a pair; a second AC or second DC is rejected.
-    pair = Set([a.name, b.name])
-    for (_, existing) in getcomponents(s; with=[:function => "nodeinterconnection"])
-        same_pair = Set(get(existing.tags, :zone, String[])) == pair
-        same_pair || continue
-        existing_dc = hastag(existing, :function, "DC")
-        if existing_dc == dc
-            kind = dc ? "DC" : "AC"
-            throw(ArgumentError("a $kind node interconnection already exists between $(a.name) and $(b.name); parallel $kind ICs are not supported"))
-        end
-    end
-
-    if !dc && !isnothing(susceptance)
-        _register_ic_susceptance!(s, a.name, b.name, susceptance)
-    end
-
     connect!(s, c, a)
     connect!(s, c, b)
     # denormalized zone metadata for convenient component queries 
     tag!(c, :zone, a.name)
     tag!(c, :zone, b.name)
+
+    if !dc && !isnothing(susceptance)
+        _register_ic_susceptance!(s, a.name, b.name, susceptance)
+    end
 
     return c
 end

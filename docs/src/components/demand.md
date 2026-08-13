@@ -73,6 +73,15 @@ Per-vehicle values come from the technology column named by `techkey` in the
 `max_dispatch_power`, `battery_capacity`, and `yearly_consumption`. Each has a
 corresponding keyword override. The fleet size is `yearly` divided by annual
 consumption per vehicle, and the per-vehicle limits are scaled by that size.
+`max_dispatch_power` is resolved only in vehicle-to-grid mode; smart charging
+does not require it.
+
+In `tech_mode=:arguments`, charging efficiency defaults to one,
+self-discharge and the morning minimum to zero. Maximum charging power,
+battery capacity, and yearly consumption per vehicle remain structural and
+must be supplied; V2G additionally requires maximum dispatch power. In
+`timeseries_mode=:arguments`, omitted charging availability defaults to one,
+while the driving profile remains required.
 
 Smart charging exposes a flexible `input`, a `level`, and a fixed unconnected
 `driving` output. Vehicle-to-grid mode also exposes `output`, limited by

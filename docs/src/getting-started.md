@@ -21,9 +21,7 @@ already available.
 ## Minimal Workflow
 
 The following model has a flat 100 MW electricity demand and one dispatchable
-plant with optimisable capacity. The example below supplies every builder
-argument explicitly (`tech_mode=:arguments` and `timeseries_mode=:arguments`),
-so no input workbook is read.
+plant with optimisable capacity.
 
 ```julia
 using Posy2
@@ -46,11 +44,11 @@ snapshot = Snapshot(s, Dict(:posy => options))
 power = EnergyCarrier("electricity", s)
 carbon = CO2Carrier("CO2", s)
 
-grid = Node("grid", power; rule=:curtailed, evalprice=true, tags=[:electricity])
+grid = Node("grid", power; rule=:curtailed, tags=[:electricity])
 atmosphere = Node("CO2", carbon; rule=:curtailed, tags=[:co2])
 
-# Add a flat 100 MW demand.
-makedemand("Load", "grid", grid, snapshot; profile=100.0)
+# Add a demand with sin shape centered arouund 100 MW
+makedemand("Load", "grid", grid, snapshot; profile=100.0 .+ 30 * sin.(h*2pi/24 for h in 1:8760))
 
 # Add a dispatchable generator with optimisable capacity.
 makedispatchable(
@@ -60,17 +58,17 @@ makedispatchable(
     atmosphere,
     snapshot;
     maxcap=200.0,                   # upper bound on capacity (MW)
-    overnight_cost=1_000.0,         # overnight investment cost
-    om_fixed_cost=10.0,             # fixed O&M
-    decommissioning=0.1,            # fraction of overnight cost
+    overnight_cost=1_000.0,         # overnight investment cost (USD/kW)
+    om_fixed_cost=10.0,             # fixed O&M (USD/kW/y)
+    decommissioning=0.05,           # fraction of overnight cost, paid at end of lifetime
     lifetime=30,                    # economic lifetime (years)
     construction_profile=1.0,       # one-year construction spend
     decommissioning_profile=1.0,    # one-year decommissioning spend
-    connection_cost=0.0,
-    om_var_cost=2.0,                # variable O&M per MWh
-    fuel_cost=50.0,                 # fuel cost per MWh
-    co2_emission=0.0,               # tCO2 per MWh
-    unit_size=0.0,                  # allow continuous capacity expansion
+    connection_cost=0.1,            # fraction of investment cost, paid at commissioning
+    om_var_cost=2.0,                # variable O&M per MWh (USD/MWh)
+    fuel_cost=70.0,                 # fuel cost per MWh (USD/MWh)
+    co2_emission=350.,              # CO2 emission (kg/MWh)
+    unit_size=100.0,                # unit size (MW)
 )
 
 # Minimise total system cost and extract numeric results.
@@ -82,10 +80,10 @@ The component name combines the builder's name prefix and the node name.
 The solved capacity and annual generation are therefore:
 
 ```julia
-capacity(result, "CCGT grid")
-# 100.0
+capacity(result, "CCGT grid") # in MW
+# 130.0
 
-balance(result, "CCGT grid", :output, energy; collapse=true, aggregate=true)
+balance(result, "CCGT grid", :output, energy; collapse=true, aggregate=true) # in MWh/y
 # 876000.0
 ```
 
@@ -98,7 +96,7 @@ optimisation succeeds.
 Nosy's normal metrics work directly on Posy2 snapshots:
 
 ```julia
-# Total annual system cost.
+# Total annual system cost in USD/y
 cost(result)
 
 # Cost breakdown by component and cost tag.
@@ -109,12 +107,4 @@ table(result, capacity)
 
 # Hourly plant output.
 balance(result, "CCGT grid", :output, energy; collapse=false, aggregate=true)
-
-# Electricity marginal prices, because evalprice=true on the node.
-dualprice(result.nodes["grid"])
 ```
-
-To use workbook inputs instead, set the workbook filenames, switch `tech_mode`
-or `timeseries_mode` to `:excel`, and omit the corresponding explicit values.
-Values passed explicitly override workbook data. Sheet and column details
-are in [Input Workbooks](concepts/input-data.md).

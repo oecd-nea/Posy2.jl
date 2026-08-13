@@ -13,6 +13,8 @@ using HiGHS
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
+                tech_mode=:excel,
+                timeseries_mode=:excel,
                 discountrate=0.05,
                 co2_price=50.0,
             ),
@@ -28,6 +30,12 @@ using HiGHS
     let
         s, elec, _, h2 = makesnapshot()
         @test_throws ArgumentError makeelectrolyser("EL", "PEM", elec, h2, s; gridlosses=1.0)
+    end
+
+    # Electrolyser capacity inputs reject non-real numeric values at the API boundary.
+    let
+        s, elec, _, h2 = makesnapshot()
+        @test_throws TypeError makeelectrolyser("EL", "PEM", elec, h2, s; cap=1 + im)
     end
 
     # A valid electrolyser input should create and register the component.

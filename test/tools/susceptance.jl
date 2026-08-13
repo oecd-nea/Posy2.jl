@@ -13,6 +13,8 @@ using HiGHS
                 data_dir=joinpath(@__DIR__, "..", "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
+                tech_mode=:excel,
+                timeseries_mode=:excel,
             ),
         ))
     end

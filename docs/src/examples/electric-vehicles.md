@@ -77,7 +77,6 @@ makeEV(
     self_discharge=0.0,
     min_level_morning=0.0,              # fraction of available battery at 7 am
     max_charging_power_per_ev=0.01,     # MW per vehicle, * fleet size
-    max_dispatch_power_per_ev=0.0,      # unused in smart charging
     battery_capacity_per_ev=0.06,       # MWh per vehicle, * fleet size
     yearly_consumption_per_ev=0.02,     # MWh/year per vehicle (sets fleet size)
 )
@@ -127,7 +126,7 @@ julia> driving = balance(result, "EV country1", :output, energy; collapse=true, 
 50000.00000000169
 
 julia> charge = balance(result, "EV country1", :input, energy; collapse=true, aggregate=true)
-50000.000000000175
+55555.555555555664
 
 julia> balance(result, "Oil country1", :output, energy; collapse=true, aggregate=true)
 4.703344672335719e6
@@ -252,13 +251,13 @@ julia> driving = outputs["driving"]
 50000.00000000169
 
 julia> discharge = outputs["output"]
-498812.40140840755
+411237.08086721296
 
 julia> charge = balance(result, "EV country1", :input, energy; collapse=true, aggregate=true)
-498931.1612675679
+512485.64540801453
 
 julia> balance(result, "Oil country1", :output, energy; collapse=true, aggregate=true)
-4.389726784859165e6
+4.490856589540801e6
 
 julia> dualprice(result.nodes["country1"])
 8760-element Nosy.Hourly{Float64}:
@@ -276,9 +275,9 @@ julia> dualprice(result.nodes["country1"])
  68.24
  68.24
  68.24
- 70.37664864864864
- 70.37664864864864
- 70.37664864864864
+ 72.19179192703935
+ 72.19179192703935
+ 72.19179192703935
  68.24
  68.24
  68.24

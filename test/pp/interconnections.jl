@@ -17,6 +17,8 @@ using HiGHS
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
+                tech_mode=:excel,
+                timeseries_mode=:excel,
                 discountrate=0.05,
                 co2_price=50.0,
             ),
@@ -115,12 +117,12 @@ using HiGHS
         @test collapsed_zone == d["ZONE2 > ZONE1"]
         @test dts_zone isa AbstractDict
         @test haskey(dts_zone, "ZONE2")
-        @test !(dts_zone["ZONE2"] isa Number)
+        @test !(dts_zone["ZONE2"] isa Real)
         @test isapprox(d["ZONE2 > ZONE1"], sum(dts_zone["ZONE2"]); rtol=1e-12)
 
         @test dts_all isa AbstractDict
         @test haskey(dts_all, "ZONE2")
-        @test !(dts_all["ZONE2"] isa Number)
+        @test !(dts_all["ZONE2"] isa Real)
         @test isapprox(collapsed_all, sum(dts_all["ZONE2"]); rtol=1e-12)
     end
 
@@ -142,12 +144,12 @@ using HiGHS
         @test haskey(d, "ZONE2 > ZONE1")
         @test dts isa AbstractDict
         @test haskey(dts, "ZONE2 > ZONE1")
-        @test !(dts["ZONE2 > ZONE1"] isa Number)
+        @test !(dts["ZONE2 > ZONE1"] isa Real)
         @test isapprox(d["ZONE2 > ZONE1"], sum(dts["ZONE2 > ZONE1"]); rtol=1e-12)
 
         @test dts_all isa AbstractDict
         @test haskey(dts_all, "ZONE2 > ZONE1")
-        @test !(dts_all["ZONE2 > ZONE1"] isa Number)
+        @test !(dts_all["ZONE2 > ZONE1"] isa Real)
     end
 
     # _all_ic_directed_flows keys are (from, to) tuples; ZONE2->ZONE1 hourly sum matches imports_internal(ZONE1).
@@ -162,7 +164,7 @@ using HiGHS
 
         flows = Posy2._all_ic_directed_flows(s; collapse=false)
         @test haskey(flows, ("ZONE2", "ZONE1"))
-        @test !(flows[("ZONE2", "ZONE1")] isa Number)
+        @test !(flows[("ZONE2", "ZONE1")] isa Real)
         @test isapprox(
             Posy2.imports_internal(s, "ZONE1"; collapse=true),
             sum(flows[("ZONE2", "ZONE1")]);
@@ -259,7 +261,7 @@ using HiGHS
         collapsed_zone = Posy2.imports_foreign(s, "ZONE1"; collapse=true)
 
         @test haskey(dts, "ZONE2 > ZONE1")
-        @test !(dts["ZONE2 > ZONE1"] isa Number)
+        @test !(dts["ZONE2 > ZONE1"] isa Real)
         @test length(dts["ZONE2 > ZONE1"]) == Nosy.nhours(sim(s))
         @test isapprox(collapsed["ZONE2 > ZONE1"], sum(dts["ZONE2 > ZONE1"]); rtol=1e-12)
 
@@ -281,7 +283,7 @@ using HiGHS
         collapsed_zone = Posy2.exports_foreign(s, "ZONE1"; collapse=true)
 
         @test haskey(dts, "ZONE1 > ZONE2")
-        @test !(dts["ZONE1 > ZONE2"] isa Number)
+        @test !(dts["ZONE1 > ZONE2"] isa Real)
         @test length(dts["ZONE1 > ZONE2"]) == Nosy.nhours(sim(s))
         @test isapprox(collapsed["ZONE1 > ZONE2"], sum(dts["ZONE1 > ZONE2"]); rtol=1e-12)
         @test haskey(dts_zone, "ZONE2")

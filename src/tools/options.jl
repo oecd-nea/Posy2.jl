@@ -1,7 +1,7 @@
 """
     Posy2Options(; data_dir=joinpath(pwd(), "data"),
         techdata_file="tech_data.xlsx", timeseries_file="time_series.xlsx",
-        tech_mode=:excel, timeseries_mode=:excel,
+        tech_mode=:arguments, timeseries_mode=:arguments,
         discountrate=0.05, co2_price=0.0, dcopf=false)
 
 Configure Posy2 input workbooks, economic assumptions, and the optional DC
@@ -13,10 +13,12 @@ Fields:
 - `data_dir`: directory containing the input workbooks.
 - `techdata_file`: technology-parameter workbook filename.
 - `timeseries_file`: hourly time-series workbook filename.
-- `tech_mode`: `:excel` to fill missing technology arguments from the workbook,
-  or `:arguments` to require them explicitly.
-- `timeseries_mode`: `:excel` to fill missing profiles from the workbook, or
-  `:arguments` to require them explicitly.
+- `tech_mode`: `:arguments` (default) to use documented neutral defaults and
+  require structural values explicitly, or `:excel` to fill omitted technology
+  arguments from the workbook.
+- `timeseries_mode`: `:arguments` (default) to use documented neutral profiles
+  and require structural profiles explicitly, or `:excel` to fill omitted
+  profiles from the workbook.
 - `discountrate`: real discount rate used to annualise investment and
   decommissioning costs.
 - `co2_price`: carbon price applied by emitting component builders.
@@ -54,8 +56,8 @@ Posy2Options(;
     data_dir::String=joinpath(pwd(), "data"),
     techdata_file::String="tech_data.xlsx",
     timeseries_file::String="time_series.xlsx",
-    tech_mode::Symbol=:excel,
-    timeseries_mode::Symbol=:excel,
+    tech_mode::Symbol=:arguments,
+    timeseries_mode::Symbol=:arguments,
     discountrate::Float64=0.05,
     co2_price::Float64=0.0,
     dcopf::Bool=false,
@@ -63,14 +65,14 @@ Posy2Options(;
     Posy2Options(data_dir, techdata_file, timeseries_file, tech_mode, timeseries_mode,
                  discountrate, co2_price, dcopf)
 
-# Preserve the original positional constructor for downstream code.
+# Positional construction without mode arguments follows the public defaults.
 Posy2Options(data_dir::String,
              techdata_file::String,
              timeseries_file::String,
              discountrate::Float64,
              co2_price::Float64,
              dcopf::Bool) =
-    Posy2Options(data_dir, techdata_file, timeseries_file, :excel, :excel,
+    Posy2Options(data_dir, techdata_file, timeseries_file, :arguments, :arguments,
                  discountrate, co2_price, dcopf)
 
 """

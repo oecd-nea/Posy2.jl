@@ -88,7 +88,8 @@ naming; this table is the reporting map.
 | [`makeEV`](@ref) | `electricity`, `demand`, `ev` (+ `generation` when V2G) |
 | [`makedemandresponse`](@ref) | `virtual`, `demandresponse` |
 | [`makedispatchable`](@ref) / [`makenuclear`](@ref) | `generation`, `dispatchable` |
-| [`makeintermittentsource`](@ref) / [`makehydroror`](@ref) | `generation`, `intermittent`, `carbonfree` |
+| [`makeintermittentsource`](@ref) | `generation`, `intermittent` (+ `carbonfree` when `co2_emission` is zero) |
+| [`makehydroror`](@ref) | `generation`, `intermittent`, `carbonfree` |
 | [`makehydroreservoir`](@ref) | `generation`, `storage`, `carbonfree` |
 | [`makebatterystorage`](@ref) | `electricity`, `storage`, `generation` |
 | [`makehydrogenstorage`](@ref) | `hydrogen`, `storage` |

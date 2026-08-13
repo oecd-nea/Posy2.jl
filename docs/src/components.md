@@ -86,6 +86,8 @@ documented with each builder:
   normalises an absolute inflow series by that value.
 - A zero charging capacity in [`makehydroreservoir`](@ref) disables grid
   charging rather than creating a zero-capacity input port.
+- `cap_reservoir=nothing` in [`makehydroreservoir`](@ref) deliberately leaves
+  the stored-energy level unlimited.
 - `capa=nothing` in [`makedemandresponse`](@ref) leaves response output without
   a capacity limit.
 
@@ -133,4 +135,3 @@ component pages list the tags created by each builder. For which tags select
 which report rows, see [Tags And Post-Processing](concepts/tags.md). For the
 design sequence when adding a technology—physical model, behaviours, naming,
 tags, and connection—see [Extending Posy2](concepts/extending.md).
-

@@ -13,6 +13,8 @@ using HiGHS
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
+                tech_mode=:excel,
+                timeseries_mode=:excel,
                 discountrate=0.05,
                 co2_price=50.0,
             ),
@@ -81,6 +83,24 @@ using HiGHS
             offhours1=[0, 1], offhours2=[2, 3], minratio=0.2,
         )
         @test Nosy.hasport(c, "driving")
+    end
+
+    # Charging efficiency applies when electricity enters the EV battery, not
+    # when stored energy leaves through the V2G or driving outputs.
+    let
+        s, elec, _ = makesnapshot()
+        c = makeEV(
+            "EV", 1000.0, elec, s;
+            fixed_profile=false, smart_charging=false, vehicle_to_grid=true,
+            charging_availability=1.0, driving_profile=1.0,
+            charging_eff=0.8, self_discharge=0.0, min_level_morning=0.0,
+            max_charging_power_per_ev=0.01, max_dispatch_power_per_ev=0.01,
+            battery_capacity_per_ev=0.06, yearly_consumption_per_ev=2.0,
+        )
+
+        @test c.model.data.eff["input"] == 0.8
+        @test c.model.data.eff["output"] == 1.0
+        @test c.model.data.eff["driving"] == 1.0
     end
 
     # A valid demand response input should create and register the component.

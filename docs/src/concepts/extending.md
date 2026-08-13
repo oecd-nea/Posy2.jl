@@ -185,7 +185,7 @@ Swap the archetype, behaviours, and tags for other technologies.
 
 ```julia
 function makeloadshifting(cname::String, elec::Node, s::Snapshot;
-    power_cap::Number, duration::Number, shift_cost::Number,
+    power_cap::Real, duration::Real, shift_cost::Real,
 )
     # 1. Physical model — BasicStorage: charge / discharge / level
     #    (same Nosy machine as a battery; eff_i=1 means no round-trip loss)

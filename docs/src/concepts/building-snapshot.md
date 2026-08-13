@@ -141,7 +141,8 @@ inputs.
 - [`makebatterystorage`](@ref) builds battery storage with charging-power capacity,
   a duration relation, round-trip efficiency, and optional grid losses.
 - [`makehydroreservoir`](@ref) represents reservoir inflow, pumping,
-  generation, and a fixed reservoir level capacity.
+  generation, and an optional reservoir level capacity; `cap_reservoir=nothing`
+  leaves the stored-energy level unlimited.
 - [`makehydrogenstorage`](@ref) builds simplified hydrogen storage whose level
   capacity can be fixed or optimised.
 - [`makeelectrolyser`](@ref) converts electricity into hydrogen.

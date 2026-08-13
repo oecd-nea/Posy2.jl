@@ -40,15 +40,23 @@ timeseries_mode(snapshot)
 
 Technology parameters and hourly series have independent input switches:
 
-| Option | `:excel` (default) | `:arguments` |
-|:-------|:-------------------|:-------------|
-| `tech_mode` | Missing technology keywords are read from `techdata_file` | Every technology value used by a builder must be supplied explicitly |
-| `timeseries_mode` | Missing series keywords are read from `timeseries_file` | Every series used by a builder must be supplied explicitly |
+| Option | `:arguments` (default) | `:excel` |
+|:-------|:-----------------------|:---------|
+| `tech_mode` | Builders use their documented argument defaults; values without a safe default must be supplied explicitly | Missing technology keywords are read from `techdata_file` |
+| `timeseries_mode` | Builders use documented neutral profiles; structural series must be supplied explicitly | Missing series keywords are read from `timeseries_file` |
 
 An explicit builder keyword always wins, in either mode. In `:arguments` mode,
-an omitted value raises a targeted `ArgumentError`; Posy2 does not attempt to
-open the corresponding workbook. The defaults remain `:excel` for backward
-compatibility.
+Posy2 does not attempt to open the corresponding workbook. An omitted value
+uses the builder's documented neutral default when one exists; a conditionally
+required value raises a targeted `ArgumentError`. Both input modes default to
+`:arguments`; select `:excel` explicitly when workbook fallback is desired.
+
+For [`makedispatchable`](@ref), economic coefficients and emissions default to
+zero, linked-fuel efficiency defaults to one, and unit sizing and ramping are
+disabled. A non-zero `overnight_cost` requires `lifetime` and
+`construction_profile`; non-zero overnight and decommissioning costs also
+require `decommissioning_profile`. Unit commitment and non-zero fractional
+ramping require a positive `unit_size`.
 
 The switches can be mixed. For example, this configuration keeps shared
 technology data in a workbook while defining scenario profiles in Julia:
@@ -67,12 +75,11 @@ makeintermittentsource(
 )
 ```
 
-For a workbook-free study, select `:arguments` for both sources:
+The defaults are workbook-free. The modes may be omitted when both sources use
+`:arguments`:
 
 ```julia
 options = Posy2Options(
-    tech_mode=:arguments,
-    timeseries_mode=:arguments,
     discountrate=0.05,
     co2_price=0.0,
 )
@@ -89,13 +96,15 @@ options = Posy2Options(
     data_dir="/path/to/scenario",
     techdata_file="technology_2050.xlsx",
     timeseries_file="timeseries_2050.xlsx",
+    tech_mode=:excel,
+    timeseries_mode=:excel,
 )
 ```
 
-Technology parameters are normally loaded when a builder keyword is `nothing`.
-Supplying a numeric or string keyword overrides that workbook value. This makes
-it possible to keep a common workbook and vary a small number of assumptions
-between scenarios.
+In `:excel` mode, technology parameters are loaded when a builder keyword is
+`nothing`. Supplying a numeric or string keyword overrides that workbook value.
+This makes it possible to keep a common workbook and vary a small number of
+assumptions between scenarios.
 
 Profile-backed builders expose direct series keywords as well. A profile can
 be an hourly vector matching the simulation mesh, or a scalar that Posy2

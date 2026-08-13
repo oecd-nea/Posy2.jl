@@ -13,6 +13,8 @@ using HiGHS
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
+                tech_mode=:excel,
+                timeseries_mode=:excel,
                 discountrate=0.05,
                 co2_price=50.0,
             ),
@@ -40,6 +42,26 @@ using HiGHS
         c = makedispatchable("CCGT", "CCGT", elec, co2, s; cap=100.0, construction_profile=1.0, decommissioning_profile=1.0)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "CCGT ZONE1") === c
+        capacity_behavior = only(Nosy.getbehaviors(c, Nosy.FixedCapacityBehavior))
+        workbook_unit_size = gettechparam(s, "CCGT", "unit_size", "dispatchable")
+        if iszero(workbook_unit_size)
+            @test isnothing(capacity_behavior.data.unitsize)
+        else
+            @test capacity_behavior.data.unitsize == workbook_unit_size
+        end
+    end
+
+    # Zero overrides the workbook unit size and is passed to Nosy as nothing.
+    let
+        s, elec, co2 = makesnapshot()
+        c = makedispatchable(
+            "CCGT continuous", "CCGT", elec, co2, s;
+            cap=100.0, unit_size=0.0,
+            construction_profile=1.0, decommissioning_profile=1.0,
+        )
+        capacity_behavior = only(Nosy.getbehaviors(c, Nosy.FixedCapacityBehavior))
+        @test isnothing(capacity_behavior.data.unitsize)
+        @test isempty(Nosy.getbehaviors(c, Nosy.RampingBehavior))
     end
 
     # If reloading is enabled, a missing reloadmask should be rejected.
@@ -65,24 +87,44 @@ using HiGHS
         @test_throws ArgumentError makehydroror("Hydro ROR", "ZONE1", elec, s; cap=nothing)
     end
 
+    # Generation capacity inputs accept real values or nothing, never complex values.
+    let
+        s, elec, co2 = makesnapshot()
+        @test_throws TypeError makenuclear("Nuclear", "CCGT", elec, co2, s; cap=1 + im)
+        @test_throws TypeError makeintermittentsource("Wind", "Onwind", elec, co2, s; cap=1 + im)
+        @test_throws TypeError makeintermittentsource("Wind", "Onwind", elec, co2, s; mincap=1 + im)
+    end
+
     # A valid intermittent source input should create and register the component.
     let
         s, elec, co2 = makesnapshot()
         c = makeintermittentsource("Onwind gen", "Onwind", elec, co2, s; cap=100.0, weatheryear=2019, construction_profile=1.0, decommissioning_profile=1.0)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "Onwind gen ZONE1") === c
+        @test Nosy.hastag(c, :function, "carbonfree")
     end
 
-    # unit_size=0 skips ramping behaviors even when ramp rates are provided.
+    # An intermittent source with direct emissions must not be tagged carbon-free.
     let
         s, elec, co2 = makesnapshot()
-        c = makedispatchable(
+        c = makeintermittentsource(
+            "Emitting intermittent", "Onwind", elec, co2, s;
+            cap=100.0, weatheryear=2019, co2_emission=100.0,
+            construction_profile=1.0, decommissioning_profile=1.0,
+        )
+        @test Nosy.hastag(c, :function, "generation")
+        @test Nosy.hastag(c, :function, "intermittent")
+        @test !Nosy.hastag(c, :function, "carbonfree")
+    end
+
+    # A non-zero fractional ramp requires a positive unit size.
+    let
+        s, elec, co2 = makesnapshot()
+        @test_throws ArgumentError makedispatchable(
             "CCGT no ramp", "CCGT", elec, co2, s;
             cap=100.0, unit_size=0.0, ramp_up=0.5, ramp_down=0.5,
             construction_profile=1.0, decommissioning_profile=1.0,
         )
-        @test !isnothing(c)
-        @test isempty(Nosy.getbehaviors(c, Nosy.RampingBehavior))
     end
 
     # ramp_up and ramp_down are scaled by unit_size before passing to Nosy.

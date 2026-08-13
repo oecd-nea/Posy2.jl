@@ -40,10 +40,11 @@ Workbooks are resolved lazily. Creating a snapshot does not open either file;
 the first relevant builder lookup does. Reads are memoised using the file's
 modification time, so editing a workbook invalidates the cached value.
 
-Set `tech_mode=:arguments` or `timeseries_mode=:arguments` to make an input
-source strict and workbook-free. The two modes are independent. Explicit
-builder values take precedence in all modes; a missing value in `:arguments`
-mode raises `ArgumentError` before file access.
+Both modes default to `:arguments`, making their input sources workbook-free.
+The two modes are independent. Explicit builder values take precedence in all
+modes; an omitted value in `:arguments` mode uses the builder's documented
+neutral default when one exists, while an omitted structural value raises
+`ArgumentError` before file access.
 
 See [Study Configuration](options.md) for the other study-wide options and the
 [API Reference](../api.md) for the direct workbook-reader methods.
@@ -108,8 +109,9 @@ makedispatchable(
 
 An explicit override does not modify the workbook or the value returned by
 [`gettechparam`](@ref). Supplying every technology keyword removes all
-technology-workbook reads for that component. Selecting
-`tech_mode=:arguments` additionally detects any accidentally omitted value.
+technology-workbook reads for that component. Selecting `tech_mode=:arguments`
+uses documented neutral defaults and raises on omitted values that are
+structurally required by the active feature.
 
 Time-series builders use the same rule. Explicit series accept either a real
 number, expanded to all hours, or a vector with exactly
@@ -162,8 +164,10 @@ Posy2 uses four technology sheets:
 | `electrolysis` | Electrolysers |
 
 Every row listed in the tables below has a same-named builder keyword unless
-the notes say otherwise. A row is read only when that keyword remains
-`nothing` and the stated operating mode uses it.
+the notes say otherwise. In `:excel` mode, a row is read only when that keyword
+is omitted and the stated operating mode uses it. In `:arguments` mode,
+builders instead apply their documented defaults or report that an active,
+conditionally required value is missing.
 
 ### Dispatchable Sheet
 
@@ -180,6 +184,15 @@ The common dispatchable rows are:
 | [`makedispatchable`](@ref) | Common | Fuel, unit commitment, and ramping |
 | [`makenuclear`](@ref) | Common plus `waste_cost` | Fuel, unit commitment, and reloads |
 
+In `:arguments` mode, `makedispatchable` gives its additive cost and emission
+coefficients neutral zero defaults. It uses `nothing` for unit sizing and
+ramping, and a lossless efficiency of one when a fuel node is supplied. In
+`:excel` mode, use `unit_size=0` to override the workbook with no unit sizing.
+`lifetime` and `construction_profile` are required only for non-zero overnight
+cost; `decommissioning_profile` is required only when overnight cost and the
+decommissioning ratio are both non-zero. These defaults currently apply only
+to `makedispatchable`, not `makenuclear`.
+
 For the fuel group, `makedispatchable` and `makenuclear` read `fuel_cost`
 without `fuelnode`, or `efficiency` with `fuelnode`.
 
@@ -193,7 +206,9 @@ positive reload fraction causes `reload_duration` to be read. `reloadmask` is
 an argument-only scheduling interval and has no workbook row.
 
 `ramp_up` and `ramp_down` are used by `makedispatchable` only when
-`unit_size > 0`; zero ramp values omit the corresponding constraint.
+`unit_size > 0`; omitted, `nothing`, or zero ramp values omit the corresponding
+constraint. Unit commitment and non-zero fractional ramps require a positive
+unit size.
 
 ### Intermittent Sheet
 

@@ -32,7 +32,8 @@ The examples cover all four combinations of `tech_mode` and
 `timeseries_mode`. In `:excel` mode, missing values are read from the
 technology or time-series workbook, and any keyword you pass on a `make...`
 builder overrides that workbook value. In `:arguments` mode there is no
-workbook fallback: every value the builder needs must be supplied explicitly.
+workbook fallback: builders use documented neutral defaults where available
+and require the remaining active values explicitly.
 The table shows which combination each example uses.
 
 | Example | `tech_mode` | `timeseries_mode` |

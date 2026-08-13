@@ -11,26 +11,28 @@ transfer-capacity and price sheets.
 
 ## Direction And Transfer Multipliers
 
-Directional capacities are base capacities. When a direction is finite, Posy2
-reads an hourly multiplier from sheet `transfer_capacities`. Its column is
+Directional capacities are base capacities. For a nonzero finite direction,
+Posy2 uses an hourly multiplier. In `timeseries_mode=:excel`, an omitted
+multiplier is read from sheet `transfer_capacities`; in `:arguments` mode it
+defaults to one. Its column is
 named for the direction, written as `From>To` with no spaces. Effective
 capacity is the base capacity multiplied by that series. The values are
 therefore fractions or other multipliers, not absolute MW capacities.
 
-Setting a node-interconnection direction to `Inf` omits its capacity behaviour
-and its workbook lookup. A price interconnection always has fixed capacities in
-both directions and therefore requires both multiplier columns.
+Setting a node-interconnection direction to zero skips its multiplier lookup;
+setting it to `Inf` omits both its capacity behaviour and multiplier lookup. A
+price interconnection likewise resolves availability only for nonzero-capacity
+directions. Its spot-price series remains required when either direction is
+active, because a zero price would permit free imports rather than disable the
+feature.
 
 For a price interconnection, `dir=true` adds an SOS1 constraint at every
 timestep so that imports and exports cannot be used simultaneously. This may
 require solver support beyond a plain continuous LP.
 
-!!! warning "Node-interconnection direction constraint"
-    The current node-interconnection implementation applies its `dir=true`
-    SOS1 relation to aggregate component input and output. Because either
-    physical direction uses one input and one output, the relation can suppress
-    all transfer. Leave `dir=false` for [`makenodeinterco`](@ref) until the
-    constraint is corrected.
+For a node interconnection, `dir=true` applies the SOS1 relation to the two
+directional input flows, `input` and `input2`, so at most one direction can be
+active at a timestep.
 
 ## Node Interconnections
 
@@ -44,6 +46,14 @@ The reverse direction is `b -> a`:
 
 - `input2` withdraws from node `b` and carries capacity `btoa`;
 - `output2` delivers to node `a` after `lossfactor`.
+
+`lossfactor` must be finite and lie in `[0, 1)`. Each delivered flow is its
+sending flow multiplied by `1 - lossfactor`; invalid factors are rejected
+before model construction.
+
+The endpoints must be distinct. Self-connections and generated-name
+collisions are rejected before the builder creates component variables or
+directional SOS constraints.
 
 Exactly one `AC` and one `DC` may share the same unordered node pair
 (either, both, or neither is fine). A second `AC` or a second `DC` on
