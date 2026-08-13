@@ -80,7 +80,7 @@ Port naming follows [Component Builders](../components.md): sources use
 `output` / `level` (`LazyStorage` may add further ports as joint flows);
 linked carrier flows use names such as `fuel`, `co2`, and `grid losses`.
 
-Some POSY2 builders compose archetypes with joint flows. Demand response uses
+Some Posy2 builders compose archetypes with joint flows. Demand response uses
 a zero `Demand` host plus a linked negative input; interconnections are their
 own family ([`makenodeinterco`](@ref) uses `BasicConverter`,
 [`makepriceinterco`](@ref) uses `DispatchableSource`).
