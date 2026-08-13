@@ -1,10 +1,10 @@
 """
-    POSY2Options(; data_dir=joinpath(pwd(), "data"),
+    Posy2Options(; data_dir=joinpath(pwd(), "data"),
         techdata_file="tech_data.xlsx", timeseries_file="time_series.xlsx",
         tech_mode=:excel, timeseries_mode=:excel,
         discountrate=0.05, co2_price=0.0, dcopf=false)
 
-Configure POSY2 input workbooks, economic assumptions, and the optional DC
+Configure Posy2 input workbooks, economic assumptions, and the optional DC
 power-flow formulation. Pass the resulting object to a Nosy snapshot as
 `Snapshot(sim, Dict(:posy => options))`.
 
@@ -23,7 +23,7 @@ Fields:
 - `dcopf`: whether [`applydcopf!`](@ref) should add KVL constraints before
   optimisation.
 """
-struct POSY2Options
+struct Posy2Options
     data_dir::String
     techdata_file::String
     timeseries_file::String
@@ -33,7 +33,7 @@ struct POSY2Options
     co2_price::Float64
     dcopf::Bool
 
-    function POSY2Options(data_dir::String,
+    function Posy2Options(data_dir::String,
                           techdata_file::String,
                           timeseries_file::String,
                           tech_mode::Symbol,
@@ -50,7 +50,7 @@ struct POSY2Options
     end
 end
 
-POSY2Options(;
+Posy2Options(;
     data_dir::String=joinpath(pwd(), "data"),
     techdata_file::String="tech_data.xlsx",
     timeseries_file::String="time_series.xlsx",
@@ -60,45 +60,45 @@ POSY2Options(;
     co2_price::Float64=0.0,
     dcopf::Bool=false,
 ) =
-    POSY2Options(data_dir, techdata_file, timeseries_file, tech_mode, timeseries_mode,
+    Posy2Options(data_dir, techdata_file, timeseries_file, tech_mode, timeseries_mode,
                  discountrate, co2_price, dcopf)
 
 # Preserve the original positional constructor for downstream code.
-POSY2Options(data_dir::String,
+Posy2Options(data_dir::String,
              techdata_file::String,
              timeseries_file::String,
              discountrate::Float64,
              co2_price::Float64,
              dcopf::Bool) =
-    POSY2Options(data_dir, techdata_file, timeseries_file, :excel, :excel,
+    Posy2Options(data_dir, techdata_file, timeseries_file, :excel, :excel,
                  discountrate, co2_price, dcopf)
 
 """
     posy_options(s::Snapshot)
 
-Return the [`POSY2Options`](@ref) stored in `s.options[:posy]`.
+Return the [`Posy2Options`](@ref) stored in `s.options[:posy]`.
 
 Throw an `ArgumentError` when the entry is missing or is not a
-`POSY2Options` object.
+`Posy2Options` object.
 """
 function posy_options(s::Snapshot)
     haskey(s.options, :posy) || throw(ArgumentError("Snapshot.options[:posy] is required."))
     opts = s.options[:posy]
-    opts isa POSY2Options || throw(ArgumentError(":posy must be a POSY2Options, got $(typeof(opts))"))
+    opts isa Posy2Options || throw(ArgumentError(":posy must be a Posy2Options, got $(typeof(opts))"))
     return opts
 end
 
 """
     discountrate(s::Snapshot)
 
-Return the discount rate configured in the snapshot's [`POSY2Options`](@ref).
+Return the discount rate configured in the snapshot's [`Posy2Options`](@ref).
 """
 discountrate(s::Snapshot) = posy_options(s).discountrate
 
 """
     co2_price(s::Snapshot)
 
-Return the carbon price configured in the snapshot's [`POSY2Options`](@ref).
+Return the carbon price configured in the snapshot's [`Posy2Options`](@ref).
 """
 co2_price(s::Snapshot) = posy_options(s).co2_price
 
@@ -106,7 +106,7 @@ co2_price(s::Snapshot) = posy_options(s).co2_price
     dcopf(s::Snapshot)
 
 Return whether DC power flow is enabled in the snapshot's
-[`POSY2Options`](@ref).
+[`Posy2Options`](@ref).
 """
 dcopf(s::Snapshot) = posy_options(s).dcopf
 
@@ -119,7 +119,7 @@ timeseries_mode(s::Snapshot) = posy_options(s).timeseries_mode
 """
     applydcopf!(s::Snapshot)
 
-When `POSY2Options.dcopf` is true, add KVL (DC power flow) constraints.
+When `Posy2Options.dcopf` is true, add KVL (DC power flow) constraints.
 Otherwise do nothing. Call before `Nosy.optimize!`.
 Warns if called with `dcopf=true` but no AC loops exist to constrain.
 """

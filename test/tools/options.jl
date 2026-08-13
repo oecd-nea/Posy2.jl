@@ -1,4 +1,4 @@
-using POSY2
+using Posy2
 using Nosy
 using Test
 using JuMP
@@ -11,7 +11,7 @@ using HiGHS
             sim = Sim(Model(HiGHS.Optimizer))
             set_silent(sim.model)
             return Snapshot(sim, Dict(
-                :posy => POSY2Options(
+                :posy => Posy2Options(
                     data_dir=joinpath(@__DIR__, "..", "data"),
                     techdata_file="tech_data_test.xlsx",
                     timeseries_file="time_series_test.xlsx",
@@ -30,14 +30,14 @@ using HiGHS
     let
         sim = Sim(Model(HiGHS.Optimizer))
         set_silent(sim.model)
-        snap = Snapshot(sim, Dict(:posy => POSY2Options(
+        snap = Snapshot(sim, Dict(:posy => Posy2Options(
             tech_mode=:arguments,
             timeseries_mode=:arguments,
         )))
         @test tech_mode(snap) == :arguments
         @test timeseries_mode(snap) == :arguments
-        @test_throws ArgumentError POSY2Options(tech_mode=:automatic)
-        @test_throws ArgumentError POSY2Options(timeseries_mode=:automatic)
+        @test_throws ArgumentError Posy2Options(tech_mode=:automatic)
+        @test_throws ArgumentError Posy2Options(timeseries_mode=:automatic)
     end
 
     # posy_options requires Snapshot.options[:posy].
@@ -51,24 +51,24 @@ using HiGHS
         @test_throws ArgumentError posy_options(snap)
     end
 
-    # :posy must be a POSY2Options instance.
+    # :posy must be a Posy2Options instance.
     let
         function makesnapshot()
             sim = Sim(Model(HiGHS.Optimizer))
             set_silent(sim.model)
-            return Snapshot(sim, Dict(:posy => "not a POSY2Options"))
+            return Snapshot(sim, Dict(:posy => "not a Posy2Options"))
         end
         snap = makesnapshot()
         @test_throws ArgumentError posy_options(snap)
     end
 
-    # dcopf defaults to false when omitted from POSY2Options.
+    # dcopf defaults to false when omitted from Posy2Options.
     let
         function makesnapshot()
             sim = Sim(Model(HiGHS.Optimizer))
             set_silent(sim.model)
             return Snapshot(sim, Dict(
-                :posy => POSY2Options(
+                :posy => Posy2Options(
                     data_dir=joinpath(@__DIR__, "..", "data"),
                     techdata_file="tech_data_test.xlsx",
                     timeseries_file="time_series_test.xlsx",
@@ -78,16 +78,16 @@ using HiGHS
             ))
         end
         snap = makesnapshot()
-        @test !POSY2.dcopf(snap)
+        @test !Posy2.dcopf(snap)
     end
 
-    # POSY2Options(dcopf=true) is read back as true.
+    # Posy2Options(dcopf=true) is read back as true.
     let
         function makesnapshot()
             sim = Sim(Model(HiGHS.Optimizer))
             set_silent(sim.model)
             return Snapshot(sim, Dict(
-                :posy => POSY2Options(
+                :posy => Posy2Options(
                     data_dir=joinpath(@__DIR__, "..", "data"),
                     techdata_file="tech_data_test.xlsx",
                     timeseries_file="time_series_test.xlsx",
@@ -98,7 +98,7 @@ using HiGHS
             ))
         end
         snap = makesnapshot()
-        @test POSY2.dcopf(snap)
+        @test Posy2.dcopf(snap)
     end
 
     # applydcopf! does not add KVL constraints when dcopf is false.
@@ -107,7 +107,7 @@ using HiGHS
             sim = Sim(Model(HiGHS.Optimizer))
             set_silent(sim.model)
             return Snapshot(sim, Dict(
-                :posy => POSY2Options(
+                :posy => Posy2Options(
                     data_dir=joinpath(@__DIR__, "..", "data"),
                     techdata_file="tech_data_test.xlsx",
                     timeseries_file="time_series_test.xlsx",
@@ -117,6 +117,6 @@ using HiGHS
             ))
         end
         snap = makesnapshot()
-        @test POSY2.applydcopf!(snap) === nothing
+        @test Posy2.applydcopf!(snap) === nothing
     end
 end

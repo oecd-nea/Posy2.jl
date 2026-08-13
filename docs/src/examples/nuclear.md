@@ -11,7 +11,7 @@ changes how much dispatchable backup the system needs.
 Other technologies also have planned outages, but usually for different reasons.
 Coal and CCGT plants schedule maintenance. They do not stop for weeks because
 they need to reload fuel. Wind, solar, and hydro have no refuelling concept at
-all. POSY2 therefore gives nuclear dedicated reload parameters that model this
+all. Posy2 therefore gives nuclear dedicated reload parameters that model this
 refuelling outage, rather than a generic maintenance switch shared by every
 generator.
 
@@ -47,16 +47,16 @@ includes the scaled annual demand peak (about 5.67 GW), nuclear output drops t
 0 MW there, and CCGT must cover the full peak.
 
 ```jldoctest nuclear_overlap; output = false
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
-# Simulation and POSY2 input configuration
+# Simulation and Posy2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-example_data_dir = joinpath(pkgdir(POSY2), "data")
-snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
+example_data_dir = joinpath(pkgdir(Posy2), "data")
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     data_dir=example_data_dir,
     techdata_file="tech_data.xlsx",
     timeseries_file="time_series.xlsx",
@@ -161,16 +161,16 @@ Keep the same plants, demand, and costs, but allow about one reload start per
 month (roughly twelve options over the year).
 
 ```jldoctest nuclear_nonoverlap; output = false
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
-# Simulation and POSY2 input configuration
+# Simulation and Posy2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-example_data_dir = joinpath(pkgdir(POSY2), "data")
-snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
+example_data_dir = joinpath(pkgdir(Posy2), "data")
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     data_dir=example_data_dir,
     techdata_file="tech_data.xlsx",
     timeseries_file="time_series.xlsx",

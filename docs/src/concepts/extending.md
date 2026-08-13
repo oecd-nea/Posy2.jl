@@ -1,25 +1,25 @@
-# Extending POSY2
+# Extending Posy2
 
-This page is about building custom POSY2 component builders on top of the
+This page is about building custom Posy2 component builders on top of the
 Nosy compositional API: assemble a Nosy physical model, attach
-optimisation behaviours, then wrap the result with POSY2 naming and tags so
+optimisation behaviours, then wrap the result with Posy2 naming and tags so
 querying and post-processing recognise it. Existing builders such as
 [`makedispatchable`](@ref) and [`makeelectrolyser`](@ref) are complete examples
 of that pattern—open them once the design steps below are clear.
 
 ## Design Flow
 
-Every POSY2 technology follows the same sequence:
+Every Posy2 technology follows the same sequence:
 
 1. Physical model — choose a Nosy archetype, carriers, and ports.
 2. Behaviours — attach capacity, costs, linked flows, and other constraints.
-3. POSY2 wrapper — set the component name, tags, and `connect!` the ports.
+3. Posy2 wrapper — set the component name, tags, and `connect!` the ports.
 4. Reporting — inspect with `capacity`, `balance`, and `cost`, and rely on
    annual tables that filter by `:function` and aggregate by `:tech`.
 
-A pure Nosy component already has physics and behaviours. POSY2 adds the
+A pure Nosy component already has physics and behaviours. Posy2 adds the
 wrapper so the object uses the same naming and tagging rules as the shipped
-builders. Compatible tags and ports are what let POSY2 queries and
+builders. Compatible tags and ports are what let Posy2 queries and
 [`printsnapshot`](@ref) place the component with generation, storage, or
 interconnections.
 
@@ -68,7 +68,7 @@ families:
 | Storage | `LazyStorage` | Level plus joint flows for extra ports (hydro inflow, EV driving, ...) |
 | Converter | `BasicConverter` | One-to-one conversion (electrolyser, node interconnection, ...) |
 
-POSY2 builders already wrap most of these. `Demand`, `DispatchableSource`,
+Posy2 builders already wrap most of these. `Demand`, `DispatchableSource`,
 `ProfileSource`, `BasicStorage`, `LazyStorage`, and `BasicConverter` appear in
 shipped `make...` functions. `ProfileSink` and `BasicSink` are still valid Nosy
 choices for a custom builder when a fixed `Demand` series is not enough—for
@@ -80,7 +80,7 @@ Port naming follows [Component Builders](../components.md): sources use
 `output` / `level` (`LazyStorage` may add further ports as joint flows);
 linked carrier flows use names such as `fuel`, `co2`, and `grid losses`.
 
-Some POSY2 builders are intentional modelling exceptions. Demand response is
+Some Posy2 builders are intentional modelling exceptions. Demand response is
 demand-side flexibility modelled as a `DispatchableSource` rather than a sink;
 interconnections are their own family ([`makenodeinterco`](@ref) uses
 `BasicConverter`, [`makepriceinterco`](@ref) uses `DispatchableSource`).
@@ -99,7 +99,7 @@ interconnections are their own family ([`makenodeinterco`](@ref) uses
 | [`makedemandresponse`](@ref) | `DispatchableSource` | `output` | `output` | `demandresponse`, `virtual` |
 
 See [Component Builders](../components.md) for the full catalogue and the exact
-ports each builder connects. For archetype details beyond POSY2 wrappers, see
+ports each builder connects. For archetype details beyond Posy2 wrappers, see
 the Nosy documentation.
 
 ## Choose Behaviours
@@ -117,8 +117,8 @@ DispatchableSource              # can produce on output
   # or LinkedJointFlow("fuel", ...) when fuel is a physical flow to another node
 ```
 
-POSY2 builders mostly draw from the behaviours below. For anything beyond this
-set, see the Nosy documentation. POSY2 `cap` / `nothing` conventions and input
+Posy2 builders mostly draw from the behaviours below. For anything beyond this
+set, see the Nosy documentation. Posy2 `cap` / `nothing` conventions and input
 units are in [Component Builders](../components.md).
 
 ### Capacity
@@ -129,7 +129,7 @@ Attach capacity to the port that represents the technology's plant size.
 - `VariableCapacity(port, energy)` — capacity as a decision (optional bounds
   as keywords when needed).
 
-In POSY2, that plant-size port is often `output` for generation, `input` for
+In Posy2, that plant-size port is often `output` for generation, `input` for
 battery or electrolyser power, and `level` for hydrogen storage energy. Hydro
 may size more than one port. `capacity(result, "...")` reads the capacity on
 that same port. See also [Capacity Semantics](../components.md#Capacity-Semantics).
@@ -198,7 +198,7 @@ function makeloadshifting(cname::String, elec::Node, s::Snapshot;
     # no FixedCost(:investment, ...) — flexibility is not a capex asset here
     push!(vb, VariableCost(:vom, "input", energy, shift_cost))  # cost on the shifting flow
 
-    # 3. Component with the POSY2 name convention
+    # 3. Component with the Posy2 name convention
     c = Component("$cname $(elec.name)", m, vb)
 
     # 4. Tags that querying and post-processing rely on
@@ -216,9 +216,9 @@ end
 
 The same steps can be written inline for a study object. A `make...`
 function helps when the technology is reused across scenarios, shared with
-others, or must appear consistently in POSY2 reports.
+others, or must appear consistently in Posy2 reports.
 
-## POSY2 Wrapper Conventions
+## Posy2 Wrapper Conventions
 
 ### Component names
 

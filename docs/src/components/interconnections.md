@@ -1,6 +1,6 @@
 # Interconnections
 
-POSY2 offers two representations of cross-zone exchange. A node
+Posy2 offers two representations of cross-zone exchange. A node
 interconnection connects two explicit model nodes. A price interconnection
 represents an external market through import and export capacities and an
 exogenous price series.
@@ -11,7 +11,7 @@ transfer-capacity and price sheets.
 
 ## Direction And Transfer Multipliers
 
-Directional capacities are base capacities. When a direction is finite, POSY2
+Directional capacities are base capacities. When a direction is finite, Posy2
 reads an hourly multiplier from sheet `transfer_capacities`. Its column is
 named for the direction, written as `From>To` with no spaces. Effective
 capacity is the base capacity multiplied by that series. The values are
@@ -67,7 +67,7 @@ it does not make the link unidirectional. `dc=false` creates an AC-classified
 link, while `dc=true` excludes it from the cycle constraints added by
 [`applydcopf!`](@ref).
 
-When DC power flow is enabled in [`POSY2Options`](@ref), every AC node
+When DC power flow is enabled in [`Posy2Options`](@ref), every AC node
 interconnection must supply a negative `susceptance`. The builder stores it in
 the snapshot's internal registry. Call [`applydcopf!`](@ref) after adding all
 links and before optimisation. See

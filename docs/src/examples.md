@@ -1,6 +1,6 @@
 # Examples
 
-These examples build systems with POSY2's `make...` methods. Nosy still
+These examples build systems with Posy2's `make...` methods. Nosy still
 provides the simulation, snapshot, carriers, and nodes, but the pages do not
 assemble Nosy `Component` objects by hand.
 
@@ -53,7 +53,7 @@ The table shows which combination each example uses.
 ## Exporting Example Results
 
 Every solved example returns a numeric result from `extract(snapshot)`.
-[`printsnapshot`](@ref) turns that result into POSY2's standard workbook report:
+[`printsnapshot`](@ref) turns that result into Posy2's standard workbook report:
 
 ```julia
 printsnapshot(result, "scenario.xlsx")
@@ -62,10 +62,10 @@ printsnapshot(result, "scenario.xlsx")
 The file is written to `results/scenario.xlsx` and contains annual values for
 the complete system and the modelled system boundary, detailed time series,
 and price-duration curves. If a file with the same name already exists,
-POSY2 moves it to `results/old/` before writing the new report. Call
+Posy2 moves it to `results/old/` before writing the new report. Call
 `printsnapshot` with the extracted result, not the unsolved symbolic snapshot.
 
-POSY2 follows Nosy's unit-agnostic convention: values only need to be
+Posy2 follows Nosy's unit-agnostic convention: values only need to be
 self-consistent. Here, power and capacity are MW, energy is MWh, overnight
 investment is USD/kW, fixed operation and maintenance is USD/kW/year, and
 variable costs are USD/MWh. The numerical assumptions are deliberately simple

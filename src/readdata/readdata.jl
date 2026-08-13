@@ -29,11 +29,11 @@ end
 """
     readtechdata(filename="tech_data.xlsx"; data_dir=joinpath(pwd(), "data"))
 
-Open and return the POSY2 technology-parameter workbook at
+Open and return the Posy2 technology-parameter workbook at
 `joinpath(data_dir, filename)`.
 
 The workbook is cached by path, filename, and modification time. If another
-application has locked the file, POSY2 reads a temporary copy when possible.
+application has locked the file, Posy2 reads a temporary copy when possible.
 """
 readtechdata(filename="tech_data.xlsx"; data_dir=joinpath(pwd(), "data")) = readexcel(data_dir, filename)
 @memoize function gettechdatasheet(xl, sheetname::String) # this function is memoized because gettable is time-consuming
@@ -53,7 +53,7 @@ Read one technology parameter from `sheetname`. Technology sheets use a
 `tech` column for parameter names and one column per technology; `techkey`
 selects the technology column and `param` selects the row.
 
-The snapshot method resolves the workbook through [`POSY2Options`](@ref) when
+The snapshot method resolves the workbook through [`Posy2Options`](@ref) when
 `tech_mode=:excel`; `:arguments` rejects direct snapshot lookups.
 Numeric values are rounded to `digits`; strings, including semicolon-separated
 construction profiles, are returned unchanged. Missing sheets, columns, rows,
@@ -95,11 +95,11 @@ end
     readtimeseries(filename="time_series.xlsx";
         data_dir=joinpath(pwd(), "data"))
 
-Open and return the POSY2 hourly time-series workbook at
+Open and return the Posy2 hourly time-series workbook at
 `joinpath(data_dir, filename)`.
 
 The workbook is cached by path, filename, and modification time. If another
-application has locked the file, POSY2 reads a temporary copy when possible.
+application has locked the file, Posy2 reads a temporary copy when possible.
 """
 readtimeseries(filename="time_series.xlsx"; data_dir=joinpath(pwd(), "data")) = readexcel(data_dir, filename)
 @memoize function gettimeseriesdatasheet(xl, sheetname::String) # this function is memoized because gettable is time-consuming
@@ -114,10 +114,10 @@ end
     gettimeseries(xl, title::String, sheetname::String, digits::Int)
     gettimeseries(s::Snapshot, title::String, sheetname::String; digits=6)
 
-Read and return the complete column `title` from `sheetname` in a POSY2
+Read and return the complete column `title` from `sheetname` in a Posy2
 time-series workbook.
 
-The snapshot method resolves the workbook through [`POSY2Options`](@ref) when
+The snapshot method resolves the workbook through [`Posy2Options`](@ref) when
 `timeseries_mode=:excel`; `:arguments` rejects direct snapshot lookups.
 Values are rounded to `digits`. Missing sheets or columns, and columns
 containing `missing` or `NaN`, raise `ArgumentError` with workbook context.

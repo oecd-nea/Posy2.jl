@@ -1,6 +1,6 @@
 # Exporting Results
 
-POSY2 provides a standard workbook report for solved studies. Nosy can also
+Posy2 provides a standard workbook report for solved studies. Nosy can also
 serialize extracted snapshots or write the underlying optimisation model.
 
 ## Workbook Post-Processing
@@ -27,14 +27,14 @@ working directory. The output contains four sheets:
 Interconnection-specific tables and column conventions are described in
 [Interconnections](../components/interconnections.md#losses-and-reporting).
 
-If the destination already exists, POSY2 moves it to
+If the destination already exists, Posy2 moves it to
 `results/old/scenario.xlsx` before writing the new workbook. An older file with
 that backup name is replaced. Use distinct filenames or copy important results
 elsewhere when retaining several revisions.
 
 `printsnapshot` rejects an unsolved snapshot. The current standard report also
 assumes a complete 8760-hour result, at least one interconnection, and the
-POSY2 node and component tags described in
+Posy2 node and component tags described in
 [Tags And Post-Processing](tags.md). Use direct Nosy queries for an
 isolated model without interconnections.
 
@@ -56,7 +56,7 @@ flows, tags, and options, but it is not associated with a live JuMP model. It
 is intended for later querying and reporting rather than re-optimisation.
 
 Snapshot export uses Julia serialization. Only import snapshots that you
-created yourself and only use compatible Julia, Nosy, and POSY2 versions.
+created yourself and only use compatible Julia, Nosy, and Posy2 versions.
 Julia serialization is not a safe interchange format for untrusted files.
 
 ## Exporting The Optimisation Problem

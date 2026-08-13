@@ -1,6 +1,6 @@
 # Component Builders
 
-POSY2 component builders assemble common energy-system technologies from Nosy
+Posy2 component builders assemble common energy-system technologies from Nosy
 archetypes, behaviours, and joint flows. A builder creates a component, adds it
 to a snapshot, connects its compatible ports, attaches reporting metadata, and
 returns the component. This gives studies a consistent vocabulary without
@@ -33,7 +33,7 @@ nodes, and a snapshot. These names have distinct purposes:
   node name unless the builder's documented column convention requires that.
 - Nodes determine the carriers and balances to which the component is
   connected.
-- The snapshot owns the component and supplies [`POSY2Options`](@ref).
+- The snapshot owns the component and supplies [`Posy2Options`](@ref).
 
 Except for interconnections, a builder normally names its component by joining
 `cname` and the principal node name with a space. For example,
@@ -55,7 +55,7 @@ unlimited direction of [`makenodeinterco`](@ref) skips the corresponding
 transfer-capacity lookup. See [Input Workbooks](concepts/input-data.md) for the
 complete sheet, row, and column conventions.
 
-POSY2 treats the following inputs consistently across the costed builders:
+Posy2 treats the following inputs consistently across the costed builders:
 
 - `overnight_cost` and `om_fixed_cost` are multiplied by 1,000 before they are
   attached to a capacity. With the usual MW convention, their input units are
@@ -70,7 +70,7 @@ POSY2 treats the following inputs consistently across the costed builders:
 - `co2_emission` is divided by 1,000 to form the linked CO2 flow, while the CO2
   flow is priced with `co2price`.
 
-POSY2 remains unit-agnostic in the same sense as Nosy: a study may use another
+Posy2 remains unit-agnostic in the same sense as Nosy: a study may use another
 consistent unit system, but the conversions above are part of the builders and
 must be accounted for.
 
@@ -116,7 +116,7 @@ attached to `input`, while a dispatchable plant's investment is attached to
 
 ## Tags And Reporting
 
-Builders add metadata used by POSY2 post-processing. Most components receive
+Builders add metadata used by Posy2 post-processing. Most components receive
 one `:tech` value, a `:zone` value, and one or more `:function` values. Common
 function tags include `generation`, `demand`, `storage`, `electrolysis`,
 `interconnection`, and `foreign`.
@@ -127,10 +127,10 @@ zones should also carry `:foreign`. Interconnection topology is inferred from
 connected ports and carrier names, so distinct electricity nodes should use
 distinct carrier names.
 
-Custom Nosy components are valid in a POSY2 snapshot. To include them in POSY2
+Custom Nosy components are valid in a Posy2 snapshot. To include them in Posy2
 reports, give them compatible tags and conventional port names. The individual
 component pages list the tags created by each builder. For which tags select
 which report rows, see [Tags And Post-Processing](concepts/tags.md). For the
 design sequence when adding a technology—physical model, behaviours, naming,
-tags, and connection—see [Extending POSY2](concepts/extending.md).
+tags, and connection—see [Extending Posy2](concepts/extending.md).
 

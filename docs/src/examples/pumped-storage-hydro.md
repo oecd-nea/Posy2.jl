@@ -9,16 +9,16 @@ circular, so the reservoir level wraps from the last hour into the first.
 Year-end and year-start are continuous.
 
 ```jldoctest pumped_storage; output = false
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
-# Simulation and POSY2 input configuration
+# Simulation and Posy2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-example_data_dir = joinpath(pkgdir(POSY2), "data")
-snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
+example_data_dir = joinpath(pkgdir(Posy2), "data")
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     data_dir=example_data_dir,
     techdata_file="tech_data.xlsx",
     timeseries_file="time_series.xlsx",

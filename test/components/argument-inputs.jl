@@ -1,4 +1,4 @@
-using POSY2
+using Posy2
 using Nosy
 using Test
 using JuMP
@@ -8,7 +8,7 @@ using HiGHS
     function argument_snapshot(; hours=24, tech=:arguments, series=:arguments)
         simulation = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, hours)))
         set_silent(simulation.model)
-        snapshot = Snapshot(simulation, Dict(:posy => POSY2Options(
+        snapshot = Snapshot(simulation, Dict(:posy => Posy2Options(
             data_dir=joinpath(@__DIR__, "does-not-exist"),
             techdata_file="does-not-exist.xlsx",
             timeseries_file="does-not-exist.xlsx",
@@ -118,7 +118,7 @@ using HiGHS
         )
         carbon = Node("CO2", CO2Carrier("CO2", simulation); rule=:curtailed, tags=[:co2])
 
-        tech_excel = Snapshot(simulation, Dict(:posy => POSY2Options(
+        tech_excel = Snapshot(simulation, Dict(:posy => Posy2Options(
             data_dir=data_dir,
             techdata_file="tech_data_test.xlsx",
             timeseries_file="unused.xlsx",
@@ -142,7 +142,7 @@ using HiGHS
         )
         carbon = Node("CO2", CO2Carrier("CO2", simulation); rule=:curtailed, tags=[:co2])
 
-        series_excel = Snapshot(simulation, Dict(:posy => POSY2Options(
+        series_excel = Snapshot(simulation, Dict(:posy => Posy2Options(
             data_dir=data_dir,
             techdata_file="unused.xlsx",
             timeseries_file="time_series_test.xlsx",

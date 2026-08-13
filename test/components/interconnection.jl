@@ -1,4 +1,4 @@
-using POSY2
+using Posy2
 using Nosy
 using Test
 using JuMP
@@ -9,7 +9,7 @@ using HiGHS
         sim = Sim(Model(HiGHS.Optimizer))
         set_silent(sim.model)
         opts = Dict(
-            :posy => POSY2Options(
+            :posy => Posy2Options(
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
@@ -38,9 +38,9 @@ using HiGHS
     let
         s, elec1, elec2 = makesnapshot()
         c = makenodeinterco("IC", elec1, elec2, Inf, Inf, s; dc=false, susceptance=-2.5)
-        @test POSY2.ic_susceptance(s, "ZONE1", "ZONE2") == -2.5
+        @test Posy2.ic_susceptance(s, "ZONE1", "ZONE2") == -2.5
         @test !haskey(c.tags, :susceptance)
-        mat, nodelist, node_map = POSY2.getic_susceptancematrix(s)
+        mat, nodelist, node_map = Posy2.getic_susceptancematrix(s)
         @test nodelist == ["ZONE1", "ZONE2"]
         @test mat[1, 2] == -2.5
         @test length(node_map) == 1

@@ -10,15 +10,15 @@ at 40 currency/MWh.
 is cheaper than the alternatives on the node.
 
 ```jldoctest demand_response; output = false
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
-# Simulation and POSY2 input configuration
+# Simulation and Posy2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     tech_mode=:arguments,
     timeseries_mode=:arguments,
 )))
@@ -148,15 +148,15 @@ julia> balance(result, "Gas country1", :output, energy; collapse=false, aggregat
 Without demand response the same peak needs 100 MW of gas:
 
 ```jldoctest demand_response_noshave; output = false
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
-# Simulation and POSY2 input configuration
+# Simulation and Posy2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     tech_mode=:arguments,
     timeseries_mode=:arguments,
 )))

@@ -1,13 +1,13 @@
 # Getting Started
 
-POSY2 is a modelling layer on top of Nosy. A normal workflow creates a Nosy
-simulation, stores [`POSY2Options`](@ref) in a snapshot, creates the required
-carriers and nodes, calls POSY2 component builders, optimises the resulting
+Posy2 is a modelling layer on top of Nosy. A normal workflow creates a Nosy
+simulation, stores [`Posy2Options`](@ref) in a snapshot, creates the required
+carriers and nodes, calls Posy2 component builders, optimises the resulting
 Nosy snapshot, and extracts its solution.
 
 ## Requirements
 
-POSY2 currently requires Nosy's `POSY2_refactoring` branch, which is planned
+Posy2 currently requires Nosy's `Posy2_refactoring` branch, which is planned
 for Nosy v0.3.0, and an LP or MILP solver compatible with
 [JuMP](https://jump.dev/JuMP.jl/stable/). The examples in this documentation
 use [HiGHS](https://highs.dev/) because it is open source and supports the
@@ -15,7 +15,7 @@ linear examples used here. Other
 [JuMP-compatible solvers](https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers)
 can be used the same way. Please note: some solvers require a separate installation and licence.
 
-Use a Julia environment in which POSY2, Nosy, and the selected solver are
+Use a Julia environment in which Posy2, Nosy, and the selected solver are
 already available.
 
 ## Minimal Workflow
@@ -26,7 +26,7 @@ argument explicitly (`tech_mode=:arguments` and `timeseries_mode=:arguments`),
 so no input workbook is read.
 
 ```julia
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
@@ -35,8 +35,8 @@ import JuMP: set_silent
 s = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(s))
 
-# POSY2 options are stored under the :posy key of the snapshot.
-options = POSY2Options(
+# Posy2 options are stored under the :posy key of the snapshot.
+options = Posy2Options(
     tech_mode=:arguments,       # supply technology parameters directly
     timeseries_mode=:arguments, # supply time series directly
 )
@@ -95,7 +95,7 @@ optimisation succeeds.
 
 ## Inspecting Results
 
-Nosy's normal metrics work directly on POSY2 snapshots:
+Nosy's normal metrics work directly on Posy2 snapshots:
 
 ```julia
 # Total annual system cost.

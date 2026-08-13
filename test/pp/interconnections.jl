@@ -1,4 +1,4 @@
-using POSY2
+using Posy2
 using Nosy
 using Test
 using JuMP
@@ -13,7 +13,7 @@ using HiGHS
 
     function posyopts()
         return Dict(
-            :posy => POSY2Options(
+            :posy => Posy2Options(
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
@@ -44,13 +44,13 @@ using HiGHS
 
         c = Nosy.getcomponent(s, "IC_ZONE1_ZONE2")
         @test Nosy.hastag(c, :function, "nodeinterconnection")
-        @test POSY2._fromto_ic_internal(s, c) == ("ZONE1", "ZONE2")
+        @test Posy2._fromto_ic_internal(s, c) == ("ZONE1", "ZONE2")
         zone1_ics = Nosy.getcomponents(s, "ZONE1"; with=[:function => "interconnection", :function => "nodeinterconnection"])
         @test haskey(zone1_ics, Nosy.name(c))
-        @test POSY2.rewrite_import_from_implicit(s, Nosy.name(c), c) == "ZONE1 > ZONE2"
-        @test POSY2.rewrite_export_from_implicit(s, Nosy.name(c), c) == "ZONE2 > ZONE1"
+        @test Posy2.rewrite_import_from_implicit(s, Nosy.name(c), c) == "ZONE1 > ZONE2"
+        @test Posy2.rewrite_export_from_implicit(s, Nosy.name(c), c) == "ZONE2 > ZONE1"
 
-        df = POSY2.gentimeseries(s)
+        df = Posy2.gentimeseries(s)
         @test "ZONE1 > ZONE2" in names(df)
         @test "ZONE2 > ZONE1" in names(df)
     end
@@ -66,11 +66,11 @@ using HiGHS
         s = extract(snap)
 
         expected_import = 50.0 * Nosy.nhours(sim(s))
-        @test isapprox(POSY2.imports_internal(s, "ZONE1"; collapse=true), expected_import; rtol=1e-12)
-        @test isapprox(POSY2.imports_all(s, "ZONE1"; collapse=true), expected_import; rtol=1e-12)
-        @test isempty(POSY2.imports_foreign(s))
-        @test POSY2.imports_foreign(s, "ZONE1"; collapse=true) == 0.0
-        @test POSY2.exports_foreign(s, "ZONE1"; collapse=true) == 0.0
+        @test isapprox(Posy2.imports_internal(s, "ZONE1"; collapse=true), expected_import; rtol=1e-12)
+        @test isapprox(Posy2.imports_all(s, "ZONE1"; collapse=true), expected_import; rtol=1e-12)
+        @test isempty(Posy2.imports_foreign(s))
+        @test Posy2.imports_foreign(s, "ZONE1"; collapse=true) == 0.0
+        @test Posy2.exports_foreign(s, "ZONE1"; collapse=true) == 0.0
     end
 
     # Snapshot totals: imports_all equals internal plus foreign; exports_all equals exports_internal when no foreign IC exists.
@@ -83,13 +83,13 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        internal_total = sum(values(POSY2.imports_internal(s; collapse=true)))
-        foreign_total = sum(values(POSY2.imports_foreign(s; collapse=true)), init=0.0)
-        all_total = sum(values(POSY2.imports_all(s; collapse=true)))
+        internal_total = sum(values(Posy2.imports_internal(s; collapse=true)))
+        foreign_total = sum(values(Posy2.imports_foreign(s; collapse=true)), init=0.0)
+        all_total = sum(values(Posy2.imports_all(s; collapse=true)))
         @test isapprox(all_total, internal_total + foreign_total; rtol=1e-12)
         @test isapprox(
-            POSY2.exports_all(s, "ZONE1"; collapse=true),
-            POSY2.exports_internal(s, "ZONE1"; collapse=true);
+            Posy2.exports_all(s, "ZONE1"; collapse=true),
+            Posy2.exports_internal(s, "ZONE1"; collapse=true);
             rtol=1e-12,
         )
     end
@@ -104,11 +104,11 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        d = POSY2.imports_internal(s)
-        dts_zone = POSY2.imports_internal(s, "ZONE1"; collapse=false)
-        collapsed_zone = POSY2.imports_internal(s, "ZONE1"; collapse=true)
-        dts_all = POSY2.imports_all(s, "ZONE1"; collapse=false)
-        collapsed_all = POSY2.imports_all(s, "ZONE1"; collapse=true)
+        d = Posy2.imports_internal(s)
+        dts_zone = Posy2.imports_internal(s, "ZONE1"; collapse=false)
+        collapsed_zone = Posy2.imports_internal(s, "ZONE1"; collapse=true)
+        dts_all = Posy2.imports_all(s, "ZONE1"; collapse=false)
+        collapsed_all = Posy2.imports_all(s, "ZONE1"; collapse=true)
 
         @test d isa AbstractDict
         @test haskey(d, "ZONE2 > ZONE1")
@@ -134,9 +134,9 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        d = POSY2.exports_internal(s)
-        dts = POSY2.exports_internal(s; collapse=false)
-        dts_all = POSY2.exports_all(s; collapse=false)
+        d = Posy2.exports_internal(s)
+        dts = Posy2.exports_internal(s; collapse=false)
+        dts_all = Posy2.exports_all(s; collapse=false)
 
         @test d isa AbstractDict
         @test haskey(d, "ZONE2 > ZONE1")
@@ -160,11 +160,11 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        flows = POSY2._all_ic_directed_flows(s; collapse=false)
+        flows = Posy2._all_ic_directed_flows(s; collapse=false)
         @test haskey(flows, ("ZONE2", "ZONE1"))
         @test !(flows[("ZONE2", "ZONE1")] isa Number)
         @test isapprox(
-            POSY2.imports_internal(s, "ZONE1"; collapse=true),
+            Posy2.imports_internal(s, "ZONE1"; collapse=true),
             sum(flows[("ZONE2", "ZONE1")]);
             rtol=1e-12,
         )
@@ -184,10 +184,10 @@ using HiGHS
         s = extract(snap)
 
         c = Nosy.getcomponent(s, "IC_LINK_ZONE_A_ZONE_B")
-        @test POSY2._fromto_ic_internal(s, c) == ("ZONE_A", "ZONE_B")
-        @test POSY2.rewrite_import_from_implicit(s, Nosy.name(c), c) == "ZONE_A > ZONE_B"
-        @test POSY2.rewrite_export_from_implicit(s, Nosy.name(c), c) == "ZONE_B > ZONE_A"
-        @test haskey(POSY2.imports_internal(s), "ZONE_B > ZONE_A")
+        @test Posy2._fromto_ic_internal(s, c) == ("ZONE_A", "ZONE_B")
+        @test Posy2.rewrite_import_from_implicit(s, Nosy.name(c), c) == "ZONE_A > ZONE_B"
+        @test Posy2.rewrite_export_from_implicit(s, Nosy.name(c), c) == "ZONE_B > ZONE_A"
+        @test haskey(Posy2.imports_internal(s), "ZONE_B > ZONE_A")
     end
 
     # Internal price IC (neighbor ZONE2 is a model node): external topology is ZONE2->ZONE1; rewrite labels match import/export directions.
@@ -200,9 +200,9 @@ using HiGHS
         s = extract(snap)
 
         c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
-        @test POSY2._fromto_ic_external(s, c) == ("ZONE2", "ZONE1")
-        @test POSY2.rewrite_import_from_implicit(s, Nosy.name(c), c) == "ZONE2 > ZONE1"
-        @test POSY2.rewrite_export_from_implicit(s, Nosy.name(c), c) == "ZONE1 > ZONE2"
+        @test Posy2._fromto_ic_external(s, c) == ("ZONE2", "ZONE1")
+        @test Posy2.rewrite_import_from_implicit(s, Nosy.name(c), c) == "ZONE2 > ZONE1"
+        @test Posy2.rewrite_export_from_implicit(s, Nosy.name(c), c) == "ZONE1 > ZONE2"
     end
 
     # Price IC whose neighbor matches an electricity node counts as internal import, not foreign.
@@ -214,10 +214,10 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        d = POSY2.imports_internal(s)
-        collapsed_zone = POSY2.imports_internal(s, "ZONE1"; collapse=true)
+        d = Posy2.imports_internal(s)
+        collapsed_zone = Posy2.imports_internal(s, "ZONE1"; collapse=true)
         @test haskey(d, "ZONE2 > ZONE1")
-        @test isempty(POSY2.imports_foreign(s))
+        @test isempty(Posy2.imports_foreign(s))
         @test collapsed_zone == d["ZONE2 > ZONE1"]
     end
 
@@ -230,17 +230,17 @@ using HiGHS
         s = extract(snap)
 
         c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
-        d = POSY2.imports_foreign(s)
-        collapsed_zone = POSY2.imports_foreign(s, "ZONE1"; collapse=true)
+        d = Posy2.imports_foreign(s)
+        collapsed_zone = Posy2.imports_foreign(s, "ZONE1"; collapse=true)
 
-        @test POSY2._fromto_ic_external(s, c) == ("ZONE2", "ZONE1")
+        @test Posy2._fromto_ic_external(s, c) == ("ZONE2", "ZONE1")
         @test haskey(d, "ZONE2 > ZONE1")
         @test collapsed_zone == d["ZONE2 > ZONE1"]
-        @test isempty(POSY2.imports_internal(s))
+        @test isempty(Posy2.imports_internal(s))
 
-        internal_total = sum(values(POSY2.imports_internal(s; collapse=true)), init=0.0)
-        foreign_total = sum(values(POSY2.imports_foreign(s; collapse=true)), init=0.0)
-        all_total = sum(values(POSY2.imports_all(s; collapse=true)))
+        internal_total = sum(values(Posy2.imports_internal(s; collapse=true)), init=0.0)
+        foreign_total = sum(values(Posy2.imports_foreign(s; collapse=true)), init=0.0)
+        all_total = sum(values(Posy2.imports_all(s; collapse=true)))
         @test isapprox(all_total, internal_total + foreign_total; rtol=1e-12)
         @test isapprox(foreign_total, d["ZONE2 > ZONE1"]; rtol=1e-12)
     end
@@ -253,10 +253,10 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        collapsed = POSY2.imports_foreign(s; collapse=true)
-        dts = POSY2.imports_foreign(s; collapse=false)
-        dts_zone = POSY2.imports_foreign(s, "ZONE1"; collapse=false)
-        collapsed_zone = POSY2.imports_foreign(s, "ZONE1"; collapse=true)
+        collapsed = Posy2.imports_foreign(s; collapse=true)
+        dts = Posy2.imports_foreign(s; collapse=false)
+        dts_zone = Posy2.imports_foreign(s, "ZONE1"; collapse=false)
+        collapsed_zone = Posy2.imports_foreign(s, "ZONE1"; collapse=true)
 
         @test haskey(dts, "ZONE2 > ZONE1")
         @test !(dts["ZONE2 > ZONE1"] isa Number)
@@ -275,10 +275,10 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        collapsed = POSY2.exports_foreign(s; collapse=true)
-        dts = POSY2.exports_foreign(s; collapse=false)
-        dts_zone = POSY2.exports_foreign(s, "ZONE1"; collapse=false)
-        collapsed_zone = POSY2.exports_foreign(s, "ZONE1"; collapse=true)
+        collapsed = Posy2.exports_foreign(s; collapse=true)
+        dts = Posy2.exports_foreign(s; collapse=false)
+        dts_zone = Posy2.exports_foreign(s, "ZONE1"; collapse=false)
+        collapsed_zone = Posy2.exports_foreign(s, "ZONE1"; collapse=true)
 
         @test haskey(dts, "ZONE1 > ZONE2")
         @test !(dts["ZONE1 > ZONE2"] isa Number)
@@ -296,12 +296,12 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        @test POSY2.exports_foreign(s, "ZONE1"; collapse=true) == 0.0
-        exp_dict = POSY2.exports_foreign(s; collapse=true)
+        @test Posy2.exports_foreign(s, "ZONE1"; collapse=true) == 0.0
+        exp_dict = Posy2.exports_foreign(s; collapse=true)
         @test isempty(exp_dict) || all(iszero, values(exp_dict))
         @test isapprox(
-            POSY2.exports_all(s, "ZONE1"; collapse=true),
-            POSY2.exports_internal(s, "ZONE1"; collapse=true);
+            Posy2.exports_all(s, "ZONE1"; collapse=true),
+            Posy2.exports_internal(s, "ZONE1"; collapse=true);
             rtol=1e-12,
         )
     end
@@ -322,10 +322,10 @@ using HiGHS
         vol_exp = Nosy.balance(zone1, :output, energy, collapse=false, aggregate=false)[cname]
         expected_imp = sum(Nosy.dualprice(zone1) .* vol_imp)
         expected_exp = sum(Nosy.dualprice(zone1) .* vol_exp)
-        @test_throws AssertionError POSY2.selfinterconnectioncost_node(s, cname)
-        @test_throws AssertionError POSY2.selfinterconnectionrevenue_node(s, cname)
-        @test_throws AssertionError POSY2.selfcongestionrent_node(s, cname)
-        df = POSY2.selfcosts(s)
+        @test_throws AssertionError Posy2.selfinterconnectioncost_node(s, cname)
+        @test_throws AssertionError Posy2.selfinterconnectionrevenue_node(s, cname)
+        @test_throws AssertionError Posy2.selfcongestionrent_node(s, cname)
+        df = Posy2.selfcosts(s)
         row = first(df[df[!, :component] .== cname, :])
         @test row.imports == 0.0
         @test row.exports == 0.0
@@ -349,11 +349,11 @@ using HiGHS
         s = extract(snap)
 
         cname = "IC_ZONE1_ZONE2"
-        df = POSY2.selfcosts(s)
+        df = Posy2.selfcosts(s)
         row = first(df[df[!, :component] .== cname, :])
-        imp = POSY2.selfinterconnectioncost_node(s, cname)
-        exp = POSY2.selfinterconnectionrevenue_node(s, cname)
-        cr = POSY2.selfcongestionrent_node(s, cname)
+        imp = Posy2.selfinterconnectioncost_node(s, cname)
+        exp = Posy2.selfinterconnectionrevenue_node(s, cname)
+        cr = Posy2.selfcongestionrent_node(s, cname)
         @test isapprox(row.imports, imp; rtol=1e-12)
         @test isapprox(row.exports, -exp; rtol=1e-12)
         @test isapprox(row[Symbol("congestion rent")], -cr; rtol=1e-12)
@@ -369,7 +369,7 @@ using HiGHS
         s = extract(snap)
 
         c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
-        prices = POSY2.geticprice(c)
+        prices = Posy2.geticprice(c)
         nh = Nosy.nhours(sim(s))
         @test haskey(prices, :import)
         @test haskey(prices, :export)
@@ -388,7 +388,7 @@ using HiGHS
         s = extract(snap)
 
         c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
-        dmaxed = POSY2.ispriceicmaxed(c)
+        dmaxed = Posy2.ispriceicmaxed(c)
         nh = Nosy.nhours(sim(s))
         @test haskey(dmaxed, :import)
         @test haskey(dmaxed, :export)
@@ -408,7 +408,7 @@ using HiGHS
         s = extract(snap)
 
         c = Nosy.getcomponent(s, "IC_ZONE1_ZONE2")
-        dmaxed = POSY2.isnodeicmaxed(c)
+        dmaxed = Posy2.isnodeicmaxed(c)
         nh = Nosy.nhours(sim(s))
         @test haskey(dmaxed, :input)
         @test haskey(dmaxed, :input2)
@@ -427,9 +427,9 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        @test_throws ArgumentError POSY2.geticprice(Nosy.getcomponent(s, "CCGT ZONE1"))
-        @test_throws ArgumentError POSY2.isnodeicmaxed(Nosy.getcomponent(s, "CCGT ZONE1"))
-        @test_throws ArgumentError POSY2.ispriceicmaxed(Nosy.getcomponent(s, "CCGT ZONE1"))
-        @test_throws ArgumentError POSY2.getexogenousprice(Nosy.getcomponent(s, "IC_ZONE1_ZONE2"))
+        @test_throws ArgumentError Posy2.geticprice(Nosy.getcomponent(s, "CCGT ZONE1"))
+        @test_throws ArgumentError Posy2.isnodeicmaxed(Nosy.getcomponent(s, "CCGT ZONE1"))
+        @test_throws ArgumentError Posy2.ispriceicmaxed(Nosy.getcomponent(s, "CCGT ZONE1"))
+        @test_throws ArgumentError Posy2.getexogenousprice(Nosy.getcomponent(s, "IC_ZONE1_ZONE2"))
     end
 end

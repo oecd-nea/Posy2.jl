@@ -1,6 +1,6 @@
 # Modelling Concepts
 
-POSY2 combines a study configuration, workbook or argument-based inputs,
+Posy2 combines a study configuration, workbook or argument-based inputs,
 high-level component builders, and Nosy's optimisation and querying workflow.
 
 - [Study Configuration](concepts/options.md): input paths, economic
@@ -9,7 +9,7 @@ high-level component builders, and Nosy's optimisation and querying workflow.
   time-series conventions.
 - [Building a Snapshot](concepts/building-snapshot.md): simulations, carriers,
   nodes, component builders, costs, tags, and interconnections.
-- [Extending POSY2](concepts/extending.md): design flow for custom builders:
+- [Extending Posy2](concepts/extending.md): design flow for custom builders:
   physical model, behaviours, wrapper conventions, and common mistakes.
 - [Optimising a Snapshot](concepts/optimizing.md): objectives, the DC
   power flow formulation, solution status, extraction, and multi-stage

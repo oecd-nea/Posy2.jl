@@ -1,22 +1,22 @@
 # One Country
 
-The smallest complete POSY2 study: one electricity node with demand, onshore
+The smallest complete Posy2 study: one electricity node with demand, onshore
 wind, and a CCGT. Later examples extend the same pattern of Snapshot, `make*`
 builders, optimisation, and result inspection.
 
 ```jldoctest one_country; output = false
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
-# Generate the simulation and configure POSY2 inputs.
+# Generate the simulation and configure Posy2 inputs.
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-example_data_dir = joinpath(pkgdir(POSY2), "data")
+example_data_dir = joinpath(pkgdir(Posy2), "data")
 snapshot = Snapshot(
     sim,
-    Dict(:posy => POSY2Options(
+    Dict(:posy => Posy2Options(
         data_dir=example_data_dir,
         techdata_file="tech_data.xlsx",
         timeseries_file="time_series.xlsx",
@@ -95,4 +95,4 @@ julia> printsnapshot(result, "one-country.xlsx")
 That creates `results/one-country.xlsx` with annual indicators, time series,
 and price-duration curves. Different filenames make it easy to compare
 scenarios. Renaming the node or technology changes which workbook columns
-POSY2 reads.
+Posy2 reads.

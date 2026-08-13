@@ -5,7 +5,7 @@ Four electricity zones A–B–C–D sit on an AC ring of
 on A supplies flat 1 MW demand in every zone. With `dcopf=false` the mesh is a
 transport model: a network flow problem that enforces nodal balance (and
 capacity limits) but not Kirchhoff's voltage law. With `dcopf=true` and
-[`applydcopf!`](@ref), POSY2 adds KVL on every independent AC cycle, so the
+[`applydcopf!`](@ref), Posy2 adds KVL on every independent AC cycle, so the
 study becomes a DC optimal power-flow approximation of the AC mesh: corridor
 flows follow the split implied by the line susceptances.
 
@@ -21,7 +21,7 @@ This page keeps the same plants and demand and changes only the network:
 2. DC OPF on the same AC mesh (`dcopf=true` and [`applydcopf!`](@ref));
 3. DC OPF again, but with the diagonal built as controllable HVDC (`dc=true`).
 
-After each solve, [`printsnapshot`](@ref) writes the standard POSY2 Excel
+After each solve, [`printsnapshot`](@ref) writes the standard Posy2 Excel
 report under `results/`—one workbook per scenario. In `Annual values (all)`,
 the Interconnection volume tables (total, AC, and DC) summarise annual
 corridor exchanges and make scenario comparison straightforward.
@@ -33,16 +33,16 @@ With `dcopf=false` there is no need for susceptances or [`applydcopf!`](@ref).
 The solver may pick any feasible transport pattern.
 
 ```jldoctest dc_opf_transport; output = false
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
-# Simulation and POSY2 input configuration
+# Simulation and Posy2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-example_data_dir = joinpath(pkgdir(POSY2), "data")
-snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
+example_data_dir = joinpath(pkgdir(Posy2), "data")
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     data_dir=example_data_dir,
     techdata_file="tech_data.xlsx",
     timeseries_file="time_series.xlsx",
@@ -113,16 +113,16 @@ line, then call [`applydcopf!`](@ref) before optimisation. The flag alone
 does not add KVL constraints.
 
 ```jldoctest dc_opf; output = false
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
-# Simulation and POSY2 input configuration
+# Simulation and Posy2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-example_data_dir = joinpath(pkgdir(POSY2), "data")
-snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
+example_data_dir = joinpath(pkgdir(Posy2), "data")
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     data_dir=example_data_dir,
     techdata_file="tech_data.xlsx",
     timeseries_file="time_series.xlsx",
@@ -197,22 +197,22 @@ satisfy KVL on every independent AC cycle. A controllable DC corridor (for
 example an HVDC line with converter stations) is different: operators set or
 schedule the transfer directly, and the line does not follow an AC phase-angle
 loop law.
-POSY2 therefore keeps DC lines in the energy balance and capacity limits, but
+Posy2 therefore keeps DC lines in the energy balance and capacity limits, but
 outside the AC susceptance graph.
 
 The example below replaces the AC diagonal with HVDC (`dc=true`).
 
 ```jldoctest dc_opf_dc; output = false
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
-# Simulation and POSY2 input configuration
+# Simulation and Posy2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-example_data_dir = joinpath(pkgdir(POSY2), "data")
-snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
+example_data_dir = joinpath(pkgdir(Posy2), "data")
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     data_dir=example_data_dir,
     techdata_file="tech_data.xlsx",
     timeseries_file="time_series.xlsx",

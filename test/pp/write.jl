@@ -1,4 +1,4 @@
-using POSY2
+using Posy2
 using Nosy
 using Test
 using JuMP
@@ -15,7 +15,7 @@ using DataFrames
 
     function posyopts()
         return Dict(
-            :posy => POSY2Options(
+            :posy => Posy2Options(
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
@@ -65,7 +65,7 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        dat = POSY2._gensnapshotpp(s)
+        dat = Posy2._gensnapshotpp(s)
         @test haskey(dat, "Annual values (all)")
         @test haskey(dat, "Annual values (self)")
         @test haskey(dat, "Time series")
@@ -83,11 +83,11 @@ using DataFrames
             "> ZONE1" => [1.0, missing],
             "> ZONE2" => [missing, 2.0],
         )
-        line = POSY2.DataLine("IC volume", "TWh/y", df)
+        line = Posy2.DataLine("IC volume", "TWh/y", df)
         filepath = joinpath(mktempdir(), "pp_write_missing.xlsx")
         XLSX.openxlsx(filepath, mode="w") do xf
             sh = xf[1]
-            POSY2.__write_to_sheet!(sh, line)
+            Posy2.__write_to_sheet!(sh, line)
             @test sh[4, 2] == 1.0
             @test ismissing(sh[5, 2])
             @test ismissing(sh[4, 3])
@@ -97,11 +97,11 @@ using DataFrames
 
     # Workbook writer for dict DataLines: float values are rounded to three decimals.
     let
-        line = POSY2.DataLine("Costs", "B USD", Dict("Physical" => 1.23456, "Trade" => 2.0))
+        line = Posy2.DataLine("Costs", "B USD", Dict("Physical" => 1.23456, "Trade" => 2.0))
         filepath = joinpath(mktempdir(), "pp_write_dict.xlsx")
         XLSX.openxlsx(filepath, mode="w") do xf
             sh = xf[1]
-            POSY2.__write_to_sheet!(sh, line)
+            Posy2.__write_to_sheet!(sh, line)
             @test sh[3, 1] == "Physical"
             @test sh[4, 1] == 1.235
             @test sh[3, 2] == "Trade"
@@ -135,9 +135,9 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        dat = POSY2._gensnapshotpp(s)
+        dat = Posy2._gensnapshotpp(s)
         filepath = joinpath(mktempdir(), "pp_snapshot.xlsx")
-        POSY2._printsnapshot(dat, filepath)
+        Posy2._printsnapshot(dat, filepath)
         @test isfile(filepath)
         XLSX.openxlsx(filepath) do xf
             @test XLSX.sheetnames(xf) == [
@@ -152,6 +152,6 @@ using DataFrames
     # printsnapshot requires an optimized snapshot; unoptimized snapshot raises AssertionError.
     let
         snap = Snapshot(tsim(), posyopts())
-        @test_throws AssertionError POSY2.printsnapshot(snap, "should_fail.xlsx")
+        @test_throws AssertionError Posy2.printsnapshot(snap, "should_fail.xlsx")
     end
 end

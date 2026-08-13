@@ -1,4 +1,4 @@
-using POSY2
+using Posy2
 using Nosy
 using Test
 using JuMP
@@ -13,7 +13,7 @@ using HiGHS
 
     function posyopts()
         return Dict(
-            :posy => POSY2Options(
+            :posy => Posy2Options(
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
@@ -56,11 +56,11 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        d = POSY2.demand(s, "ZONE1"; aggregate=false, collapse=true)
+        d = Posy2.demand(s, "ZONE1"; aggregate=false, collapse=true)
         @test haskey(d, "Other consumption ZONE1")
         @test haskey(d, "EL ZONE1")
         @test !haskey(d, "Other consumption ZONE2")
-        @test isempty(POSY2.demand(s, "ZONE2"; aggregate=false, collapse=true))
+        @test isempty(Posy2.demand(s, "ZONE2"; aggregate=false, collapse=true))
     end
 
     # demand collapse=false returns hourly series; collapse=true annual equals sum (100 MW demand * nhours).
@@ -78,8 +78,8 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        hourly = POSY2.demand(s, "ZONE1"; aggregate=false, collapse=false)
-        collapsed = POSY2.demand(s, "ZONE1"; aggregate=false, collapse=true)
+        hourly = Posy2.demand(s, "ZONE1"; aggregate=false, collapse=false)
+        collapsed = Posy2.demand(s, "ZONE1"; aggregate=false, collapse=true)
         expected = 100.0 * Nosy.nhours(sim(s))
         @test length(hourly["Other consumption ZONE1"]) == Nosy.nhours(sim(s))
         @test isapprox(collapsed["Other consumption ZONE1"], sum(hourly["Other consumption ZONE1"]); rtol=1e-12)
@@ -101,10 +101,10 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        total = POSY2.demand(s, "ZONE1"; aggregate=true, collapse=true)
-        by_component = POSY2.demand(s, "ZONE1"; aggregate=false, collapse=true)
+        total = Posy2.demand(s, "ZONE1"; aggregate=true, collapse=true)
+        by_component = Posy2.demand(s, "ZONE1"; aggregate=false, collapse=true)
         @test isapprox(total, sum(values(by_component)); rtol=1e-12)
-        @test POSY2.demand(s, "ZONE2"; aggregate=true, collapse=true) == 0.0
+        @test Posy2.demand(s, "ZONE2"; aggregate=true, collapse=true) == 0.0
     end
 
     # production: ZONE2 CCGT supplies ZONE1 (demand 100 MW/h); annual export matches hourly sum.
@@ -122,9 +122,9 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        by_component = POSY2.production(s; aggregate=false, collapse=true)
-        hourly = POSY2.production(s; aggregate=false, collapse=false)
-        collapsed = POSY2.production(s; aggregate=false, collapse=true)
+        by_component = Posy2.production(s; aggregate=false, collapse=true)
+        hourly = Posy2.production(s; aggregate=false, collapse=false)
+        collapsed = Posy2.production(s; aggregate=false, collapse=true)
         expected = 100.0 * Nosy.nhours(sim(s))
 
         @test haskey(by_component, "CCGT ZONE2")
@@ -148,17 +148,17 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        sense1 = POSY2.ic_vol_sense1(s; aggregate=false, collapse=true)
-        sense2 = POSY2.ic_vol_sense2(s; aggregate=false, collapse=true)
-        hourly = POSY2.ic_vol_sense1(s; aggregate=false, collapse=false)
+        sense1 = Posy2.ic_vol_sense1(s; aggregate=false, collapse=true)
+        sense2 = Posy2.ic_vol_sense2(s; aggregate=false, collapse=true)
+        hourly = Posy2.ic_vol_sense1(s; aggregate=false, collapse=false)
 
         @test haskey(sense1, "IC_ZONE1_ZONE2")
-        @test isapprox(sense1["IC_ZONE1_ZONE2"], POSY2.imports_internal(s, "ZONE1"; collapse=true); rtol=1e-12)
+        @test isapprox(sense1["IC_ZONE1_ZONE2"], Posy2.imports_internal(s, "ZONE1"; collapse=true); rtol=1e-12)
         @test sense2["IC_ZONE1_ZONE2"] == 0.0
         @test sense1["IC_ZONE1_ZONE2"] != sense2["IC_ZONE1_ZONE2"]
         @test isapprox(sense1["IC_ZONE1_ZONE2"], sum(hourly["IC_ZONE1_ZONE2"]); rtol=1e-12)
-        @test isapprox(POSY2.ic_vol_sense1(s; aggregate=true, collapse=true), POSY2.imports_internal(s, "ZONE1"; collapse=true); rtol=1e-12)
-        @test POSY2.ic_vol_sense2(s; aggregate=true, collapse=true) == 0.0
+        @test isapprox(Posy2.ic_vol_sense1(s; aggregate=true, collapse=true), Posy2.imports_internal(s, "ZONE1"; collapse=true); rtol=1e-12)
+        @test Posy2.ic_vol_sense2(s; aggregate=true, collapse=true) == 0.0
     end
 
     # Price IC sense2 is import from foreign neighbor; sense1 is zero when only import direction flows.
@@ -169,11 +169,11 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        sense1 = POSY2.ic_vol_sense1(s; aggregate=false, collapse=true)
-        sense2 = POSY2.ic_vol_sense2(s; aggregate=false, collapse=true)
-        hourly = POSY2.ic_vol_sense2(s; aggregate=false, collapse=false)
+        sense1 = Posy2.ic_vol_sense1(s; aggregate=false, collapse=true)
+        sense2 = Posy2.ic_vol_sense2(s; aggregate=false, collapse=true)
+        hourly = Posy2.ic_vol_sense2(s; aggregate=false, collapse=false)
 
-        @test isapprox(sense2["IC_ZONE2_ZONE1"], POSY2.imports_foreign(s, "ZONE1"; collapse=true); rtol=1e-12)
+        @test isapprox(sense2["IC_ZONE2_ZONE1"], Posy2.imports_foreign(s, "ZONE1"; collapse=true); rtol=1e-12)
         @test sense1["IC_ZONE2_ZONE1"] == 0.0
         @test sense1["IC_ZONE2_ZONE1"] != sense2["IC_ZONE2_ZONE1"]
         @test isapprox(sense2["IC_ZONE2_ZONE1"], sum(hourly["IC_ZONE2_ZONE1"]); rtol=1e-12)
@@ -197,18 +197,18 @@ using HiGHS
         s = extract(snap)
 
         nh = Nosy.nhours(sim(s))
-        char = POSY2.charging(s; aggregate=false, collapse=false)
-        dis = POSY2.discharging(s; aggregate=false, collapse=false)
-        lev = POSY2.storagelevel(s; aggregate=false)
+        char = Posy2.charging(s; aggregate=false, collapse=false)
+        dis = Posy2.discharging(s; aggregate=false, collapse=false)
+        lev = Posy2.storagelevel(s; aggregate=false)
         @test haskey(char, "charging Battery ZONE1")
         @test haskey(dis, "discharging Battery ZONE1")
         @test haskey(lev, "level Battery ZONE1")
         @test length(char["charging Battery ZONE1"]) == nh
-        collapsed = POSY2.charging(s; aggregate=false, collapse=true)
-        hourly = POSY2.charging(s; aggregate=false, collapse=false)
+        collapsed = Posy2.charging(s; aggregate=false, collapse=true)
+        hourly = Posy2.charging(s; aggregate=false, collapse=false)
         @test isapprox(collapsed["charging Battery ZONE1"], sum(hourly["charging Battery ZONE1"]); rtol=1e-12)
-        dis_hourly = POSY2.discharging(s; aggregate=false, collapse=false)
-        dis_collapsed = POSY2.discharging(s; aggregate=false, collapse=true)
+        dis_hourly = Posy2.discharging(s; aggregate=false, collapse=false)
+        dis_collapsed = Posy2.discharging(s; aggregate=false, collapse=true)
         @test isapprox(dis_collapsed["discharging Battery ZONE1"], sum(dis_hourly["discharging Battery ZONE1"]); rtol=1e-12)
     end
 
@@ -227,7 +227,7 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        @test isempty(POSY2.intake(s; aggregate=false, collapse=false))
+        @test isempty(Posy2.intake(s; aggregate=false, collapse=false))
     end
 
     # Hydro reservoir: intake hourly series matches reservoir_inflow time series from fixture; collapse=true sums hours.
@@ -243,14 +243,14 @@ using HiGHS
         )
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
-        inta = POSY2.intake(s; aggregate=false, collapse=false)
+        inta = Posy2.intake(s; aggregate=false, collapse=false)
         key = "intake Hydro reservoir ZONE1"
         @test haskey(inta, key)
         @test length(inta[key]) == Nosy.nhours(sim(s))
         profile = gettimeseries(s, "ZONE1", "reservoir_inflow_2019")
         @test isapprox(inta[key], profile; rtol=1e-12)
         @test isapprox(
-            POSY2.intake(s; aggregate=false, collapse=true)[key],
+            Posy2.intake(s; aggregate=false, collapse=true)[key],
             sum(inta[key]);
             rtol=1e-12,
         )
@@ -265,15 +265,15 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        los = POSY2.losses(s; aggregate=false, collapse=true)
-        dem_loss = POSY2.losses(s, "Other consumption ZONE1"; collapse=true)
-        ic_loss = POSY2.losses(s, "IC_ZONE1_ZONE2"; collapse=true)
-        ccgt_loss = POSY2.losses(s, "CCGT ZONE2"; collapse=true)
+        los = Posy2.losses(s; aggregate=false, collapse=true)
+        dem_loss = Posy2.losses(s, "Other consumption ZONE1"; collapse=true)
+        ic_loss = Posy2.losses(s, "IC_ZONE1_ZONE2"; collapse=true)
+        ccgt_loss = Posy2.losses(s, "CCGT ZONE2"; collapse=true)
         @test haskey(los, "ZONE1")
         @test haskey(los, "ZONE2")
         @test isapprox(los["ZONE1"], dem_loss + ic_loss; rtol=1e-12)
         @test isapprox(los["ZONE2"], ccgt_loss + ic_loss; rtol=1e-12)
-        @test isapprox(POSY2.losses(s; aggregate=true, collapse=true), sum(values(los)); rtol=1e-12)
+        @test isapprox(Posy2.losses(s; aggregate=true, collapse=true), sum(values(los)); rtol=1e-12)
     end
 
     # Foreign price IC: ATC columns exist for both directions; gentimeseries stores ATC in GW (/1000).
@@ -284,11 +284,11 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        atc = POSY2.availabletransfercapacities(s)
+        atc = Posy2.availabletransfercapacities(s)
         @test haskey(atc, "ATC ZONE2 > ZONE1")
         @test haskey(atc, "ATC ZONE1 > ZONE2")
         @test length(atc["ATC ZONE2 > ZONE1"]) == Nosy.nhours(sim(s))
-        df = POSY2.gentimeseries(s)
+        df = Posy2.gentimeseries(s)
         @test isapprox(df[!, "ATC ZONE2 > ZONE1"], atc["ATC ZONE2 > ZONE1"] / 1000.0; rtol=1e-12)
     end
 end

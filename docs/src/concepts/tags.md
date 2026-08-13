@@ -1,6 +1,6 @@
 # Tags And Post-Processing
 
-POSY2 component builders attach Nosy tags so that reporting code can select
+Posy2 component builders attach Nosy tags so that reporting code can select
 components without parsing names. Tags do not change the optimisation model.
 They decide which report rows and indicators a component enters when you
 call [`printsnapshot`](@ref).
@@ -101,13 +101,13 @@ node (both ends for node interconnections).
 
 ## Custom Components
 
-A custom Nosy component is included in POSY2 reports only if its tags (and
+A custom Nosy component is included in Posy2 reports only if its tags (and
 conventional port names) match the filters above. The usual fix is either:
 
-1. wrap it in a small POSY2 builder that calls `tag!` like the shipped ones, or
+1. wrap it in a small Posy2 builder that calls `tag!` like the shipped ones, or
 2. tag the component by hand after construction.
 
-See [Extending POSY2](extending.md) for the wrapper pattern. Overriding default
+See [Extending Posy2](extending.md) for the wrapper pattern. Overriding default
 tags through builder keyword arguments is not a standard feature yet; until
 then, matching tags (or a dedicated builder) is the supported path.
 

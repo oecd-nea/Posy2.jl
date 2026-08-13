@@ -3,7 +3,7 @@
 
     @testset "readtechdata and readtimeseries" begin
         cd(dirname(@__DIR__)) do
-            # POSY2 reads joinpath(pwd(), "data", filename); expect workbooks under test/data/.
+            # Posy2 reads joinpath(pwd(), "data", filename); expect workbooks under test/data/.
             xl_tech = readtechdata("tech_data_test.xlsx")
             xl_ts = readtimeseries("time_series_test.xlsx")
             @test "dispatchable" in XLSX.sheetnames(xl_tech)

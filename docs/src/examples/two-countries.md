@@ -13,16 +13,16 @@ Capacities are fixed and all costs except fuel costs are set to zero,
 keeping the example focused on dispatch and trade.
 
 ```jldoctest two_countries; output = false
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
-# Simulation and POSY2 input configuration
+# Simulation and Posy2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-example_data_dir = joinpath(pkgdir(POSY2), "data")
-snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
+example_data_dir = joinpath(pkgdir(Posy2), "data")
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     data_dir=example_data_dir,
     techdata_file="tech_data.xlsx",
     timeseries_file="time_series.xlsx",
@@ -168,16 +168,16 @@ Transfers from country 1 to country 2 exceed 500 MW in the unlimited case. Repea
 the same study with 500 MW in each direction makes that transfer limit bind.
 
 ```jldoctest two_countries; output = false
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
-# Simulation and POSY2 input configuration
+# Simulation and Posy2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-example_data_dir = joinpath(pkgdir(POSY2), "data")
-snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
+example_data_dir = joinpath(pkgdir(Posy2), "data")
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     data_dir=example_data_dir,
     techdata_file="tech_data.xlsx",
     timeseries_file="time_series.xlsx",
