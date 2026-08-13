@@ -1,6 +1,6 @@
 # Performance
 
-In most POSY2 studies, computation time is dominated by the optimiser rather
+In most Posy2 studies, computation time is dominated by the optimiser rather
 than by the component builders. The most important performance decisions are
 therefore the temporal horizon, use of integer variables, interconnection
 formulation, and solver configuration.
@@ -21,11 +21,11 @@ function build_scenario(optimizer, options)
 end
 ```
 
-POSY2 caches workbook reads using the path, filename, and file modification
-time. Technology sheets are also cached because converting an Excel table to a
+Posy2 caches workbook reads using the path, filename, and file modification
+time. Technology sheets are also cached because converting a workbook table to a
 DataFrame can be noticeable in a large build. Keep scenario workbooks unchanged
 while a model is being built; editing a file changes its modification time and
-correctly causes POSY2 to read it again. Supplying explicit builder overrides
+correctly causes Posy2 to read it again. Supplying explicit builder overrides
 can avoid lookups for scalar parameters, but profile-driven builders still
 require their time-series data.
 
@@ -66,7 +66,7 @@ thresholds may remove small but meaningful terms when model units differ
 substantially, so validate any cleanup setting before production use.
 
 The sections below mostly target solver time by reducing model size or
-changing formulation choices in POSY2 builders.
+changing formulation choices in Posy2 builders.
 
 ## Integer Decisions
 
@@ -110,9 +110,9 @@ to the result.
 
 ## Time Horizon
 
-Nosy supports custom and heterogeneous time meshes, but current POSY2 builders
+Nosy supports custom and heterogeneous time meshes, but current Posy2 builders
 and standard post-processing contain several explicit 8760-hour assumptions.
-Use the default yearly hourly `TimeMesh()` for complete POSY2 studies unless
+Use the default yearly hourly `TimeMesh()` for complete Posy2 studies unless
 every selected builder and report has been checked for a custom horizon.
 
 Reducing the horizon solely for a quick structural prototype can still be

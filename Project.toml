@@ -1,4 +1,4 @@
-name = "POSY2"
+name = "Posy2"
 uuid = "e28d6228-85f0-4f5e-8e43-1e181ce309a6"
 version = "0.1.0"
 authors = ["GKrivtchik <47811556+GKrivtchik@users.noreply.github.com>"]
@@ -12,9 +12,6 @@ Memoize = "c03570c3-d221-55d1-a50c-7939bbd78826"
 Nosy = "b62be552-3e07-49d0-bbfa-d9387eb027f7"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
-
-[sources]
-Nosy = {rev = "POSY2_refactoring", url = "https://github.com/oecd-nea/Nosy.jl.git"}
 
 [compat]
 ArgCheck = "2.5.0"

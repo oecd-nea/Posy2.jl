@@ -1,109 +1,284 @@
 # DC OPF
 
-Four regions form a ring of AC [`makenodeinterco`](@ref) links. Without DC
-optimal power flow the ring is a transport network: nodal balance is enough
-and many flow patterns can clear the same demands. Turning on DC OPF adds
-Kirchhoff's voltage law (KVL) on AC cycles, so the split of flows around the
-loop is fixed.
+Four electricity zones A–B–C–D sit on an AC ring of
+[`makenodeinterco`](@ref) lines, with one extra diagonal A–C. A single CCGT
+on A supplies flat 1 MW demand in every zone. With `dcopf=false` the mesh is a
+transport model: a network flow problem that enforces nodal balance (and
+capacity limits) but not Kirchhoff's voltage law. With `dcopf=true` and
+[`applydcopf!`](@ref), Posy2 adds KVL on every independent AC cycle, so the
+study becomes a DC optimal power-flow approximation of the AC mesh: corridor
+flows follow the split implied by the line susceptances.
 
-Set `dcopf=true`, give every AC link a negative susceptance, then call
-[`applydcopf!`](@ref) once the network is complete and before optimisation.
+Use transport when nodal balance and transfer limits are enough for the study.
+Turn on DC OPF when corridor flows must reflect AC network physics—how
+exchanges split across parallel paths under KVL and the line susceptances. See
+[DC Power Flow](../concepts/optimizing.md#DC-Power-Flow) for the signed-flow
+definition and the cycle constraints used by [`applydcopf!`](@ref).
 
-```jldoctest dc_opf; output = false
-using POSY2
+This page keeps the same plants and demand and changes only the network:
+
+1. transport (`dcopf=false`, all AC, including an AC diagonal);
+2. DC OPF on the same AC mesh (`dcopf=true` and [`applydcopf!`](@ref));
+3. DC OPF again, but with the diagonal built as controllable HVDC (`dc=true`).
+
+After each solve, [`printsnapshot`](@ref) writes the standard Posy2 Excel
+report under `results/`—one workbook per scenario. In `Annual values (all)`,
+the Interconnection volume tables (total, AC, and DC) summarise annual
+corridor exchanges and make scenario comparison straightforward.
+The markdown tables on this page match that workbook section.
+
+## Transport (no KVL)
+
+With `dcopf=false` there is no need for susceptances or [`applydcopf!`](@ref).
+The solver may pick any feasible transport pattern.
+
+```jldoctest dc_opf_transport; output = false
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
+# Simulation and Posy2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
-    tech_mode=:arguments,
+example_data_dir = joinpath(pkgdir(Posy2), "data")
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
+    data_dir=example_data_dir,
+    techdata_file="tech_data.xlsx",
+    timeseries_file="time_series.xlsx",
+    tech_mode=:excel,
     timeseries_mode=:arguments,
-    dcopf=true,
+    dcopf=false,
 )))
 
+# Electricity zones and CO2 sink
 a = Node("A", EnergyCarrier("electricity A", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
 b = Node("B", EnergyCarrier("electricity B", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
 c = Node("C", EnergyCarrier("electricity C", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
 d = Node("D", EnergyCarrier("electricity D", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
+# Flat 1 MW demand in each zone
 makedemand("Demand", "A", a, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
 makedemand("Demand", "B", b, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
 makedemand("Demand", "C", c, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
 makedemand("Demand", "D", d, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
 
-makedispatchable(
-    "CCGT", "CCGT", a, co2, snapshot;
-    cap=10.0,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=30,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
-    fuel_cost=47.06,
-    co2_emission=0.0,
-    unit_size=0.0,
-)
+# 10 MW CCGT on A; costs from the technology workbook
+makedispatchable("CCGT", "CCGT", a, co2, snapshot; cap=10.0, unit_size=0.0)
 
-makenodeinterco("IC", a, b, Inf, Inf, snapshot; susceptance=-1.0)
-makenodeinterco("IC", b, c, Inf, Inf, snapshot; susceptance=-2.0)
-makenodeinterco("IC", c, d, Inf, Inf, snapshot; susceptance=-1.5)
-makenodeinterco("IC", d, a, Inf, Inf, snapshot; susceptance=-2.5)
+# AC ring with Inf capacity
+makenodeinterco("IC", a, b, Inf, Inf, snapshot; dc=false)
+makenodeinterco("IC", b, c, Inf, Inf, snapshot; dc=false)
+makenodeinterco("IC", c, d, Inf, Inf, snapshot; dc=false)
+makenodeinterco("IC", d, a, Inf, Inf, snapshot; dc=false)
+# AC diagonal A–C
+makenodeinterco("IC", a, c, Inf, Inf, snapshot; dc=false)
 
+# Minimise total system cost and extract solved values
+optimize!(snapshot, cost(snapshot))
+result_transport = extract(snapshot)
+
+# output
+
+Snapshot with 10 component(s) and 5 node(s)
+
+```
+
+```jldoctest dc_opf_transport
+julia> printsnapshot(result_transport, "transport.xlsx")
+```
+
+That creates `results/transport.xlsx`. The directed corridor volumes below
+match the Interconnection volume table in `Annual values (all)` (TWh/y).
+Every line is AC, so the DC volume block in the workbook is empty.
+
+| From \\ To | A | B | C | D | Total |
+| --- | --- | --- | --- | --- | --- |
+| A |  | 0.003 | 0.012 | 0.011 | 0.026 |
+| B | 0 |  | 0.001 |  | 0.001 |
+| C | 0 | 0.007 |  | 0.001 | 0.007 |
+| D | 0 |  | 0.003 |  | 0.003 |
+| Total | 0 | 0.01 | 0.016 | 0.012 | 0.038 |
+
+Zone A hosts the only plant, so energy is exported from A to the other zones
+(A -> B, A -> C, A -> D). Without KVL the solver may choose among several
+feasible transport patterns. The table above is the annual corridor volume for
+this solve.
+
+## DC OPF (with KVL)
+
+Same AC network, but `dcopf=true`. Set a negative susceptance on every AC
+line, then call [`applydcopf!`](@ref) before optimisation. The flag alone
+does not add KVL constraints.
+
+```jldoctest dc_opf; output = false
+using Posy2
+using Nosy
+using HiGHS
+import JuMP: set_silent
+
+# Simulation and Posy2 input configuration
+sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+set_silent(model(sim))
+example_data_dir = joinpath(pkgdir(Posy2), "data")
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
+    data_dir=example_data_dir,
+    techdata_file="tech_data.xlsx",
+    timeseries_file="time_series.xlsx",
+    tech_mode=:excel,
+    timeseries_mode=:arguments,
+    dcopf=true,
+)))
+
+# Electricity zones and CO2 sink
+a = Node("A", EnergyCarrier("electricity A", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+b = Node("B", EnergyCarrier("electricity B", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+c = Node("C", EnergyCarrier("electricity C", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+d = Node("D", EnergyCarrier("electricity D", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
+
+# Flat 1 MW demand in each zone
+makedemand("Demand", "A", a, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+makedemand("Demand", "B", b, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+makedemand("Demand", "C", c, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+makedemand("Demand", "D", d, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+
+# 10 MW CCGT on A; costs from the technology workbook
+makedispatchable("CCGT", "CCGT", a, co2, snapshot; cap=10.0, unit_size=0.0)
+
+# AC ring with susceptances
+makenodeinterco("IC", a, b, Inf, Inf, snapshot; dc=false, susceptance=-1.0)
+makenodeinterco("IC", b, c, Inf, Inf, snapshot; dc=false, susceptance=-2.0)
+makenodeinterco("IC", c, d, Inf, Inf, snapshot; dc=false, susceptance=-1.5)
+makenodeinterco("IC", d, a, Inf, Inf, snapshot; dc=false, susceptance=-2.5)
+# AC diagonal A–C with susceptance
+makenodeinterco("IC", a, c, Inf, Inf, snapshot; dc=false, susceptance=-3.0)
+
+# Apply KVL, then optimise
 applydcopf!(snapshot)
 optimize!(snapshot, cost(snapshot))
 result = extract(snapshot)
 
 # output
 
-Snapshot with 9 component(s) and 4 node(s)
+Snapshot with 10 component(s) and 5 node(s)
 
 ```
-
-This ring has four vertices, four AC edges, and one connected component, so it
-has `4 - 4 + 1 = 1` independent loop (`A -> B -> C -> D -> A`).
-[`applydcopf!`](@ref) adds a KVL constraint on that loop. A more highly meshed
-network would add one constraint for every independent AC cycle.
-
-For a bidirectional node interconnection, `aggregate=false` keeps the two ports
-separate (`input` and `input2`). Because this example uses the default zero
-`lossfactor`, its net midpoint flow in the declared direction is
-`input - input2`. Under DCOPF those flows are fixed by KVL:
 
 ```jldoctest dc_opf
-julia> balance(result, "IC_A_B", :input, energy; collapse=true, aggregate=false)
-Dict{String, Float64} with 2 entries:
-  "input" => 10352.7
-  "input2" => 0.0
-
-julia> balance(result, "IC_B_C", :input, energy; collapse=true, aggregate=false)
-Dict{String, Float64} with 2 entries:
-  "input" => 1592.73
-  "input2" => 0.0
-
-julia> balance(result, "IC_C_D", :input, energy; collapse=true, aggregate=false)
-Dict{String, Float64} with 2 entries:
-  "input" => 0.0
-  "input2" => 7167.27
-
-julia> balance(result, "IC_D_A", :input, energy; collapse=true, aggregate=false)
-Dict{String, Float64} with 2 entries:
-  "input" => 0.0
-  "input2" => 15927.3
-
-julia> balance(result, "CCGT A", :output, energy; collapse=true, aggregate=true)
-35040.0
+julia> printsnapshot(result, "dc-opf.xlsx")
 ```
 
-The plant supplies a flat 4 MW (one megawatt of demand in each zone), or
-`35040 MWh` over the year. With DCOPF the split of flows around the routes from
-A is unique rather than one of many transport solutions.
+That writes `results/dc-opf.xlsx`. The Interconnection volume table in
+`Annual values (all)` matches the corridor volumes below (TWh/y):
 
-Only independent AC cycles receive KVL constraints; a radial network has no
-cycle to constrain. Links built with `dc=true` represent controllable DC
-interconnectors and are excluded from the AC cycle basis.
+| From \\ To | A | B | C | D | Total |
+| --- | --- | --- | --- | --- | --- |
+| A |  | 0.006 | 0.012 | 0.009 | 0.026 |
+| B | 0 |  | 0 |  | 0 |
+| C | 0 | 0.003 |  | 0 | 0.003 |
+| D | 0 |  | 0 |  | 0 |
+| Total | 0 | 0.009 | 0.012 | 0.009 | 0.03 |
+
+Compared with the transport workbook: plants and demand are the same; what
+changes is the network model, and the corridor volumes shift once KVL and the
+line susceptances constrain the path through the mesh.
+
+## Controllable DC lines
+
+[`makenodeinterco`](@ref) tags each line as AC (`dc=false`, the default) or DC
+(`dc=true`). Only AC lines enter the susceptance matrix and the cycle basis
+used by [`applydcopf!`](@ref).
+
+That exclusion matches how HVDC behaves in a real grid. An AC corridor’s flow
+is tied to the voltage-angle differences around meshed lines, so it must
+satisfy KVL on every independent AC cycle. A controllable DC corridor (for
+example an HVDC line with converter stations) is different: operators set or
+schedule the transfer directly, and the line does not follow an AC phase-angle
+loop law.
+Posy2 therefore keeps DC lines in the energy balance and capacity limits, but
+outside the AC susceptance graph.
+
+The example below replaces the AC diagonal with HVDC (`dc=true`).
+
+```jldoctest dc_opf_dc; output = false
+using Posy2
+using Nosy
+using HiGHS
+import JuMP: set_silent
+
+# Simulation and Posy2 input configuration
+sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+set_silent(model(sim))
+example_data_dir = joinpath(pkgdir(Posy2), "data")
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
+    data_dir=example_data_dir,
+    techdata_file="tech_data.xlsx",
+    timeseries_file="time_series.xlsx",
+    tech_mode=:excel,
+    timeseries_mode=:arguments,
+    dcopf=true,
+)))
+
+# Electricity zones and CO2 sink
+a = Node("A", EnergyCarrier("electricity A", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+b = Node("B", EnergyCarrier("electricity B", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+c = Node("C", EnergyCarrier("electricity C", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+d = Node("D", EnergyCarrier("electricity D", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
+
+# Flat 1 MW demand in each zone
+makedemand("Demand", "A", a, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+makedemand("Demand", "B", b, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+makedemand("Demand", "C", c, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+makedemand("Demand", "D", d, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+
+# 10 MW CCGT on A; costs from the technology workbook
+makedispatchable("CCGT", "CCGT", a, co2, snapshot; cap=10.0, unit_size=0.0)
+
+# AC ring with susceptances
+makenodeinterco("IC", a, b, Inf, Inf, snapshot; dc=false, susceptance=-1.0)
+makenodeinterco("IC", b, c, Inf, Inf, snapshot; dc=false, susceptance=-2.0)
+makenodeinterco("IC", c, d, Inf, Inf, snapshot; dc=false, susceptance=-1.5)
+makenodeinterco("IC", d, a, Inf, Inf, snapshot; dc=false, susceptance=-2.5)
+# HVDC diagonal A–C (outside KVL)
+makenodeinterco("HVDC", a, c, Inf, Inf, snapshot; dc=true)
+
+# Apply KVL, then optimise
+applydcopf!(snapshot)
+optimize!(snapshot, cost(snapshot))
+result_dc = extract(snapshot)
+
+# output
+
+Snapshot with 10 component(s) and 5 node(s)
+
+```
+
+```jldoctest dc_opf_dc
+julia> printsnapshot(result_dc, "dc-opf-hvdc.xlsx")
+```
+
+That creates `results/dc-opf-hvdc.xlsx`. With the HVDC diagonal, the AC and
+DC volume blocks in `Annual values (all)` disagree on purpose (TWh/y):
+
+### Interconnection volume (AC)
+
+| From \\ To | A | B | C | D | Total |
+| --- | --- | --- | --- | --- | --- |
+| A |  | 0.003 |  | 0.004 | 0.007 |
+| B | 0 |  | 0 |  | 0 |
+| C |  | 0.007 |  | 0.004 | 0.011 |
+| D | 0 |  | 0 |  | 0 |
+| Total | 0 | 0.009 | 0 | 0.009 | 0.018 |
+
+### Interconnection volume (DC)
+
+| From \\ To | A | B | C | D | Total |
+| --- | --- | --- | --- | --- | --- |
+| A |  |  | 0.02 |  | 0.02 |
+| B |  |  |  |  | 0 |
+| C | 0 |  |  |  | 0 |
+| D |  |  |  |  | 0 |
+| Total | 0 | 0 | 0.02 | 0 | 0.02 |

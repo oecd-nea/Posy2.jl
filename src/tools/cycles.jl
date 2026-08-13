@@ -68,7 +68,7 @@ end
 
 # Put KVL at snapshot level so cycles are enforced globally.
 # For each cycle in the AC network, apply KVL constraint: sum(flow_ij / B_ij) = 0.
-# Called from `applydcopf!` when `POSY2Options.dcopf` is true.
+# Called from `applydcopf!` when `Posy2Options.dcopf` is true.
 function addkvl!(s::Snapshot{T}) where T
     # build B-matrix (susceptance matrix) from AC node ICs only
     mat, nodelist, node_map = getic_susceptancematrix(s)

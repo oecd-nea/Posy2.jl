@@ -1,16 +1,16 @@
 # Study Configuration
 
-[`POSY2Options`](@ref) stores the assumptions that apply to the whole POSY2
+[`Posy2Options`](@ref) stores the assumptions that apply to the whole Posy2
 study. The object is attached to a Nosy `Snapshot` under the `:posy` key:
 
 ```julia
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 
 s = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 
-options = POSY2Options(
+options = Posy2Options(
     data_dir=joinpath(pwd(), "data"),
     techdata_file="tech_data.xlsx",
     timeseries_file="time_series.xlsx",
@@ -24,7 +24,7 @@ options = POSY2Options(
 snapshot = Snapshot(s, Dict(:posy => options))
 ```
 
-Every POSY2 component builder expects this entry to exist, even when all
+Every Posy2 component builder expects this entry to exist, even when all
 technology inputs are supplied directly and no workbook is read.
 [`posy_options`](@ref) validates and returns it:
 
@@ -46,15 +46,15 @@ Technology parameters and hourly series have independent input switches:
 | `timeseries_mode` | Missing series keywords are read from `timeseries_file` | Every series used by a builder must be supplied explicitly |
 
 An explicit builder keyword always wins, in either mode. In `:arguments` mode,
-an omitted value raises a targeted `ArgumentError`; POSY2 does not attempt to
+an omitted value raises a targeted `ArgumentError`; Posy2 does not attempt to
 open the corresponding workbook. The defaults remain `:excel` for backward
 compatibility.
 
 The switches can be mixed. For example, this configuration keeps shared
-technology assumptions in Excel while defining scenario profiles in Julia:
+technology data in a workbook while defining scenario profiles in Julia:
 
 ```julia
-options = POSY2Options(
+options = Posy2Options(
     tech_mode=:excel,
     timeseries_mode=:arguments,
 )
@@ -70,7 +70,7 @@ makeintermittentsource(
 For a workbook-free study, select `:arguments` for both sources:
 
 ```julia
-options = POSY2Options(
+options = Posy2Options(
     tech_mode=:arguments,
     timeseries_mode=:arguments,
     discountrate=0.05,
@@ -81,11 +81,11 @@ options = POSY2Options(
 ## Workbook Paths
 
 `data_dir` is the directory containing the input files. `techdata_file` and
-`timeseries_file` are filenames relative to that directory. POSY2 joins these
+`timeseries_file` are filenames relative to that directory. Posy2 joins these
 values only when a workbook-backed parameter or time series is requested.
 
 ```julia
-options = POSY2Options(
+options = Posy2Options(
     data_dir="/path/to/scenario",
     techdata_file="technology_2050.xlsx",
     timeseries_file="timeseries_2050.xlsx",
@@ -98,7 +98,7 @@ it possible to keep a common workbook and vary a small number of assumptions
 between scenarios.
 
 Profile-backed builders expose direct series keywords as well. A profile can
-be an hourly vector matching the simulation mesh, or a scalar that POSY2
+be an hourly vector matching the simulation mesh, or a scalar that Posy2
 expands across the whole mesh. 
 
 See [Input Workbooks](input-data.md) for the workbook layout and exact lookup
@@ -121,7 +121,7 @@ A^{\mathrm{inv}} = C_0 \, \phi^{\mathrm{build}} \, \mathrm{CRF}^*(r, L)
 where ``C_0`` is the overnight cost, ``r`` is `discountrate`, ``L`` is
 `lifetime`, and ``\phi^{\mathrm{build}}`` is the construction-profile
 adjustment factor implied by `construction_profile`. The corrected annualisation
-factor used by POSY2 is
+factor used by Posy2 is
 
 ```math
 \mathrm{CRF}^*(r,L)
@@ -175,7 +175,7 @@ law constraints. Setting the flag does not add constraints by itself.
 
 For a DC power flow study:
 
-1. Set `dcopf=true` in `POSY2Options`.
+1. Set `dcopf=true` in `Posy2Options`.
 2. Build electricity nodes with the `:electricity` tag.
 3. Build AC node interconnections with [`makenodeinterco`](@ref),
    `dc=false`, and a negative `susceptance`.
@@ -184,7 +184,7 @@ For a DC power flow study:
    added and before optimisation.
 
 ```julia
-options = POSY2Options(dcopf=true)
+options = Posy2Options(dcopf=true)
 snapshot = Snapshot(s, Dict(:posy => options))
 
 makenodeinterco(
@@ -202,7 +202,7 @@ applydcopf!(snapshot)
 Nosy.optimize!(snapshot, cost(snapshot))
 ```
 
-POSY2 constructs an undirected graph from AC node interconnections and adds
+Posy2 constructs an undirected graph from AC node interconnections and adds
 one KVL relation for each independent cycle. A tree has no cycle constraint.
 Interconnections tagged as DC are excluded because their flow is controllable
 and does not obey the AC cycle equations.

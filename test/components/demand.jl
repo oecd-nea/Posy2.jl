@@ -1,4 +1,4 @@
-using POSY2
+using Posy2
 using Nosy
 using Test
 using JuMP
@@ -9,7 +9,7 @@ using HiGHS
         sim = Sim(Model(HiGHS.Optimizer))
         set_silent(sim.model)
         opts = Dict(
-            :posy => POSY2Options(
+            :posy => Posy2Options(
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",

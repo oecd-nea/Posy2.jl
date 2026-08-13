@@ -1,11 +1,11 @@
 # Querying A Snapshot
 
-POSY2 snapshots are Nosy snapshots, so the standard Nosy balance, capacity,
+Posy2 snapshots are Nosy snapshots, so the standard Nosy balance, capacity,
 cost, price, table, component, and node queries work without an adapter.
 
 ## Component Names
 
-Most POSY2 component names combine the component prefix and principal node:
+Most Posy2 component names combine the component prefix and principal node:
 
 ```julia
 makedispatchable("Gas", "CCGT", grid, co2_node, snapshot)
@@ -98,7 +98,7 @@ balance(result, "Electrolyser grid", :output, energy;
 
 ## Costs
 
-Nosy cost queries expose the terms added by POSY2 builders:
+Nosy cost queries expose the terms added by Posy2 builders:
 
 ```julia
 cost(result)
@@ -108,7 +108,7 @@ cost(result, "Gas grid")
 costs(result)
 ```
 
-Common POSY2 cost tags include `:investment`, `:connection`, `:fom`,
+Common Posy2 cost tags include `:investment`, `:connection`, `:fom`,
 `:decommissioning`, `:vom`, `:fuel`, `:co2`, `:waste`, `:noload`,
 `:startup`, `:imports`, `:exports`, and `:transaction`. Only tags used by the
 components in a given model appear in its cost table.
@@ -144,12 +144,12 @@ units used by the study. Dual prices are unavailable for mixed-integer
 solutions.
 
 Price-based interconnections carry an exogenous neighbour price as variable
-import and export costs. These price series are included in POSY2's standard
-Excel post-processing alongside endogenous electricity-node prices.
+import and export costs. These price series are included in Posy2's standard
+workbook post-processing alongside endogenous electricity-node prices.
 
 ## Tags And Filtering
 
-POSY2 component builders add tags so that reporting code can select components
+Posy2 component builders add tags so that reporting code can select components
 by function, technology, and zone.
 
 ```julia
@@ -179,9 +179,13 @@ self_nodes = getnodes(
 Filtering by tags is preferable to parsing names, particularly for
 interconnections that belong to two zones.
 
+For the reporting consequence of each `:function` and node tag—which annual
+rows and indicators include a tagged component—see
+[Tags And Post-Processing](tags.md).
+
 ## Standard Reports
 
-[`printsnapshot`](@ref) generates the full POSY2 post-processing workbook,
+[`printsnapshot`](@ref) generates the full Posy2 post-processing workbook,
 including annual values, time series, and price duration curves:
 
 ```julia

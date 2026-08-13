@@ -1,4 +1,4 @@
-using POSY2
+using Posy2
 using Nosy
 using Test
 using JuMP
@@ -13,7 +13,7 @@ using HiGHS
 
     function posyopts()
         return Dict(
-            :posy => POSY2Options(
+            :posy => Posy2Options(
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
@@ -42,7 +42,7 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        df = POSY2.gentimeseries(s)
+        df = Posy2.gentimeseries(s)
         @test size(df, 1) == Nosy.nhours(sim(s))
         @test "Total demand" in names(df)
         @test "Total production" in names(df)
@@ -59,7 +59,7 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        df = POSY2.gentimeseries(s)
+        df = Posy2.gentimeseries(s)
         expected_annual_gwh = 100.0 * Nosy.nhours(sim(s)) / 1000.0
         @test isapprox(df[1, "Other consumption ZONE1"], 0.1; rtol=1e-12)
         @test isapprox(sum(df[!, "Other consumption ZONE1"]), expected_annual_gwh; rtol=1e-12)
@@ -75,7 +75,7 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        df = POSY2.gentimeseries(s)
+        df = Posy2.gentimeseries(s)
         component_sum = sum(df[!, "Other consumption ZONE1"])
         @test isapprox(sum(df[!, "Total demand"]), component_sum; rtol=1e-12)
     end
@@ -89,11 +89,11 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        df = POSY2.gentimeseries(s)
+        df = Posy2.gentimeseries(s)
         @test "ZONE2 > ZONE1" in names(df)
         @test "ZONE1 > ZONE2" in names(df)
         @test size(df, 1) == Nosy.nhours(sim(s))
-        expected = POSY2.imports_internal(s, "ZONE1"; collapse=true) / 1000.0
+        expected = Posy2.imports_internal(s, "ZONE1"; collapse=true) / 1000.0
         @test isapprox(sum(df[!, "ZONE2 > ZONE1"]), expected; rtol=1e-12)
     end
 
@@ -106,13 +106,13 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        df = POSY2.gentimeseries(s)
+        df = Posy2.gentimeseries(s)
         c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
 
         @test "price ZONE1" in names(df)
         @test "price ZONE2" in names(df)
         @test "price IC_ZONE2_ZONE1" in names(df)
-        @test isapprox(df[!, "price IC_ZONE2_ZONE1"], POSY2.getexogenousprice(c); rtol=1e-12)
+        @test isapprox(df[!, "price IC_ZONE2_ZONE1"], Posy2.getexogenousprice(c); rtol=1e-12)
     end
 
     # storage/losses/charging/discharging/level totals present; Total demand sums consumption components.
@@ -141,7 +141,7 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        df = POSY2.gentimeseries(s)
+        df = Posy2.gentimeseries(s)
         nh = Nosy.nhours(sim(s))
         @test "Battery ZONE1" in names(df) || "charging Battery ZONE1" in names(df)
         @test "Total losses" in names(df)
@@ -150,7 +150,7 @@ using HiGHS
         @test "Total level" in names(df)
         @test size(df, 1) == nh
         @test isapprox(sum(df[!, "Total demand"]), sum(df[!, "Other consumption ZONE1"]) + sum(df[!, "EL ZONE1"]); rtol=1e-12)
-        zone_losses = sum(values(POSY2.losses(s; aggregate=false, collapse=true)))
+        zone_losses = sum(values(Posy2.losses(s; aggregate=false, collapse=true)))
         # GW column × 1000 vs MWh zone losses: rtol=1e-6 (looser than identity compares).
         @test isapprox(sum(df[!, "Total losses"]) * 1000.0, zone_losses; rtol=1e-6)
     end
@@ -181,15 +181,15 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        df = POSY2.gentimeseries(s)
+        df = Posy2.gentimeseries(s)
         c = Nosy.getcomponent(s, "IC_ZONE1_ZONE2")
-        imp_col = POSY2.rewrite_import_from_implicit(s, Nosy.name(c), c)
-        exp_col = POSY2.rewrite_export_from_implicit(s, Nosy.name(c), c)
+        imp_col = Posy2.rewrite_import_from_implicit(s, Nosy.name(c), c)
+        exp_col = Posy2.rewrite_export_from_implicit(s, Nosy.name(c), c)
         @test imp_col in names(df)
         @test exp_col in names(df)
         @test isapprox(
             sum(df[!, exp_col]),
-            POSY2.imports_internal(s, "ZONE1"; collapse=true) / 1000.0;
+            Posy2.imports_internal(s, "ZONE1"; collapse=true) / 1000.0;
             rtol=1e-12,
         )
     end
@@ -205,11 +205,11 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        df = POSY2.gentimeseries(s)
+        df = Posy2.gentimeseries(s)
         ac = Nosy.getcomponent(s, "AC_ZONE1_ZONE2")
         dc = Nosy.getcomponent(s, "DC_ZONE1_ZONE2")
-        col = POSY2.rewrite_import_from_implicit(s, Nosy.name(ac), ac)
-        @test col == POSY2.rewrite_import_from_implicit(s, Nosy.name(dc), dc)
+        col = Posy2.rewrite_import_from_implicit(s, Nosy.name(ac), ac)
+        @test col == Posy2.rewrite_import_from_implicit(s, Nosy.name(dc), dc)
         @test count(==(col), names(df)) == 1
 
         ac_fwd = balance(ac, :output, energy, collapse=false, aggregate=false)["output"] / 1000.0

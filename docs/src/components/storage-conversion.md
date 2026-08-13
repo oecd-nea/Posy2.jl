@@ -51,7 +51,7 @@ decommissioning, and variable O&M costs are attached to `input` capacity or
 flow. `gridlosses` adds a linked charging loss.
 
 The builder tags batteries as `electricity`, `storage`, and `generation`, so
-charging and discharging enter the appropriate POSY2 reports.
+charging and discharging enter the appropriate Posy2 reports.
 
 ## Hydrogen Storage
 

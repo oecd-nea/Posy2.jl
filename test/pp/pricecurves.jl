@@ -1,4 +1,4 @@
-using POSY2
+using Posy2
 using Nosy
 using Test
 using JuMP
@@ -13,7 +13,7 @@ using HiGHS
 
     function posyopts()
         return Dict(
-            :posy => POSY2Options(
+            :posy => Posy2Options(
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
@@ -42,7 +42,7 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        df = POSY2.genpricecurves(s)
+        df = Posy2.genpricecurves(s)
         @test "ZONE1" in names(df)
         @test "ZONE2" in names(df)
         @test size(df, 1) == Nosy.nhours(sim(s))
@@ -60,13 +60,13 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        df = POSY2.genpricecurves(s)
+        df = Posy2.genpricecurves(s)
         c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
 
         @test "ZONE1" in names(df)
         @test "ZONE2" in names(df)
         @test size(df, 1) == Nosy.nhours(sim(s))
         @test issorted(df.ZONE2, rev=true)
-        @test df.ZONE2 == sort(POSY2.getexogenousprice(c), rev=true)
+        @test df.ZONE2 == sort(Posy2.getexogenousprice(c), rev=true)
     end
 end

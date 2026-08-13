@@ -1,24 +1,25 @@
-# Extending POSY2
+# Extending Posy2
 
-A POSY2 component builder assembles a Nosy physical model, attaches
-optimisation behaviours, then wraps the result with POSY2 naming and tags so
+This page is about building custom Posy2 component builders on top of the
+Nosy compositional API: assemble a Nosy physical model, attach
+optimisation behaviours, then wrap the result with Posy2 naming and tags so
 querying and post-processing recognise it. Existing builders such as
 [`makedispatchable`](@ref) and [`makeelectrolyser`](@ref) are complete examples
 of that pattern—open them once the design steps below are clear.
 
 ## Design Flow
 
-Every POSY2 technology follows the same sequence:
+Every Posy2 technology follows the same sequence:
 
-1. **Physical model** — choose a Nosy archetype, carriers, and ports.
-2. **Behaviours** — attach capacity, costs, linked flows, and other constraints.
-3. **POSY2 wrapper** — set the component name, tags, and `connect!` the ports.
-4. **Reporting** — inspect with `capacity`, `balance`, and `cost`, and rely on
+1. Physical model — choose a Nosy archetype, carriers, and ports.
+2. Behaviours — attach capacity, costs, linked flows, and other constraints.
+3. Posy2 wrapper — set the component name, tags, and `connect!` the ports.
+4. Reporting — inspect with `capacity`, `balance`, and `cost`, and rely on
    annual tables that filter by `:function` and aggregate by `:tech`.
 
-A pure Nosy component already has physics and behaviours. POSY2 adds the
+A pure Nosy component already has physics and behaviours. Posy2 adds the
 wrapper so the object uses the same naming and tagging rules as the shipped
-builders. Compatible tags and ports are what let POSY2 queries and
+builders. Compatible tags and ports are what let Posy2 queries and
 [`printsnapshot`](@ref) place the component with generation, storage, or
 interconnections.
 
@@ -27,32 +28,32 @@ interconnections.
 Before writing Julia, answer these questions. They decide the archetype,
 behaviours, and whether an existing builder already covers the role.
 
-- Does it **supply**, **consume**, **store**, or **convert** carriers?
+- Does it supply, consume, store, or convert carriers?
 - If it consumes: is the load a fixed series, a capacity×profile shape, or flexible?
 - If it stores: is a full charge/discharge/level machine enough, or do extra
   flows (inflow, driving, losses) need a lazier storage formulation?
-- How many **inputs and outputs** are there, and on which carriers / nodes?
-- Is **capacity** defined on the input, the output, or a storage level?
-- Is a **state** (`level`) required?
-- Are there **linked flows**—fuel, CO2, grid losses, heat?
-- Should capacity be **fixed**, or an **investment decision**?
-- Are there **fixed costs** on capacity and **variable costs** on flows?
-- Does an **existing builder** already cover this modelling role?
+- How many inputs and outputs are there, and on which carriers / nodes?
+- Is capacity defined on the input, the output, or a storage level?
+- Is a state (`level`) required?
+- Are there linked flows—fuel, CO2, grid losses, heat?
+- Should capacity be fixed, or an investment decision?
+- Are there fixed costs on capacity and variable costs on flows?
+- Does an existing builder already cover this modelling role?
 
 An existing builder that already solves the same role is usually the clearest
 starting point.
 
 ## Choose The Physical Model
 
-Ask what the technology **is** in Nosy terms, then check that the node carriers
+Ask what the technology is in Nosy terms, then check that the node carriers
 and port names match that choice. Nosy groups physical models into four
 families:
 
-- **Source** — supplies a carrier through `output`.
-- **Sink** — consumes a carrier through `input` (the demand / load side).
-- **Storage** — carries a `level` state over time, with charge/discharge-style
+- Source — supplies a carrier through `output`.
+- Sink — consumes a carrier through `input` (the demand / load side).
+- Storage — carries a `level` state over time, with charge/discharge-style
   ports.
-- **Converter** — transforms one carrier into another (`input` → `output`).
+- Converter — transforms one carrier into another (`input` -> `output`).
 
 ### Nosy archetypes
 
@@ -67,7 +68,7 @@ families:
 | Storage | `LazyStorage` | Level plus joint flows for extra ports (hydro inflow, EV driving, ...) |
 | Converter | `BasicConverter` | One-to-one conversion (electrolyser, node interconnection, ...) |
 
-POSY2 builders already wrap most of these. `Demand`, `DispatchableSource`,
+Posy2 builders already wrap most of these. `Demand`, `DispatchableSource`,
 `ProfileSource`, `BasicStorage`, `LazyStorage`, and `BasicConverter` appear in
 shipped `make...` functions. `ProfileSink` and `BasicSink` are still valid Nosy
 choices for a custom builder when a fixed `Demand` series is not enough—for
@@ -98,13 +99,13 @@ own family ([`makenodeinterco`](@ref) uses `BasicConverter`,
 | [`makedemandresponse`](@ref) | zero `Demand` + linked negative input | `output` (unconnected) | `output` | `demandresponse`, `virtual` |
 
 See [Component Builders](../components.md) for the full catalogue and the exact
-ports each builder connects. For archetype details beyond POSY2 wrappers, see
+ports each builder connects. For archetype details beyond Posy2 wrappers, see
 the Nosy documentation.
 
 ## Choose Behaviours
 
 The physical model decides what the technology is. Behaviours decide how it
-behaves in the optimisation problem. They attach to **ports**—add only what
+behaves in the optimisation problem. They attach to ports—add only what
 the study needs. Not every behaviour belongs on every archetype; it depends on
 which ports exist (or which ports you add with joint flows).
 
@@ -116,19 +117,19 @@ DispatchableSource              # can produce on output
   # or LinkedJointFlow("fuel", ...) when fuel is a physical flow to another node
 ```
 
-POSY2 builders mostly draw from the behaviours below. For anything beyond this
-set, see the Nosy documentation. POSY2 `cap` / `nothing` conventions and input
+Posy2 builders mostly draw from the behaviours below. For anything beyond this
+set, see the Nosy documentation. Posy2 `cap` / `nothing` conventions and input
 units are in [Component Builders](../components.md).
 
 ### Capacity
 
-Attach capacity to the port that represents the technology's **plant size**.
+Attach capacity to the port that represents the technology's plant size.
 
 - `FixedCapacity(port, energy, value)` — known size on that port.
 - `VariableCapacity(port, energy)` — capacity as a decision (optional bounds
   as keywords when needed).
 
-In POSY2, that plant-size port is often `output` for generation, `input` for
+In Posy2, that plant-size port is often `output` for generation, `input` for
 battery or electrolyser power, and `level` for hydrogen storage energy. Hydro
 may size more than one port. `capacity(result, "...")` reads the capacity on
 that same port. See also [Capacity Semantics](../components.md#Capacity-Semantics).
@@ -176,39 +177,48 @@ usually added this way before capacity or cost goes on those ports.
 
 ## Builder Template
 
-Fill in the Nosy pieces that match the technology; keep the POSY2 steps.
+The five steps from [Design Flow](#Design-Flow), filled in for a simple
+load-shifting example. It reuses the battery `BasicStorage` machine and
+prices the shifting flow (opex) instead of capacity (capex). That approximates
+load shifting via net load; a fixed `Demand` series itself does not move.
+Swap the archetype, behaviours, and tags for other technologies.
 
 ```julia
-function makeXXX(cname::String, node::Node, s::Snapshot)
-    # 1. Physical model — archetype on the node's carrier(s)
-    m = # DispatchableSource / ProfileSource / Demand / ProfileSink /
-        # BasicSink / BasicStorage / LazyStorage / BasicConverter / ...
+function makeloadshifting(cname::String, elec::Node, s::Snapshot;
+    power_cap::Number, duration::Number, shift_cost::Number,
+)
+    # 1. Physical model — BasicStorage: charge / discharge / level
+    #    (same Nosy machine as a battery; eff_i=1 means no round-trip loss)
+    m = BasicStorage(elec.carrier; eff_i=1.0)
 
     # 2. Behaviours — only what this technology needs
     vb = []
-    # push!(vb, FixedCapacity("output", energy, cap))
-    # push!(vb, FixedCost(:investment, "output", energy, inv))
-    # push!(vb, VariableCost(:vom, "output", energy, vom))
+    push!(vb, Duration(duration))                          # energy stock <-> power
+    push!(vb, FixedCapacity("input", energy, power_cap))   # max shifting power
+    # no FixedCost(:investment, ...) — flexibility is not a capex asset here
+    push!(vb, VariableCost(:vom, "input", energy, shift_cost))  # cost on the shifting flow
 
-    # 3. Component with the POSY2 name convention
-    c = Component("$cname $(node.name)", m, vb)
+    # 3. Component with the Posy2 name convention
+    c = Component("$cname $(elec.name)", m, vb)
 
     # 4. Tags that querying and post-processing rely on
     tag!(c, :tech, cname)
-    tag!(c, :zone, node.name)
-    tag!(c, :function, "generation")  # or storage, demand, ...
+    tag!(c, :zone, elec.name)
+    tag!(c, :function, "demand")        # demand side role
+    tag!(c, :function, "loadshifting")  # custom label for filters / reports
+    tag!(c, :function, "virtual")
 
-    # 5. Register and connect ports to the correct nodes
-    connect!(s, c, node)
+    # 5. Register and connect ports to the correct node
+    connect!(s, c, elec)
     return c
 end
 ```
 
 The same steps can be written inline for a study object. A `make...`
 function helps when the technology is reused across scenarios, shared with
-others, or must appear consistently in POSY2 reports.
+others, or must appear consistently in Posy2 reports.
 
-## POSY2 Wrapper Conventions
+## Posy2 Wrapper Conventions
 
 ### Component names
 
@@ -227,32 +237,34 @@ snapshot.
 | `:function` | modelling role | Post-processing family (`generation`, `storage`, `demand`, `interconnection`, ...) |
 
 Annual post-processing filters by `:function`, then aggregates by `:tech`.
-Node tags (`:electricity`, `:hydrogen`, `:foreign`) matter for reporting
-filters; see [Querying A Snapshot](querying.md). Workbook parameter columns
-versus the `:tech` reporting label are covered in
-[Component Builders](../components.md).
+The full consequence map (which tag enters which report block) is in
+[Tags And Post-Processing](tags.md). Node tags (`:electricity`, `:hydrogen`,
+`:foreign`) also matter for reporting filters; see
+[Querying A Snapshot](querying.md). Workbook parameter columns versus the
+`:tech` reporting label are covered in [Component Builders](../components.md).
 
-> Note: 
+> Note:
 > These are the usual places to look when a custom component solves but does
 > not show up where you expect, or when capacity, balance, or cost queries
 > look off.
 >
-> - **`:function`**: annual sheets select components by modelling role
+> - `:function`: annual sheets select components by modelling role
 >   (`generation`, `storage`, ...).
-> - **Archetype**: storage needs a `level`; extra side flows often mean
+> - Archetype: storage needs a `level`; extra side flows often mean
 >   `LazyStorage`; flexible consumption is not the same as a fixed `Demand`
 >   series.
-> - **Carriers and port names**: connect each port to a node of the matching
+> - Carriers and port names: connect each port to a node of the matching
 >   carrier, using conventional names (`output`, `input`, `level`, ...).
-> - **Plant-size port**: capacity (and fixed costs on capacity) sit on the
+> - Plant-size port: capacity (and fixed costs on capacity) sit on the
 >   port that represents plant size for that technology.
-> - **`connect!`**: the component joins nodal balances only after its ports are
+> - `connect!`: the component joins nodal balances only after its ports are
 >   connected.
-> - **Unique names**: lookups and `ini` inheritance key off the component
+> - Unique names: lookups and `ini` inheritance key off the component
 >   name.
-> - **`:tech` and `:zone`**: filters and annual aggregation group by these
+> - `:tech` and `:zone`: filters and annual aggregation group by these
 >   tags.
 >
 > Related pages: [Component Builders](../components.md), [Building A
 > Snapshot](building-snapshot.md), [Querying A Snapshot](querying.md),
-> [Exporting Results](exporting.md), and the and the [Nosy documentation](https://oecd-nea.github.io/Nosy.jl/dev/).
+> [Tags And Post-Processing](tags.md), [Exporting Results](exporting.md), and
+> the [Nosy documentation](https://oecd-nea.github.io/Nosy.jl/dev/).

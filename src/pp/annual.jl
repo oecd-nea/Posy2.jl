@@ -239,8 +239,12 @@ function __dataline_cap(s::Snapshot, nodeswith::Vector{Symbol}, nodeswithout::Ve
     allnodes = getnodes(s, with=nodeswith, without=nodeswithout)
     allnode_comps = Dict(nodename => getcomponents(s, nodename, with=compswith, without=compswithout) for (nodename, _) in allnodes)
     for (_, d) in allnode_comps
-        # list components connected to this zone (tech tag values, as in Excel sheet)
+        # Include only techs where capacity(comp, portname) is defined (capacity behavior or Duration).
         for (_, comp) in d
+            (Nosy.hasport(comp, portname) && (
+                Nosy.hascapacitybehavior(comp, portname) ||
+                Nosy.hasbehavior(comp, Nosy.DurationBehavior)
+            )) || continue
             cname = only(get(comp.tags, :tech, String[]))
             !(cname in allcomps) && push!(allcomps, cname)
         end
@@ -252,6 +256,10 @@ function __dataline_cap(s::Snapshot, nodeswith::Vector{Symbol}, nodeswithout::Ve
         d = allnode_comps[nodename]
         dbytech = Dict{String,Vector{Component}}()
         for (_, comp) in d
+            (Nosy.hasport(comp, portname) && (
+                Nosy.hascapacitybehavior(comp, portname) ||
+                Nosy.hasbehavior(comp, Nosy.DurationBehavior)
+            )) || continue
             tech = only(get(comp.tags, :tech, String[]))
             push!(get!(dbytech, tech, Component[]), comp)
         end
@@ -262,10 +270,8 @@ function __dataline_cap(s::Snapshot, nodeswith::Vector{Symbol}, nodeswithout::Ve
             else
                 local total = 0.0
                 for comp in comps
-                    if Nosy.hasport(comp, portname)
-                        cap = capacity(comp, portname)
-                        total += isnothing(cap) ? Inf : cap / coeff
-                    end
+                    cap = capacity(comp, portname)
+                    total += isnothing(cap) ? Inf : cap / coeff
                 end
                 push!(v, total)
             end
@@ -382,7 +388,7 @@ function _dataline_demandresponse_cap(s; showforeign=true)
     end
     allnode_comps = Dict(nodename => getcomponents(s, nodename, with=[:function => "demandresponse"]) for (nodename, _) in allnodes)
     for (_, d) in allnode_comps
-        # list components connected to this zone (tech tag values, as in Excel sheet)
+        # list components connected to this zone (tech tag values, as in the technology workbook sheet)
         for (_, comp) in d
             cname = only(get(comp.tags, :tech, String[]))
             !(cname in allcomps) && push!(allcomps, cname)
@@ -1160,14 +1166,16 @@ function _dataline_capacityfactors(s; showforeign=true)
     dfp = _dataline_yearly_production(s, showforeign=showforeign).d[1:end-1,1:end-1]
     dfc = _dataline_elec_prod_cap(s, showforeign=showforeign).d[1:end-1,1:end-1]
 
-    df = DataFrame([name => Vector{Union{String,Float64}}(undef,nrow(dfp)) for name in names(dfp)])
+    # only techs present in both production and capacity tables
+    techcols = intersect(names(dfp)[2:end], names(dfc)[2:end])
+    df = DataFrame([name => Vector{Union{String,Float64}}(undef, nrow(dfp)) for name in vcat(["zone"], collect(techcols))])
     df[!,"zone"] = dfp[!,"zone"]
-    for cname in names(dfp)[2:end]
+    for cname in techcols
         df[!,cname] = dfp[!,cname] ./ dfc[!,cname] / 8760 * 1E3
     end
 
     # average over zones
-    _lastrow = permutedims(vcat("Weighted average", [sum(dfp[!, c]) / sum(dfc[!, c]) / 8760 * 1E3 for c in names(df)[2:end]]))
+    _lastrow = permutedims(vcat("Weighted average", [sum(dfp[!, c]) / sum(dfc[!, c]) / 8760 * 1E3 for c in techcols]))
     push!(df, _lastrow)
 
     # replace NaN with empty string
@@ -1187,14 +1195,16 @@ function _dataline_electrolysers_capacityfactors(s; showforeign=true)
     isempty(dfp) && return nothing
     dfc = _dataline_electrolysis_cap(s, showforeign=showforeign).d[1:end-1,1:end-1]
 
-    df = DataFrame([name => Vector{Union{String,Float64}}(undef,nrow(dfp)) for name in names(dfp)])
+    # only techs present in both electrolysis volume and capacity tables
+    techcols = intersect(names(dfp)[2:end], names(dfc)[2:end])
+    df = DataFrame([name => Vector{Union{String,Float64}}(undef, nrow(dfp)) for name in vcat(["zone"], collect(techcols))])
     df[!,"zone"] = dfp[!,"zone"]
-    for cname in names(dfp)[2:end]
+    for cname in techcols
         df[!,cname] = dfp[!,cname] ./ dfc[!,cname] / 8760 * 1E3
     end
 
     # average over zones
-    _lastrow = permutedims(vcat("Weighted average", [sum(dfp[!, c]) / sum(dfc[!, c]) / 8760 * 1E3 for c in names(df)[2:end]]))
+    _lastrow = permutedims(vcat("Weighted average", [sum(dfp[!, c]) / sum(dfc[!, c]) / 8760 * 1E3 for c in techcols]))
     push!(df, _lastrow)
 
     # replace NaN with empty string
@@ -1262,10 +1272,28 @@ function _dataline_costs_aggregated(s; showforeign=true)
 
     _iccols = ("imports", "exports", "congestion rent")
     local _ic = 0.
+    local _ic_missing = false
     for cname in _iccols
         if cname in names(dfcosts)
-            _ic += first(dfcosts[dfcosts[!,"component"] .== "all", cname])
+            v = first(dfcosts[dfcosts[!,"component"] .== "all", cname])
+            if ismissing(v)
+                _ic_missing = true
+            else
+                _ic += v
+            end
         end
+    end
+
+    if ismissing(_total) || _ic_missing
+        return DataLine(
+            "Aggregated costs (Physical = system except interconnection, trade = only interconnection)",
+            "Billions USD (2024)",
+            LittleDict(
+                "Physical" => missing,
+                "Trade" => missing,
+                "Total" => ismissing(_total) ? missing : _total / 1E9,
+            )
+        )
     end
 
     _physical = _total - _ic
@@ -1296,8 +1324,18 @@ function __dataline_yearly_price_received(s::Snapshot, modifier::Function, nodes
     df = DataFrame([name => [] for name in vcat(["zone"], allcomps, ["Weighted average"])])
 
     for (nodename,n) in allnodes
-        price = Nosy.Hourly(Nosy.dualprice(n), sim(s).mesh)
         v = Any[nodename]
+        # Price not evaluated (e.g. evalprice=false) — not the same as 0 currency/MWh.
+        rawprice = Nosy.dualprice(n)
+        if isnothing(rawprice)
+            for _ in allcomps
+                push!(v, missing)
+            end
+            push!(v, missing) # Weighted average
+            push!(df, permutedims(v))
+            continue
+        end
+        price = Nosy.Hourly(rawprice, sim(s).mesh)
         d = getcomponents(s, nodename, with=compswith, without=compswithout)
         dbytech = Dict{String,Vector{Component}}()
         for (_, comp) in d
@@ -1328,7 +1366,12 @@ function __dataline_yearly_price_received(s::Snapshot, modifier::Function, nodes
                 end
             end
         end
-        push!(v, sum(balance(n, :output, energy, collapse=false, aggregate=true) .* price) / balance(n, :output, energy, collapse=true, aggregate=true))
+        total_output = balance(n, :output, energy, collapse=true, aggregate=true)
+        if iszero(total_output)
+            push!(v, "")
+        else
+            push!(v, sum(balance(n, :output, energy, collapse=false, aggregate=true) .* price) / total_output)
+        end
         push!(df, permutedims(v))
     end
 
@@ -1416,8 +1459,17 @@ function __dataline_yearly_earnings(s::Snapshot, modifier::Function, nodeswith::
     df = DataFrame([name => [] for name in vcat(["zone"], allcomps)])
 
     for (nodename,n) in allnodes
-        price = Nosy.Hourly(Nosy.dualprice(n), sim(s).mesh)
         v = Any[nodename]
+        # Price not evaluated (e.g. evalprice=false) — not the same as 0 currency earnings.
+        rawprice = Nosy.dualprice(n)
+        if isnothing(rawprice)
+            for _ in allcomps
+                push!(v, missing)
+            end
+            push!(df, permutedims(v))
+            continue
+        end
+        price = Nosy.Hourly(rawprice, sim(s).mesh)
         d = getcomponents(s, nodename, with=compswith, without=compswithout)
         dbytech = Dict{String,Vector{Component}}()
         for (_, comp) in d
@@ -1442,10 +1494,13 @@ function __dataline_yearly_earnings(s::Snapshot, modifier::Function, nodeswith::
         push!(df, permutedims(v))
     end
 
-    # sum over zones and components
-    _lastrow = permutedims(vcat("Total", [sum(c) for c in eachcol(df)[2:end]]))
+    # sum over zones and components (missing = price not evaluated, not zero)
+    _sum_allow_missing(c) = all(ismissing, c) ? missing : sum(skipmissing(c); init=0.0)
+    _lastrow = permutedims(vcat("Total", [_sum_allow_missing(c) for c in eachcol(df)[2:end]]))
     push!(df, _lastrow)
-    (ncol(df) > 1) &&  (df[!,"Total"] = sum(eachcol(df)[2:end]))
+    if ncol(df) > 1
+        df[!,"Total"] = [_sum_allow_missing(r) for r in eachrow(df[:, Not("zone")])]
+    end
 
     return DataLine(
         title,

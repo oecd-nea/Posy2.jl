@@ -1,93 +1,90 @@
 # Hydrogen Production
 
-[`makeelectrolyser`](@ref) links an electricity node to a hydrogen node in the
-same country. Flat electricity and hydrogen demands set the loads; a CCGT
-supplies the power system. The electrolyser is both an electricity consumer
-and a hydrogen producer.
+This example shows how hydrogen storage shifts supply from PV powered
+electrolysis to meet hydrogen demand at other hours.
 
-Technology assumptions come from `tech_data.xlsx`; demands stay explicit
-(`tech_mode=:excel` with `timeseries_mode=:arguments`).
+Hydrogen demand varies through the year and averages about 28 MW. An
+electrolyser can make that hydrogen only when PV electricity is available, so
+production and demand do not line up hour by hour. The electrolyser converts
+electricity to hydrogen. Storage on the hydrogen node holds daytime surplus
+and releases it later. Flexibility sits on the hydrogen side.
+
+The setup is:
+
+- hydrogen demand averaging about 28 MW
+- expandable PV and electrolyser
+- fixed hydrogen storage of about one week of that mean load
 
 ```jldoctest hydrogen_production; output = false
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
+# Simulation and Posy2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-example_data_dir = joinpath(pkgdir(POSY2), "data")
-snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
+example_data_dir = joinpath(pkgdir(Posy2), "data")
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     data_dir=example_data_dir,
     techdata_file="tech_data.xlsx",
-    timeseries_file="unused.xlsx",
+    timeseries_file="time_series.xlsx",
     tech_mode=:excel,
-    timeseries_mode=:arguments,
+    timeseries_mode=:excel,
 )))
 
-electricity = Node("COUNTRY", EnergyCarrier("electricity COUNTRY", sim), rule=:curtailed, tags=[:electricity])
-hydrogen = Node("H2 COUNTRY", EnergyCarrier("hydrogen COUNTRY", sim), tags=[:hydrogen])
+# Electricity node, hydrogen node, and CO2 sink
+electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=:curtailed, tags=[:electricity])
+hydrogen = Node("H2 country1", EnergyCarrier("hydrogen country1", sim), rule=:default, tags=[:hydrogen])
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
-# 60 MW of ordinary electricity demand and 28 MW-equivalent of hydrogen.
-makedemand("Electricity demand", "COUNTRY", electricity, snapshot; coeff=0.0, yearlyconstant=60.0 * 8760)
-makeflathydrogendemand("Hydrogen demand", hydrogen, 28.0 * 8760, snapshot)
+# Shaped hydrogen demand, about 28 MW on average
+makedemand("Hydrogen demand", "country1", hydrogen, snapshot; coeff=0.038)
 
-# The PEM efficiency and all cost assumptions are read from tech_data.xlsx.
-makeelectrolyser("Electrolyser", "PEM", electricity, hydrogen, snapshot; maxcap=100.0)
-makedispatchable("Gas", "CCGT", electricity, co2, snapshot; maxcap=200.0, unit_size=0.0)
+# Expandable PV and electrolyser (workbook tech costs)
+makeintermittentsource("Solar", "PV", electricity, co2, snapshot; maxcap=1000.0, weatheryear=2019)
+makeelectrolyser("Electrolyser", "PEM", electricity, hydrogen, snapshot; maxcap=300.0)
 
+# Fixed hydrogen storage
+makehydrogenstorage(
+    "H2 storage", "Hydrogen storage", hydrogen, snapshot;
+    cap=28.0 * 168,   # about one week of the mean hydrogen demand
+    eff=1.0,
+    overnight_cost=50.0,
+    om_fixed_cost=0.0,
+    decommissioning=0.0,
+    lifetime=30,
+    construction_profile=1.0,
+    decommissioning_profile=1.0,
+)
+
+# Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))
 result = extract(snapshot)
 
 # output
 
-Snapshot with 4 component(s) and 3 node(s)
+Snapshot with 4 component(s) and 2 node(s)
 
 ```
 
-Annual energies close the conversion first. The electrolyser draws `elec` from
-the power system and delivers `h2` to the hydrogen node; their ratio is the
-workbook's 58% PEM efficiency. Capacity is rated on the electricity **input**,
-so the build-out follows from that load:
+With storage capacity fixed at about one week of hydrogen, the model sizes PV and
+the electrolyser to meet demand at least cost:
 
 ```jldoctest hydrogen_production
-julia> elec = balance(result, "Electrolyser COUNTRY", :input, energy; collapse=true, aggregate=true);
-
-julia> h2 = balance(result, "Electrolyser COUNTRY", :output, energy; collapse=true, aggregate=true);
-
-julia> elec
-422896.551724186
-
-julia> h2
-245280.0
-
-julia> round(h2 / elec; digits=2)
-0.58
-
-julia> table(result, capacity)
-1×4 DataFrame
- Row │ Electricity demand COUNTRY  Electrolyser COUNTRY  Gas COUNTRY  Hydrogen ⋯
-     │ Float64                     Float64               Float64      Float64  ⋯
-─────┼──────────────────────────────────────────────────────────────────────────
-   1 │                        0.0               48.2759      108.276           ⋯
-                                                                1 column omitted
+julia> table(result, capacity)[:, ["Electrolyser country1", "H2 storage H2 country1", "Solar country1"]]
+1×3 DataFrame
+ Row │ Electrolyser country1  H2 storage H2 country1  Solar country1 
+     │ Float64                Float64                 Float64        
+─────┼───────────────────────────────────────────────────────────────
+   1 │               217.289                  4704.0         752.071
 ```
 
-About `elec / 8760` MW of electrolyser plus the 60 MW ordinary demand sets the
-108.276 MW gas plant. The page's point is that conversion: electricity in,
-hydrogen out, capacity on the input side.
+The figure shows two timescales. Within each day, electrolyser output rises
+above demand in sunny hours and the surplus fills storage, so the level rises.
+When production falls short, storage covers the remaining demand and the level
+falls. These two weeks are weaker on PV than much of the year, so hydrogen
+production stays below demand overall. The level trends down even while the
+day–night cycle repeats:
 
-## Alternative supply option
-
-When hydrogen is bought rather than produced, replace the electrolyser with
-[`makeflathydrogenpurchase`](@ref). That builder fills the hydrogen node only;
-it does not draw electricity and adds no cost to the objective. Attach an
-explicit Nosy cost behaviour if purchases should enter `cost(snapshot)`.
-
-```julia
-# Instead of makeelectrolyser(...):
-makeflathydrogenpurchase("Hydrogen purchase", hydrogen, 28.0 * 8760, snapshot)
-```
-
-See [Hydrogen](../components/hydrogen.md) for the purchase builder API.
+![Hydrogen demand, electrolyser output, storage supply, and storage level over two weeks](../assets/hydrogen-production-week.svg)

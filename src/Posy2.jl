@@ -1,12 +1,12 @@
 """
-    POSY2
+    Posy2
 
 High-level country and regional energy-system modelling tools built on
-[`Nosy.jl`](https://github.com/oecd-nea/Nosy.jl). POSY2 provides standard 
+[`Nosy.jl`](https://github.com/oecd-nea/Nosy.jl). Posy2 provides standard 
 component builders, optional DC power-flow constraints,and post-processing 
 for solved Nosy snapshots.
 """
-module POSY2
+module Posy2
 
 using Nosy
 using JuMP, DataFrames
@@ -32,11 +32,11 @@ export applydcopf!
 export eac
 export selfcost
 export printsnapshot
-export POSY2Options, posy_options, discountrate, co2_price, tech_mode, timeseries_mode
+export Posy2Options, posy_options, discountrate, co2_price, tech_mode, timeseries_mode
 
 include("tools/_includes.jl")
 include("readdata/_includes.jl")
 include("components/_includes.jl")
 include("pp/_includes.jl")
 
-end # module POSY2
+end # module Posy2

@@ -1,11 +1,11 @@
 using Documenter
-using POSY2
+using Posy2
 using Nosy
 
 DocMeta.setdocmeta!(
-    POSY2,
+    Posy2,
     :DocTestSetup,
-    :(using POSY2, Nosy),
+    :(using Posy2, Nosy),
     recursive=true,
 )
 
@@ -19,14 +19,14 @@ docs_version = is_tag ? "stable" : branch
 edit_branch = is_tag ? nothing : branch
 
 makedocs(
-    modules=[POSY2],
-    sitename="POSY2.jl",
+    modules=[Posy2],
+    sitename="Posy2.jl",
     authors="Guillaume KRIVTCHIK, OECD Nuclear Energy Agency, and contributors",
-    repo="https://github.com/GKrivtchik/POSY2.jl/blob/{commit}{path}#L{line}",
+    repo="https://github.com/GKrivtchik/Posy2.jl/blob/{commit}{path}#L{line}",
     format=Documenter.HTML(
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://gkrivtchik.github.io/POSY2.jl/$(docs_version)/",
-        repolink="https://github.com/GKrivtchik/POSY2.jl",
+        canonical="https://gkrivtchik.github.io/Posy2.jl/$(docs_version)/",
+        repolink="https://github.com/GKrivtchik/Posy2.jl",
         assets=String[],
         edit_link=edit_branch,
     ),
@@ -46,9 +46,10 @@ makedocs(
                 "Storage and Conversion" => "components/storage-conversion.md",
                 "Interconnections" => "components/interconnections.md",
             ],
-            "Extending POSY2" => "concepts/extending.md",
+            "Extending Posy2" => "concepts/extending.md",
             "Optimizing a Snapshot" => "concepts/optimizing.md",
             "Querying a Snapshot" => "concepts/querying.md",
+            "Tags and Post-Processing" => "concepts/tags.md",
             "Exporting Results" => "concepts/exporting.md",
         ],
         "Performance" => "performance.md",
@@ -59,6 +60,7 @@ makedocs(
             "Price Interconnection" => "examples/price-interconnection.md",
             "DC OPF" => "examples/dc-opf.md",
             "Dispatchable Generation" => "examples/dispatchable-generation.md",
+            "Nuclear" => "examples/nuclear.md",
             "Battery Storage" => "examples/battery-storage.md",
             "Hydro Reservoir" => "examples/hydro-reservoir.md",
             "Pumped Storage" => "examples/pumped-storage-hydro.md",
@@ -77,7 +79,7 @@ makedocs(
 
 if get(ENV, "CI", "false") == "true"
     deploydocs(
-        repo="github.com/GKrivtchik/POSY2.jl.git",
+        repo="github.com/GKrivtchik/Posy2.jl.git",
         devbranch="main",
         devurl="dev",
         versions=[

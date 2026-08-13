@@ -1,31 +1,27 @@
 # Price Interconnection
 
-[`makepriceinterco`](@ref) represents an external market with an exogenous
-`spot_price` series and user-specified fixed import and export capacities.
-It does not create a second electricity node for that market. Here,
-`"country2"` is the name used to look up the external market's price and
-transfer time series, not a `Node` in the snapshot. Use
-[`makenodeinterco`](@ref) when both sides are explicit nodes inside the same
-snapshot.
+This example compares a domestic CCGT with imports from an external market via
+[`makepriceinterco`](@ref). The model imports when the external `spot_price`
+plus `transactioncost` is below the CCGT `fuel_cost`.
 
-Here flat 100 MW demand faces a domestic CCGT and a priced import link
-(export is off). Spot prices and transfer multipliers come from
-`time_series.xlsx`. In this example all other variable generation costs are
-zero, so the model imports when foreign `spot_price` plus `transactioncost` is
-below the CCGT `fuel_cost` of 47.06, and runs the plant otherwise.
+Unlike [`makenodeinterco`](@ref), that market is not an explicit node;
+`country2` is used to look up the spot-price time series. Import capacity is
+set large on purpose (`mcap=10_000`) and export is off (`xcap=0`), so the
+import/CCGT choice depends on price, not on transfer limits.
 
 ```jldoctest price_interconnection; output = false
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
+# Simulation and Posy2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-example_data_dir = joinpath(pkgdir(POSY2), "data")
+example_data_dir = joinpath(pkgdir(Posy2), "data")
 snapshot = Snapshot(
     sim,
-    Dict(:posy => POSY2Options(
+    Dict(:posy => Posy2Options(
         data_dir=example_data_dir,
         techdata_file="tech_data.xlsx",
         timeseries_file="time_series.xlsx",
@@ -34,10 +30,15 @@ snapshot = Snapshot(
     )),
 )
 
+# Domestic electricity node and CO2 sink
+# evalprice=true stores electricity node dual prices for reporting.
 electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=:default, evalprice=true, tags=[:electricity])
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
+# Flat 100 MW demand
 makedemand("Demand", "country1", electricity, snapshot; coeff=0.0, yearlyconstant=100.0 * 8760)
+
+# Domestic 100 MW CCGT
 makedispatchable(
     "CCGT", "CCGT", electricity, co2, snapshot;
     cap=100.0,
@@ -53,9 +54,11 @@ makedispatchable(
     co2_emission=0.0,
     unit_size=0.0,
 )
-# mcap = 10_000 MW import; xcap = 0 MW export
+
+# Priced import from "country2" (spot series); Lange import capacity, export capacity off
 makepriceinterco("country2", electricity, 10_000.0, 0.0, snapshot; transactioncost=1.0)
 
+# Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))
 result = extract(snapshot)
 
@@ -65,14 +68,15 @@ Snapshot with 3 component(s) and 1 node(s)
 
 ```
 
-Annual totals show that both sources share the flat 100 MW demand
-(`376400 + 499600 = 876000 MWh`), but not *when* the model switches. The week
-below is taken from the solved hourly result: import cost is foreign
-`spot_price` plus the `transactioncost` of 1, and the dashed line is the CCGT
-`fuel_cost` of 47.06 currency/MWh. When import cost dips below that line,
-imports supply the 100 MW demand; when it rises above, the CCGT takes over.
+A sample week shows how meeting demand switches between imports and the
+domestic CCGT as `spot_price + transactioncost` moves relative to the CCGT
+fuel cost. It plots `dualprice` next to that import cost and the fuel line,
+with import and CCGT dispatch underneath.
 
-![Price-based dispatch switching over one week](../assets/price-interconnection-week.svg)
+![Domestic dualprice versus import cost and CCGT dispatch over one week](../assets/price-interconnection-week.svg)
+
+Over the full year, both imports and the domestic CCGT contribute to meeting
+demand (`376400 + 499600 = 876000 MWh`):
 
 ```jldoctest price_interconnection
 julia> balance(result, "IC_country2_country1", :output, energy; collapse=true, aggregate=true)
@@ -80,15 +84,5 @@ julia> balance(result, "IC_country2_country1", :output, energy; collapse=true, a
 
 julia> balance(result, "CCGT country1", :output, energy; collapse=true, aggregate=true)
 499600.0
-
-julia> cost(result, "IC_country2_country1")
-1.42182765e7
-
-julia> cost(result, "CCGT country1")
-2.3511176e7
 ```
 
-`mcap` and `xcap` are fixed capacities multiplied hour by hour by the
-`country2>country1` and `country1>country2` columns. The `country2`
-`spot_price` column sets the import price; if export capacity were enabled,
-the same series would also set export revenue.

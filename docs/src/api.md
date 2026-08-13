@@ -1,6 +1,6 @@
 # API Reference
 
-This page groups every public binding exported by POSY2. For a narrative guide
+This page groups every public binding exported by Posy2. For a narrative guide
 to the constructors, see [Component Builders](components.md). Nosy types and
 lower-level modelling operations are documented in the
 [Nosy API reference](https://oecd-nea.github.io/Nosy.jl/dev/api/).
@@ -8,13 +8,13 @@ lower-level modelling operations are documented in the
 ## Package
 
 ```@docs
-POSY2
+Posy2
 ```
 
 ## Configuration And Input Data
 
 ```@docs
-POSY2Options
+Posy2Options
 posy_options
 discountrate
 co2_price

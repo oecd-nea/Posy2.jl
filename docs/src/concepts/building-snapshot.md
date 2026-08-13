@@ -1,16 +1,16 @@
 # Building A Snapshot
 
-This page covers the objects used to describe a POSY2 study before solving:
-the Nosy simulation and snapshot, carriers and nodes, POSY2 component builders,
+This page covers the objects used to describe a Posy2 study before solving:
+the Nosy simulation and snapshot, carriers and nodes, Posy2 component builders,
 cost assumptions, names and tags, initial snapshots, and interconnections.
 
 ## Simulation And Snapshot
 
-Nosy owns the JuMP model and time mesh. POSY2 stores its study configuration in
+Nosy owns the JuMP model and time mesh. Posy2 stores its study configuration in
 the Nosy snapshot and adds components to that same model.
 
 ```julia
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 
@@ -18,7 +18,7 @@ s = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 snapshot = Snapshot(
     s,
     Dict(
-        :posy => POSY2Options(
+        :posy => Posy2Options(
             discountrate=0.05,
             co2_price=100.0,
             dcopf=false,
@@ -28,8 +28,8 @@ snapshot = Snapshot(
 ```
 
 The default `TimeMesh()` is a circular year with 8760 hourly steps. The current
-POSY2 data and post-processing conventions assume this yearly hourly horizon.
-Nosy supports more general meshes, but several POSY2 builders contain
+Posy2 data and post-processing conventions assume this yearly hourly horizon.
+Nosy supports more general meshes, but several Posy2 builders contain
 year-specific logic and should not yet be treated as mesh-agnostic.
 
 ## Carriers And Nodes
@@ -61,7 +61,7 @@ co2_node = Node(
 )
 ```
 
-The `:electricity` tag is used by POSY2 post-processing and the optional
+The `:electricity` tag is used by Posy2 post-processing and the optional
 DC power flow graph. Tag external neighbour nodes with `:foreign`; leave nodes
 inside the system boundary without that tag. This distinction is also used by
 [`selfcost`](@ref).
@@ -77,7 +77,7 @@ the commodity and whether free curtailment is meaningful.
 
 ## Component Builders
 
-Each POSY2 builder assembles one Nosy model archetype with the required
+Each Posy2 builder assembles one Nosy model archetype with the required
 behaviours and joint flows, creates a component, tags it, connects it to the
 supplied nodes, and returns it. The returned object can be inspected or
 extended with Nosy before the snapshot is finalised.
@@ -166,18 +166,18 @@ Investment builders usually set capacity as follows:
 
 Which port that capacity refers to depends on the technology:
 
-- generation uses **output** capacity;
-- batteries and electrolysers use **input** capacity;
-- hydrogen storage uses **level** capacity.
+- generation uses `output` capacity;
+- batteries and electrolysers use `input` capacity;
+- hydrogen storage uses `level` capacity.
 
 Some builders have extra rules (for example how `cap=0` is handled), so check
 the individual API entry when writing shared study code.
 
 ### Inheriting capacity with `ini`
 
-Matching uses POSY2's generated component names. Build the new scenario with
+Matching uses Posy2's generated component names. Build the new scenario with
 the same component prefix (`cname`) and node name as in the initial snapshot.
-Prefer an extracted **result** for `ini` over an unsolved snapshot, so the
+Prefer an extracted result for `ini` over an unsolved snapshot, so the
 inherited capacity values are already numeric.
 
 ## Costs And Annualisation
@@ -230,6 +230,9 @@ getcomponents(
     without=[:function => "foreign"],
 )
 ```
+
+Which `:function` values appear in which report blocks is described in
+[Tags And Post-Processing](tags.md).
 
 ## Interconnections
 

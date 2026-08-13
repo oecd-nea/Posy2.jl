@@ -39,12 +39,12 @@ Arguments:
 
   * `co2price`: CO2 cost coefficient used with emitted CO2 flow.
 
-  * `overnight_cost`: Overnight CAPEX input used by `eac(...)` (Excel default when `nothing`).
-  * `om_fixed_cost`: Fixed O&M cost on output capacity (`FixedCost(:fom, "output", ...)`; Excel default when `nothing`).
-  * `decommissioning`: Decommissioning cost ratio used in `decom_cost(...)` (Excel default when `nothing`).
+  * `overnight_cost`: Overnight CAPEX input used by `eac(...)` (workbook default when `nothing`).
+  * `om_fixed_cost`: Fixed O&M cost on output capacity (`FixedCost(:fom, "output", ...)`; workbook default when `nothing`).
+  * `decommissioning`: Decommissioning cost ratio used in `decom_cost(...)` (workbook default when `nothing`).
   * `lifetime`: Asset lifetime used by annualization/decommissioning calculations (`> 0`, integer-valued).
-  * `construction_profile`: Construction cost share profile passed to `eac(...)` (Excel default when `nothing`).
-  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)` (Excel default when `nothing`).
+  * `construction_profile`: Construction cost share profile passed to `eac(...)` (workbook default when `nothing`).
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)` (workbook default when `nothing`).
   * `connection_cost`: Connection cost ratio applied on annualized investment.
   * `om_var_cost`: Variable O&M cost on output energy flow (`VariableCost(:vom, "output", ...)`).
   * `fuel_cost`: Direct fuel variable cost on output energy. Used only when `fuelnode === nothing`.
@@ -53,8 +53,8 @@ Arguments:
   * `co2_emission`: CO2 emission factor linked from output energy to CO2 flow (`output * co2_emission / 1000`).
   * `efficiency`: Fuel to output conversion efficiency for linked fuel flow. Required when `fuelnode` is provided.
   * `unit_size`: Unit block size for discrete capacity representation. `0` is treated as no unit size constraint.
-  * `ramp_up`: Max ramp up as a fraction of unit capacity per hour. Passed to `Ramping(...)` as `ramp_up * unit_size`. Excel default when `nothing`. Used only when `unit_size > 0`.
-  * `ramp_down`: Max ramp down as a fraction of unit capacity per hour. Same scaling as `ramp_up`. Excel default when `nothing`. Used only when `unit_size > 0`.
+  * `ramp_up`: Max ramp up as a fraction of unit capacity per hour. Passed to `Ramping(...)` as `ramp_up * unit_size`. workbook default when `nothing`. Used only when `unit_size > 0`.
+  * `ramp_down`: Max ramp down as a fraction of unit capacity per hour. Same scaling as `ramp_up`. workbook default when `nothing`. Used only when `unit_size > 0`.
   * `min_power`: UC minimum generation fraction while committed. Used only when `uc=true`.
   * `min_uptime`: minimum consecutive online time in hours after a start. Used only when `uc=true`.
   * `min_downtime`: minimum consecutive offline time in hours after a shutdown. Used only when `uc=true`.
@@ -247,19 +247,19 @@ Arguments:
   * `startupmask`: Optional masks restricting UC startup/shutdown availability over time.
   * `shutdownmask`: Optional masks restricting UC startup/shutdown availability over time.
 
-  * `reload_duration`: Duration of planned reload outage. If `nothing`, read from Excel. Must be >= 0; reloading constraints are enabled only when this value is > 0.
-  * `reloadmask`: Interval between allowed reload windows. Non default parameter (not read from Excel). When reloading is enabled, it must be provided , strictly positive, and integer-valued.
-  * `reload_fraction_per_year`: Minimum yearly reload requirement (fraction per unit per year). If `nothing`, read from Excel. Must be >= 0; reloading constraints are enabled only when this value is > 0.
+  * `reload_duration`: Duration of planned reload outage. If `nothing`, read from the technology workbook. Must be >= 0; reloading constraints are enabled only when this value is > 0.
+  * `reloadmask`: Interval between allowed reload windows. Non default parameter (not read from the technology workbook). When reloading is enabled, it must be provided , strictly positive, and integer-valued.
+  * `reload_fraction_per_year`: Minimum yearly reload requirement (fraction per unit per year). If `nothing`, read from the technology workbook. Must be >= 0; reloading constraints are enabled only when this value is > 0.
 
   * `fuelnode`: If provided, fuel is represented as linked input flow using `efficiency`. If `nothing`, `fuel_cost` is applied as output variable cost.
   * `co2price`: CO2 price coefficient for emitted CO2 flow.
 
-  * `overnight_cost`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
-  * `om_fixed_cost`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
-  * `decommissioning`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
-  * `lifetime`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
-  * `construction_profile`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Excel defaults are used when values are `nothing`.
-  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
+  * `overnight_cost`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Workbook defaults are used when values are `nothing`.
+  * `om_fixed_cost`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Workbook defaults are used when values are `nothing`.
+  * `decommissioning`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Workbook defaults are used when values are `nothing`.
+  * `lifetime`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms (`> 0`, integer-valued). Workbook defaults are used when values are `nothing`.
+  * `construction_profile`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Workbook defaults are used when values are `nothing`.
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Workbook defaults are used when values are `nothing`.
   * `connection_cost`: Ratio applied to annualized investment for connection cost.
   * `om_var_cost`: Variable cost coefficients on output energy (fuel cost used directly only when `fuelnode === nothing`).
   * `fuel_cost`: Variable cost coefficients on output energy (fuel cost used directly only when `fuelnode === nothing`).
@@ -541,12 +541,12 @@ Arguments:
 
   * `co2price`: CO2 cost coefficient applied to emitted CO2 flow.
 
-  * `overnight_cost`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * `om_fixed_cost`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * `decommissioning`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * `lifetime`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
-  * `construction_profile`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Excel defaults are used when values are `nothing`.
-  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
+  * `overnight_cost`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
+  * `om_fixed_cost`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
+  * `decommissioning`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
+  * `lifetime`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms (`> 0`, integer-valued). Workbook defaults are used when values are `nothing`.
+  * `construction_profile`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Workbook defaults are used when values are `nothing`.
   * `connection_cost`: Ratio applied to annualized investment as connection fixed cost.
   * `om_var_cost`: Variable O&M coefficient on output energy flow.
   * `fuel_cost`: Fuel variable cost coefficient on output energy flow.
@@ -645,13 +645,13 @@ Arguments:
 
   * `intake_mult`: Multiplier applied to inflow profile before normalization to `cap`.
 
-  * `overnight_cost`: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
-  * `om_fixed_cost`: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
-  * `om_var_cost`: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
-  * `decommissioning`: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
-  * `lifetime`: Cost/lifetime overrides for fixed and variable hydro cost terms (`> 0`, integer-valued). Excel defaults are used when values are `nothing`.
-  * `construction_profile`: Cost/lifetime overrides for fixed and variable hydro cost terms. Excel defaults are used when values are `nothing`.
-  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Excel defaults are used when values are `nothing`.
+  * `overnight_cost`: Cost/lifetime overrides for fixed and variable hydro cost terms. Workbook defaults are used when values are `nothing`.
+  * `om_fixed_cost`: Cost/lifetime overrides for fixed and variable hydro cost terms. Workbook defaults are used when values are `nothing`.
+  * `om_var_cost`: Cost/lifetime overrides for fixed and variable hydro cost terms. Workbook defaults are used when values are `nothing`.
+  * `decommissioning`: Cost/lifetime overrides for fixed and variable hydro cost terms. Workbook defaults are used when values are `nothing`.
+  * `lifetime`: Cost/lifetime overrides for fixed and variable hydro cost terms (`> 0`, integer-valued). Workbook defaults are used when values are `nothing`.
+  * `construction_profile`: Cost/lifetime overrides for fixed and variable hydro cost terms. Workbook defaults are used when values are `nothing`.
+  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Workbook defaults are used when values are `nothing`.
 """
 function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     # capacity / profile

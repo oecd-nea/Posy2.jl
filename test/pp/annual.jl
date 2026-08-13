@@ -1,4 +1,4 @@
-using POSY2
+using Posy2
 using Nosy
 using Test
 using JuMP
@@ -14,7 +14,7 @@ using DataFrames
 
     function posyopts()
         return Dict(
-            :posy => POSY2Options(
+            :posy => Posy2Options(
                 data_dir=joinpath(dirname(@__DIR__), "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
@@ -51,13 +51,13 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        d = POSY2._dataline_costs_aggregated(s; showforeign=false)
-        df = POSY2.selfcosts(s)
+        d = Posy2._dataline_costs_aggregated(s; showforeign=false)
+        df = Posy2.selfcosts(s)
         allrow = first(df[df[!, :component] .== "all", :])
         trade = (allrow.imports + allrow.exports + allrow[Symbol("congestion rent")]) / 1e9
         @test isapprox(d.d["Trade"], trade; rtol=1e-12)
         @test isapprox(d.d["Physical"], d.d["Total"] - trade; rtol=1e-12)
-        @test isapprox(POSY2.selfcost(s) / 1e9, d.d["Total"]; rtol=1e-12)
+        @test isapprox(Posy2.selfcost(s) / 1e9, d.d["Total"]; rtol=1e-12)
     end
 
     # Internal-only model: foreign import/export datalines are zero at every electricity node (TWh/y scale).
@@ -71,8 +71,8 @@ using DataFrames
         s = extract(snap)
 
         for (k, _) in Nosy.getnodes(s, with=[:electricity], without=[:foreign])
-            @test POSY2.imports_foreign(s, k; collapse=true) / 1e6 == 0.0
-            @test POSY2.exports_foreign(s, k; collapse=true) / 1e6 == 0.0
+            @test Posy2.imports_foreign(s, k; collapse=true) / 1e6 == 0.0
+            @test Posy2.exports_foreign(s, k; collapse=true) / 1e6 == 0.0
         end
     end
 
@@ -87,7 +87,7 @@ using DataFrames
         s = extract(snap)
 
         expected_mwh = 50.0 * Nosy.nhours(sim(s))
-        line = POSY2._dataline_ic_vol_detailed(s)
+        line = Posy2._dataline_ic_vol_detailed(s)
         @test line.unit == "TWh/y"
         v = line.d[line.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
         @test isapprox(v, expected_mwh / 1e6; rtol=1e-12)
@@ -100,7 +100,7 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        line = POSY2._dataline_ic_cap(s)
+        line = Posy2._dataline_ic_cap(s)
         @test line.unit == "GW"
         @test isapprox(line.d[line.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], 2.0; rtol=1e-12)
         @test isapprox(line.d[line.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1], 3.0; rtol=1e-12)
@@ -117,17 +117,17 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        cap = POSY2._dataline_ic_cap(s)
+        cap = Posy2._dataline_ic_cap(s)
         @test cap.title == "Interconnection capacity"
         @test isapprox(cap.d[cap.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], 2.5; rtol=1e-12)
         @test isapprox(cap.d[cap.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1], 2.5; rtol=1e-12)
 
-        cap_ac = POSY2._dataline_ic_cap(s; kind=:AC)
+        cap_ac = Posy2._dataline_ic_cap(s; kind=:AC)
         @test cap_ac.title == "Interconnection capacity (AC)"
         @test isapprox(cap_ac.d[cap_ac.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], 2.0; rtol=1e-12)
         @test isapprox(cap_ac.d[cap_ac.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1], 2.0; rtol=1e-12)
 
-        cap_dc = POSY2._dataline_ic_cap(s; kind=:DC)
+        cap_dc = Posy2._dataline_ic_cap(s; kind=:DC)
         @test cap_dc.title == "Interconnection capacity (DC)"
         @test isapprox(cap_dc.d[cap_dc.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], 0.5; rtol=1e-12)
         @test isapprox(cap_dc.d[cap_dc.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1], 0.5; rtol=1e-12)
@@ -136,15 +136,15 @@ using DataFrames
         dc = Nosy.getcomponent(s, "DC_ZONE1_ZONE2")
         ac_fwd = balance(ac, :input, energy, collapse=true, aggregate=false)["input"]
         dc_fwd = balance(dc, :input, energy, collapse=true, aggregate=false)["input"]
-        vol = POSY2._dataline_ic_vol_detailed(s)
+        vol = Posy2._dataline_ic_vol_detailed(s)
         v = vol.d[vol.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
         @test isapprox(v, (ac_fwd + dc_fwd) / 1e6; rtol=1e-12)
 
-        vol_ac = POSY2._dataline_ic_vol_detailed(s; kind=:AC)
+        vol_ac = Posy2._dataline_ic_vol_detailed(s; kind=:AC)
         @test vol_ac.title == "Interconnection volume (AC)"
         @test isapprox(vol_ac.d[vol_ac.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], ac_fwd / 1e6; rtol=1e-12)
 
-        vol_dc = POSY2._dataline_ic_vol_detailed(s; kind=:DC)
+        vol_dc = Posy2._dataline_ic_vol_detailed(s; kind=:DC)
         @test vol_dc.title == "Interconnection volume (DC)"
         @test isapprox(vol_dc.d[vol_dc.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], dc_fwd / 1e6; rtol=1e-12)
     end
@@ -155,7 +155,7 @@ using DataFrames
         makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
-        line = POSY2._dataline_ic_vol_detailed(s)
+        line = Posy2._dataline_ic_vol_detailed(s)
         v = line.d[line.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
         @test v == 0.0
         @test !ismissing(v)
@@ -172,7 +172,7 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        line = POSY2._dataline_ic_vol_detailed(s)
+        line = Posy2._dataline_ic_vol_detailed(s)
         v = line.d[line.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE3"][1]
         @test ismissing(v)
     end
@@ -187,7 +187,7 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        line = POSY2._dataline_ic_vol_detailed(s)
+        line = Posy2._dataline_ic_vol_detailed(s)
         df = line.d
         datacols = [name for name in names(df)[2:end] if name != "> Total"]
         total_row = df[df[!, "From \\ To"] .== "Total >", :]
@@ -207,7 +207,7 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        line = POSY2._dataline_ic_hours_at_ntc(s)
+        line = Posy2._dataline_ic_hours_at_ntc(s)
         @test line.title == "Hours at NTC (AC or DC)"
         df = line.d
         v_import = df[df[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
@@ -222,7 +222,7 @@ using DataFrames
         makenodeinterco("IC", elec1, elec2, Inf, Inf, snap)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
-        line = POSY2._dataline_ic_hours_at_ntc(s)
+        line = Posy2._dataline_ic_hours_at_ntc(s)
         df = line.d
         v12 = df[df[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
         v21 = df[df[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
@@ -241,9 +241,9 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        either = POSY2._dataline_ic_hours_at_ntc(s)
-        line_ac = POSY2._dataline_ic_hours_at_ntc(s; kind=:AC)
-        line_dc = POSY2._dataline_ic_hours_at_ntc(s; kind=:DC)
+        either = Posy2._dataline_ic_hours_at_ntc(s)
+        line_ac = Posy2._dataline_ic_hours_at_ntc(s; kind=:AC)
+        line_dc = Posy2._dataline_ic_hours_at_ntc(s; kind=:DC)
         @test either.title == "Hours at NTC (AC or DC)"
         @test line_ac.title == "Hours at NTC (AC)"
         @test line_dc.title == "Hours at NTC (DC)"
@@ -265,11 +265,11 @@ using DataFrames
         s = extract(snap)
 
         cname = "IC_ZONE2_ZONE1"
-        df = POSY2.selfcosts(s)
+        df = Posy2.selfcosts(s)
         row = first(df[df[!, :component] .== cname, :])
-        imp = POSY2.selfinterconnectioncost_price(s, cname)
-        exp = POSY2.selfinterconnectionrevenue_price(s, cname)
-        cr = POSY2.selfcongestionrent_price(s, cname)
+        imp = Posy2.selfinterconnectioncost_price(s, cname)
+        exp = Posy2.selfinterconnectionrevenue_price(s, cname)
+        cr = Posy2.selfcongestionrent_price(s, cname)
         @test isapprox(row.imports, imp; rtol=1e-12)
         @test isapprox(row.exports, -exp; rtol=1e-12)
         @test isapprox(row[Symbol("congestion rent")], -cr; rtol=1e-12)
@@ -283,9 +283,9 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        line = POSY2._dataline_demand_prod(s; showforeign=false)
+        line = Posy2._dataline_demand_prod(s; showforeign=false)
         row = first(line.d[line.d.zone .== "ZONE1", :])
-        expected = POSY2.imports_foreign(s, "ZONE1"; collapse=true) / 1e6
+        expected = Posy2.imports_foreign(s, "ZONE1"; collapse=true) / 1e6
         @test isapprox(row["Imports (foreign)"], expected; rtol=1e-12)
         @test row["Imports (internal)"] == 0.0
     end
@@ -299,9 +299,9 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        line = POSY2._dataline_ic_vol_detailed(s)
+        line = Posy2._dataline_ic_vol_detailed(s)
         v = line.d[line.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
-        expected = POSY2.imports_internal(s, "ZONE1"; collapse=true) / 1e6
+        expected = Posy2.imports_internal(s, "ZONE1"; collapse=true) / 1e6
         @test isapprox(v, expected; rtol=1e-12)
     end
 
@@ -313,11 +313,11 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        imp_line = POSY2._dataline_imports_vol(s)
-        exp_line = POSY2._dataline_exports_vol(s)
-        net_line = POSY2._dataline_net_ic_vol(s)
-        imp = POSY2.imports_foreign(s; collapse=true)
-        exp = POSY2.exports_foreign(s; collapse=true)
+        imp_line = Posy2._dataline_imports_vol(s)
+        exp_line = Posy2._dataline_exports_vol(s)
+        net_line = Posy2._dataline_net_ic_vol(s)
+        imp = Posy2.imports_foreign(s; collapse=true)
+        exp = Posy2.exports_foreign(s; collapse=true)
         @test isapprox(imp_line.d["ZONE2 > ZONE1"], imp["ZONE2 > ZONE1"] / 1e6; rtol=1e-12)
         @test isapprox(imp_line.d["Total"], sum(values(imp)) / 1e6; rtol=1e-12)
         @test isapprox(exp_line.d["ZONE1 > ZONE2"], exp["ZONE1 > ZONE2"] / 1e6; rtol=1e-12)
@@ -350,21 +350,21 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        zone2_prod = POSY2.production(s, "ZONE2"; collapse=true)
+        zone2_prod = Posy2.production(s, "ZONE2"; collapse=true)
         ccgt_z2_out = Nosy.balance(s, "CCGT ZONE2", :output, energy, collapse=true, aggregate=false)["output"]
         @test isapprox(zone2_prod, ccgt_z2_out; rtol=1e-12)
         el_out = Nosy.balance(s, "EL ZONE1", :input, energy, collapse=true, aggregate=false)["input"]
-        @test isapprox(POSY2.electrolysis(s, "ZONE1"; collapse=true), el_out; rtol=1e-12)
+        @test isapprox(Posy2.electrolysis(s, "ZONE1"; collapse=true), el_out; rtol=1e-12)
         dr_out = Nosy.balance(s, "DR ZONE1", :output, energy, collapse=true, aggregate=true)
-        @test isapprox(POSY2.demandresponse(s, "ZONE1"; collapse=true), dr_out; rtol=1e-12)
-        char_bat = POSY2.charging(s; aggregate=false, collapse=true)["charging Battery ZONE1"]
-        @test isapprox(POSY2.charging(s, "ZONE1"; collapse=true), char_bat; rtol=1e-12)
-        @test POSY2.curtailment(s, "ZONE1"; collapse=true) == 0.0
-        @test POSY2.losses(s, "IC_ZONE1_ZONE2"; collapse=true) == 0.0
-        zone1_prod = POSY2.production(s, "ZONE1"; collapse=true)
-        imports = POSY2.imports_internal(s, "ZONE1"; collapse=true)
-        expected_demand = POSY2.demand(s, "ZONE1"; aggregate=true, collapse=true)
-        dis_z1 = POSY2.discharging(s; aggregate=false, collapse=true)["discharging Battery ZONE1"]
+        @test isapprox(Posy2.demandresponse(s, "ZONE1"; collapse=true), dr_out; rtol=1e-12)
+        char_bat = Posy2.charging(s; aggregate=false, collapse=true)["charging Battery ZONE1"]
+        @test isapprox(Posy2.charging(s, "ZONE1"; collapse=true), char_bat; rtol=1e-12)
+        @test Posy2.curtailment(s, "ZONE1"; collapse=true) == 0.0
+        @test Posy2.losses(s, "IC_ZONE1_ZONE2"; collapse=true) == 0.0
+        zone1_prod = Posy2.production(s, "ZONE1"; collapse=true)
+        imports = Posy2.imports_internal(s, "ZONE1"; collapse=true)
+        expected_demand = Posy2.demand(s, "ZONE1"; aggregate=true, collapse=true)
+        dis_z1 = Posy2.discharging(s; aggregate=false, collapse=true)["discharging Battery ZONE1"]
         # Multi-term optimizer balance: rtol=1e-6 (looser than identity compares).
         @test isapprox(
             zone1_prod + imports,
@@ -399,13 +399,13 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        demand_line = POSY2._dataline_yearly_demand(s; showforeign=false)
-        prod_line = POSY2._dataline_yearly_production(s; showforeign=false)
+        demand_line = Posy2._dataline_yearly_demand(s; showforeign=false)
+        prod_line = Posy2._dataline_yearly_production(s; showforeign=false)
         row = first(demand_line.d[demand_line.d.zone .== "ZONE1", :])
-        expected = POSY2.demand(s, "ZONE1"; aggregate=true, collapse=true) / 1e6
+        expected = Posy2.demand(s, "ZONE1"; aggregate=true, collapse=true) / 1e6
         @test isapprox(row["Other consumption"], expected; rtol=1e-12)
         prod_row = first(prod_line.d[prod_line.d.zone .== "ZONE2", :])
-        @test isapprox(prod_row["CCGT"], POSY2.production(s, "ZONE2"; collapse=true) / 1e6; rtol=1e-12)
+        @test isapprox(prod_row["CCGT"], Posy2.production(s, "ZONE2"; collapse=true) / 1e6; rtol=1e-12)
     end
 
     # Installed capacity datalines report GW/GWe from fixture caps (CCGT, EL, Battery, DR, H2 storage).
@@ -434,13 +434,13 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        prod_cap = POSY2._dataline_elec_prod_cap(s; showforeign=false)
-        elec_cap = POSY2._dataline_electrolysis_cap(s; showforeign=false)
-        stor_cap = POSY2._dataline_elec_storage_cap(s; showforeign=false)
-        stor_dis = POSY2._dataline_elec_storage_discharge_cap(s; showforeign=false)
-        stor_lvl = POSY2._dataline_elec_storage_cap_level(s; showforeign=false)
-        dr_cap = POSY2._dataline_demandresponse_cap(s; showforeign=false)
-        h2_cap = POSY2._dataline_hydrogen_storage_cap(s; showforeign=false)
+        prod_cap = Posy2._dataline_elec_prod_cap(s; showforeign=false)
+        elec_cap = Posy2._dataline_electrolysis_cap(s; showforeign=false)
+        stor_cap = Posy2._dataline_elec_storage_cap(s; showforeign=false)
+        stor_dis = Posy2._dataline_elec_storage_discharge_cap(s; showforeign=false)
+        stor_lvl = Posy2._dataline_elec_storage_cap_level(s; showforeign=false)
+        dr_cap = Posy2._dataline_demandresponse_cap(s; showforeign=false)
+        h2_cap = Posy2._dataline_hydrogen_storage_cap(s; showforeign=false)
 
         @test prod_cap.unit == "GWe"
         @test isapprox(first(prod_cap.d[prod_cap.d.zone .== "ZONE1", "CCGT"]), 0.05; rtol=1e-12)
@@ -479,11 +479,11 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        charge_line = POSY2._dataline_yearly_charging(s; showforeign=false)
-        discharge_line = POSY2._dataline_yearly_discharging(s; showforeign=false)
-        elec_line = POSY2._dataline_yearly_electrolysis(s; showforeign=false)
-        dr_line = POSY2._dataline_yearly_demandresponse(s; showforeign=false)
-        co2_line = POSY2._dataline_yearly_co2(s; showforeign=false)
+        charge_line = Posy2._dataline_yearly_charging(s; showforeign=false)
+        discharge_line = Posy2._dataline_yearly_discharging(s; showforeign=false)
+        elec_line = Posy2._dataline_yearly_electrolysis(s; showforeign=false)
+        dr_line = Posy2._dataline_yearly_demandresponse(s; showforeign=false)
+        co2_line = Posy2._dataline_yearly_co2(s; showforeign=false)
 
         @test charge_line.unit == "TWh/y"
         @test discharge_line.unit == "TWh/y"
@@ -492,7 +492,7 @@ using DataFrames
         @test co2_line.unit == "t/y"
         @test isapprox(
             first(charge_line.d[charge_line.d.zone .== "ZONE1", "Battery"]),
-            POSY2.charging(s, "ZONE1"; collapse=true) / 1e6;
+            Posy2.charging(s, "ZONE1"; collapse=true) / 1e6;
             rtol=1e-12,
         )
     end
@@ -523,9 +523,9 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        cf_line = POSY2._dataline_capacityfactors(s; showforeign=false)
-        el_cf_line = POSY2._dataline_electrolysers_capacityfactors(s; showforeign=false)
-        lcoe_line = POSY2._dataline_lcoe(s; showforeign=false)
+        cf_line = Posy2._dataline_capacityfactors(s; showforeign=false)
+        el_cf_line = Posy2._dataline_electrolysers_capacityfactors(s; showforeign=false)
+        lcoe_line = Posy2._dataline_lcoe(s; showforeign=false)
         @test cf_line.unit == "Energy %"
         @test el_cf_line.unit == "Energy %"
         @test lcoe_line.unit == "USD/MWhe"
@@ -560,10 +560,10 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        cost_line = POSY2._dataline_yearly_cost(s; showforeign=false)
-        earn_line = POSY2._dataline_yearly_earnings(s; showforeign=false)
-        price_line = POSY2._dataline_yearly_price_received(s; showforeign=false)
-        detail_line = POSY2._dataline_costs(s; showforeign=false)
+        cost_line = Posy2._dataline_yearly_cost(s; showforeign=false)
+        earn_line = Posy2._dataline_yearly_earnings(s; showforeign=false)
+        price_line = Posy2._dataline_yearly_price_received(s; showforeign=false)
+        detail_line = Posy2._dataline_costs(s; showforeign=false)
         @test cost_line.unit == "Billions USD (2024)"
         @test earn_line.unit == "Billions USD (2024)"
         @test price_line.unit == "USD/MWh"
@@ -586,8 +586,8 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        self_detail = POSY2._dataline_costs(s; showforeign=false)
-        all_detail = POSY2._dataline_costs(s; showforeign=true)
+        self_detail = Posy2._dataline_costs(s; showforeign=false)
+        all_detail = Posy2._dataline_costs(s; showforeign=true)
         self_components = Set(self_detail.d.Component)
         all_components = Set(all_detail.d.Component)
         @test "CCGT ZONE2" in all_components
@@ -623,8 +623,8 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        self_detail = POSY2._dataline_costs(s; showforeign=false)
-        all_detail = POSY2._dataline_costs(s; showforeign=true)
+        self_detail = Posy2._dataline_costs(s; showforeign=false)
+        all_detail = Posy2._dataline_costs(s; showforeign=true)
         @test Set(self_detail.d.Component) == Set(all_detail.d.Component)
         @test isapprox(
             sum(skipmissing(self_detail.d.total)),
@@ -636,7 +636,58 @@ using DataFrames
     # Cost table cleanup: rows with all zero numeric columns are dropped.
     let
         df = DataFrame(component=["A", "B", "C"], fuel=[0.0, 1.0, 0.0], total=[0.0, 1.0, 0.0])
-        POSY2._removezerorows!(df)
+        Posy2._removezerorows!(df)
         @test df.component == ["B"]
+    end
+
+    # No evalprice: dualprice is nothing; earnings and price-received cells are missing.
+    let
+        sim = tsim()
+        snap = Snapshot(sim, posyopts())
+        elec = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, losses=0.0, tags=[:electricity])
+        co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
+        makedemand("Other consumption", "ZONE1", elec, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec, co2, snap; cap=200.0, construction_profile=1.0, decommissioning_profile=1.0)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        @test isnothing(Nosy.dualprice(elec))
+        earn_line = Posy2._dataline_yearly_earnings(s; showforeign=true)
+        price_line = Posy2._dataline_yearly_price_received(s; showforeign=true)
+        @test "CCGT" in names(earn_line.d)
+        zone_earn = first(earn_line.d[earn_line.d.zone .== "ZONE1", :CCGT])
+        zone_price = first(price_line.d[price_line.d.zone .== "ZONE1", :CCGT])
+        @test ismissing(zone_earn)
+        @test ismissing(zone_price)
+        @test ismissing(first(earn_line.d[earn_line.d.zone .== "Total", :CCGT]))
+        @test ismissing(first(price_line.d[price_line.d.zone .== "ZONE1", Symbol("Weighted average")]))
+        @test Posy2._gensnapshotpp(s) isa AbstractDict
+    end
+
+    # No evalprice with foreign IC: selfcosts import/export/rent and aggregated Trade/Physical are missing.
+    let
+        sim = tsim()
+        snap = Snapshot(sim, posyopts())
+        elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, losses=0.0, tags=[:electricity])
+        elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, losses=0.0, tags=[:electricity, :foreign])
+        co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; transactioncost=1.)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        @test isnothing(Nosy.dualprice(elec1))
+        df = Posy2.selfcosts(s)
+        cname = "IC_ZONE1_ZONE2"
+        row = first(df[df[!, :component] .== cname, :])
+        @test ismissing(row.imports)
+        @test ismissing(row.exports)
+        @test ismissing(row[Symbol("congestion rent")])
+        agg = Posy2._dataline_costs_aggregated(s; showforeign=false)
+        @test ismissing(agg.d["Trade"])
+        @test ismissing(agg.d["Physical"])
+        @test Posy2._gensnapshotpp(s) isa AbstractDict
     end
 end

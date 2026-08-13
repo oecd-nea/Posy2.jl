@@ -1,4 +1,4 @@
-using POSY2
+using Posy2
 using Nosy
 using Test
 using JuMP
@@ -9,7 +9,7 @@ using HiGHS
         sim = Sim(Model(HiGHS.Optimizer), mesh=TimeMesh(fill(1//1, 24)))
         set_silent(sim.model)
         snap = Snapshot(sim, Dict(
-            :posy => POSY2Options(
+            :posy => Posy2Options(
                 data_dir=joinpath(@__DIR__, "..", "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
@@ -32,11 +32,11 @@ using HiGHS
 
         makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-1.0)
 
-        _, _, node_map = POSY2.getic_susceptancematrix(snap)
+        _, _, node_map = Posy2.getic_susceptancematrix(snap)
         @test length(node_map) == 1
-        @test isempty(POSY2.gencycles(POSY2.getic_susceptancematrix(snap)[1]))
+        @test isempty(Posy2.gencycles(Posy2.getic_susceptancematrix(snap)[1]))
 
-        @test_logs (:warn, r"No AC loops were found") POSY2.applydcopf!(snap)
+        @test_logs (:warn, r"No AC loops were found") Posy2.applydcopf!(snap)
         Nosy.optimize!(snap, cost(snap))
         @test is_solved_and_feasible(sim.model)
 
@@ -59,11 +59,11 @@ using HiGHS
 
         makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=true)
 
-        mat, _, node_map = POSY2.getic_susceptancematrix(snap)
+        mat, _, node_map = Posy2.getic_susceptancematrix(snap)
         @test isempty(node_map)
         @test all(iszero, mat)
 
-        @test_logs (:warn, r"No AC loops were found") POSY2.applydcopf!(snap)
+        @test_logs (:warn, r"No AC loops were found") Posy2.applydcopf!(snap)
         Nosy.optimize!(snap, cost(snap))
         @test is_solved_and_feasible(sim.model)
 
@@ -96,18 +96,18 @@ using HiGHS
         makenodeinterco("IC", n2, n3, Inf, Inf, snap; dc=false, susceptance=b23)
         makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=false, susceptance=b31)
 
-        POSY2.applydcopf!(snap)
+        Posy2.applydcopf!(snap)
         Nosy.optimize!(snap, cost(snap))
         @test is_solved_and_feasible(sim.model)
 
-        _, _, node_map = POSY2.getic_susceptancematrix(snap)
-        f12 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE1", "ZONE2", node_map))
-        f23 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE2", "ZONE3", node_map))
-        f31 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE3", "ZONE1", node_map))
+        _, _, node_map = Posy2.getic_susceptancematrix(snap)
+        f12 = JuMP.value.(Posy2._net_ic_flow(snap, "ZONE1", "ZONE2", node_map))
+        f23 = JuMP.value.(Posy2._net_ic_flow(snap, "ZONE2", "ZONE3", node_map))
+        f31 = JuMP.value.(Posy2._net_ic_flow(snap, "ZONE3", "ZONE1", node_map))
         lhs = f12 ./ b12 .+ f23 ./ b23 .+ f31 ./ b31
         @test all(isapprox.(lhs, 0.0; atol=1e-6))
 
-        f21 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE2", "ZONE1", node_map))
+        f21 = JuMP.value.(Posy2._net_ic_flow(snap, "ZONE2", "ZONE1", node_map))
         @test all(isapprox.(f21, .-f12; atol=1e-6))
 
         ex = extract(snap)
@@ -140,14 +140,14 @@ using HiGHS
         makenodeinterco("IC", n2, n3, Inf, Inf, snap; susceptance=b23, lossfactor=loss23)
         makenodeinterco("IC", n3, n1, Inf, Inf, snap; susceptance=b31, lossfactor=loss31)
 
-        POSY2.applydcopf!(snap)
+        Posy2.applydcopf!(snap)
         Nosy.optimize!(snap, cost(snap))
         @test is_solved_and_feasible(sim.model)
 
-        _, _, node_map = POSY2.getic_susceptancematrix(snap)
-        f12 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE1", "ZONE2", node_map))
-        f23 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE2", "ZONE3", node_map))
-        f31 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE3", "ZONE1", node_map))
+        _, _, node_map = Posy2.getic_susceptancematrix(snap)
+        f12 = JuMP.value.(Posy2._net_ic_flow(snap, "ZONE1", "ZONE2", node_map))
+        f23 = JuMP.value.(Posy2._net_ic_flow(snap, "ZONE2", "ZONE3", node_map))
+        f31 = JuMP.value.(Posy2._net_ic_flow(snap, "ZONE3", "ZONE1", node_map))
         @test all(isapprox.(f12 ./ b12 .+ f23 ./ b23 .+ f31 ./ b31, 0.0; atol=1e-6))
 
         c12 = Nosy.getcomponent(snap, "IC_ZONE1_ZONE2")
@@ -182,16 +182,16 @@ using HiGHS
         makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=false, susceptance=b31)
         makenodeinterco("IC", n2, n4, Inf, Inf, snap; dc=true)
 
-        _, _, node_map = POSY2.getic_susceptancematrix(snap)
+        _, _, node_map = Posy2.getic_susceptancematrix(snap)
         @test length(node_map) == 3
 
-        POSY2.applydcopf!(snap)
+        Posy2.applydcopf!(snap)
         Nosy.optimize!(snap, cost(snap))
         @test is_solved_and_feasible(sim.model)
 
-        f12 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE1", "ZONE2", node_map))
-        f23 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE2", "ZONE3", node_map))
-        f31 = JuMP.value.(POSY2._net_ic_flow(snap, "ZONE3", "ZONE1", node_map))
+        f12 = JuMP.value.(Posy2._net_ic_flow(snap, "ZONE1", "ZONE2", node_map))
+        f23 = JuMP.value.(Posy2._net_ic_flow(snap, "ZONE2", "ZONE3", node_map))
+        f31 = JuMP.value.(Posy2._net_ic_flow(snap, "ZONE3", "ZONE1", node_map))
         lhs = f12 ./ b12 .+ f23 ./ b23 .+ f31 ./ b31
         @test all(isapprox.(lhs, 0.0; atol=1e-6))
 
@@ -210,8 +210,8 @@ using HiGHS
         n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-1.0)
 
-        @test POSY2.applydcopf!(snap) === nothing
-        @test !POSY2.dcopf(snap)
+        @test Posy2.applydcopf!(snap) === nothing
+        @test !Posy2.dcopf(snap)
     end
 
     # AC node IC without registered susceptance raises ArgumentError when addkvl! runs.
@@ -220,6 +220,6 @@ using HiGHS
         n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false)
-        @test_throws ArgumentError POSY2.addkvl!(snap)
+        @test_throws ArgumentError Posy2.addkvl!(snap)
     end
 end

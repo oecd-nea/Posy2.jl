@@ -1,13 +1,13 @@
 # Getting Started
 
-POSY2 is a modelling layer on top of Nosy. A normal workflow creates a Nosy
-simulation, stores [`POSY2Options`](@ref) in a snapshot, creates the required
-carriers and nodes, calls POSY2 component builders, optimises the resulting
+Posy2 is a modelling layer on top of Nosy. A normal workflow creates a Nosy
+simulation, stores [`Posy2Options`](@ref) in a snapshot, creates the required
+carriers and nodes, calls Posy2 component builders, optimises the resulting
 Nosy snapshot, and extracts its solution.
 
 ## Requirements
 
-POSY2 currently requires Nosy's `POSY2_refactoring` branch, which is planned
+Posy2 currently requires Nosy's `Posy2_refactoring` branch, which is planned
 for Nosy v0.3.0, and an LP or MILP solver compatible with
 [JuMP](https://jump.dev/JuMP.jl/stable/). The examples in this documentation
 use [HiGHS](https://highs.dev/) because it is open source and supports the
@@ -15,7 +15,7 @@ linear examples used here. Other
 [JuMP-compatible solvers](https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers)
 can be used the same way. Please note: some solvers require a separate installation and licence.
 
-Use a Julia environment in which POSY2, Nosy, and the selected solver are
+Use a Julia environment in which Posy2, Nosy, and the selected solver are
 already available.
 
 ## Minimal Workflow
@@ -23,10 +23,10 @@ already available.
 The following model has a flat 100 MW electricity demand and one dispatchable
 plant with optimisable capacity. The example below supplies every builder
 argument explicitly (`tech_mode=:arguments` and `timeseries_mode=:arguments`),
-so no Excel workbook is read.
+so no input workbook is read.
 
 ```julia
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
@@ -35,16 +35,10 @@ import JuMP: set_silent
 s = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(s))
 
-# POSY2 options are stored under the :posy key of the snapshot.
-options = POSY2Options(
-    data_dir=joinpath(pwd(), "data"),
-    techdata_file="unused.xlsx",
-    timeseries_file="unused.xlsx",
-    tech_mode=:arguments,
-    timeseries_mode=:arguments,
-    discountrate=0.05,
-    co2_price=0.0,
-    dcopf=false,
+# Posy2 options are stored under the :posy key of the snapshot.
+options = Posy2Options(
+    tech_mode=:arguments,       # supply technology parameters directly
+    timeseries_mode=:arguments, # supply time series directly
 )
 snapshot = Snapshot(s, Dict(:posy => options))
 
@@ -52,11 +46,11 @@ snapshot = Snapshot(s, Dict(:posy => options))
 power = EnergyCarrier("electricity", s)
 carbon = CO2Carrier("CO2", s)
 
-grid = Node("grid", power; rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+grid = Node("grid", power; rule=:curtailed, evalprice=true, tags=[:electricity])
 atmosphere = Node("CO2", carbon; rule=:curtailed, tags=[:co2])
 
-# Add a flat 100 MW demand: 100 MW × 8760 hours.
-makedemand("Load", "grid", grid, snapshot; coeff=0.0, shift=0, yearlyconstant=876_000.0, gridlosses=0.0)
+# Add a flat 100 MW demand.
+makedemand("Load", "grid", grid, snapshot; profile=100.0)
 
 # Add a dispatchable generator with optimisable capacity.
 makedispatchable(
@@ -65,43 +59,22 @@ makedispatchable(
     grid,
     atmosphere,
     snapshot;
-    cap=nothing,
-    mincap=0.0,
-    maxcap=200.0,
-    ini=nothing,
-    capacitymultiplier=nothing,
-    integeruc=false,
-    uc=false,
-    fuelnode=nothing,
-    co2price=0.0,
-    overnight_cost=1_000.0,
-    om_fixed_cost=10.0,
-    decommissioning=0.1,
-    lifetime=30,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
+    maxcap=200.0,                   # upper bound on capacity (MW)
+    overnight_cost=1_000.0,         # overnight investment cost
+    om_fixed_cost=10.0,             # fixed O&M
+    decommissioning=0.1,            # fraction of overnight cost
+    lifetime=30,                    # economic lifetime (years)
+    construction_profile=1.0,       # one-year construction spend
+    decommissioning_profile=1.0,    # one-year decommissioning spend
     connection_cost=0.0,
-    om_var_cost=2.0,
-    fuel_cost=50.0,
-    no_load_cost=0.0,
-    startup_cost=0.0,
-    co2_emission=0.0,
-    efficiency=1.0,
-    unit_size=0.0,
-    ramp_up=0.0,
-    ramp_down=0.0,
-    min_power=0.0,
-    min_uptime=0.0,
-    min_downtime=0.0,
-    startup_duration=0.0,
-    shutdown_duration=0.0,
+    om_var_cost=2.0,                # variable O&M per MWh
+    fuel_cost=50.0,                 # fuel cost per MWh
+    co2_emission=0.0,               # tCO2 per MWh
+    unit_size=0.0,                  # allow continuous capacity expansion
 )
 
-# This is a no-op because dcopf=false, but keeps the workflow uniform.
-applydcopf!(snapshot)
-
 # Minimise total system cost and extract numeric results.
-Nosy.optimize!(snapshot, cost(snapshot))
+optimize!(snapshot, cost(snapshot))
 result = extract(snapshot)
 ```
 
@@ -122,7 +95,7 @@ optimisation succeeds.
 
 ## Inspecting Results
 
-Nosy's normal metrics work directly on POSY2 snapshots:
+Nosy's normal metrics work directly on Posy2 snapshots:
 
 ```julia
 # Total annual system cost.
@@ -141,7 +114,7 @@ balance(result, "CCGT grid", :output, energy; collapse=false, aggregate=true)
 dualprice(result.nodes["grid"])
 ```
 
-To use Excel instead, set the workbook filenames, switch `tech_mode` /
-`timeseries_mode` to `:excel`, and leave each workbook-backed keyword as
-`nothing`. Values you pass explicitly still override Excel. Sheet and column
-details are in [Input Workbooks](concepts/input-data.md).
+To use workbook inputs instead, set the workbook filenames, switch `tech_mode`
+or `timeseries_mode` to `:excel`, and omit the corresponding explicit values.
+Values passed explicitly override workbook data. Sheet and column details
+are in [Input Workbooks](concepts/input-data.md).

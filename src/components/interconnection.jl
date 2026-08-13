@@ -112,7 +112,7 @@ Arguments:
     direction.
   * `lossfactor`: proportional losses applied on conversion.
   * `susceptance`: AC susceptance for DC power flow (must be negative); stored in
-    `Snapshot.options[:ic_susceptance]` (required for KVL when `POSY2Options.dcopf` is true).
+    `Snapshot.options[:ic_susceptance]` (required for KVL when `Posy2Options.dcopf` is true).
   * `atob_availability`: Hourly `a -> b` multiplier vector or scalar.
   * `btoa_availability`: Hourly `b -> a` multiplier vector or scalar. A finite
     direction falls back to its workbook column when the keyword is `nothing`.

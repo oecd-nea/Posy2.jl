@@ -1,4 +1,4 @@
-using POSY2
+using Posy2
 using Nosy
 using Test
 using JuMP
@@ -9,7 +9,7 @@ using HiGHS
         sim = Sim(Model(HiGHS.Optimizer))
         set_silent(sim.model)
         return Snapshot(sim, Dict(
-            :posy => POSY2Options(
+            :posy => Posy2Options(
                 data_dir=joinpath(@__DIR__, "..", "data"),
                 techdata_file="tech_data_test.xlsx",
                 timeseries_file="time_series_test.xlsx",
@@ -29,7 +29,7 @@ using HiGHS
         snap = makesnapshot()
         n1, n2 = twonodes(snap)
         makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-3.5)
-        @test POSY2.ic_susceptance(snap, "ZONE1", "ZONE2") == -3.5
+        @test Posy2.ic_susceptance(snap, "ZONE1", "ZONE2") == -3.5
     end
 
     # Lookup is undirected: reverse node order finds the same registered value.
@@ -37,13 +37,13 @@ using HiGHS
         snap = makesnapshot()
         n1, n2 = twonodes(snap)
         makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-2.0)
-        @test POSY2.ic_susceptance(snap, "ZONE2", "ZONE1") == -2.0
+        @test Posy2.ic_susceptance(snap, "ZONE2", "ZONE1") == -2.0
     end
 
     # Missing pair raises ArgumentError.
     let
         snap = makesnapshot()
-        @test_throws ArgumentError POSY2.ic_susceptance(snap, "ZONE1", "ZONE2")
+        @test_throws ArgumentError Posy2.ic_susceptance(snap, "ZONE1", "ZONE2")
     end
 
     # Non negative susceptance is rejected.
@@ -58,6 +58,6 @@ using HiGHS
     let
         snap = makesnapshot()
         snap.options[:ic_susceptance] = Dict{String, Float64}()
-        @test_throws ArgumentError POSY2.ic_susceptance(snap, "ZONE1", "ZONE2")
+        @test_throws ArgumentError Posy2.ic_susceptance(snap, "ZONE1", "ZONE2")
     end
 end

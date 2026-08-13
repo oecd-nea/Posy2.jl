@@ -1,8 +1,8 @@
 # Input Workbooks
 
-POSY2 can read scalar technology assumptions and hourly profiles from two
-Excel workbooks, accept both kinds of input directly through builder keywords,
-or mix those approaches. Technology values and time series are Excel-backed
+Posy2 can read scalar technology assumptions and hourly profiles from two
+input workbooks, accept both kinds of input directly through builder keywords,
+or mix those approaches. Technology values and time series are workbook-backed
 defaults when their corresponding keyword is `nothing` and their input mode is
 `:excel`.
 
@@ -13,11 +13,11 @@ builders it calls.
 
 ## Configuring Workbook Paths
 
-Workbook locations belong in [`POSY2Options`](@ref), stored under the
+Workbook locations belong in [`Posy2Options`](@ref), stored under the
 snapshot's `:posy` option:
 
 ```julia
-options = POSY2Options(
+options = Posy2Options(
     data_dir=joinpath(@__DIR__, "data"),
     techdata_file="tech_data.xlsx",
     timeseries_file="time_series.xlsx",
@@ -63,13 +63,13 @@ Technology sheets use one row per parameter and one column per technology:
 | `om_var_cost` | `2` | `3` | `0` |
 
 The first column must be named exactly `tech`. Despite that heading, its cells
-are **parameter names**. The `techkey` argument passed to a builder selects a
-technology **column**. For example, `techkey="CCGT"` and
+are parameter names. The `techkey` argument passed to a builder selects a
+technology column. For example, `techkey="CCGT"` and
 `param="overnight_cost"` select the value at row `overnight_cost`, column
 `CCGT`.
 
 Time-series sheets use one column per lookup key. A builder requests the
-complete column and expects it to align with the simulation mesh. POSY2
+complete column and expects it to align with the simulation mesh. Posy2
 rejects missing or `NaN` entries, but the reader itself does not validate the
 series length, units, or physical bounds.
 
@@ -115,7 +115,7 @@ Time-series builders use the same rule. Explicit series accept either a real
 number, expanded to all hours, or a vector with exactly
 `Nosy.nhours(sim(snapshot))` finite numeric values. The direct keywords are:
 
-| Builder | Direct Keyword | Excel Fallback |
+| Builder | Direct Keyword | Workbook Fallback |
 |:--------|:---------------|:---------------|
 | [`makedemand`](@ref) | `profile` | `<zone>` in `demand` |
 | [`makeintermittentsource`](@ref) | `profile` | `<techkey>_<node>` in `profiles_<year>` |
@@ -146,13 +146,13 @@ decommissioning_profile = 1.0
 ```
 
 A scalar represents a one-period profile, so the only valid scalar share is
-approximately `1.0`. POSY2 normalises small rounding differences after
+approximately `1.0`. Posy2 normalises small rounding differences after
 checking the sum. These two rows are needed by every annualised builder unless
 they are overridden.
 
 ## Technology Workbook
 
-POSY2 uses four technology sheets:
+Posy2 uses four technology sheets:
 
 | Sheet | Modelling role |
 |:------|:---------------|
@@ -310,7 +310,7 @@ The principal series semantics are:
   raw profile multiplied by `intake_mult`; `inflow=0` disables inflow entirely
   (no sheet read; an explicit `inflow_profile` is also ignored); and a
   non-zero numeric `inflow` scales the profile and always applies
-  `intake_mult`. With `renormalize=true`, POSY2 first normalises the profile to
+  `intake_mult`. With `renormalize=true`, Posy2 first normalises the profile to
   sum to one before that scaling, but only when `inflow` is a non-zero number;
   `renormalize` is ignored when `inflow=nothing`.
 - EV charging availability is a capacity multiplier. The driving profile is
@@ -321,26 +321,26 @@ The principal series semantics are:
   reads `b>a`; an infinite direction reads no column.
 - [`makepriceinterco`](@ref) uses both directional transfer series and the
   foreign-zone spot price. Each can be supplied explicitly or read from its
-  Excel fallback. Spot prices and node-interconnection availability
+  workbook fallback. Spot prices and node-interconnection availability
   multipliers are rounded to two decimal places. price-interconnection
   transfer series keep the default six-digit rounding unless overridden.
 
-POSY2 does not impose bounds on capacity-factor or transfer-multiplier columns
+Posy2 does not impose bounds on capacity-factor or transfer-multiplier columns
 at read time. Validate such data before a production run.
 
 ## Full-year Hourly Assumption
 
-Nosy supports custom and heterogeneous meshes, but several POSY2 builders and
+Nosy supports custom and heterogeneous meshes, but several Posy2 builders and
 reports currently assume a non-leap year of 8,760 hourly values. Flat annual
 demands divide by 8,760, fixed-profile EVs construct 8,760 entries, nuclear
-reload logic iterates over 8,760 hours, and the Excel report labels 8,760 time
+reload logic iterates over 8,760 hours, and the standard report labels 8,760 time
 rows.
 
 Use 8,760-value workbook columns with Nosy's default
 [`TimeMesh`](https://oecd-nea.github.io/Nosy.jl/dev/concepts/time/) for the
 documented full-year workflow. A different mesh may work for an individual
 builder that has no hard-coded annual logic, but it is not supported uniformly
-across POSY2.
+across Posy2.
 
 !!! note
     The workbooks in `data` are neutral documentation inputs, not calibrated

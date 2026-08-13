@@ -1,27 +1,24 @@
 # Pumped Storage
 
-Pumped storage has both grid-charging and turbine capacities but no natural
-inflow. Unlike the [Hydro Reservoir](hydro-reservoir.md) pattern, the plant
-can lift water with electricity and generate later.
-[`makehydroreservoir`](@ref) still builds the plant; the difference is a
-positive charging capacity and zero inflow.
-
-The study pairs flat demand with workbook PV
-([`makeintermittentsource`](@ref) reading `PV_country1` from
-`profiles_2019`), pumped hydro, and an oil plant. Daytime solar surplus
-charges the reservoir; the turbine returns energy later. Oil covers hours
-that storage cannot.
+This example shows how pumped storage moves surplus PV to later hours.
+Daytime solar exceeds demand on the scaled workbook profile. A plant built with
+[`makehydroreservoir`](@ref) pumps that surplus into the reservoir and generates
+later on the same electricity node. There is no natural inflow. A CCGT covers
+hours storage cannot reach. Capacities are fixed. The default `TimeMesh()` is
+circular, so the reservoir level wraps from the last hour into the first.
+Year-end and year-start are continuous.
 
 ```jldoctest pumped_storage; output = false
-using POSY2
+using Posy2
 using Nosy
 using HiGHS
 import JuMP: set_silent
 
+# Simulation and Posy2 input configuration
 sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
 set_silent(model(sim))
-example_data_dir = joinpath(pkgdir(POSY2), "data")
-snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
+example_data_dir = joinpath(pkgdir(Posy2), "data")
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     data_dir=example_data_dir,
     techdata_file="tech_data.xlsx",
     timeseries_file="time_series.xlsx",
@@ -29,11 +26,14 @@ snapshot = Snapshot(sim, Dict(:posy => POSY2Options(
     timeseries_mode=:excel,
 )))
 
+# Electricity node and CO2 sink
 electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=:curtailed, tags=[:electricity])
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
-makedemand("Demand", "country1", electricity, snapshot; coeff=0.0, yearlyconstant=50.0 * 8760)
+# Workbook country1 demand scaled to about 50 MW on average
+makedemand("Demand", "country1", electricity, snapshot; coeff=0.068)
 
+# Fixed 200 MW PV
 makeintermittentsource(
     "Solar", "PV", electricity, co2, snapshot;
     cap=200.0,
@@ -50,22 +50,24 @@ makeintermittentsource(
     co2_emission=0.0,
 )
 
+# Fixed 50 MW CCGT backup for hours storage cannot cover
 makedispatchable(
-    "Oil", "Oil", electricity, co2, snapshot;
+    "CCGT", "CCGT", electricity, co2, snapshot;
     cap=50.0,
-    overnight_cost=0.0,
+    overnight_cost=955.0,
     om_fixed_cost=0.0,
-    decommissioning=0.0,
+    decommissioning=0.05,
     lifetime=30,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
+    construction_profile="0.3333333333333333;0.3333333333333333;0.3333333333333334",
+    decommissioning_profile="0.5;0.5",
     connection_cost=0.0,
-    om_var_cost=0.0,
-    fuel_cost=68.24,
-    co2_emission=0.0,
+    om_var_cost=6.99,
+    fuel_cost=47.06,
+    co2_emission=348.0,
     unit_size=0.0,
 )
 
+# Fixed pumped storage: 50 MW turbine, 75 MW pumping, 80% round-trip, no natural inflow
 makehydroreservoir(
     "Pumped hydro",
     "Hydro res",
@@ -87,70 +89,34 @@ makehydroreservoir(
     decommissioning_profile=1.0,
 )
 
+# Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))
 result = extract(snapshot)
 
 # output
 
-Snapshot with 4 component(s) and 1 node(s)
+Snapshot with 4 component(s) and 2 node(s)
 
 ```
 
-Expected results:
+Over the year, turbine generation is 80% of the electricity used for pumping.
+That matches the stated round-trip efficiency. The gap is storage loss.
 
 ```jldoctest pumped_storage
-julia> pump = balance(result, "Pumped hydro country1", :input, energy; collapse=false, aggregate=true);
+julia> pump = balance(result, "Pumped hydro country1", :input, energy; collapse=true, aggregate=true)
+104232.12827599999
 
-julia> turbine = balance(result, "Pumped hydro country1", :output, energy; collapse=false, aggregate=true);
+julia> turbine = balance(result, "Pumped hydro country1", :output, energy; collapse=true, aggregate=true)
+83385.7026208
 
-julia> level = balance(result, "Pumped hydro country1", :level, energy; collapse=false, aggregate=true);
-
-julia> balance(result, "Pumped hydro country1", :input, energy; collapse=true, aggregate=true)
-100260.49119999993
-
-julia> balance(result, "Pumped hydro country1", :output, energy; collapse=true, aggregate=true)
-80208.39296000007
-
-julia> round(balance(result, "Pumped hydro country1", :output, energy; collapse=true, aggregate=true) /
-            balance(result, "Pumped hydro country1", :input, energy; collapse=true, aggregate=true); digits=2)
-0.8
-
-julia> maximum(pump), maximum(turbine)
-(75.0, 50.0)
-
-julia> balance(result, "Oil country1", :output, energy; collapse=true, aggregate=true)
-191777.68064000004
+julia> turbine / pump
+0.7999999999999997
 ```
 
-Pumping and generation recover the 80% round-trip efficiency, and the hourly
-peaks hit the 75 MW pumping and 50 MW turbine ratings. Oil still covers a large
-residual because storage only moves a share of the PV surplus. The reservoir
-`level` rises while pumping and falls while generating;
-`argmax(level)` marks the yearly peak:
+In the figure, daytime PV rises above demand. The first hatched band above the
+demand line is electricity used for pumping. Pumping is limited to 75 MW, so any
+further PV surplus is curtailed in the second hatched band. The reservoir level
+rises while that water is stored. Later the turbine releases it, limited to
+50 MW, and the level falls. CCGT fills hours that storage still cannot cover:
 
-```jldoctest pumped_storage
-julia> peak = argmax(level)
-3762
-
-julia> level[peak-5:peak+5]
-11-element Vector{Float64}:
- 278.49046
- 338.49046
- 398.49046
- 454.69894
- 494.00358
- 505.93434
- 489.05984
- 448.47554
- 398.60034
- 348.60034
- 298.60034
-
-julia> maximum(level)
-505.93434
-```
-
-Natural inflow reservoirs normally use `cap_charging=0` and a positive or
-workbook-backed inflow; pumped storage uses the opposite pair on the same
-[`makehydroreservoir`](@ref) builder.
-
+![Stacked PV, turbine, and CCGT generation against demand, pumping and curtailment, and reservoir level over one week](../assets/pumped-storage-week.svg)

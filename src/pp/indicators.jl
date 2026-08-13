@@ -13,7 +13,10 @@ function ic_vol_sense1(s; aggregate=false, collapse=false)
     for (k, v) in getcomponents(s, with=[:function => "interconnection", :function => "priceinterconnection"])
         d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input"]
     end
-    aggregate && return sum(values(d))
+    if aggregate
+        ini = collapse ? 0.0 : zeros(Nosy.nhours(sim(s)))
+        return sum(values(d); init=ini)
+    end
     return d
 end
 
@@ -24,7 +27,10 @@ function ic_vol_sense2(s; aggregate=false, collapse=false)
     for (k,v) in dcomps
         d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["output"]
     end
-    aggregate && return sum(values(d))
+    if aggregate
+        ini = collapse ? 0.0 : zeros(Nosy.nhours(sim(s)))
+        return sum(values(d); init=ini)
+    end
     return d
 end
 
@@ -134,7 +140,7 @@ function storagelevel(s; aggregate=false)
     dcomps = merge(getcomponents(s, with=[:function => "storage"]), getcomponents(s, with=[:function => "ev"]))
     for (k,v) in dcomps
         if Nosy.hasport(v, "level")
-            d["level" * k] = balance(v, :level, energy, collapse=false, aggregate=true)
+            d["level " * k] = balance(v, :level, energy, collapse=false, aggregate=true)
         end
     end
     aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))

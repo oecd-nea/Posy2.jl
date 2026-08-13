@@ -1,12 +1,12 @@
 # Optimising A Snapshot
 
-POSY2 builds an optimisation problem in a Nosy snapshot. Solving, status
+Posy2 builds an optimisation problem in a Nosy snapshot. Solving, status
 inspection, extraction, and custom objectives therefore use Nosy and JuMP
 directly.
 
 ## Objective
 
-Nosy always minimises the objective passed to `Nosy.optimize!`. The usual POSY2
+Nosy always minimises the objective passed to `Nosy.optimize!`. The usual Posy2
 objective is total annual system cost:
 
 ```julia
@@ -47,7 +47,7 @@ Nosy.optimize!(snapshot, cost(snapshot))
 
 ## DC Power Flow
 
-If `POSY2Options.dcopf` is true, you must call [`applydcopf!`](@ref) once after
+If `Posy2Options.dcopf` is true, you must call [`applydcopf!`](@ref) once after
 every AC and DC interconnection has been added and before optimisation.
 Setting the flag alone does not add KVL constraints:
 
@@ -97,7 +97,7 @@ is a model-construction step, not part of the solver call.
 ## LP And MILP Models
 
 Continuous capacity expansion and dispatch normally produce an LP. Common
-features that make a POSY2 study discrete or otherwise harder to solve include:
+features that make a Posy2 study discrete or otherwise harder to solve include:
 
 - `integercap=true` for nuclear or SMR capacity;
 - `integeruc=true` with unit commitment;
@@ -157,7 +157,7 @@ after a MILP investment or commitment solve, a common workflow is:
 4. solve the continuous problem with price evaluation enabled.
 
 The exact fixing strategy is study-dependent. Do not interpret a solver's
-mixed-integer reduced costs as POSY2 node prices.
+mixed-integer reduced costs as Posy2 node prices.
 
 ## Initial Snapshots And Pathways
 
