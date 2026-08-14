@@ -4,9 +4,10 @@ Generate storage components.
 
 """
     makehydroreservoir(cname::String, techkey::String, zone::String, elec::Node,
-        cap_discharging, cap_charging, cap_reservoir, inflow, s::Snapshot;
-        renormalize=true, weatheryear=2019, gridlosses=0., simplified=false, intake_mult=1.,
-        inflow_profile=nothing,
+        cap_discharging, cap_charging, intake, s::Snapshot;
+        cap_reservoir=Inf,
+        weatheryear=nothing, gridlosses=0., simplified=false,
+        intake_profile=nothing,
         eff::Union{Nothing,Real}=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing,
@@ -18,22 +19,26 @@ Build, connect and return a hydro reservoir component.
 Arguments:
   * `cname`: component name prefix.
   * `techkey`: technology column name in the `storage` tech data sheet.
-  * `zone`: Zone used for reservoir inflow time series lookup.
+  * `zone`: Zone used for reservoir intake time series lookup.
   * `elec`: electricity node to connect the component to.
   * `s`: snapshot to register the component in.
   * `cap_discharging`: Discharge side capacity (output port). If `nothing`, discharge capacity is optimized.
   * `cap_charging`: Charge side capacity (input port). `0` disables charging branch; `nothing` optimizes charging capacity.
-  * `cap_reservoir`: Storage level capacity (energy stock). `nothing` leaves
-    the storage level unlimited.
-  * `inflow`: Natural inflow control: `nothing` uses raw profile, `0` disables inflow, numeric scales annual inflow.
+  * `intake`: Total natural intake. `0` disables natural intake; a positive
+    value is distributed over the normalized intake profile.
 
-  * `renormalize`: If `true`, inflow profile is required to have a positive
-    sum and is normalized to sum to 1 before scaling with `inflow`.
-  * `weatheryear`: Year suffix used to select inflow series `reservoir_inflow_<year>`.
+  * `cap_reservoir`: Storage level capacity (energy stock). A finite number
+    fixes the capacity, `nothing` optimizes it, and `Inf` (the default) leaves
+    the storage level unlimited.
+
+  * `weatheryear`: Year suffix used to select the intake series stored in
+    `reservoir_inflow_<year>`. Required when `intake_profile` is read from the
+    time-series workbook; unused when a profile is supplied explicitly or
+    natural intake is disabled.
   * `gridlosses`: Proportional losses linked to charging input flow (`0 <= gridlosses < 1`).
   * `simplified`: Passed to `LazyStorage(..., simplified=...)`.
-  * `intake_mult`: Multiplier applied to inflow profile.
-  * `inflow_profile`: Hourly natural-inflow vector or scalar. If `nothing`, read
+  * `intake_profile`: Hourly natural-intake shape or scalar. It is always
+    normalized to sum to one before `intake` is applied. If `nothing`, read
     `zone` from `reservoir_inflow_<weatheryear>`.
 
   * `eff`: Roundtrip charging efficiency (input side conversion).
@@ -48,11 +53,12 @@ Arguments:
 """
 function makehydroreservoir(cname::String, techkey::String, zone::String, elec::Node,
     cap_discharging::Union{Nothing,Real}, cap_charging::Union{Nothing,Real},
-    cap_reservoir::Union{Nothing,Real}, inflow::Union{Nothing,Real}, s::Snapshot;
+    intake::Real, s::Snapshot;
     # storage operation controls
-    renormalize::Bool=true, weatheryear::Integer=2019, gridlosses::Real=0.,
-    simplified::Bool=false, intake_mult::Real=1.,
-    inflow_profile=nothing,
+    cap_reservoir::Union{Nothing,Real}=Inf,
+    weatheryear::Union{Nothing,Integer}=nothing, gridlosses::Real=0.,
+    simplified::Bool=false,
+    intake_profile=nothing,
 
     # technical overrides
     eff::Union{Nothing,Real}=nothing,
@@ -130,27 +136,27 @@ function makehydroreservoir(cname::String, techkey::String, zone::String, elec::
     push!(vb, FixedCost(:decommissioning, "output", energy, _decom_cost))
     push!(vb, VariableCost(:vom, "output", energy, _vom))
 
-    if isnothing(inflow)
-        # no renormalization via inflow
-        _profile = _resolve_timeseries(
-            s, inflow_profile, zone, "reservoir_inflow_$weatheryear";
-            keyword="inflow_profile",
-        ) * intake_mult
-        push!(vb, FixedJointFlow("natural", elec.carrier, :input, _profile, mustconnect=false))
-    elseif iszero(inflow)
-        nothing # no inflow
+    @argcheck isfinite(intake) && intake >= 0 "makehydroreservoir `intake` must be finite and non-negative."
+    intake_series = if iszero(intake)
+        zeros(Nosy.nhours(sim(s)))
     else
-        # intake profile
-        _profile = _resolve_timeseries(
-            s, inflow_profile, zone, "reservoir_inflow_$weatheryear";
-            keyword="inflow_profile",
-        )
-        if renormalize
-            profile_sum = sum(_profile)
-            @argcheck profile_sum > 0 "reservoir inflow profile must have a positive sum when renormalize=true."
-            _profile = _profile / profile_sum
+        if isnothing(intake_profile) && timeseries_mode(s) === :excel && isnothing(weatheryear)
+            throw(ArgumentError(
+                "`weatheryear` must be supplied when `intake_profile` is read from the time-series workbook",
+            ))
         end
-        push!(vb, FixedJointFlow("natural", elec.carrier, :input, _profile * inflow * intake_mult, mustconnect=false))
+        profile_sheet = isnothing(weatheryear) ? nothing : "reservoir_inflow_$weatheryear"
+        profile = _resolve_timeseries(
+            s, intake_profile, zone, profile_sheet;
+            keyword="intake_profile",
+        )
+        @argcheck all(profile .>= 0) "reservoir intake profile cannot be negative."
+        profile_sum = sum(profile)
+        @argcheck profile_sum > 0 "reservoir intake profile must have a positive sum."
+        profile / profile_sum * intake
+    end
+    if !all(iszero, intake_series)
+        push!(vb, FixedJointFlow("natural", elec.carrier, :input, intake_series, mustconnect=false))
     end
     
     if cap_discharging isa Real
@@ -177,7 +183,9 @@ function makehydroreservoir(cname::String, techkey::String, zone::String, elec::
         throw(ArgumentError("cap_charging is not a number or nothing"))
     end
     
-    if !isnothing(cap_reservoir)
+    if isnothing(cap_reservoir)
+        push!(vb, VariableCapacity("level", energy))
+    elseif !isinf(cap_reservoir)
         push!(vb, FixedCapacity("level", energy, cap_reservoir))
     end
 

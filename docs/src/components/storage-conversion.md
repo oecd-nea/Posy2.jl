@@ -12,7 +12,7 @@ capacity, port, and tagging conventions.
 
 [`makehydroreservoir`](@ref) creates a storage component with up to four flows:
 
-- `natural` is unconnected fixed inflow from the reservoir series;
+- `natural` is unconnected fixed intake from the reservoir series;
 - `input` is optional grid charging;
 - `output` is electricity generation;
 - `level` is stored energy.
@@ -20,17 +20,22 @@ capacity, port, and tagging conventions.
 `cap_discharging` fixes `output` capacity when numeric and creates a capacity
 decision when `nothing`. For `cap_charging`, a positive number fixes `input`
 capacity, zero disables grid charging, and `nothing` creates an input-capacity
-decision. A real `cap_reservoir` fixes `level` capacity; `nothing` deliberately
-leaves the stored-energy level unlimited.
+decision. A finite real `cap_reservoir` fixes `level` capacity; `nothing`
+creates a level-capacity decision, while `Inf` (the default) leaves the
+stored-energy level unlimited.
 
-Inflow comes from sheet `reservoir_inflow_<weatheryear>`, column `<zone>`.
-`inflow=nothing` uses the profile as absolute inflow (`* intake_mult`);
-`inflow=0` omits natural inflow; a numeric value scales the profile by
-`inflow * intake_mult`. With a numeric `inflow` and `renormalize=true`, the
-series is first divided by its annual sum so the yearly total matches `inflow`.
+For example, use `cap_reservoir=12_000.0` for a fixed 12 GWh reservoir,
+`cap_reservoir=nothing` to let the model choose its energy capacity, or omit the
+keyword (equivalently, pass `Inf`) for an unlimited level.
+
+The intake profile comes from sheet `reservoir_inflow_<weatheryear>`, column `<zone>`.
+When `intake_profile` is omitted and intake is enabled, `weatheryear` must be
+provided explicitly. It defaults to `nothing` and is unused with an explicit
+profile or with `intake=0`. The profile is always normalized to sum to one,
+then scaled by the requested total `intake`.
 
 `eff` defaults to `roundtrip_eff` in the technology column named by `techkey`
-of sheet `storage`. It applies to grid charging; natural inflow and discharge have unit
+of sheet `storage`. It applies to grid charging; natural intake and discharge have unit
 efficiency. `gridlosses` adds a proportional linked input flow. Cost defaults
 come from the same technology column and are attached to discharge capacity.
 

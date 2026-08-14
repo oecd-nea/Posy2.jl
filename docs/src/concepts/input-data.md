@@ -121,8 +121,8 @@ number, expanded to all hours, or a vector with exactly
 |:--------|:---------------|:---------------|
 | [`makedemand`](@ref) | `profile` | `<zone>` in `demand` |
 | [`makeintermittentsource`](@ref) | `profile` | `<techkey>_<node>` in `profiles_<year>` |
-| [`makehydroror`](@ref) | `inflow_profile` | `<zone>` in `hydro_ror_<year>` |
-| [`makehydroreservoir`](@ref) | `inflow_profile` | `<zone>` in `reservoir_inflow_<year>` |
+| [`makehydroror`](@ref) | `intake_profile` | `<zone>` in `hydro_ror_<year>` |
+| [`makehydroreservoir`](@ref) | `intake_profile` | `<zone>` in `reservoir_inflow_<year>` |
 | [`makeEV`](@ref) | `charging_availability` | `<zone>` in `EV_charging_availability` |
 | [`makeEV`](@ref) | `driving_profile` | `<zone>` in `EV_driving_profile` |
 | [`makepriceinterco`](@ref) | `spot_price` | `<foreign-zone>` in `spot_price` |
@@ -302,12 +302,16 @@ but may be negative.
 
 The time-series lookup key depends on the builder:
 
+Weather-indexed builders require an explicit `weatheryear` when they read a
+workbook. The keyword is unused when the corresponding profile is supplied
+directly.
+
 | Sheet | Expected Column | Used By And Condition |
 |:------|:----------------|:----------------------|
 | `demand` | `<zone>` | [`makedemand`](@ref) when `coeff != 0` |
 | `profiles_<year>` | `<techkey>_<node-name>` | [`makeintermittentsource`](@ref) |
 | `hydro_ror_<year>` | `<zone>` | [`makehydroror`](@ref) |
-| `reservoir_inflow_<year>` | `<zone>` | [`makehydroreservoir`](@ref) when inflow is enabled (`inflow != 0`) |
+| `reservoir_inflow_<year>` | `<zone>` | [`makehydroreservoir`](@ref) when intake is enabled (`intake != 0`) |
 | `EV_charging_availability` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
 | `EV_driving_profile` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
 | `spot_price` | `<foreign-zone>` | [`makepriceinterco`](@ref) |
@@ -323,15 +327,14 @@ The principal series semantics are:
 - `demand` contains exogenous hourly demand. `coeff` multiplies it, `shift`
   circularly shifts it, and `yearlyconstant / 8760` is then added.
 - `profiles_<year>` contains a profile that multiplies installed capacity.
-- `hydro_ror_<year>` contains absolute inflow. The builder divides it by the
-  required fixed capacity, applies `intake_mult`, and cuts capacity factors
-  above one (`cutoff=1`).
-- `reservoir_inflow_<year>` is natural inflow. `inflow=nothing` uses the raw
-  profile times `intake_mult`. `inflow=0` turns inflow off (no sheet read;
-  `inflow_profile` is ignored too). A non-zero `inflow` scales the profile
-  and always applies `intake_mult`. `renormalize=true` first normalises the
-  profile to sum to one, but only for a non-zero numeric `inflow`; it is
-  ignored when `inflow=nothing`.
+- `hydro_ror_<year>` contains an intake shape. The builder normalises it to sum
+  to one, distributes `intake` over that shape, and limits hourly
+  output by the fixed or optimised output capacity.
+- `reservoir_inflow_<year>` contains a natural-intake shape. As for run-of-river,
+  the builder normalises it to sum to one and scales it by `intake`.
+  `intake=0` disables natural intake without reading a
+  profile; otherwise workbook lookup requires an explicit `weatheryear` when
+  `intake_profile` is omitted.
 - EV charging availability is a capacity multiplier. The driving profile is
   normalised to the requested annual EV consumption and must have a positive
   sum.

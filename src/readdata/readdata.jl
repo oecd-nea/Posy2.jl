@@ -120,7 +120,8 @@ time-series workbook.
 The snapshot method resolves the workbook through [`Posy2Options`](@ref) when
 `timeseries_mode=:excel`; `:arguments` rejects direct snapshot lookups.
 Values are rounded to `digits`. Missing sheets or columns, and columns
-containing `missing` or `NaN`, raise `ArgumentError` with workbook context.
+containing missing, non-numeric, or non-finite values raise `ArgumentError`
+with workbook context.
 """
 function gettimeseries(xl, title::String, sheetname::String, digits::Int)
     df = gettimeseriesdatasheet(xl, sheetname)
@@ -130,12 +131,9 @@ function gettimeseries(xl, title::String, sheetname::String, digits::Int)
             " For sheet 'transfer_capacities', expected column names follow 'From>To' between zone/node names (e.g. country3>country1)." : ""
         throw(ArgumentError("$(tw): no column '$(title)'.$(hint) Columns: $(join(string.(names(df)), ", "))"))
     end
-    for (i, x) in enumerate(df[!, title])
-        if ismissing(x) || (x isa AbstractFloat && isnan(x))
-            throw(ArgumentError("$(tw): column '$(title)' contains missing or NaN at index $(i) ($(length(df[!, title])) values in column)"))
-        end
-    end
-    return round.(df[!, title], digits=digits)
+    return _validate_timeseries(
+        df[!, title]; keyword="column '$title'", context=tw, digits=digits,
+    )
 end
 function gettimeseries(s::Snapshot, title::String, sheetname::String; digits=6)
     opts = posy_options(s)
@@ -147,46 +145,78 @@ function gettimeseries(s::Snapshot, title::String, sheetname::String; digits=6)
 end
 
 """
-    _resolve_timeseries(s, value, title, sheetname; keyword="profile", digits=6)
+    _validate_timeseries(value; expected_length=nothing, allow_scalar=false,
+        keyword="profile", context=nothing, digits=6)
 
-Return an explicitly supplied scalar or vector profile, or load the profile from
-the configured workbook when `value === nothing`. Scalars are expanded to the
-simulation horizon. Explicit vectors must contain exactly one value per hour.
+Validate and normalize a scalar or vector time series. Scalars are accepted
+only when `allow_scalar=true` and are expanded to `expected_length`. When an
+expected length is supplied, vectors must match it exactly.
 """
-function _resolve_timeseries(s::Snapshot,
-                             value,
-                             title::String,
-                             sheetname::String;
-                             keyword::String="profile",
-                             digits::Int=6)
-    if isnothing(value)
-        opts = posy_options(s)
-        opts.timeseries_mode === :excel || throw(ArgumentError(
-            "`$keyword` must be supplied explicitly when timeseries_mode=:arguments " *
-            "(requested '$title' from sheet '$sheetname')"))
-        return gettimeseries(s, title, sheetname; digits=digits)
-    end
-
-    nhours = Nosy.nhours(sim(s))
+function _validate_timeseries(value;
+                              expected_length::Union{Nothing,Integer}=nothing,
+                              allow_scalar::Bool=false,
+                              keyword::String="profile",
+                              context::Union{Nothing,String}=nothing,
+                              digits::Int=6)
+    label = isnothing(context) ? "`$keyword`" : "$context, $keyword"
     values = if value isa Real && !(value isa Bool)
-        fill(Float64(value), nhours)
+        allow_scalar || throw(ArgumentError("$label must be an hourly vector"))
+        isnothing(expected_length) && throw(ArgumentError(
+            "an expected length is required to expand scalar $label",
+        ))
+        converted = Float64(value)
+        isfinite(converted) || throw(ArgumentError("$label must be finite"))
+        fill(converted, expected_length)
     elseif value isa AbstractVector
-        length(value) == nhours || throw(ArgumentError(
-            "`$keyword` must contain $nhours hourly values, got $(length(value))"))
-        result = Vector{Float64}(undef, nhours)
+        if !isnothing(expected_length) && length(value) != expected_length
+            throw(ArgumentError(
+                "$label must contain $expected_length hourly values, got $(length(value))",
+            ))
+        end
+        result = Vector{Float64}(undef, length(value))
         for (i, x) in enumerate(value)
             (ismissing(x) || !(x isa Real) || x isa Bool) && throw(ArgumentError(
-                "`$keyword` contains a non-numeric value at index $i"))
+                "$label contains a non-numeric value at index $i"))
             converted = Float64(x)
             isfinite(converted) || throw(ArgumentError(
-                "`$keyword` contains a non-finite value at index $i"))
+                "$label contains a non-finite value at index $i"))
             result[i] = converted
         end
         result
     else
-        throw(ArgumentError("`$keyword` must be a real number or an hourly vector"))
+        allowed = allow_scalar ? "a real number or an hourly vector" : "an hourly vector"
+        throw(ArgumentError("$label must be $allowed"))
     end
-
-    all(isfinite, values) || throw(ArgumentError("`$keyword` must contain only finite values"))
     return round.(values; digits=digits)
+end
+
+"""
+    _resolve_timeseries(s, value, title, sheetname; keyword="profile", digits=6)
+
+Select an explicit value or a workbook column, then validate the result against
+the simulation horizon. `sheetname` is needed only for workbook lookup.
+"""
+function _resolve_timeseries(s::Snapshot,
+                             value,
+                             title::String,
+                             sheetname::Union{Nothing,String};
+                             keyword::String="profile",
+                             digits::Int=6)
+    context = nothing
+    if isnothing(value)
+        timeseries_mode(s) === :excel || throw(ArgumentError(
+            "`$keyword` must be supplied explicitly when timeseries_mode=:arguments",
+        ))
+        isnothing(sheetname) && throw(ArgumentError(
+            "a workbook sheet must be specified to resolve `$keyword`",
+        ))
+        value = gettimeseries(s, title, sheetname; digits=digits)
+        filename = posy_options(s).timeseries_file
+        context = "time series workbook '$filename', sheet '$sheetname', column '$title'"
+    end
+    return _validate_timeseries(
+        value;
+        expected_length=Nosy.nhours(sim(s)), allow_scalar=true,
+        keyword=keyword, context=context, digits=digits,
+    )
 end

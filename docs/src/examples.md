@@ -20,7 +20,7 @@ matters.
 | [Dispatchable Generation](examples/dispatchable-generation.md) | Choosing PV and gas capacities, then meeting the residual demand |
 | [Nuclear](examples/nuclear.md) | How reload scheduling reduces backup capacity |
 | [Battery Storage](examples/battery-storage.md) | Shifting daytime PV generation to later hours |
-| [Hydro Reservoir](examples/hydro-reservoir.md) | Timing generation by storing variable natural inflow |
+| [Hydro Reservoir](examples/hydro-reservoir.md) | Timing generation by storing variable natural intake |
 | [Pumped Storage](examples/pumped-storage-hydro.md) | Using grid electricity to store energy and generate later |
 | [Hydrogen Production](examples/hydrogen-production.md) | Producing hydrogen from PV and shifting supply with storage |
 | [Electric Vehicles](examples/electric-vehicles.md) | Comparing smart charging with vehicle-to-grid operation |

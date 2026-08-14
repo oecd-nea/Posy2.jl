@@ -626,7 +626,7 @@ end
 """
     makeintermittentsource(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
-        weatheryear=2019, profile=nothing,
+        weatheryear=nothing, profile=nothing,
         co2price=co2_price(s),
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
@@ -648,6 +648,7 @@ Arguments:
   * `maxcap`: Bounds for optimized capacity when `cap === nothing`.
   * `ini`: Optional initial snapshot used to inherit fixed capacity.
   * `weatheryear`: Year suffix used to select profile series `profiles_<year>`.
+    Required for workbook lookup; unused when `profile` is supplied explicitly.
   * `profile`: Hourly capacity-factor vector or scalar. If `nothing`, read the
     `<techkey>_<node>` workbook column.
 
@@ -667,7 +668,7 @@ Arguments:
 function makeintermittentsource(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / profile
     cap::Union{Nothing,Real}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
-    ini::Union{Nothing,Snapshot}=nothing, weatheryear::Integer=2019, profile=nothing,
+    ini::Union{Nothing,Snapshot}=nothing, weatheryear::Union{Nothing,Integer}=nothing, profile=nothing,
 
     co2price::Real=co2_price(s),
 
@@ -678,8 +679,14 @@ function makeintermittentsource(cname::String, techkey::String, elec::Node, co2:
     fuel_cost::Union{Nothing,Real}=nothing, co2_emission::Union{Nothing,Real}=nothing,
 )
     profile_value = cap isa Real && iszero(cap) && isnothing(profile) ? 0.0 : profile
+    if isnothing(profile_value) && timeseries_mode(s) === :excel && isnothing(weatheryear)
+        throw(ArgumentError(
+            "`weatheryear` must be supplied when `profile` is read from the time-series workbook",
+        ))
+    end
+    profile_sheet = isnothing(weatheryear) ? nothing : "profiles_$weatheryear"
     m = ProfileSource(elec.carrier, _resolve_timeseries(
-        s, profile_value, techkey * "_" * elec.name, "profiles_" * string(weatheryear);
+        s, profile_value, techkey * "_" * elec.name, profile_sheet;
         keyword="profile",
     ))
     vb = []
@@ -777,8 +784,9 @@ end
 
 """
     makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
-        cap=nothing, techkey::String="Hydro ror", weatheryear=2019,
-        inflow_profile=nothing, intake_mult=1.,
+        cap=nothing, mincap=nothing, maxcap=nothing,
+        techkey::String="Hydro ror", weatheryear=nothing,
+        intake, intake_profile=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
     )
@@ -787,17 +795,24 @@ Build, connect and return a run of river hydro component.
 
 Arguments:
   * `cname`: component name prefix.
-  * `zone`: Time series zone used to read hydro inflow profile.
+  * `zone`: Time series zone used to read the hydro intake profile.
   * `elec`: electricity node to connect the component to.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Installed output capacity used to normalize inflow profile. `makehydroror` requires a numeric positive `cap`; `nothing` is rejected.
+  * `cap`: Output capacity. A number fixes capacity, `nothing` creates a new
+    capacity decision, and a JuMP variable or affine expression reuses that
+    external decision.
+  * `mincap`: Lower bound for optimized or externally supplied capacity.
+  * `maxcap`: Upper bound for optimized or externally supplied capacity.
   * `techkey`: technology column name in the `intermittent` tech data sheet.
-  * `weatheryear`: Year suffix used to select inflow series `hydro_ror_<year>`.
-  * `inflow_profile`: Hourly run-of-river inflow vector or scalar. If `nothing`,
+  * `weatheryear`: Year suffix used to select intake series `hydro_ror_<year>`.
+    Required for workbook lookup; unused when `intake_profile` is supplied
+    explicitly.
+  * `intake_profile`: Hourly run-of-river intake shape or scalar. The profile is
+    normalized to sum to one before the total intake is applied. If `nothing`,
     read `zone` from the selected workbook sheet.
 
-  * `intake_mult`: Multiplier applied to inflow profile before normalization to `cap`.
+  * `intake`: Total intake distributed over the normalized intake profile.
 
   * `overnight_cost`: Cost/lifetime overrides for fixed and variable hydro cost terms. Workbook defaults are used when values are `nothing`.
   * `om_fixed_cost`: Cost/lifetime overrides for fixed and variable hydro cost terms. Workbook defaults are used when values are `nothing`.
@@ -809,30 +824,48 @@ Arguments:
 """
 function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     # capacity / profile
-    cap::Union{Nothing,Real}=nothing, techkey::String="Hydro ror", weatheryear::Integer=2019, inflow_profile=nothing,
+    cap::Union{Nothing,Real,GenericVariableRef,GenericAffExpr}=nothing,
+    mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    techkey::String="Hydro ror", weatheryear::Union{Nothing,Integer}=nothing, intake_profile=nothing,
 
-    intake_mult::Real=1.,
+    intake::Real,
 
     # technical / economic overrides
     overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
     om_var_cost::Union{Nothing,Real}=nothing, decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing,
     construction_profile=nothing, decommissioning_profile=nothing,
 )
-    if cap isa Real
-        @argcheck cap > 0 "makehydroror requires `cap > 0` for profile normalization."
-    elseif isnothing(cap)
-        throw(ArgumentError("makehydroror requires numeric `cap` (cannot be `nothing`) because profile is normalized by cap."))
+    cap isa Real && @argcheck cap > 0 "makehydroror requires `cap > 0` when capacity is fixed."
+    @argcheck isfinite(intake) && intake >= 0 "makehydroror `intake` must be finite and non-negative."
+    intake_series = if iszero(intake)
+        zeros(Nosy.nhours(sim(s)))
     else
-        throw(ArgumentError("makehydroror `cap` must be Real."))
+        if isnothing(intake_profile) && timeseries_mode(s) === :excel && isnothing(weatheryear)
+            throw(ArgumentError(
+                "`weatheryear` must be supplied when `intake_profile` is read from the time-series workbook",
+            ))
+        end
+        profile_sheet = isnothing(weatheryear) ? nothing : "hydro_ror_$weatheryear"
+        profile = _resolve_timeseries(
+            s, intake_profile, zone, profile_sheet;
+            keyword="intake_profile",
+        )
+        @argcheck all(profile .>= 0) "run-of-river intake profile cannot be negative."
+        profile_sum = sum(profile)
+        @argcheck profile_sum > 0 "run-of-river intake profile must have a positive sum."
+        profile / profile_sum * intake
     end
-    _profile = _resolve_timeseries(
-        s, inflow_profile, zone, "hydro_ror_$weatheryear";
-        keyword="inflow_profile",
-    )
-    m = ProfileSource(elec.carrier, _profile * intake_mult / cap, cutoff=1.)
+    m = DispatchableSource(elec.carrier)
     vb = []
     if cap isa Real
         push!(vb, FixedCapacity("output", energy, cap))
+    else
+        push!(vb, VariableCapacity(
+            "output", energy;
+            lb=isnothing(mincap) ? 0.0 : mincap,
+            ub=isnothing(maxcap) ? Inf : maxcap,
+            expression=cap,
+        ))
     end
 
     # costs
@@ -895,6 +928,9 @@ function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     push!(vb, VariableCost(:vom, "output", energy, _vom))
 
     c = Component(cname * " " * elec.name, m, vb)
+    output = energy(Nosy.getport(c, "output"))
+    intake_envelope = Nosy.Stepwise(intake_series, Nosy.mesh(c))
+    @constraint(lowermodel(sim(c)), output.data .<= intake_envelope.data)
     tag!(c, :tech, cname)
     tag!(c, :zone, elec.name)
     connect!(s, c, elec)

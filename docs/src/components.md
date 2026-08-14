@@ -59,12 +59,12 @@ optimised; they are unused when capacity is fixed. Important exceptions are
 documented with each builder:
 
 - `makedispatchable(...; cap=0)` omits the component and returns `nothing`.
-- [`makehydroror`](@ref) requires a positive fixed capacity because it
-  normalises an absolute inflow series by that value.
+- [`makehydroror`](@ref) also accepts a JuMP variable or affine expression as
+  an externally defined capacity; `mincap` and `maxcap` bound that expression.
 - A zero charging capacity in [`makehydroreservoir`](@ref) disables grid
   charging rather than creating a zero-capacity input port.
-- `cap_reservoir=nothing` in [`makehydroreservoir`](@ref) deliberately leaves
-  the stored-energy level unlimited.
+- `cap_reservoir=nothing` in [`makehydroreservoir`](@ref) optimises the
+  stored-energy capacity; its default `Inf` leaves the level unlimited.
 - `capa=nothing` in [`makedemandresponse`](@ref) leaves response output without
   a capacity limit.
 

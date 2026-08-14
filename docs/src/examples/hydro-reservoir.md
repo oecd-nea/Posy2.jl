@@ -1,7 +1,7 @@
 # Hydro Reservoir
 
-This example shows how a hydro reservoir shifts natural inflow across time.
-With flat demand, reservoir level changes come from variable inflow. A reservoir
+This example shows how a hydro reservoir shifts natural intake across time.
+With flat demand, reservoir level changes come from variable intake. A reservoir
 [`makehydroreservoir`](@ref) stores water when it arrives and releases it
 later on the same electricity node. The default `TimeMesh()` is circular, so
 the reservoir level wraps from the last hour into the first. Year-end and
@@ -32,10 +32,10 @@ snapshot = Snapshot(
 electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=:curtailed, tags=[:electricity])
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
-# Flat 50 MW demand so level changes come from the inflow shape alone
+# Flat 50 MW demand so level changes come from the intake shape alone
 makedemand("Demand", "country1", electricity, snapshot; coeff=0.0, yearlyconstant=50.0 * 8760)
 
-# Fixed reservoir: 100 MW turbine, no grid pumping, 40 MW average inflow
+# Fixed reservoir: 100 MW turbine, no grid pumping, 40 MW average intake
 makehydroreservoir(
     "Reservoir hydro",
     "Hydro res",
@@ -43,10 +43,9 @@ makehydroreservoir(
     electricity,
     100.0,        # turbine capacity (MW)
     0.0,          # no pumping from the electricity grid
-    40.0 * 8760,  # reservoir energy capacity (MWh)
-    40.0 * 8760,  # annual natural inflow (MWh)
+    40.0 * 8760,  # annual natural intake (MWh)
     snapshot;
-    renormalize=true,
+    cap_reservoir=40.0 * 8760, # fixed reservoir energy capacity (MWh)
     weatheryear=2019,
     simplified=true,
 )
@@ -64,7 +63,7 @@ Snapshot with 3 component(s) and 2 node(s)
 
 ```
 
-Over the year, total natural inflow equals total turbine generation. The reservoir does not 
+Over the year, total natural intake equals total turbine generation. The reservoir does not
 change how much water is used. It changes when that water is released.
 
 ```jldoctest hydro_reservoir
@@ -75,12 +74,12 @@ julia> balance(result, "Reservoir hydro country1", :output, energy; collapse=tru
 350399.9999999997
 ```
 
-In the figure, inflow and turbine output follow different paths. When inflow is above 
-the turbine the reservoir level rises. When inflow is below it the reservoir level falls.
+In the figure, intake and turbine output follow different paths. When intake is above
+the turbine the reservoir level rises. When intake is below it the reservoir level falls.
 Over these four weeks the level rises, then falls:
 
-![Natural inflow, turbine output, and reservoir level over four weeks](../assets/hydro-reservoir-timing.svg)
+![Natural intake, turbine output, and reservoir level over four weeks](../assets/hydro-reservoir-timing.svg)
 
 The reservoir therefore decouples water arrival from electricity generation.
-Natural inflow follows its weather-driven profile, while stored water can be
+Natural intake follows its weather-driven profile, while stored water can be
 released at a different time to serve the electricity node.

@@ -104,13 +104,14 @@ discharge compensation cost.
   warm starts, unit-commitment masks, and optional scheduled reload shutdowns.
 - [`makeintermittentsource`](@ref) combines a weather-year profile with fixed
   or optimisable capacity.
-- [`makehydroror`](@ref) creates fixed-capacity run-of-river hydro from an
-  inflow profile.
+- [`makehydroror`](@ref) creates fixed- or variable-capacity run-of-river hydro
+  from an intake profile.
 
 An intermittent source always reads its profile from the selected
-`profiles_<year>` sheet. Run-of-river hydro similarly reads a yearly inflow
-series and requires a positive numeric capacity because the profile is
-normalised by that capacity.
+`profiles_<year>` sheet. Run-of-river hydro similarly reads a yearly intake
+shape, normalises it to sum to one, and applies the requested total intake. It
+supports a positive numeric output capacity, a new optimised capacity, or an
+external JuMP variable or affine expression bounded by `mincap` and `maxcap`.
 
 Dispatchable and nuclear plants can treat fuel in two ways. With
 `fuelnode=nothing`, there is no separate fuel system: generation only adds a
@@ -128,9 +129,10 @@ inputs.
 
 - [`makebatterystorage`](@ref) builds battery storage with charging-power capacity 
   and duration, with round-trip efficiency, and optional grid losses.
-- [`makehydroreservoir`](@ref) represents reservoir inflow, pumping,
-  generation, and an optional reservoir level capacity; `cap_reservoir=nothing`
-  leaves the stored-energy level unlimited.
+- [`makehydroreservoir`](@ref) represents reservoir intake, pumping,
+  generation, and an optional reservoir level capacity. A finite
+  `cap_reservoir` fixes it, `nothing` optimises it, and the default `Inf` leaves
+  the stored-energy level unlimited.
 - [`makehydrogenstorage`](@ref) builds simplified hydrogen storage whose level
   capacity can be fixed or optimised.
 - [`makeelectrolyser`](@ref) converts electricity into hydrogen.

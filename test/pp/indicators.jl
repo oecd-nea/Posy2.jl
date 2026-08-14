@@ -214,7 +214,7 @@ using HiGHS
         @test isapprox(dis_collapsed["discharging Battery ZONE1"], sum(dis_hourly["discharging Battery ZONE1"]); rtol=1e-12)
     end
 
-    # No hydro inflow components: intake returns an empty dict.
+    # No hydro-intake components: intake returns an empty dict.
     let
         snap, elec1, elec2, h2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
@@ -232,13 +232,15 @@ using HiGHS
         @test isempty(Posy2.intake(s; aggregate=false, collapse=false))
     end
 
-    # Hydro reservoir: intake hourly series matches reservoir_inflow time series from fixture; collapse=true sums hours.
+    # Hydro reservoir: normalized intake matches the workbook shape and requested total.
     let
         snap, elec, co2 = makesnapshot2()
         makedemand("Other consumption", "ZONE1", elec, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        profile = gettimeseries(snap, "ZONE1", "reservoir_inflow_2019")
         makehydroreservoir(
-            "Hydro reservoir", "Battery", "ZONE1", elec, 5000.0, 100.0, 50_000_000.0, nothing, snap;
+            "Hydro reservoir", "Battery", "ZONE1", elec, 5000.0, 100.0, sum(profile), snap;
+            cap_reservoir=50_000_000.0, weatheryear=2019,
             gridlosses=0.0, eff=0.9,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=1.0,
             decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,
@@ -249,7 +251,6 @@ using HiGHS
         key = "intake Hydro reservoir ZONE1"
         @test haskey(inta, key)
         @test length(inta[key]) == Nosy.nhours(sim(s))
-        profile = gettimeseries(s, "ZONE1", "reservoir_inflow_2019")
         @test isapprox(inta[key], profile; rtol=1e-12)
         @test isapprox(
             Posy2.intake(s; aggregate=false, collapse=true)[key],

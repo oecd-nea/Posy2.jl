@@ -5,8 +5,8 @@ using JuMP
 using HiGHS
 
 @testset "Generation components" begin
-    function makesnapshot()
-        sim = Sim(Model(HiGHS.Optimizer))
+    function makesnapshot(; hours=8760)
+        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, hours)))
         set_silent(sim.model)
         opts = Dict(
             :posy => Posy2Options(
@@ -81,10 +81,100 @@ using HiGHS
         )
     end
 
-    # Run of river should fail when cap is missing because profile normalization needs cap.
+    # Run of river can optimize output capacity within explicit bounds.
+    let
+        s, elec, _ = makesnapshot(hours=24)
+        c = makehydroror(
+            "Hydro ROR variable", "ZONE1", elec, s;
+            cap=nothing, mincap=10.0, maxcap=100.0,
+            intake=1_000.0, intake_profile=collect(1.0:24.0),
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
+            decommissioning=0.0,
+        )
+        capacity_behavior = only(Nosy.getbehaviors(c, Nosy.VariableCapacityBehavior))
+        @test capacity_behavior.data.lb == 10.0
+        @test capacity_behavior.data.ub == 100.0
+
+        shared_capacity = @variable(Nosy.uppermodel(sim(s)), lower_bound=0.0)
+        linked = makehydroror(
+            "Hydro ROR linked", "ZONE1", elec, s;
+            cap=shared_capacity, mincap=5.0, maxcap=90.0,
+            intake=1_000.0, intake_profile=collect(24.0:-1.0:1.0),
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
+            decommissioning=0.0,
+        )
+        linked_behavior = only(Nosy.getbehaviors(linked, Nosy.VariableCapacityBehavior))
+        @test linked_behavior.data.expr === shared_capacity
+
+        capacity_expression = 2.0 * shared_capacity + 5.0
+        affine = makehydroror(
+            "Hydro ROR affine", "ZONE1", elec, s;
+            cap=capacity_expression, mincap=5.0, maxcap=95.0,
+            intake=1_000.0, intake_profile=collect(1.0:24.0),
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
+            decommissioning=0.0,
+        )
+        affine_behavior = only(Nosy.getbehaviors(affine, Nosy.VariableCapacityBehavior))
+        @test affine_behavior.data.expr == capacity_expression
+    end
+
+    # Run-of-river profiles describe only the intake shape. Scaling a profile
+    # must not change the distributed total intake.
+    let
+        s, elec, _ = makesnapshot(hours=24)
+        profile = collect(1.0:24.0)
+        total_intake = 1_000.0
+        c = makehydroror(
+            "Hydro ROR normalized", "ZONE1", elec, s;
+            cap=500.0, intake=total_intake,
+            intake_profile=profile,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=-1.0,
+            decommissioning=0.0,
+        )
+        Nosy.optimize!(s, cost(s))
+        result = extract(s)
+        normalized = balance(
+            Nosy.getcomponent(result, "Hydro ROR normalized ZONE1"),
+            :output, energy; collapse=false, aggregate=true,
+        )
+        @test normalized ≈ profile / sum(profile) * total_intake
+        @test sum(normalized) ≈ total_intake
+
+        s2, elec2, _ = makesnapshot(hours=24)
+        c2 = makehydroror(
+            "Hydro ROR rescaled", "ZONE1", elec2, s2;
+            cap=500.0, intake=total_intake,
+            intake_profile=10 .* profile,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=-1.0,
+            decommissioning=0.0,
+        )
+        Nosy.optimize!(s2, cost(s2))
+        result2 = extract(s2)
+        rescaled = balance(
+            Nosy.getcomponent(result2, "Hydro ROR rescaled ZONE1"),
+            :output, energy; collapse=false, aggregate=true,
+        )
+        @test rescaled ≈ normalized
+    end
+
+    # A profile with no intake cannot be normalized.
     let
         s, elec, _ = makesnapshot()
-        @test_throws ArgumentError makehydroror("Hydro ROR", "ZONE1", elec, s; cap=nothing)
+        @test_throws ArgumentError makehydroror(
+            "Hydro ROR zero profile", "ZONE1", elec, s;
+            cap=100.0, intake=100.0, intake_profile=0.0,
+        )
+    end
+
+    # Zero intake does not require a profile or weather year.
+    let
+        s, elec, _ = makesnapshot(hours=24)
+        @test !isnothing(makehydroror(
+            "Hydro ROR zero intake", "ZONE1", elec, s;
+            cap=100.0, intake=0.0,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
+            decommissioning=0.0,
+        ))
     end
 
     # Generation capacity inputs accept real values or nothing, never complex values.
@@ -102,6 +192,22 @@ using HiGHS
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "Onwind gen ZONE1") === c
         @test Nosy.hastag(c, :function, "carbonfree")
+    end
+
+    # Weather-indexed workbook profiles require an explicit year.
+    let
+        s, elec, co2 = makesnapshot()
+        @test_throws ArgumentError makeintermittentsource(
+            "Wind missing year", "Onwind", elec, co2, s;
+            cap=100.0, construction_profile=1.0, decommissioning_profile=1.0,
+        )
+    end
+    let
+        s, elec, _ = makesnapshot()
+        @test_throws ArgumentError makehydroror(
+            "Hydro ROR missing year", "ZONE1", elec, s;
+            cap=100.0, intake=1_000.0,
+        )
     end
 
     # An intermittent source with direct emissions must not be tagged carbon-free.

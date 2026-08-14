@@ -5,8 +5,8 @@ using JuMP
 using HiGHS
 
 @testset "Storage components" begin
-    function makesnapshot()
-        sim = Sim(Model(HiGHS.Optimizer))
+    function makesnapshot(; hours=8760)
+        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, hours)))
         set_silent(sim.model)
         opts = Dict(
             :posy => Posy2Options(
@@ -23,6 +23,31 @@ using HiGHS
         elec = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         h2 = Node("H2", EnergyCarrier("hydrogen", sim), rule=:curtailed, tags=[:hydrogen])
         return snap, elec, h2
+    end
+
+    # Reservoir intake uses the same normalized-profile, scalar-intake, and
+    # dimensionless-multiplier contract as run-of-river hydro.
+    let
+        s, elec, _ = makesnapshot(hours=24)
+        profile = collect(1.0:24.0)
+        total_intake = 1_000.0
+        makehydroreservoir(
+            "Normalized intake reservoir", "Battery", "ZONE1", elec,
+            500.0, 0.0, total_intake, s;
+            cap_reservoir=2_000.0,
+            intake_profile=profile,
+            gridlosses=0.0, eff=1.0,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
+            decommissioning=0.0,
+        )
+        Nosy.optimize!(s, cost(s))
+        result = extract(s)
+        actual = only(values(Posy2.intake(
+            result; aggregate=false, collapse=false,
+        )))
+        expected = profile / sum(profile) * total_intake
+        @test actual ≈ expected
+        @test sum(actual) ≈ total_intake
     end
 
     # Battery duration should fail when it is zero.
@@ -67,7 +92,8 @@ using HiGHS
     let
         s, elec, _ = makesnapshot()
         c = makehydroreservoir(
-            "Hydro reservoir", "Battery", "ZONE1", elec, 100.0, 50.0, 500.0, 0.0, s;
+            "Hydro reservoir", "Battery", "ZONE1", elec, 100.0, 50.0, 0.0, s;
+            cap_reservoir=500.0,
             gridlosses=0.0, eff=0.9,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=1.0,
             decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,
@@ -82,7 +108,8 @@ using HiGHS
         s, elec, _ = makesnapshot()
         c = makehydroreservoir(
             "Variable pumping reservoir", "Battery", "ZONE1", elec,
-            100.0, nothing, 500.0, 0.0, s;
+            100.0, nothing, 0.0, s;
+            cap_reservoir=500.0,
             gridlosses=gridlosses, eff=0.9,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
@@ -96,35 +123,75 @@ using HiGHS
         @test Nosy.hasport(c, "grid losses") == !iszero(gridlosses)
     end
 
-    # A missing reservoir level capacity explicitly means unlimited storage.
+    # Reservoir level capacity follows the shared capacity API: finite is
+    # fixed, `nothing` is optimized, and the default `Inf` is unlimited.
     let
         s, elec, _ = makesnapshot()
-        c = makehydroreservoir(
+        common = (
+            intake_profile=1.0, gridlosses=0.0, eff=0.9,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
+            decommissioning=0.0,
+        )
+        fixed = makehydroreservoir(
+            "Fixed reservoir", "Battery", "ZONE1", elec,
+            100.0, 0.0, 8760.0, s; cap_reservoir=500.0, common...,
+        )
+        variable = makehydroreservoir(
+            "Variable reservoir", "Battery", "ZONE1", elec,
+            100.0, 0.0, 8760.0, s; cap_reservoir=nothing, common...,
+        )
+        unlimited = makehydroreservoir(
             "Unlimited reservoir", "Battery", "ZONE1", elec,
-            100.0, 0.0, nothing, nothing, s;
-            inflow_profile=1.0, gridlosses=0.0, eff=0.9,
-            overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=1.0,
-            decommissioning=0.1, lifetime=30.0,
-            construction_profile=1.0, decommissioning_profile=1.0,
+            100.0, 0.0, 8760.0, s; common...,
         )
-        level_capacities = filter(
+        fixed_level_capacities = filter(
             b -> b.data.pname == "level",
-            Nosy.getbehaviors(c, Nosy.FixedCapacityBehavior),
+            Nosy.getbehaviors(fixed, Nosy.FixedCapacityBehavior),
         )
-        @test isempty(level_capacities)
+        variable_level_capacities = filter(
+            b -> b.data.pname == "level",
+            Nosy.getbehaviors(variable, Nosy.VariableCapacityBehavior),
+        )
+        unlimited_fixed_capacities = filter(
+            b -> b.data.pname == "level",
+            Nosy.getbehaviors(unlimited, Nosy.FixedCapacityBehavior),
+        )
+        unlimited_variable_capacities = filter(
+            b -> b.data.pname == "level",
+            Nosy.getbehaviors(unlimited, Nosy.VariableCapacityBehavior),
+        )
+
+        @test length(fixed_level_capacities) == 1
+        @test length(variable_level_capacities) == 1
+        @test isempty(unlimited_fixed_capacities)
+        @test isempty(unlimited_variable_capacities)
     end
 
-    # A zero-sum inflow profile cannot be normalized.
+    # A zero-sum intake profile cannot be normalized.
     let
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makehydroreservoir(
-            "Zero inflow reservoir", "Battery", "ZONE1", elec,
-            100.0, 0.0, 500.0, 1_000.0, s;
-            renormalize=true, inflow_profile=0.0,
+            "Zero intake reservoir", "Battery", "ZONE1", elec,
+            100.0, 0.0, 1_000.0, s;
+            cap_reservoir=500.0,
+            intake_profile=0.0,
             gridlosses=0.0, eff=0.9,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=1.0,
             decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0,
+        )
+    end
+
+    # Workbook intake lookup requires an explicit weather year. Explicit
+    # profiles do not, and are covered by the capacity cases above.
+    let
+        s, elec, _ = makesnapshot()
+        @test_throws ArgumentError makehydroreservoir(
+            "Missing weather year", "Battery", "ZONE1", elec,
+            100.0, 0.0, 1_000.0, s;
+            cap_reservoir=500.0, gridlosses=0.0, eff=0.9,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
+            decommissioning=0.0,
         )
     end
 end

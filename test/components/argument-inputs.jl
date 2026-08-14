@@ -234,12 +234,13 @@ using HiGHS
         ))
         @test !isnothing(makehydroror(
             "Hydro ROR", "unused", electricity, s;
-            cap=70.0, inflow_profile=fill(35.0, 24), hydro_costs...,
+            cap=70.0, intake=840.0, intake_profile=fill(35.0, 24), hydro_costs...,
         ))
         @test !isnothing(makehydroreservoir(
             "Reservoir", "unused", "unused", electricity,
-            55.0, 20.0, 200.0, 240.0, s;
-            inflow_profile=collect(1.0:24.0), eff=0.88, hydro_costs...,
+            55.0, 20.0, 240.0, s;
+            cap_reservoir=200.0,
+            intake_profile=collect(1.0:24.0), eff=0.88, hydro_costs...,
         ))
         @test !isnothing(makeEV(
             "EV", 2_400.0, electricity, s;
@@ -330,5 +331,47 @@ using HiGHS
             "Mixed reverse", "Onwind", electricity, carbon, series_excel;
             cap=10.0, weatheryear=2019, intermittent_costs...,
         ))
+    end
+
+    # Workbook profiles pass through the same horizon validator as explicit
+    # profiles, with complete workbook context in the error.
+    let
+        simulation = Sim(
+            Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, 24)),
+        )
+        set_silent(simulation.model)
+        data_dir = joinpath(dirname(@__DIR__), "data")
+        electricity = Node(
+            "ZONE1", EnergyCarrier("electricity ZONE1", simulation);
+            rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity],
+        )
+        carbon = Node(
+            "CO2", CO2Carrier("CO2", simulation); rule=:curtailed, tags=[:co2],
+        )
+        short_series_excel = Snapshot(simulation, Dict(:posy => Posy2Options(
+            data_dir=data_dir,
+            techdata_file="unused.xlsx",
+            timeseries_file="time_series_test.xlsx",
+            tech_mode=:arguments,
+            timeseries_mode=:excel,
+        )))
+
+        err = try
+            makeintermittentsource(
+                "Wrong workbook horizon", "Onwind", electricity, carbon,
+                short_series_excel;
+                cap=10.0, weatheryear=2019, intermittent_costs...,
+            )
+            nothing
+        catch caught
+            caught
+        end
+        @test err isa ArgumentError
+        message = err isa Exception ? sprint(showerror, err) : ""
+        for fragment in (
+            "time_series_test.xlsx", "profiles_2019", "Onwind_ZONE1", "24", "8760",
+        )
+            @test occursin(fragment, message)
+        end
     end
 end

@@ -31,7 +31,7 @@ behaviours, and whether an existing builder already covers the role.
 - Does it supply, consume, store, or convert carriers?
 - If it consumes: is the load a fixed series, a capacity*profile shape, or flexible?
 - If it stores: is charge / discharge / level enough, or are extra flows
-  needed (inflow, driving, losses)?
+  needed (intake, driving, losses)?
 - How many inputs and outputs are there, and on which carriers / nodes?
 - Is capacity defined on the input, the output, or a storage level?
 - Is a state (`level`) required?
@@ -65,7 +65,7 @@ groups:
 | Sink | `ProfileSink` | Capacity * consumption profile (mandatory capacity on `input`) |
 | Sink | `BasicSink` | Flexible consumption; mirrors `DispatchableSource` |
 | Storage | `BasicStorage` | Charge / discharge / level on one machine (battery, H2 store, ...) |
-| Storage | `LazyStorage` | Level plus joint flows for extra ports (hydro inflow, EV driving, ...) |
+| Storage | `LazyStorage` | Level plus joint flows for extra ports (hydro intake, EV driving, ...) |
 | Converter | `BasicConverter` | One-to-one conversion (electrolyser, node interconnection, ...) |
 
 Posy2 builders already wrap most of these. `Demand`, `DispatchableSource`,
@@ -160,7 +160,7 @@ Use these when you need extra ports or a proportional link to another carrier.
   right node.
 - `FreeJointFlow` — adds a flexible port (LazyStorage charge/discharge, IC
   reverse direction).
-- `FixedJointFlow` — adds a port driven by a fixed series (hydro inflow, EV
+- `FixedJointFlow` — adds a port driven by a fixed series (hydro intake, EV
   driving).
 
 `LazyStorage` starts with `level`; charge, discharge, and side flows are

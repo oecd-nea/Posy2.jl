@@ -73,6 +73,8 @@ emissions are controlled by `co2_emission`; the builder does not infer a
 [`makeintermittentsource`](@ref) creates a profile source. It reads availability
 from sheet `profiles_<weatheryear>`, column
 `<techkey>_<electricity-node-name>`. The profile multiplies the `output` capacity.
+Workbook lookup requires an explicit `weatheryear`; the keyword defaults to
+`nothing` and is unused when `profile` is supplied directly.
 
 `cap` fixes capacity; `nothing` creates a decision bounded by `mincap` and
 `maxcap`; and `ini` inherits the named component's capacity. In `:excel` mode,
@@ -86,17 +88,21 @@ receives `carbonfree` when `co2_emission` is zero.
 
 ## Run-of-river Hydro
 
-[`makehydroror`](@ref) reads absolute inflow from sheet
-`hydro_ror_<weatheryear>`, column `<zone>`. A positive numeric `cap` is required
-because the builder divides the inflow by capacity to form a profile. It then
-multiplies that profile by `intake_mult` and caps it at one.
+[`makehydroror`](@ref) reads an intake shape from sheet
+`hydro_ror_<weatheryear>`, column `<zone>`. The builder normalizes the shape to
+sum to one, distributes `intake` over it, and limits hourly output by both that
+intake envelope and installed capacity.
+Workbook lookup requires an explicit `weatheryear`; the keyword defaults to
+`nothing` and is unused when `intake_profile` is supplied directly.
 
 In `:excel` mode, cost defaults come from the technology column named by
 `techkey` in sheet `intermittent`; the default column name is `Hydro ror`. In
 `:arguments` mode costs default to zero and inactive capital data are not
-required. Capacity and the inflow profile remain structural. Capacity is fixed,
-not optimisable. The component is tagged `generation`, `intermittent`, and
-`carbonfree`.
+required. A numeric `cap` fixes output capacity; `cap=nothing` creates a new
+capacity decision; and a JuMP variable or affine expression reuses an external
+decision. `mincap` and `maxcap` bound either variable form. The intake profile
+remains independent of capacity. The component is tagged `generation`,
+`intermittent`, and `carbonfree`.
 
 ## API Entries
 
