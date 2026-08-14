@@ -111,8 +111,8 @@ using HiGHS
         @test isapprox(output, 100.0 * 8760; rtol=1e-12)
         @test inputs["input"] == 0.0
         @test isapprox(inputs["negative consumption"], -output; rtol=1e-12)
-        @test isapprox(POSY2.demandresponse(result, "ZONE1"), output; rtol=1e-12)
-        @test isapprox(POSY2.demand(result, "ZONE1"; aggregate=true, collapse=true), 100.0 * 8760; rtol=1e-12)
+        @test isapprox(Posy2.demandresponse(result, "ZONE1"), output; rtol=1e-12)
+        @test isapprox(Posy2.demand(result, "ZONE1"; aggregate=true, collapse=true), 100.0 * 8760; rtol=1e-12)
     end
 
     # A 100 MW delivered response requires 125 MW activation when node losses
@@ -123,7 +123,7 @@ using HiGHS
         makedemandresponse("DR", elec, 125.0, 50.0, s)
         Nosy.optimize!(s, cost(s))
         result = extract(s)
-        output = POSY2.demandresponse(result, "ZONE1")
+        output = Posy2.demandresponse(result, "ZONE1")
 
         @test isapprox(output, 125.0 * 8760; rtol=1e-12)
         @test isapprox(cost(result), 50.0 * 125.0 * 8760; rtol=1e-12)
