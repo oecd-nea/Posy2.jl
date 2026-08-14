@@ -63,7 +63,7 @@ using HiGHS
     # Storage capacity inputs reject non-real numeric values at the API boundary.
     let
         s, elec, h2 = makesnapshot()
-        @test_throws TypeError makebatterystorage("Battery", "Battery", elec, s; capin=1 + im)
+        @test_throws TypeError makebatterystorage("Battery", "Battery", elec, s; cap=1 + im)
         @test_throws TypeError makehydrogenstorage("H2 Storage", "Hydrogen storage", h2, s; cap=1 + im)
     end
 
@@ -72,7 +72,7 @@ using HiGHS
         s, elec, _ = makesnapshot()
         c = makebatterystorage(
             "Battery", "Battery", elec, s;
-            capin=100.0,
+            cap=100.0,
             eff=0.9, duration=4.0,
             overnight_cost=1000.0, om_fixed_cost=10.0,
             decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,

@@ -207,7 +207,7 @@ end
 
 """
     makebatterystorage(cname::String, techkey::String, elec::Node, s::Snapshot;
-        capin=nothing, mincap=nothing, maxcap=nothing, simplified=false, ini=nothing,
+        cap=nothing, mincap=nothing, maxcap=nothing, simplified=false, ini=nothing,
         gridlosses=0.,
         eff::Union{Nothing,Real}=nothing, duration::Union{Nothing,Real}=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -223,9 +223,9 @@ Arguments:
   * `elec`: electricity node to connect the component to.
   * `s`: snapshot to register the component in.
 
-  * `capin`: Fixed charging/input capacity. If `nothing`, charging capacity is optimized.
-  * `mincap`: Bounds for optimized `capin` when `capin === nothing`.
-  * `maxcap`: Bounds for optimized `capin` when `capin === nothing`.
+  * `cap`: Fixed charging/input capacity. If `nothing`, charging capacity is optimized.
+  * `mincap`: Bounds for optimized `cap` when `cap === nothing`.
+  * `maxcap`: Bounds for optimized `cap` when `cap === nothing`.
   * `simplified`: Passed to `BasicStorage(..., simplified=...)`.
   * `ini`: Optional initial snapshot used to inherit fixed charging capacity.
 
@@ -245,7 +245,7 @@ Arguments:
 """
 function makebatterystorage(cname::String, techkey::String, elec::Node, s::Snapshot;
     # capacity / expansion
-    capin::Union{Nothing,Real}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    cap::Union{Nothing,Real}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     simplified::Bool=false, ini::Union{Nothing,Snapshot}=nothing, gridlosses::Real=0.,
 
     # technical overrides
@@ -323,8 +323,8 @@ function makebatterystorage(cname::String, techkey::String, elec::Node, s::Snaps
     vb = []
     
     push!(vb, Duration(_dur))
-    if capin isa Real
-        push!(vb, FixedCapacity("input", energy, capin))
+    if cap isa Real
+        push!(vb, FixedCapacity("input", energy, cap))
     else
         if isnothing(ini)
             push!(vb, VariableCapacity("input", energy, integer=false, lb = isnothing(mincap) ? 0 : mincap, ub = isnothing(maxcap) ? Inf : maxcap))

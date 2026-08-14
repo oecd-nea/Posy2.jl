@@ -56,7 +56,7 @@ using DataFrames
         )
         makebatterystorage(
             "Battery", "Battery", elec1, snap;
-            capin=100.0,
+            cap=100.0,
             eff=0.9, duration=4.0,
             overnight_cost=1000.0, om_fixed_cost=10.0,
             decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
@@ -126,7 +126,7 @@ using DataFrames
         )
         makebatterystorage(
             "Battery", "Battery", elec1, snap;
-            capin=100.0,
+            cap=100.0,
             eff=0.9, duration=4.0,
             overnight_cost=1000.0, om_fixed_cost=10.0,
             decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,

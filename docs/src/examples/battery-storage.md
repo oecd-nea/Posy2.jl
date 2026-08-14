@@ -50,7 +50,7 @@ makeintermittentsource(
 # Fixed battery: 50 MW charge rating, 85% round-trip, 4 h energy duration
 makebatterystorage(
     "Battery", "Battery", electricity, snapshot;
-    capin=50.0,
+    cap=50.0,
     eff=0.85,
     duration=4.0,
     overnight_cost=0.0,

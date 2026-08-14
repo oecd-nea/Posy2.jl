@@ -44,7 +44,7 @@ The generated component is tagged `generation`, `storage`, and `carbonfree`.
 ## Batteries
 
 [`makebatterystorage`](@ref) creates electricity storage with `input`, `output`, and
-`level` ports. `capin` is charging power: a number fixes it and `nothing`
+`level` ports. `cap` is charging power: a number fixes it and `nothing`
 creates a decision bounded by `mincap` and `maxcap`. When `ini` is supplied,
 the builder fixes charging power to the matching solved component's capacity.
 

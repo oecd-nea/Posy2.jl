@@ -350,7 +350,7 @@ function makeEV(cname::String, yearly::Real, elec::Node, s::Snapshot; fixed_prof
 end
 
 """
-    makedemandresponse(cname::String, elec::Node, capa::Union{Nothing,Real}, cost::Real, s::Snapshot; type::Symbol=:volDR)
+    makedemandresponse(cname::String, elec::Node, cap::Union{Nothing,Real}, cost::Real, s::Snapshot; type::Symbol=:volDR)
 
 Build, connect and return a demand response component represented as negative
 consumption.
@@ -364,12 +364,12 @@ side without modifying existing demand components.
 Arguments:
   * `cname`: component name prefix.
   * `elec`: electricity node to connect the component to.
-  * `capa`: optional fixed response capacity (`nothing` means unconstrained).
+  * `cap`: optional fixed response capacity (`nothing` means unconstrained).
   * `cost`: demand response activation cost coefficient.
   * `s`: snapshot to register the component in.
   * `type`: variable cost label used for reporting (default `:volDR`).
 """
-function makedemandresponse(cname::String, elec::Node, capa::Union{Nothing,Real}, cost::Real, s::Snapshot; type::Symbol=:volDR)
+function makedemandresponse(cname::String, elec::Node, cap::Union{Nothing,Real}, cost::Real, s::Snapshot; type::Symbol=:volDR)
     # Demand provides a zero-valued input that anchors this demand-side
     # component. `output` remains positive for capacity, cost, and reporting,
     # but is not connected to the electricity node. Only its negative linked
@@ -379,8 +379,8 @@ function makedemandresponse(cname::String, elec::Node, capa::Union{Nothing,Real}
         FreeJointFlow("output", elec.carrier, :output; mustconnect=false),
         LinkedJointFlow("negative consumption", elec.carrier, :input, "output", x -> -x[1] * (1 - elec.losses)),
     ]
-    if !isnothing(capa)
-        push!(vb, FixedCapacity("output", energy, capa))
+    if !isnothing(cap)
+        push!(vb, FixedCapacity("output", energy, cap))
     end
     push!(vb, VariableCost(type, "output", energy, cost))
 

@@ -76,7 +76,7 @@ makeintermittentsource(
 # Country 2: 400 MW, 4 hour duration battery
 makebatterystorage(
     "Battery", "Battery", country2, snapshot;
-    capin=400.0,
+    cap=400.0,
     eff=0.85,
     duration=4.0,
     overnight_cost=0.0,
@@ -231,7 +231,7 @@ makeintermittentsource(
 # Country 2: 400 MW, 4 hour duration battery
 makebatterystorage(
     "Battery", "Battery", country2, snapshot;
-    capin=400.0,
+    cap=400.0,
     eff=0.85,
     duration=4.0,
     overnight_cost=0.0,

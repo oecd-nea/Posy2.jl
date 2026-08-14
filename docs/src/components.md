@@ -52,7 +52,7 @@ and unit conversions are in [Input Workbooks](concepts/input-data.md).
 
 ## Capacity Semantics
 
-For builders with a `cap`, `capin`, or similar capacity keyword, a number
+For builders with a `cap` or similar capacity keyword, a number
 usually creates a fixed capacity and `nothing` makes capacity a decision
 variable. `mincap` and `maxcap` bound that variable when capacity is
 optimised; they are unused when capacity is fixed. Important exceptions are
@@ -65,7 +65,7 @@ documented with each builder:
   charging rather than creating a zero-capacity input port.
 - `cap_reservoir=nothing` in [`makehydroreservoir`](@ref) optimises the
   stored-energy capacity; its default `Inf` leaves the level unlimited.
-- `capa=nothing` in [`makedemandresponse`](@ref) leaves response output without
+- `cap=nothing` in [`makedemandresponse`](@ref) leaves response output without
   a capacity limit.
 
 Builders with an `ini` keyword can inherit a capacity from a solved snapshot.

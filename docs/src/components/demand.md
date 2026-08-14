@@ -122,7 +122,7 @@ accounting flow used for capacity, activation cost, and reporting. A linked
 `-(1 - elec.losses) * output` is connected instead, so the existing consumption
 components remain unchanged while demand response enters the nodal balance
 from the demand side. With zero node losses this is exactly `-output`. A
-numeric `capa` adds fixed response capacity; `nothing` leaves the positive
+numeric `cap` adds fixed response capacity; `nothing` leaves the positive
 output unconstrained by a capacity behaviour.
 
 `cost` is the activation cost per unit of the positive `output` flow and is
