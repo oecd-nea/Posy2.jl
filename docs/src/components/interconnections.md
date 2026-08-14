@@ -22,15 +22,10 @@ and its workbook lookup. A price interconnection always has fixed capacities in
 both directions and therefore requires both multiplier columns.
 
 For a price interconnection, `dir=true` adds an SOS1 constraint at every
-timestep so that imports and exports cannot be used simultaneously. This may
-require solver support beyond a plain continuous LP.
-
-!!! warning "Node-interconnection direction constraint"
-    The current node-interconnection implementation applies its `dir=true`
-    SOS1 relation to aggregate component input and output. Because either
-    physical direction uses one input and one output, the relation can suppress
-    all transfer. Leave `dir=false` for [`makenodeinterco`](@ref) until the
-    constraint is corrected.
+timestep so that imports and exports cannot be used simultaneously. For a
+node interconnection, `dir=true` likewise constrains the two sending ports
+(`input` and `input2`) so that only one direction can be positive in a given
+hour. This may require solver support beyond a plain continuous LP.
 
 ## Node Interconnections
 

@@ -165,9 +165,9 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Number, btoa::Nu
 
     # make the IC flow go in one direction only
     if dir
-        b = balance(c, :input, energy, collapse=false, aggregate=false)
-        b1 = b["input"]
-        b2 = b["input2"]
+        flows = balance(c, :input, energy, collapse=false, aggregate=false)
+        b1 = flows["input"]
+        b2 = flows["input2"]
         for step in eachindex(b1)
             @constraint(Nosy.sim(s).model, [b1[step], b2[step]] in SOS1())
         end

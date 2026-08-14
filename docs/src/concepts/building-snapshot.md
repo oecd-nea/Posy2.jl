@@ -234,9 +234,7 @@ neighbour itself is outside the model.
 [`makenodeinterco`](@ref) connects two explicit Nosy nodes with directional
 flows. It can apply directional capacities, time-varying transfer-capacity
 multipliers, losses, transaction costs, and an optional SOS1 one direction at a time
-relation. The current node-interconnection implementation of that relation
-can suppress all transfer; leave `dir=false` until the limitation described in
-[Interconnections](../components/interconnections.md) is corrected.
+relation on the sending ports `input` and `input2`.
 
 Set `foreign=true` when a node interconnection crosses the boundary used for
 self-system reporting. Set `dc=true` for a controllable DC link. An AC link

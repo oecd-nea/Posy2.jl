@@ -117,9 +117,7 @@ although it is a different mathematical model from integer commitment.
 
 The selected optimiser must support every constraint set used by the study.
 In particular, check solver support before enabling SOS1 interconnection
-direction constraints. The current node-interconnection implementation of
-`dir=true` can suppress all transfer; see
-[Interconnections](../components/interconnections.md).
+direction constraints (`dir=true` on price or node interconnections).
 
 ## Extracting Results
 
