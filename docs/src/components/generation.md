@@ -59,9 +59,10 @@ feature. Economic terms and emissions also default to zero in `:arguments`
 mode, and a positive `unit_size` is required only for unit commitment or
 integer capacity expansion.
 
-The specialised reload constraints distinguish the technology names
-`Nuclear`, `Nuclear flexible`, and `SMR`. They also assume an 8,760-hour model
-horizon. Use these exact conventions only for a full non-leap-year study.
+The specialised reload constraints apply only when `techkey` is exactly
+`Nuclear`, `Nuclear flexible`, or `SMR`. They also assume an 8,760-hour model
+horizon. Other `techkey` values may omit those constraints. Use these exact
+conventions only for a full non-leap-year study.
 
 The component carries `generation` and `dispatchable` function tags. Direct
 emissions are controlled by `co2_emission`; the builder does not infer a

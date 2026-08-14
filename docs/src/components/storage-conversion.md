@@ -24,20 +24,15 @@ decision. A real `cap_reservoir` fixes `level` capacity; `nothing` deliberately
 leaves the stored-energy level unlimited.
 
 Inflow comes from sheet `reservoir_inflow_<weatheryear>`, column `<zone>`.
-`inflow=nothing` uses the profile multiplied by `intake_mult`, `inflow=0`
-omits natural inflow, and another numeric value scales the profile by
-`inflow * intake_mult`. With `renormalize=true`, the series is first divided
-by its annual sum before that scaling. The sum must be strictly positive;
-otherwise the builder raises an `ArgumentError` instead of creating `NaN`
-inflows.
+`inflow=nothing` uses the profile as absolute inflow (`* intake_mult`);
+`inflow=0` omits natural inflow; a numeric value scales the profile by
+`inflow * intake_mult`. With a numeric `inflow` and `renormalize=true`, the
+series is first divided by its annual sum so the yearly total matches `inflow`.
 
-`eff` applies to grid charging; natural inflow and discharge have unit
-efficiency. In `tech_mode=:excel`, omitted technical and cost values come from
-the `storage` column named by `techkey`. In `:arguments` mode, efficiency
-defaults to one and costs to zero. Lifetime and construction data are resolved
-only when overnight cost is nonzero, and the decommissioning profile only when
-both overnight and decommissioning costs are nonzero. `gridlosses` adds a
-proportional linked input flow. Costs are attached to discharge capacity.
+`eff` defaults to `roundtrip_eff` in the technology column named by `techkey`
+of sheet `storage`. It applies to grid charging; natural inflow and discharge have unit
+efficiency. `gridlosses` adds a proportional linked input flow. Cost defaults
+come from the same technology column and are attached to discharge capacity.
 
 The generated component is tagged `generation`, `storage`, and `carbonfree`.
 

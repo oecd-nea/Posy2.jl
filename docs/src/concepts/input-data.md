@@ -30,11 +30,12 @@ options = Posy2Options(
 snapshot = Snapshot(sim, Dict(:posy => options))
 ```
 
-`data_dir` defaults to `joinpath(pwd(), "data")` at the time the options
-object is created. `techdata_file` and `timeseries_file` default to
-`"tech_data.xlsx"` and `"time_series.xlsx"`. An explicit `data_dir`, based on
-`@__DIR__` or another stable scenario path, avoids making results depend on
-the process working directory.
+By default, `data_dir` is `joinpath(pwd(), "data")` when `Posy2Options` is
+created, and the workbook filenames are `"tech_data.xlsx"` and
+`"time_series.xlsx"`. That path follows the process working directory, so the
+same script can read different folders if you launch Julia from somewhere else.
+Prefer an explicit `data_dir` anchored to the study, for example
+`joinpath(@__DIR__, "data")`.
 
 Workbooks are resolved lazily. Creating a snapshot does not open either file;
 the first relevant builder lookup does. Reads are memoised using the file's
@@ -51,9 +52,9 @@ See [Study Configuration](options.md) for the other study-wide options and the
 
 ## General Layout And Lookup Rules
 
-Sheet names, parameter names, and column headings are case-sensitive. Extra
-columns, such as timestamps or comments, are allowed and ignored unless a
-builder requests them.
+Sheet names, parameter names, and column headings are case-sensitive. Extra 
+columns, such as timestamps or comments, may be present. Posy2 only reads 
+the columns a builder looks up by name and ignores the rest.
 
 Technology sheets use one row per parameter and one column per technology:
 
@@ -63,11 +64,10 @@ Technology sheets use one row per parameter and one column per technology:
 | `lifetime` | `30` | `60` | `25` |
 | `om_var_cost` | `2` | `3` | `0` |
 
-The first column must be named exactly `tech`. Despite that heading, its cells
-are parameter names. The `techkey` argument passed to a builder selects a
-technology column. For example, `techkey="CCGT"` and
-`param="overnight_cost"` select the value at row `overnight_cost`, column
-`CCGT`.
+The first column must be named exactly `tech` and lists parameter names.
+The `techkey` argument passed to a builder selects a technology column. 
+For example, `techkey="CCGT"` and `param="overnight_cost"` select 
+the value at row `overnight_cost`, column `CCGT`.
 
 Time-series sheets use one column per lookup key. A builder requests the
 complete column and expects it to align with the simulation mesh. Posy2
@@ -107,11 +107,11 @@ makedispatchable(
 )
 ```
 
-An explicit override does not modify the workbook or the value returned by
-[`gettechparam`](@ref). Supplying every technology keyword removes all
-technology-workbook reads for that component. Selecting `tech_mode=:arguments`
-uses documented neutral defaults and raises on omitted values that are
-structurally required by the active feature.
+Passing a keyword overrides that lookup for this builder call only. It does not
+edit the workbook, and [`gettechparam`](@ref) still returns the workbook value.
+If every technology keyword is supplied, that component does not read the
+technology workbook. With `tech_mode=:arguments`, any omitted technology
+keyword raises `ArgumentError` instead of falling back to workbook.
 
 Time-series builders use the same rule. Explicit series accept either a real
 number, expanded to all hours, or a vector with exactly
@@ -123,13 +123,20 @@ number, expanded to all hours, or a vector with exactly
 | [`makeintermittentsource`](@ref) | `profile` | `<techkey>_<node>` in `profiles_<year>` |
 | [`makehydroror`](@ref) | `inflow_profile` | `<zone>` in `hydro_ror_<year>` |
 | [`makehydroreservoir`](@ref) | `inflow_profile` | `<zone>` in `reservoir_inflow_<year>` |
-| [`makeEV`](@ref) | `charging_availability`, `driving_profile` | `<zone>` in the two EV sheets |
-| [`makepriceinterco`](@ref) | `spot_price`, `import_availability`, `export_availability` | Price and directional-transfer columns |
-| [`makenodeinterco`](@ref) | `atob_availability`, `btoa_availability` | Directional-transfer columns |
+| [`makeEV`](@ref) | `charging_availability` | `<zone>` in `EV_charging_availability` |
+| [`makeEV`](@ref) | `driving_profile` | `<zone>` in `EV_driving_profile` |
+| [`makepriceinterco`](@ref) | `spot_price` | `<foreign-zone>` in `spot_price` |
+| [`makepriceinterco`](@ref) | `import_availability` | `zone>local` in `transfer_capacities` |
+| [`makepriceinterco`](@ref) | `export_availability` | `local>zone` in `transfer_capacities` |
+| [`makenodeinterco`](@ref) | `atob_availability` | `a>b` in `transfer_capacities` |
+| [`makenodeinterco`](@ref) | `btoa_availability` | `b>a` in `transfer_capacities` |
 
 For example, this demand never reads `time_series.xlsx`:
 
 ```julia
+# Flat 100 MW for every hour of the mesh.
+hourly_demand = 100.0
+
 makedemand(
     "Demand", "country1", electricity, snapshot;
     profile=hourly_demand,
@@ -147,10 +154,10 @@ construction_profile = "0.3;0.4;0.3"
 decommissioning_profile = 1.0
 ```
 
-A scalar represents a one-period profile, so the only valid scalar share is
-approximately `1.0`. Posy2 normalises small rounding differences after
-checking the sum. These two rows are needed by every annualised builder unless
-they are overridden.
+A single number means the whole cost falls in one year, so that number must be
+about `1.0`. Shares that sum only approximately to one are renormalised after
+the check. Annualised builders need both profiles unless you pass them as
+keywords.
 
 ## Technology Workbook
 
@@ -163,21 +170,16 @@ Posy2 uses four technology sheets:
 | `storage` | Reservoirs, batteries, hydrogen storage, and EV fleets |
 | `electrolysis` | Electrolysers |
 
-Every row listed in the tables below has a same-named builder keyword unless
-the notes say otherwise. In `:excel` mode, a row is read only when that keyword
-is omitted and the stated operating mode uses it. In `:arguments` mode,
-builders instead apply their documented defaults or report that an active,
-conditionally required value is missing.
+Unless a note says otherwise, each listed row name is also the builder keyword
+of the same name.
 
 ### Dispatchable Sheet
 
-The common dispatchable rows are:
-
-- `overnight_cost`, `lifetime`, `construction_profile`, and
-  `decommissioning_profile`;
-- `connection_cost`, `om_fixed_cost`, `om_var_cost`, and
-  `decommissioning`;
-- `co2_emission` and `unit_size`.
+Both [`makedispatchable`](@ref) and [`makenuclear`](@ref) always read these
+rows when the matching keyword is `nothing`:
+`overnight_cost`, `lifetime`, `construction_profile`,
+`decommissioning_profile`, `connection_cost`, `om_fixed_cost`,
+`om_var_cost`, `decommissioning`, `co2_emission`, and `unit_size`.
 
 | Builder | Base Rows | Conditional Groups |
 |:--------|:----------|:-------------------|
@@ -222,11 +224,12 @@ Intermittent-source rows are `overnight_cost`, `lifetime`,
 `om_fixed_cost`, `om_var_cost`, `fuel_cost`, `decommissioning`, and
 `co2_emission`.
 
-Run-of-river rows are `overnight_cost`, `lifetime`, both profiles,
-`om_fixed_cost`, `om_var_cost`, and `decommissioning`.
+Run-of-river rows are `overnight_cost`, `lifetime`, `construction_profile`,
+`decommissioning_profile`, `om_fixed_cost`, `om_var_cost`, and
+`decommissioning`.
 
-`makehydroror` defaults to technology column `Hydro ror`, but its `techkey`
-keyword can select another column.
+`makehydroror` defaults to `techkey="Hydro ror"`. Pass another `techkey` to
+read a different column on the `intermittent` sheet.
 
 ### Storage Sheet
 
@@ -237,12 +240,14 @@ keyword can select another column.
 | [`makehydrogenstorage`](@ref) | Hydrogen-storage rows |
 | [`makeEV`](@ref), smart or V2G | EV-fleet rows |
 
-Reservoir rows are `roundtrip_eff`, `overnight_cost`, `lifetime`, both
-profiles, `om_fixed_cost`, `om_var_cost`, and `decommissioning`.
+Reservoir rows are `roundtrip_eff`, `overnight_cost`, `lifetime`,
+`construction_profile`, `decommissioning_profile`, `om_fixed_cost`,
+`om_var_cost`, and `decommissioning`.
 
 Battery rows add `duration` and `connection_cost` to the reservoir rows.
-Hydrogen-storage rows are `roundtrip_eff`, `overnight_cost`, `lifetime`, both
-profiles, `om_fixed_cost`, and `decommissioning`.
+Hydrogen-storage rows are `roundtrip_eff`, `overnight_cost`, `lifetime`,
+`construction_profile`, `decommissioning_profile`, `om_fixed_cost`, and
+`decommissioning`.
 
 EV-fleet rows are `charging_eff`, `self_discharge`, `min_level_morning`,
 `max_charging_power`, `max_dispatch_power`, `battery_capacity`, and
@@ -261,37 +266,37 @@ keywords. Fixed-profile EV mode reads no technology data.
 |:--------|:--------------|
 | [`makeelectrolyser`](@ref) | Electrolysis rows |
 
-Electrolysis rows are `efficiency`, `overnight_cost`, `lifetime`, both
-profiles, `decommissioning`, `om_fixed_cost`, and `om_var_cost`.
+Electrolysis rows are `efficiency`, `overnight_cost`, `lifetime`,
+`construction_profile`, `decommissioning_profile`, `decommissioning`,
+`om_fixed_cost`, and `om_var_cost`.
 
 The `efficiency` row maps to the keyword `eff`.
 
 ## Parameter Conventions And Validation
 
-With the MW, MWh, and currency convention used by the examples, the workbook
-parameters have the following interpretation:
+Example studies use MW, MWh, and a currency. Under that convention the builders
+scale workbook values as follows:
 
 | Parameter | Builder Treatment |
 |:----------|:------------------|
-| `overnight_cost` | Multiplied by 1,000 before annualisation; conventionally currency/kW |
-| `om_fixed_cost` | Multiplied by 1,000; conventionally currency/kW/year |
-| `om_var_cost`, `fuel_cost`, `waste_cost` | Applied directly per unit of the relevant energy flow |
-| `connection_cost` | Ratio applied to annualised investment cost |
-| `decommissioning` | Total decommissioning cost as a ratio of overnight cost |
-| `lifetime` | Positive, integer-valued operating life |
+| `overnight_cost` | Multiplied by 1000, then annualised (enter currency per kW) |
+| `om_fixed_cost` | Multiplied by 1000 (enter currency per kW per year) |
+| `om_var_cost`, `fuel_cost`, `waste_cost` | Per unit of the priced energy flow |
+| `connection_cost` | Fraction of annualised investment |
+| `decommissioning` | Fraction of overnight cost |
+| `lifetime` | Positive integer years |
 | `efficiency`, `roundtrip_eff`, `charging_eff` | Fraction in `(0, 1]` |
-| `co2_emission` | Divided by 1,000 to create the CO2 flow; with MWh and tonnes, supply kgCO2/MWh |
-| `unit_size` | Zero disables unit sizing; a non-zero value must be positive |
-| `duration` | Positive storage duration used by the Nosy duration behaviour |
+| `co2_emission` | Divided by 1000 (enter kgCO2/MWh if CO2 is in tonnes) |
+| `unit_size` | `0` means no unit size; otherwise must be positive |
+| `duration` | Positive storage duration |
 
-The model remains unit-agnostic only when these built-in factors are included
-in the chosen convention.
+These conversions always apply. If you enter values already in per-MW or
+tCO2 units, or change the study’s power or CO2 units, scale the inputs
+yourself so the applied values stay correct.
 
-Shared validation also requires `0 <= gridlosses < 1`. Demand coefficients and
-annual demand values must be non-negative. EV efficiency, self-discharge,
-morning level, power, battery, and yearly-consumption inputs have the bounds
-documented in the [`makeEV`](@ref) API entry. Costs are checked for numeric
-type but are not generally constrained to be non-negative.
+Shared checks: `0 <= gridlosses < 1`. Demand coefficients and annual demand
+must be non-negative. EV bounds are in [`makeEV`](@ref). Costs must be numeric
+but may be negative.
 
 ## Time-Series Workbook
 
@@ -321,27 +326,26 @@ The principal series semantics are:
 - `hydro_ror_<year>` contains absolute inflow. The builder divides it by the
   required fixed capacity, applies `intake_mult`, and cuts capacity factors
   above one (`cutoff=1`).
-- `reservoir_inflow_<year>` contains natural inflow. `inflow=nothing` uses the
-  raw profile multiplied by `intake_mult`; `inflow=0` disables inflow entirely
-  (no sheet read; an explicit `inflow_profile` is also ignored); and a
-  non-zero numeric `inflow` scales the profile and always applies
-  `intake_mult`. With `renormalize=true`, Posy2 first normalises the profile to
-  sum to one before that scaling, but only when `inflow` is a non-zero number;
-  `renormalize` is ignored when `inflow=nothing`.
+- `reservoir_inflow_<year>` is natural inflow. `inflow=nothing` uses the raw
+  profile times `intake_mult`. `inflow=0` turns inflow off (no sheet read;
+  `inflow_profile` is ignored too). A non-zero `inflow` scales the profile
+  and always applies `intake_mult`. `renormalize=true` first normalises the
+  profile to sum to one, but only for a non-zero numeric `inflow`; it is
+  ignored when `inflow=nothing`.
 - EV charging availability is a capacity multiplier. The driving profile is
   normalised to the requested annual EV consumption and must have a positive
   sum.
-- `transfer_capacities` contains directional availability multipliers. For
-  [`makenodeinterco`](@ref), a finite `atob` reads `a>b` and a finite `btoa`
-  reads `b>a`; an infinite direction reads no column.
+- `transfer_capacities` holds hourly availability multipliers per direction
+  (`From>To`). For [`makenodeinterco`](@ref), a finite `atob` reads column
+  `a>b` and a finite `btoa` reads `b>a`. An `Inf` direction has no capacity
+  limit, so that column is not read.
 - [`makepriceinterco`](@ref) uses both directional transfer series and the
   foreign-zone spot price. Each can be supplied explicitly or read from its
-  workbook fallback. Spot prices and node-interconnection availability
-  multipliers are rounded to two decimal places. price-interconnection
-  transfer series keep the default six-digit rounding unless overridden.
+  workbook fallback.
 
-Posy2 does not impose bounds on capacity-factor or transfer-multiplier columns
-at read time. Validate such data before a production run.
+Posy2 does not require `profiles_<year>` or `transfer_capacities` values to
+lie in a fixed range (such as 0–1) when they are read. Validate such data
+before a production run.
 
 ## Full-year Hourly Assumption
 
@@ -366,10 +370,13 @@ across Posy2.
     generated. The smaller files in `test/data` remain contract fixtures for
     automated tests.
 
-## Direct Reader API
+## Inspecting Workbook Values
 
-Builders normally use snapshot-based lookups. Direct readers are useful for
-validation and diagnostics:
+Use the direct readers when you need to check what a workbook actually
+contains—for example after an unexpected cost or a missing time-series column.
+Both calls return the same workbook values.
+
+When no snapshot is available, open the file and query the handle:
 
 ```julia
 techbook = readtechdata("tech_data.xlsx"; data_dir=options.data_dir)
@@ -382,10 +389,14 @@ seriesbook = readtimeseries(
 gettimeseries(seriesbook, "country1", "demand", 6)
 ```
 
-The final positional argument is the number of rounding digits. Snapshot
-overloads default to six digits and expose it as a keyword:
+While building a study, pass the snapshot so Posy2 opens the configured
+workbooks for you:
 
 ```julia
 gettechparam(snapshot, "CCGT", "fuel_cost", "dispatchable"; digits=6)
 gettimeseries(snapshot, "country1", "demand"; digits=6)
 ```
+
+These snapshot calls require `tech_mode=:excel` and
+`timeseries_mode=:excel` respectively. In `:arguments` mode, open the
+workbook handle instead.

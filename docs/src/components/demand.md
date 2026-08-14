@@ -58,6 +58,18 @@ This mode requires `offhours1`, `offhours2`, and `minratio`, but performs no
 workbook lookup. It can add the same proportional `grid losses` port as
 [`makedemand`](@ref).
 
+```julia
+makeEV(
+    "EV", 50_000.0, electricity, snapshot;
+    fixed_profile=true,
+    smart_charging=false,
+    vehicle_to_grid=false,
+    offhours1=0:5,
+    offhours2=0:5,
+    minratio=0.2,
+)
+```
+
 ### Smart Charging And Vehicle To Grid
 
 The flexible modes represent the connected vehicle fleet as storage. Both use

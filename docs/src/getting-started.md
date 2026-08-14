@@ -7,8 +7,7 @@ Nosy snapshot, and extracts its solution.
 
 ## Requirements
 
-Posy2 currently requires Nosy's `Posy2_refactoring` branch, which is planned
-for Nosy v0.3, and an LP or MILP solver compatible with
+Posy2 requires Nosy v0.3.0 and an LP or MILP solver compatible with
 [JuMP](https://jump.dev/JuMP.jl/stable/). The examples in this documentation
 use [HiGHS](https://highs.dev/) because it is open source and supports the
 linear examples used here. Other

@@ -38,7 +38,7 @@ timeseries_mode(snapshot)
 
 ## Input Modes
 
-Technology parameters and hourly series have independent input switches:
+Technology parameters and hourly series have independent input switches.
 
 | Option | `:arguments` (default) | `:excel` |
 |:-------|:-----------------------|:---------|
@@ -68,10 +68,17 @@ options = Posy2Options(
 )
 snapshot = Snapshot(s, Dict(:posy => options))
 
+# With electricity / co2 nodes already on the snapshot:
 makeintermittentsource(
     "Solar", "Solar PV", electricity, co2, snapshot;
     cap=100.0,
-    profile=solar_capacity_factor,
+    profile=repeat(
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+         0.125, 0.25, 0.5, 0.75, 1.0, 1.0,
+         1.0, 1.0, 0.75, 0.5, 0.25, 0.125,
+         0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        365,
+    ),
 )
 ```
 
@@ -88,8 +95,7 @@ options = Posy2Options(
 ## Workbook Paths
 
 `data_dir` is the directory containing the input files. `techdata_file` and
-`timeseries_file` are filenames relative to that directory. Posy2 joins these
-values only when a workbook-backed parameter or time series is requested.
+`timeseries_file` are filenames relative to that directory. 
 
 ```julia
 options = Posy2Options(
@@ -101,23 +107,16 @@ options = Posy2Options(
 )
 ```
 
-In `:excel` mode, technology parameters are loaded when a builder keyword is
-`nothing`. Supplying a numeric or string keyword overrides that workbook value.
-This makes it possible to keep a common workbook and vary a small number of
-assumptions between scenarios.
-
-Profile-backed builders expose direct series keywords as well. A profile can
-be an hourly vector matching the simulation mesh, or a scalar that Posy2
-expands across the whole mesh. 
-
-See [Input Workbooks](input-data.md) for the workbook layout and exact lookup
-keys.
+In `:excel` mode, a builder keyword left as `nothing` is read from the
+workbook. An explicit value replaces that lookup. Explicit profiles may be a
+scalar that expands to every hour, or an hourly vector. 
+See [Input Workbooks](input-data.md) for the full rules and sheet layout.
 
 ## Economic Assumptions
 
 `discountrate` is used when builders annualise overnight investment and
 decommissioning costs. [`eac`](@ref) combines the overnight cost, construction
-profile, asset lifetime, and discount rate into an equivalent annual cost.
+profile, lifetime, and discount rate into an equivalent annual cost.
 Construction profiles can be provided as one numeric value or as a
 semicolon-separated sequence whose entries sum approximately to one.
 
@@ -166,10 +165,7 @@ eac(4_000_000.0, discountrate(snapshot), 60, "0.3;0.4;0.3")
 ```
 
 The technology builders apply the resulting annual cost through Nosy fixed-cost
-behaviours. They use separate cost tags for investment, connection, fixed
-operation and maintenance, decommissioning, variable operation and
-maintenance, fuel, CO2, startup, no-load operation, and other
-technology-specific terms.
+behaviours.
 
 `co2_price` is the default carbon price passed to emitting generation
 builders. When `co2_emission` is non-zero, the builder creates a linked CO2
@@ -187,7 +183,8 @@ For a DC power flow study:
 1. Set `dcopf=true` in `Posy2Options`.
 2. Build electricity nodes with the `:electricity` tag.
 3. Build AC node interconnections with [`makenodeinterco`](@ref),
-   `dc=false`, and a negative `susceptance`.
+   `dc=false`, and a negative series `susceptance` (``B\approx-1/X`` for
+   inductive lines).
 4. Build any controllable DC links with `dc=true`.
 5. Call `applydcopf!(snapshot)` once, after all interconnections have been
    added and before optimisation.
@@ -219,6 +216,6 @@ and does not obey the AC cycle equations.
 The susceptance registry is stored in `snapshot.options[:ic_susceptance]`.
 This entry is managed by [`makenodeinterco`](@ref).
 
-When `dcopf=false`, `applydcopf!` returns without changing the model. Calling it
-in every study therefore provides one consistent build sequence for both
-transport and DC power flow formulations.
+When `dcopf=false`, `applydcopf!` leaves the model unchanged. Call it after the
+network is built in every study. Only the `dcopf` flag then chooses between
+transport and DC power flow.

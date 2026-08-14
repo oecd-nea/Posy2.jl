@@ -44,8 +44,7 @@ includes it in the blocks below. A component may carry several values at once
 | `"AC"` / `"DC"` | On node interconnections: AC links enter the DC-OPF cycle basis; DC links are excluded from that basis. |
 | `"foreign"` | On interconnections (and related filters): marks a link that crosses the self-system boundary used by the self annual sheet and [`selfcost`](@ref). |
 | `"hydrogen"` | Marks hydrogen-side components (demand, purchase, electrolysis, H2 storage) for hydrogen-oriented filters. |
-| `"purchase"` | Flat hydrogen purchase components. |
-| `"dispatchable"` / `"intermittent"` / `"carbonfree"` / `"virtual"` | Descriptive roles used by builders and filters; they are not separate annual sheet families by themselves. |
+| `"dispatchable"` / `"intermittent"` / `"carbonfree"` / `"virtual"` / `"purchase"` | Descriptive roles used by builders and filters; they are not separate annual sheet families by themselves. |
 | `"curtailment"` | On nodes that are not `rule=:curtailed`, output from components with this tag is summed into the curtailment indicator. Shipped builders do not set it; usual studies rely on `:curtailed` nodes instead. |
 
 Concrete examples:

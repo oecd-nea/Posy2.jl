@@ -29,9 +29,9 @@ Before writing Julia, answer these questions. They decide the archetype,
 behaviours, and whether an existing builder already covers the role.
 
 - Does it supply, consume, store, or convert carriers?
-- If it consumes: is the load a fixed series, a capacity×profile shape, or flexible?
-- If it stores: is a full charge/discharge/level machine enough, or do extra
-  flows (inflow, driving, losses) need a lazier storage formulation?
+- If it consumes: is the load a fixed series, a capacity*profile shape, or flexible?
+- If it stores: is charge / discharge / level enough, or are extra flows
+  needed (inflow, driving, losses)?
 - How many inputs and outputs are there, and on which carriers / nodes?
 - Is capacity defined on the input, the output, or a storage level?
 - Is a state (`level`) required?
@@ -46,8 +46,8 @@ starting point.
 ## Choose The Physical Model
 
 Ask what the technology is in Nosy terms, then check that the node carriers
-and port names match that choice. Nosy groups physical models into four
-families:
+and port names match that choice. Nosy physical models fall into four
+groups:
 
 - Source — supplies a carrier through `output`.
 - Sink — consumes a carrier through `input` (the demand / load side).
@@ -57,23 +57,22 @@ families:
 
 ### Nosy archetypes
 
-| Family | Archetype | Typical use |
-|:-------|:----------|:------------|
+| Group | Archetype | Typical use |
+|:------|:----------|:------------|
 | Source | `DispatchableSource` | Flexible supply (thermal plant, ...) |
-| Source | `ProfileSource` | Capacity × availability profile (PV, wind, flat purchase, ...) |
+| Source | `ProfileSource` | Capacity * availability profile (PV, wind, flat purchase, ...) |
 | Sink | `Demand` | Fixed consumption series (usual electricity / H2 load) |
-| Sink | `ProfileSink` | Capacity × consumption profile (mandatory capacity on `input`) |
+| Sink | `ProfileSink` | Capacity * consumption profile (mandatory capacity on `input`) |
 | Sink | `BasicSink` | Flexible consumption; mirrors `DispatchableSource` |
 | Storage | `BasicStorage` | Charge / discharge / level on one machine (battery, H2 store, ...) |
 | Storage | `LazyStorage` | Level plus joint flows for extra ports (hydro inflow, EV driving, ...) |
 | Converter | `BasicConverter` | One-to-one conversion (electrolyser, node interconnection, ...) |
 
 Posy2 builders already wrap most of these. `Demand`, `DispatchableSource`,
-`ProfileSource`, `BasicStorage`, `LazyStorage`, and `BasicConverter` appear in
-shipped `make...` functions. `ProfileSink` and `BasicSink` are still valid Nosy
-choices for a custom builder when a fixed `Demand` series is not enough—for
-example a capacity-shaped load (`ProfileSink`) or fully flexible consumption
-(`BasicSink`).
+`ProfileSource`, `BasicSink`, `BasicStorage`, `LazyStorage`, and
+`BasicConverter` appear in shipped `make...` functions. `ProfileSink` is still
+a valid Nosy choice for a custom builder when a fixed `Demand` series is not
+enough—for example a capacity-shaped load.
 
 Port naming follows [Component Builders](../components.md): sources use
 `output`; sinks and converters use `input`; storage normally uses `input` /
@@ -81,8 +80,8 @@ Port naming follows [Component Builders](../components.md): sources use
 linked carrier flows use names such as `fuel`, `co2`, and `grid losses`.
 
 Some Posy2 builders compose archetypes with joint flows. Demand response uses
-a zero `Demand` host plus a linked negative input; interconnections are their
-own family ([`makenodeinterco`](@ref) uses `BasicConverter`,
+a zero `Demand` host plus a linked negative input; interconnections reuse
+these archetypes ([`makenodeinterco`](@ref) uses `BasicConverter`,
 [`makepriceinterco`](@ref) uses `DispatchableSource`).
 
 | Builder | Archetype | Capacity port(s) | Typical costs on | Typical `:function` |
@@ -118,8 +117,9 @@ DispatchableSource              # can produce on output
 ```
 
 Posy2 builders mostly draw from the behaviours below. For anything beyond this
-set, see the Nosy documentation. Posy2 `cap` / `nothing` conventions and input
-units are in [Component Builders](../components.md).
+set, see the Nosy documentation. Posy2 `cap` / `nothing` conventions are in
+[Component Builders](../components.md); input units and workbook lookups are in
+[Input Workbooks](input-data.md).
 
 ### Capacity
 
@@ -177,11 +177,12 @@ usually added this way before capacity or cost goes on those ports.
 
 ## Builder Template
 
-The five steps from [Design Flow](#Design-Flow), filled in for a simple
-load-shifting example. It reuses the battery `BasicStorage` machine and
-prices the shifting flow (opex) instead of capacity (capex). That approximates
-load shifting via net load; a fixed `Demand` series itself does not move.
-Swap the archetype, behaviours, and tags for other technologies.
+The example below fills in the [Design Flow](#Design-Flow) for a simple
+load-shifting case. The wrapper step is split into naming, tags, and
+`connect!`. It reuses the battery `BasicStorage` machine and prices the
+shifting flow (opex) instead of capacity (capex). That approximates load
+shifting via net load; a fixed `Demand` series itself does not move. Swap the
+archetype, behaviours, and tags for other technologies.
 
 ```julia
 function makeloadshifting(cname::String, elec::Node, s::Snapshot;

@@ -30,7 +30,7 @@ snapshot = Snapshot(
 The default `TimeMesh()` is a circular year with 8760 hourly steps. The current
 Posy2 data and post-processing conventions assume this yearly hourly horizon.
 Nosy supports more general meshes, but several Posy2 builders contain
-year-specific logic and should not yet be treated as mesh-agnostic.
+year-specific logic, so shorter or irregular meshes are not fully supported yet.
 
 ## Carriers And Nodes
 
@@ -43,27 +43,15 @@ hydrogen = MassCarrier("hydrogen", s; energy=33.33)
 heat = EnergyCarrier("heat", s)
 carbon = CO2Carrier("CO2", s)
 
-electricity = Node(
-    "zone",
-    power;
-    rule=:curtailed,
-    evalprice=true,
-    losses=0.0,
-    tags=[:electricity],
-)
+electricity = Node("zone", power; rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
 hydrogen_node = Node("hydrogen", hydrogen; tags=[:hydrogen])
 heat_node = Node("heat", heat; tags=[:heat])
-co2_node = Node(
-    "CO2",
-    carbon;
-    rule=:curtailed,
-    tags=[:co2],
-)
+co2_node = Node("CO2", carbon; rule=:curtailed, tags=[:co2])
 ```
 
-The `:electricity` tag is used by Posy2 post-processing and the optional
-DC power flow graph. Tag external neighbour nodes with `:foreign`; leave nodes
-inside the system boundary without that tag. This distinction is also used by
+The `:electricity` tag marks nodes for electricity reporting and for the
+optional DC power-flow graph. Tag a node `:foreign` when it should be left
+out of self-system views such as the self annual sheet and
 [`selfcost`](@ref).
 
 `evalprice=true` tells Nosy to store the node's electricity marginal price
@@ -79,8 +67,8 @@ the commodity and whether free curtailment is meaningful.
 
 Each Posy2 builder assembles one Nosy model archetype with the required
 behaviours and joint flows, creates a component, tags it, connects it to the
-supplied nodes, and returns it. The returned object can be inspected or
-extended with Nosy before the snapshot is finalised.
+nodes, and returns it. The returned object can be inspected or extended with 
+Nosy before the snapshot is finalised.
 
 ### Demand And Flexibility
 
@@ -91,8 +79,8 @@ extended with Nosy before the snapshot is finalised.
   8760 hours.
 - [`makeflexhydrogendemand`](@ref) creates a flexible sink whose yearly intake
   is fixed but whose hourly schedule is optimised.
-- [`makeEV`](@ref) supports one of three mutually exclusive modes: fixed
-  charging, smart charging, or vehicle-to-grid operation.
+- [`makeEV`](@ref) builds an EV fleet in exactly one mode: fixed profile,
+  smart charging, or vehicle-to-grid.
 - [`makedemandresponse`](@ref) represents demand response as dispatchable
   negative consumption with an activation cost.
 
@@ -124,22 +112,22 @@ An intermittent source always reads its profile from the selected
 series and requires a positive numeric capacity because the profile is
 normalised by that capacity.
 
-Dispatchable and nuclear sources can represent fuel in two ways. With
-`fuelnode=nothing`, fuel is a variable cost on electricity output. With a fuel
-node, the builder creates a linked input flow using the supplied or
-workbook-backed efficiency. The latter formulation allows fuel supply to be
-modelled and constrained elsewhere in the same snapshot.
+Dispatchable and nuclear plants can treat fuel in two ways. With
+`fuelnode=nothing`, there is no separate fuel system: generation only adds a
+`fuel_cost` on electricity output. With a fuel node, generation draws a linked
+fuel input through `efficiency`, so fuel supply, storage, or other fuel uses
+can be modelled elsewhere in the same snapshot.
 
-Unit commitment is enabled with `uc=true`. A non-zero `unit_size` defines the
-fleet unit scale, while `integeruc=true` turns commitment decisions into
-integer variables. Nuclear reload constraints are only active together with
-unit commitment and require consistent reload duration, frequency, and mask
+Unit commitment is enabled with `uc=true`. A  positive `unit_size` sets the
+fleet unit scale (`0` means no unit-size constraint). `integeruc=true` makes
+commitment decisions integer. Nuclear reload constraints are only active together 
+with unit commitment and require consistent reload duration, frequency, and mask
 inputs.
 
 ### Storage And Conversion
 
-- [`makebatterystorage`](@ref) builds battery storage with charging-power capacity,
-  a duration relation, round-trip efficiency, and optional grid losses.
+- [`makebatterystorage`](@ref) builds battery storage with charging-power capacity 
+  and duration, with round-trip efficiency, and optional grid losses.
 - [`makehydroreservoir`](@ref) represents reservoir inflow, pumping,
   generation, and an optional reservoir level capacity; `cap_reservoir=nothing`
   leaves the stored-energy level unlimited.
@@ -154,7 +142,7 @@ Nosy's simplified storage formulation.
 
 `gridlosses` on demand, batteries, electrolysers, EVs, and reservoir charging
 creates an explicit linked loss flow. It is separate from the conversion or
-storage efficiency and should not be counted a second time in reporting.
+storage efficiency.
 
 ## Capacity Choices
 
@@ -176,18 +164,20 @@ the individual API entry when writing shared study code.
 
 ### Inheriting capacity with `ini`
 
-Matching uses Posy2's generated component names. Build the new scenario with
-the same component prefix (`cname`) and node name as in the initial snapshot.
-Prefer an extracted result for `ini` over an unsolved snapshot, so the
-inherited capacity values are already numeric.
+Pass a previous snapshot as `ini` to fix a new component's capacity to the
+value already chosen there—for example to keep an optimised PV fleet while
+changing something else in a follow-on study. Posy2 looks up
+`cname * " " * node_name` in `ini`, so use the same component prefix and node
+name as before. Prefer an extracted result so the inherited capacity is
+numeric.
 
 ## Costs And Annualisation
 
-Technology builders convert overnight cost into an annual fixed investment
-term with [`eac`](@ref). They also add the applicable connection, fixed O&M,
-decommissioning, variable O&M, fuel, waste, CO2, no-load, and startup terms.
-These are ordinary tagged Nosy costs and can be selected individually in an
-objective or report.
+Technology builders turn overnight CAPEX into an annual investment term with
+[`eac`](@ref). A connection charge may be added as a fraction of that term.
+Builders also attach fixed O&M, decommissioning, variable O&M, fuel, waste,
+CO2, no-load, and startup costs when they apply. These are ordinary tagged
+Nosy costs and can be selected individually in an objective or report.
 
 ```julia
 cost(snapshot)
@@ -221,7 +211,7 @@ Builders normally add:
 - `:function` tags such as `"generation"`, `"demand"`, `"storage"`,
   `"interconnection"`, `"hydrogen"`, or a more specific technology role.
 
-The tags support reporting without parsing component names:
+The tags support reporting:
 
 ```julia
 getcomponents(snapshot; with=[:function => "generation"])
@@ -245,9 +235,7 @@ neighbour itself is outside the model.
 [`makenodeinterco`](@ref) connects two explicit Nosy nodes with directional
 flows. It can apply directional capacities, time-varying transfer-capacity
 multipliers, losses, transaction costs, and an optional SOS1 one direction at a time
-relation. The current node-interconnection implementation of that relation
-can suppress all transfer; leave `dir=false` until the limitation described in
-[Interconnections](../components/interconnections.md) is corrected.
+relation on the sending ports `input` and `input2`.
 
 Set `foreign=true` when a node interconnection crosses the boundary used for
 self-system reporting. Set `dc=true` for a controllable DC link. An AC link

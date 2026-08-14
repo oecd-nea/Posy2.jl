@@ -21,7 +21,7 @@ This page keeps the same plants and demand and changes only the network:
 2. DC OPF on the same AC mesh (`dcopf=true` and [`applydcopf!`](@ref));
 3. DC OPF again, but with the diagonal built as controllable HVDC (`dc=true`).
 
-After each solve, [`printsnapshot`](@ref) writes the standard Posy2 Excel
+After each solve, [`printsnapshot`](@ref) writes the standard Posy2 workbook
 report under `results/`—one workbook per scenario. In `Annual values (all)`,
 the Interconnection volume tables (total, AC, and DC) summarise annual
 corridor exchanges and make scenario comparison straightforward.
@@ -108,9 +108,10 @@ this solve.
 
 ## DC OPF (with KVL)
 
-Same AC network, but `dcopf=true`. Set a negative susceptance on every AC
-line, then call [`applydcopf!`](@ref) before optimisation. The flag alone
-does not add KVL constraints.
+Same AC network, but `dcopf=true`. Set a negative series susceptance
+(``B\approx-1/X`` for inductive lines) on every AC line, then call
+[`applydcopf!`](@ref) before optimisation. The flag alone does not add KVL
+constraints.
 
 ```jldoctest dc_opf; output = false
 using Posy2

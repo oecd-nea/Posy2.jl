@@ -60,8 +60,9 @@ Nodal carrier balances and interconnection capacity bounds are already
 enforced by the underlying Nosy model; [`applydcopf!`](@ref) only adds the
 Kirchhoff voltage law (KVL) constraints that restrict AC flows.
 
-Set each AC link’s susceptance in [`makenodeinterco`](@ref); use
-one equivalent susceptance if parallel AC circuits were aggregated beforehand.
+Set each AC link’s series susceptance in [`makenodeinterco`](@ref)
+(negative for inductive lines, ``B\approx-1/X``). Use one equivalent
+susceptance if parallel AC circuits were aggregated beforehand.
 Controllable DC links (`dc=true`) are excluded from the cycle basis.
 
 For each independent AC cycle ``C`` and each time step ``t``, and for a
@@ -84,12 +85,18 @@ f_{ij,t} =
 ```
 
 This reduces to forward minus reverse transfer when `lossfactor=0`.
-``B_{ij}`` is the (negative) susceptance of that AC link. The cycle constraint is
+``B_{ij}`` is the series susceptance of that AC link. For the inductive lines
+used here, ``B_{ij}\approx-1/X_{ij}<0``. With the usual lossless DC flow
+``f_{ij}=(1/X_{ij})(\theta_i-\theta_j)``, that sign choice makes the angle drop
+``\theta_i-\theta_j=-f_{ij}/B_{ij}``, so the cycle constraint
 
 ```math
 \sum_{(i,j) \in C} \frac{f_{ij,t}}{B_{ij}} = 0
 \qquad \forall\, C,\, t.
 ```
+
+is Kirchhoff's voltage law on those angles. Posy2 therefore requires a strictly
+negative `susceptance` on every AC link that enters the cycle basis.
 
 The call is a no-op when `dcopf=false`. Call it once for a given snapshot; it
 is a model-construction step, not part of the solver call.
@@ -110,9 +117,7 @@ although it is a different mathematical model from integer commitment.
 
 The selected optimiser must support every constraint set used by the study.
 In particular, check solver support before enabling SOS1 interconnection
-direction constraints. The current node-interconnection implementation of
-`dir=true` can suppress all transfer; see
-[Interconnections](../components/interconnections.md).
+direction constraints (`dir=true` on price or node interconnections).
 
 ## Extracting Results
 

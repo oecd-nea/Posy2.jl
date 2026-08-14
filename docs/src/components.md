@@ -3,8 +3,9 @@
 Posy2 component builders assemble common energy-system technologies from Nosy
 archetypes, behaviours, and joint flows. A builder creates a component, adds it
 to a snapshot, connects its compatible ports, attaches reporting metadata, and
-returns the component. This gives studies a consistent vocabulary without
-preventing direct use of Nosy when a custom formulation is needed.
+returns the component. The result is a consistent vocabulary across studies. 
+Builders are a convenience layer on Nosy, not a closed API: 
+if a study needs a custom formulation, build it with Nosy directly.
 
 The builders are grouped by modelling role:
 
@@ -41,44 +42,20 @@ Except for interconnections, a builder normally names its component by joining
 Names must be unique within a snapshot. Interconnection names are described on
 the [Interconnections](components/interconnections.md) page.
 
-## Workbook Defaults And Keyword Overrides
+## Keyword Overrides
 
-An optional technical or economic keyword set to `nothing` is normally read
-from the technology column selected by `techkey`. Passing a value overrides that
-one workbook cell. This makes it possible to share a central assumption set and
-change only the values that define a sensitivity.
-
-Supplying every technology parameter explicitly avoids technology-workbook
-lookups for many builders. Profile-based builders still need their time-series
-columns. [`makedemand`](@ref) skips its profile lookup when `coeff=0`, and an
-unlimited direction of [`makenodeinterco`](@ref) skips the corresponding
-transfer-capacity lookup. See [Input Workbooks](concepts/input-data.md) for the
-complete sheet, row, and column conventions.
-
-Posy2 treats the following inputs consistently across the costed builders:
-
-- `overnight_cost` and `om_fixed_cost` are multiplied by 1,000 before they are
-  attached to a capacity. With the usual MW convention, their input units are
-  USD/kW and USD/kW/year.
-- `om_var_cost`, `fuel_cost`, and similar flow costs are normally in USD/MWh.
-- `construction_profile` and `decommissioning_profile` are either `1.0` for a
-  one-year profile or semicolon-separated non-negative shares such as
-  `"0.3;0.4;0.3"`. The shares must sum approximately to one.
-- `connection_cost` and `decommissioning` are ratios. The former is applied to
-  annualised investment; the latter determines total decommissioning cost as a
-  fraction of overnight cost.
-- `co2_emission` is divided by 1,000 to form the linked CO2 flow, while the CO2
-  flow is priced with `co2price`.
-
-Posy2 remains unit-agnostic in the same sense as Nosy: a study may use another
-consistent unit system, but the conversions above are part of the builders and
-must be accounted for.
+When `tech_mode=:excel`, a technology keyword left as `nothing` is read from
+the `techkey` column. When `timeseries_mode=:excel`, a series keyword left as
+`nothing` is read from the time-series workbook. An explicit value replaces
+that lookup for this call only; it does not edit the workbook. Sheet layout
+and unit conversions are in [Input Workbooks](concepts/input-data.md).
 
 ## Capacity Semantics
 
 For builders with a `cap`, `capin`, or similar capacity keyword, a number
-usually creates a fixed capacity and `nothing` creates a capacity decision.
-`mincap` and `maxcap` apply only to that decision. Important exceptions are
+usually creates a fixed capacity and `nothing` makes capacity a decision
+variable. `mincap` and `maxcap` bound that variable when capacity is
+optimised; they are unused when capacity is fixed. Important exceptions are
 documented with each builder:
 
 - `makedispatchable(...; cap=0)` omits the component and returns `nothing`.
@@ -111,10 +88,10 @@ The main Nosy ports follow a consistent naming scheme:
 - a bidirectional node interconnection uses `input` for the first-to-second
   direction and `input2` for the reverse direction.
 
-Capacity and cost behaviours are attached to the port named on each component
-page. This matters when querying a solved snapshot: a battery's investment is
-attached to `input`, while a dispatchable plant's investment is attached to
-`output`.
+Capacity and cost behaviours are attached to a specific port, not to the
+component as a whole. When you query a solved snapshot, use the port named on
+that builder's page. For example, a dispatchable plant's investment sits on
+`output`, while a battery's investment sits on `input`.
 
 ## Tags And Reporting
 
