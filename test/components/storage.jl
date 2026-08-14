@@ -76,6 +76,26 @@ using HiGHS
         @test Nosy.getcomponent(s, "Hydro reservoir ZONE1") === c
     end
 
+    # Optimized pumping capacity creates its input flow before attaching the
+    # variable capacity and optional grid-loss behaviors.
+    for gridlosses in (0.0, 0.05)
+        s, elec, _ = makesnapshot()
+        c = makehydroreservoir(
+            "Variable pumping reservoir", "Battery", "ZONE1", elec,
+            100.0, nothing, 500.0, 0.0, s;
+            gridlosses=gridlosses, eff=0.9,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
+            decommissioning=0.0,
+        )
+        @test Nosy.hasport(c, "input")
+        input_capacities = filter(
+            b -> b.data.pname == "input",
+            Nosy.getbehaviors(c, Nosy.VariableCapacityBehavior),
+        )
+        @test length(input_capacities) == 1
+        @test Nosy.hasport(c, "grid losses") == !iszero(gridlosses)
+    end
+
     # A missing reservoir level capacity explicitly means unlimited storage.
     let
         s, elec, _ = makesnapshot()

@@ -170,6 +170,7 @@ function makehydroreservoir(cname::String, techkey::String, zone::String, elec::
             !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _gridlosses))
         end
     elseif isnothing(cap_charging)
+        push!(vb, FreeJointFlow("input", elec.carrier, :input))
         push!(vb, VariableCapacity("input", energy))
         !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _gridlosses))
     else
