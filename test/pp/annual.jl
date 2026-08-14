@@ -45,6 +45,22 @@ using DataFrames
         return snap, elec1, elec2, elec3, co2
     end
 
+    function argument_snapshot(; hours=nothing)
+        mesh = isnothing(hours) ? TimeMesh() : TimeMesh(fill(1 // 1, hours))
+        sim = Sim(Model(HiGHS.Optimizer); mesh=mesh)
+        set_silent(sim.model)
+        snap = Snapshot(sim, Dict(:posy => Posy2Options(
+            tech_mode=:arguments,
+            timeseries_mode=:arguments,
+        )))
+        elec = Node(
+            "grid", EnergyCarrier("electricity grid", sim);
+            rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity],
+        )
+        co2 = Node("CO2", CO2Carrier("CO2", sim); rule=:curtailed, tags=[:co2])
+        return snap, elec, co2
+    end
+
     # Aggregated costs: Trade is interconnection columns and Physical is the rest. Total matches selfcost.
     let
         snap, elec1, _, _ = makesnapshot()
@@ -408,6 +424,89 @@ using DataFrames
         @test isapprox(row["Other consumption"], expected; rtol=1e-12)
         prod_row = first(prod_line.d[prod_line.d.zone .== "ZONE2", :])
         @test isapprox(prod_row["CCGT"], Posy2.production(s, "ZONE2"; collapse=true) / 1e6; rtol=1e-12)
+    end
+
+    # Candidate A: fixed EV final consumption is delivered driving energy only;
+    # its linked grid-loss flow is reported separately and still balances supply.
+    let
+        snap, elec, co2 = argument_snapshot()
+        makeEV(
+            "EV fixed", 1_000.0, elec, snap;
+            fixed_profile=true, smart_charging=false, vehicle_to_grid=false,
+            offhours1=collect(0:6), offhours2=collect(0:6), minratio=0.2,
+            gridlosses=0.1,
+        )
+        makedispatchable("Supply", "unused", elec, co2, snap; cap=1.0, fuel_cost=1.0)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        line = Posy2._dataline_yearly_demand(s; showforeign=true)
+        row = first(line.d[line.d.zone .== "grid", :])
+        @test "EV fixed" in names(line.d)
+        @test !("EV fixed_1" in names(line.d))
+        @test isapprox(row["EV fixed"], 1_000.0 / 1e6; rtol=1e-12)
+        @test isapprox(row.Total, 1_000.0 / 1e6; rtol=1e-12)
+
+        evname = "EV fixed grid"
+        @test isapprox(Posy2.losses(s, evname), 100.0; rtol=1e-12)
+        @test isapprox(Posy2.charging(s, "grid"), 0.0; atol=1e-9)
+        @test isapprox(Posy2.storageloss(s, "grid"), 0.0; atol=1e-9)
+        @test isapprox(
+            Posy2.production(s, "grid"),
+            Posy2.demand(s, "grid"; aggregate=true, collapse=true) + Posy2.losses(s, evname);
+            rtol=1e-12,
+        )
+    end
+
+    # Smart and V2G EV input conversion losses belong to net charging, not
+    # final consumption. The public loss helper must include EV-only tags.
+    let
+        snap, elec, co2 = argument_snapshot(hours=24)
+        common = (
+            fixed_profile=false,
+            charging_availability=1.0,
+            driving_profile=1.0,
+            charging_eff=0.8,
+            self_discharge=0.0,
+            min_level_morning=0.0,
+            max_charging_power_per_ev=2.0,
+            battery_capacity_per_ev=10.0,
+            yearly_consumption_per_ev=24.0,
+        )
+        makeEV(
+            "EV smart", 240.0, elec, snap;
+            smart_charging=true, vehicle_to_grid=false, common...,
+        )
+        makeEV(
+            "EV V2G", 240.0, elec, snap;
+            smart_charging=false, vehicle_to_grid=true,
+            max_dispatch_power_per_ev=2.0, compensation=100.0, common...,
+        )
+        makedispatchable("Supply", "unused", elec, co2, snap; cap=50.0, fuel_cost=1.0)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        line = Posy2._dataline_yearly_demand(s; showforeign=true)
+        row = first(line.d[line.d.zone .== "grid", :])
+        @test "EV smart" in names(line.d)
+        @test "EV V2G" in names(line.d)
+        @test !("EV smart_1" in names(line.d))
+        @test !("EV V2G_1" in names(line.d))
+        @test isapprox(row["EV smart"], 240.0 / 1e6; rtol=1e-12)
+        @test isapprox(row["EV V2G"], 240.0 / 1e6; rtol=1e-12)
+        @test isapprox(row.Total, 480.0 / 1e6; rtol=1e-12)
+
+        final_consumption = Posy2.demand(s, "grid"; aggregate=true, collapse=true)
+        net_charging = Posy2.charging(s, "grid"; collapse=true)
+        charging_loss = Posy2.storageloss(s, "grid"; collapse=true)
+        @test isapprox(final_consumption, 480.0; rtol=1e-12)
+        @test isapprox(net_charging, 120.0; rtol=1e-12)
+        @test isapprox(charging_loss, 120.0; rtol=1e-12)
+        @test isapprox(
+            Posy2.production(s, "grid"; collapse=true),
+            final_consumption + net_charging;
+            rtol=1e-12,
+        )
     end
 
     # Installed capacity datalines report GW/GWe from fixture caps (CCGT, EL, Battery, DR, H2 storage).

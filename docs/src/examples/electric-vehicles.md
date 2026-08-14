@@ -1,5 +1,10 @@
 # Electric Vehicles
 
+!!! warning "Unstable EV API"
+    The EV API is not fixed yet. The modes, keyword arguments, component and
+    port structure, and reporting semantics may change substantially in later
+    Posy2 versions.
+
 This example compares smart charging and vehicle-to-grid on the same fleet
 and driving need: how grid charge, discharge, and oil generation change.
 

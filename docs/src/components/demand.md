@@ -43,6 +43,11 @@ add a cost or capacity behaviour.
 
 ## Electric Vehicles
 
+!!! warning "Unstable EV API"
+    The EV API is not fixed yet. The modes, keyword arguments, component and
+    port structure, and reporting semantics may change substantially in later
+    Posy2 versions.
+
 [`makeEV`](@ref) supports three mutually exclusive modes. Exactly one of
 `fixed_profile`, `smart_charging`, and `vehicle_to_grid` must be true.
 

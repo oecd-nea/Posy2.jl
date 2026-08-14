@@ -69,7 +69,13 @@ Return the time series associated with storage charging losses of `modifier` in 
 If `collapse`, return a value instead.
 """
 function storageloss(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    d = getcomponents(s, nodename, with=[:function => "storage", :function => "ev"])
+    # `with` filters are conjunctive, while storage and EV are separate
+    # component classes. Query them separately so flexible EV charging losses
+    # are not silently omitted.
+    d = merge(
+        getcomponents(s, nodename, with=[:function => "storage"]),
+        getcomponents(s, nodename, with=[:function => "ev"]),
+    )
     if collapse
         local c = 0.
     else
@@ -82,6 +88,10 @@ function storageloss(s::Snapshot, nodename::String; modifier=energy, collapse=tr
                 c += b["input"] * (1. - v.model.data.eff["input"])
             elseif v.model isa Nosy.BasicStorageModel
                 c += b["input"] * (1. - v.model.data.eff_i)
+            elseif hastag(v, :function, "ev")
+                # Fixed-profile EVs are demand models: their optional grid-loss
+                # flow is reported by `losses`, not as a charging conversion loss.
+                continue
             else
                 @warn "Could not identify storage type"
             end
@@ -500,10 +510,10 @@ end
 
 function _dataline_yearly_demand(s; showforeign=true)
     if showforeign
-        d1 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:function => "demand"], Pair{Symbol,String}[], "input", "Electrical final consumption (grid losses excluded)", "TWh/y", factor=1E6)
+        d1 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:function => "demand"], [:function => "ev"], "input", "Electrical final consumption (grid losses excluded)", "TWh/y", factor=1E6)
         d2 = __dataline_yearly(s, energy, [:electricity], Symbol[], [:function => "ev"], Pair{Symbol,String}[], "driving", "EV", "TWh/y", factor=1E6)
     else
-        d1 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:function => "demand"], Pair{Symbol,String}[], "input", "Electrical final consumption (grid losses excluded)", "TWh/y", factor=1E6)
+        d1 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:function => "demand"], [:function => "ev"], "input", "Electrical final consumption (grid losses excluded)", "TWh/y", factor=1E6)
         d2 = __dataline_yearly(s, energy, [:electricity], [:foreign], [:function => "ev"], Pair{Symbol,String}[], "driving", "EV", "TWh/y", factor=1E6)
     end
     # merge DataLines
