@@ -65,16 +65,6 @@ Posy2Options(;
     Posy2Options(data_dir, techdata_file, timeseries_file, tech_mode, timeseries_mode,
                  discountrate, co2_price, dcopf)
 
-# Positional construction without mode arguments follows the public defaults.
-Posy2Options(data_dir::String,
-             techdata_file::String,
-             timeseries_file::String,
-             discountrate::Float64,
-             co2_price::Float64,
-             dcopf::Bool) =
-    Posy2Options(data_dir, techdata_file, timeseries_file, :arguments, :arguments,
-                 discountrate, co2_price, dcopf)
-
 """
     posy_options(s::Snapshot)
 
