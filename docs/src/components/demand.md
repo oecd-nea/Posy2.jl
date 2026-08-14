@@ -122,8 +122,9 @@ accounting flow used for capacity, activation cost, and reporting. A linked
 `-(1 - elec.losses) * output` is connected instead, so the existing consumption
 components remain unchanged while demand response enters the nodal balance
 from the demand side. With zero node losses this is exactly `-output`. A
-numeric `cap` adds fixed response capacity; `nothing` leaves the positive
-output unconstrained by a capacity behaviour.
+numeric `cap` adds fixed response capacity, a JuMP variable or affine
+expression reuses an external response-capacity decision, and `nothing` leaves
+the positive output unconstrained by a capacity behaviour.
 
 `cost` is the activation cost per unit of the positive `output` flow and is
 applied directly. `type` selects the variable-cost category used by reports

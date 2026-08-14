@@ -20,9 +20,10 @@ technology column named by `techkey` in sheet `dispatchable`. In
 `tech_mode=:arguments`, additive costs and emissions default to zero, linked
 fuel defaults to lossless efficiency, and unit sizing and ramping default to
 disabled. Capital lifetime and profiles are required only when their associated
-cost is active. A numeric `cap` fixes output capacity; `nothing` creates a
-capacity decision bounded by `mincap` and `maxcap`. This builder has one special
-convention: `cap=0` omits the component and returns `nothing`.
+cost is active. A numeric `cap` fixes output capacity; a JuMP variable or affine
+expression reuses an external capacity decision; and `nothing` creates a new
+decision. `mincap` and `maxcap` bound either variable form. This builder has one
+special convention: numeric `cap=0` omits the component and returns `nothing`.
 `capacitymultiplier` can impose a time-varying availability on output.
 
 If `fuelnode` is absent, `fuel_cost` is a variable cost on electricity output.
@@ -59,6 +60,14 @@ feature. Economic terms and emissions also default to zero in `:arguments`
 mode, and a positive `unit_size` is required only for unit commitment or
 integer capacity expansion.
 
+Capacity follows the common numeric, external-expression, and `nothing`
+semantics. For an external expression, `mincap` and `maxcap` constrain that
+expression and `ini` is ignored. Nosy does not allow `warmstart` with an
+external expression. With `integercap=true`, a `VariableRef` is made integer,
+whereas an `AffExpr` is rejected. In particular, `unit_size` does not make an
+external variable a number-of-units variable; represent that explicitly as
+`unit_size * integer_units` when unit-block integrality is required.
+
 The specialised reload constraints apply only when `techkey` is exactly
 `Nuclear`, `Nuclear flexible`, or `SMR`. They also assume an 8,760-hour model
 horizon. Other `techkey` values may omit those constraints. Use these exact
@@ -76,8 +85,10 @@ from sheet `profiles_<weatheryear>`, column
 Workbook lookup requires an explicit `weatheryear`; the keyword defaults to
 `nothing` and is unused when `profile` is supplied directly.
 
-`cap` fixes capacity; `nothing` creates a decision bounded by `mincap` and
-`maxcap`; and `ini` inherits the named component's capacity. In `:excel` mode,
+Numeric `cap` fixes capacity; a JuMP variable or affine expression reuses an
+external capacity decision; `nothing` creates a new decision; and `ini`
+inherits the named component's capacity. `mincap` and `maxcap` bound either
+variable form. In `:excel` mode,
 technical and cost defaults come from the technology column named by `techkey`
 in sheet `intermittent`. In `:arguments` mode, costs and emissions default to
 zero and inactive capital data are not required. The production profile

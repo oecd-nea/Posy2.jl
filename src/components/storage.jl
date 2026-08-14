@@ -22,14 +22,17 @@ Arguments:
   * `zone`: Zone used for reservoir intake time series lookup.
   * `elec`: electricity node to connect the component to.
   * `s`: snapshot to register the component in.
-  * `cap_discharging`: Discharge side capacity (output port). If `nothing`, discharge capacity is optimized.
-  * `cap_charging`: Charge side capacity (input port). `0` disables charging branch; `nothing` optimizes charging capacity.
+  * `cap_discharging`: Output capacity. A number fixes capacity, a JuMP
+    `VariableRef` or `AffExpr` reuses that expression, and `nothing` creates a
+    capacity decision.
+  * `cap_charging`: Input capacity with the same choices. Numeric `0` disables
+    the charging branch; a symbolic capacity always creates it.
   * `intake`: Total natural intake. `0` disables natural intake; a positive
     value is distributed over the normalized intake profile.
 
-  * `cap_reservoir`: Storage level capacity (energy stock). A finite number
-    fixes the capacity, `nothing` optimizes it, and `Inf` (the default) leaves
-    the storage level unlimited.
+  * `cap_reservoir`: Storage level capacity. A finite number fixes capacity, a
+    JuMP `VariableRef` or `AffExpr` reuses that expression, `nothing` creates a
+    capacity decision, and `Inf` (the default) leaves the level unlimited.
 
   * `weatheryear`: Year suffix used to select the intake series stored in
     `reservoir_inflow_<year>`. Required when `intake_profile` is read from the
@@ -52,10 +55,10 @@ Arguments:
   * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Workbook defaults are used when values are `nothing`.
 """
 function makehydroreservoir(cname::String, techkey::String, zone::String, elec::Node,
-    cap_discharging::Union{Nothing,Real}, cap_charging::Union{Nothing,Real},
+    cap_discharging::Union{Nothing,Real,VariableRef,AffExpr}, cap_charging::Union{Nothing,Real,VariableRef,AffExpr},
     intake::Real, s::Snapshot;
     # storage operation controls
-    cap_reservoir::Union{Nothing,Real}=Inf,
+    cap_reservoir::Union{Nothing,Real,VariableRef,AffExpr}=Inf,
     weatheryear::Union{Nothing,Integer}=nothing, gridlosses::Real=0.,
     simplified::Bool=false,
     intake_profile=nothing,
@@ -161,10 +164,11 @@ function makehydroreservoir(cname::String, techkey::String, zone::String, elec::
     
     if cap_discharging isa Real
         push!(vb, FixedCapacity("output", energy, cap_discharging))
+    elseif cap_discharging isa VariableRef || cap_discharging isa AffExpr
+        JuMP.check_belongs_to_model(cap_discharging, Nosy.uppermodel(sim(s)))
+        push!(vb, VariableCapacity("output", energy; expression=cap_discharging))
     elseif isnothing(cap_discharging)
         push!(vb, VariableCapacity("output", energy))
-    else
-        throw(ArgumentError("cap_discharging is not a number or nothing"))
     end
     if cap_charging isa Real
         if iszero(cap_charging)
@@ -175,18 +179,26 @@ function makehydroreservoir(cname::String, techkey::String, zone::String, elec::
             push!(vb, FixedCapacity("input", energy, cap_charging))
             !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _gridlosses))
         end
+    elseif cap_charging isa VariableRef || cap_charging isa AffExpr
+        push!(vb, FreeJointFlow("input", elec.carrier, :input))
+        JuMP.check_belongs_to_model(cap_charging, Nosy.uppermodel(sim(s)))
+        push!(vb, VariableCapacity("input", energy; expression=cap_charging))
+        !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _gridlosses))
     elseif isnothing(cap_charging)
         push!(vb, FreeJointFlow("input", elec.carrier, :input))
         push!(vb, VariableCapacity("input", energy))
         !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _gridlosses))
-    else
-        throw(ArgumentError("cap_charging is not a number or nothing"))
     end
     
     if isnothing(cap_reservoir)
         push!(vb, VariableCapacity("level", energy))
-    elseif !isinf(cap_reservoir)
-        push!(vb, FixedCapacity("level", energy, cap_reservoir))
+    elseif cap_reservoir isa Real
+        if cap_reservoir != Inf
+            push!(vb, FixedCapacity("level", energy, cap_reservoir))
+        end
+    elseif cap_reservoir isa VariableRef || cap_reservoir isa AffExpr
+        JuMP.check_belongs_to_model(cap_reservoir, Nosy.uppermodel(sim(s)))
+        push!(vb, VariableCapacity("level", energy; expression=cap_reservoir))
     end
 
     c = Component(cname * " " * elec.name, m, vb)
@@ -223,9 +235,11 @@ Arguments:
   * `elec`: electricity node to connect the component to.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Fixed charging/input capacity. If `nothing`, charging capacity is optimized.
-  * `mincap`: Bounds for optimized `cap` when `cap === nothing`.
-  * `maxcap`: Bounds for optimized `cap` when `cap === nothing`.
+  * `cap`: Charging/input capacity. A number fixes capacity, a JuMP
+    `VariableRef` or `AffExpr` reuses that expression, and `nothing` creates a
+    capacity decision.
+  * `mincap`: Lower bound for a new or externally supplied capacity expression.
+  * `maxcap`: Upper bound for a new or externally supplied capacity expression.
   * `simplified`: Passed to `BasicStorage(..., simplified=...)`.
   * `ini`: Optional initial snapshot used to inherit fixed charging capacity.
 
@@ -245,7 +259,7 @@ Arguments:
 """
 function makebatterystorage(cname::String, techkey::String, elec::Node, s::Snapshot;
     # capacity / expansion
-    cap::Union{Nothing,Real}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    cap::Union{Nothing,Real,VariableRef,AffExpr}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     simplified::Bool=false, ini::Union{Nothing,Snapshot}=nothing, gridlosses::Real=0.,
 
     # technical overrides
@@ -325,7 +339,15 @@ function makebatterystorage(cname::String, techkey::String, elec::Node, s::Snaps
     push!(vb, Duration(_dur))
     if cap isa Real
         push!(vb, FixedCapacity("input", energy, cap))
-    else
+    elseif cap isa VariableRef || cap isa AffExpr
+        JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
+        push!(vb, VariableCapacity(
+            "input", energy;
+            expression=cap,
+            lb=isnothing(mincap) ? 0.0 : mincap,
+            ub=isnothing(maxcap) ? Inf : maxcap,
+        ))
+    elseif isnothing(cap)
         if isnothing(ini)
             push!(vb, VariableCapacity("input", energy, integer=false, lb = isnothing(mincap) ? 0 : mincap, ub = isnothing(maxcap) ? Inf : maxcap))
         else
@@ -370,9 +392,10 @@ Arguments:
   * `h2`: hydrogen node to connect the component to.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Fixed storage level capacity. If `nothing`, level capacity is optimized.
-  * `mincap`: Bounds for optimized level capacity when `cap === nothing`.
-  * `maxcap`: Bounds for optimized level capacity when `cap === nothing`.
+  * `cap`: Storage level capacity. A number fixes capacity, a JuMP `VariableRef`
+    or `AffExpr` reuses that expression, and `nothing` creates a capacity decision.
+  * `mincap`: Lower bound for a new or externally supplied capacity expression.
+  * `maxcap`: Upper bound for a new or externally supplied capacity expression.
   * `ini`: Optional initial snapshot used to inherit fixed level capacity.
 
   * `eff`: Roundtrip storage efficiency (`eff_i` in `BasicStorage`). If `nothing`, read `roundtrip_eff` from the `storage` sheet.
@@ -386,7 +409,7 @@ Arguments:
 """
 function makehydrogenstorage(cname::String, techkey::String, h2::Node, s::Snapshot;
     # capacity / expansion
-    cap::Union{Nothing,Real}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    cap::Union{Nothing,Real,VariableRef,AffExpr}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     ini::Union{Nothing,Snapshot}=nothing,
 
     # technical overrides
@@ -459,6 +482,14 @@ function makehydrogenstorage(cname::String, techkey::String, h2::Node, s::Snapsh
 
     if cap isa Real
         push!(vb, FixedCapacity("level", energy, cap))
+    elseif cap isa VariableRef || cap isa AffExpr
+        JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
+        push!(vb, VariableCapacity(
+            "level", energy;
+            expression=cap,
+            lb=isnothing(mincap) ? 0.0 : mincap,
+            ub=isnothing(maxcap) ? Inf : maxcap,
+        ))
     elseif isnothing(cap)
         if isnothing(ini)
             push!(vb, VariableCapacity("level", energy, integer=false, lb = isnothing(mincap) ? 0 : mincap, ub = isnothing(maxcap) ? Inf : maxcap))

@@ -1,0 +1,180 @@
+using Posy2
+using Nosy
+using Test
+using JuMP
+using HiGHS
+
+@testset "Expression-backed component capacities" begin
+    function expression_snapshot(; hours=2)
+        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, hours)))
+        set_silent(sim.model)
+        snapshot = Snapshot(
+            sim,
+            Dict(:posy => Posy2Options(
+                tech_mode=:arguments,
+                timeseries_mode=:arguments,
+            )),
+        )
+        elec1 = Node(
+            "E1",
+            EnergyCarrier("electricity E1", sim);
+            rule=:curtailed,
+            evalprice=true,
+            losses=0.0,
+            tags=[:electricity],
+        )
+        elec2 = Node(
+            "E2",
+            EnergyCarrier("electricity E2", sim);
+            rule=:curtailed,
+            evalprice=true,
+            losses=0.0,
+            tags=[:electricity],
+        )
+        hydrogen = Node(
+            "H2",
+            EnergyCarrier("hydrogen", sim);
+            rule=:curtailed,
+            tags=[:hydrogen],
+        )
+        carbon = Node(
+            "CO2",
+            CO2Carrier("carbon", sim);
+            rule=:curtailed,
+            tags=[:co2],
+        )
+        return snapshot, elec1, elec2, hydrogen, carbon
+    end
+
+    function expression_capacity(component, pname)
+        return only(filter(
+            behavior -> behavior.data.pname == pname,
+            Nosy.getbehaviors(component, Nosy.VariableCapacityBehavior),
+        )).data
+    end
+
+    let
+        s, elec1, elec2, hydrogen, carbon = expression_snapshot()
+        shared = @variable(Nosy.uppermodel(sim(s)), lower_bound=0.0)
+        affine = 2.0 * shared + 1.0
+
+        dispatchable = makedispatchable(
+            "Linked dispatchable", "unused", elec1, carbon, s;
+            cap=shared, mincap=1.0, maxcap=100.0,
+        )
+        nuclear = makenuclear(
+            "Linked nuclear", "unused", elec1, carbon, s;
+            cap=affine, mincap=1.0, maxcap=100.0,
+        )
+        intermittent = makeintermittentsource(
+            "Linked intermittent", "unused", elec1, carbon, s;
+            cap=shared, mincap=1.0, maxcap=100.0, profile=1.0,
+        )
+        ror = makehydroror(
+            "Linked ROR", "unused", elec1, s;
+            cap=affine, mincap=1.0, maxcap=100.0, intake=0.0,
+        )
+        electrolyser = makeelectrolyser(
+            "Linked electrolyser", "unused", elec1, hydrogen, s;
+            cap=shared, mincap=1.0, maxcap=100.0,
+        )
+        battery = makebatterystorage(
+            "Linked battery", "unused", elec1, s;
+            cap=affine, mincap=1.0, maxcap=100.0, duration=4.0,
+        )
+        hydrogen_storage = makehydrogenstorage(
+            "Linked hydrogen storage", "unused", hydrogen, s;
+            cap=shared, mincap=1.0, maxcap=100.0,
+        )
+        reservoir = makehydroreservoir(
+            "Linked reservoir", "unused", "unused", elec1,
+            shared, affine, 0.0, s;
+            cap_reservoir=shared,
+        )
+        response = makedemandresponse("Linked DR", elec1, affine, 1.0, s)
+        price_interconnection = makepriceinterco(
+            "external", elec1, shared, affine, s; spot_price=1.0,
+        )
+        node_interconnection = makenodeinterco(
+            "Linked IC", elec1, elec2, shared, affine, s,
+        )
+
+        variable_cases = (
+            (dispatchable, "output"),
+            (intermittent, "output"),
+            (electrolyser, "input"),
+            (hydrogen_storage, "level"),
+            (reservoir, "output"),
+            (reservoir, "level"),
+            (price_interconnection, "output"),
+            (node_interconnection, "input"),
+        )
+        for (component, pname) in variable_cases
+            @test expression_capacity(component, pname).expr === shared
+        end
+
+        affine_cases = (
+            (nuclear, "output"),
+            (ror, "output"),
+            (battery, "input"),
+            (reservoir, "input"),
+            (response, "output"),
+            (price_interconnection, "input"),
+            (node_interconnection, "input2"),
+        )
+        for (component, pname) in affine_cases
+            @test expression_capacity(component, pname).expr == affine
+        end
+
+        @test Nosy.hasport(reservoir, "input")
+        @test expression_capacity(dispatchable, "output").lb == 1.0
+        @test expression_capacity(dispatchable, "output").ub == 100.0
+    end
+
+    # Positive infinity is the unlimited sentinel; negative infinity is invalid.
+    let
+        s, elec1, elec2, _, _ = expression_snapshot()
+        @test_throws ArgumentError makehydroreservoir(
+            "Negative infinite reservoir", "unused", "unused", elec1,
+            1.0, 0.0, 0.0, s; cap_reservoir=-Inf,
+        )
+        @test_throws ArgumentError makenodeinterco(
+            "Negative infinite IC", elec1, elec2, -Inf, Inf, s,
+        )
+    end
+
+    # Nosy rejects warm starts and integer flags on external affine expressions.
+    let
+        s, elec1, _, _, carbon = expression_snapshot()
+        shared = @variable(Nosy.uppermodel(sim(s)), lower_bound=0.0)
+        affine = 2.0 * shared
+        @test_throws ArgumentError makenuclear(
+            "Warm linked nuclear", "unused", elec1, carbon, s;
+            cap=shared, warmstart=10.0,
+        )
+        @test_throws ArgumentError makenuclear(
+            "Integer affine nuclear", "unused", elec1, carbon, s;
+            cap=affine, integercap=true,
+        )
+    end
+
+    # Ownership is checked before component construction mutates the target model.
+    let
+        s, elec1, _, _, carbon = expression_snapshot()
+        foreign_model = Model()
+        foreign = @variable(foreign_model)
+        variables_before = num_variables(sim(s).model)
+
+        @test_throws JuMP.VariableNotOwned makedispatchable(
+            "Foreign linked dispatchable", "unused", elec1, carbon, s;
+            cap=foreign,
+        )
+        @test num_variables(sim(s).model) == variables_before
+
+        @test_throws JuMP.VariableNotOwned makedispatchable(
+            "Foreign affine dispatchable", "unused", elec1, carbon, s;
+            cap=2.0 * foreign + 1.0,
+        )
+        @test num_variables(sim(s).model) == variables_before
+    end
+end

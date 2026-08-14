@@ -11,8 +11,10 @@ transfer-capacity and price sheets.
 
 ## Direction And Transfer Multipliers
 
-Directional capacities are base capacities. For a nonzero finite direction,
-Posy2 uses an hourly multiplier. In `timeseries_mode=:excel`, an omitted
+Directional capacities are base capacities and may be numeric or externally
+defined by a JuMP variable or affine expression. For a numeric nonzero finite
+direction or any symbolic direction, Posy2 uses an hourly multiplier. In
+`timeseries_mode=:excel`, an omitted
 multiplier is read from sheet `transfer_capacities`; in `:arguments` mode it
 defaults to one. Its column is
 named for the direction, written as `From>To` with no spaces. Effective
@@ -21,10 +23,14 @@ therefore fractions or other multipliers, not absolute MW capacities.
 
 Setting a node-interconnection direction to zero skips its multiplier lookup;
 setting it to `Inf` omits both its capacity behaviour and multiplier lookup. A
-price interconnection likewise resolves availability only for nonzero-capacity
-directions. Its spot-price series remains required when either direction is
-active, because a zero price would permit free imports rather than disable the
-feature.
+price interconnection likewise resolves availability for numeric nonzero and
+all symbolic directions. Its spot-price series remains required when either
+direction is active, because a zero price would permit free imports rather than
+disable the feature.
+
+A symbolic direction is always treated as active and finite while the component
+is built, even if its solved value may be zero. Numeric `Inf` remains the only
+unlimited-capacity sentinel for node interconnections.
 
 For a price interconnection, `dir=true` adds an SOS1 constraint at every
 timestep so that imports and exports cannot be used simultaneously. For a
@@ -86,7 +92,7 @@ links and before optimisation. See
 
 [`makepriceinterco`](@ref) creates `"IC_$(zone)_$(elec.name)"` without creating
 an explicit node for the neighbouring market. Imports use component `output`,
-fixed base capacity `mcap`, multiplier column `zone>local`, and the neighbour's
+base capacity `mcap`, multiplier column `zone>local`, and the neighbour's
 `spot_price` series. Exports use component `input`, base capacity `xcap`, and
 multiplier column `local>zone`. Export energy earns the same exogenous spot
 price; `transactioncost` is added in both directions.

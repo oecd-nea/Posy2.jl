@@ -350,7 +350,7 @@ function makeEV(cname::String, yearly::Real, elec::Node, s::Snapshot; fixed_prof
 end
 
 """
-    makedemandresponse(cname::String, elec::Node, cap::Union{Nothing,Real}, cost::Real, s::Snapshot; type::Symbol=:volDR)
+    makedemandresponse(cname::String, elec::Node, cap, cost::Real, s::Snapshot; type::Symbol=:volDR)
 
 Build, connect and return a demand response component represented as negative
 consumption.
@@ -364,12 +364,13 @@ side without modifying existing demand components.
 Arguments:
   * `cname`: component name prefix.
   * `elec`: electricity node to connect the component to.
-  * `cap`: optional fixed response capacity (`nothing` means unconstrained).
+  * `cap`: Response capacity. A number fixes capacity, a JuMP `VariableRef` or
+    `AffExpr` reuses that expression, and `nothing` leaves output unconstrained.
   * `cost`: demand response activation cost coefficient.
   * `s`: snapshot to register the component in.
   * `type`: variable cost label used for reporting (default `:volDR`).
 """
-function makedemandresponse(cname::String, elec::Node, cap::Union{Nothing,Real}, cost::Real, s::Snapshot; type::Symbol=:volDR)
+function makedemandresponse(cname::String, elec::Node, cap::Union{Nothing,Real,VariableRef,AffExpr}, cost::Real, s::Snapshot; type::Symbol=:volDR)
     # Demand provides a zero-valued input that anchors this demand-side
     # component. `output` remains positive for capacity, cost, and reporting,
     # but is not connected to the electricity node. Only its negative linked
@@ -380,7 +381,12 @@ function makedemandresponse(cname::String, elec::Node, cap::Union{Nothing,Real},
         LinkedJointFlow("negative consumption", elec.carrier, :input, "output", x -> -x[1] * (1 - elec.losses)),
     ]
     if !isnothing(cap)
-        push!(vb, FixedCapacity("output", energy, cap))
+        if cap isa Real
+            push!(vb, FixedCapacity("output", energy, cap))
+        elseif cap isa VariableRef || cap isa AffExpr
+            JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
+            push!(vb, VariableCapacity("output", energy; expression=cap))
+        end
     end
     push!(vb, VariableCost(type, "output", energy, cost))
 

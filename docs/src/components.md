@@ -52,21 +52,27 @@ and unit conversions are in [Input Workbooks](concepts/input-data.md).
 
 ## Capacity Semantics
 
-For builders with a `cap` or similar capacity keyword, a number
-usually creates a fixed capacity and `nothing` makes capacity a decision
-variable. `mincap` and `maxcap` bound that variable when capacity is
-optimised; they are unused when capacity is fixed. Important exceptions are
-documented with each builder:
+For builders with a user-supplied `cap` or similar capacity argument,
+a number creates fixed capacity, a JuMP `VariableRef` or `AffExpr` reuses an
+external capacity expression, and `nothing` usually creates a new capacity
+decision. `mincap` and `maxcap` bound either kind of variable capacity; they are
+unused for numeric fixed capacity. The expression must use variables owned by
+the snapshot's JuMP model. An explicit expression takes precedence over `ini`.
+Important exceptions are documented with each builder:
 
 - `makedispatchable(...; cap=0)` omits the component and returns `nothing`.
-- [`makehydroror`](@ref) also accepts a JuMP variable or affine expression as
-  an externally defined capacity; `mincap` and `maxcap` bound that expression.
 - A zero charging capacity in [`makehydroreservoir`](@ref) disables grid
   charging rather than creating a zero-capacity input port.
 - `cap_reservoir=nothing` in [`makehydroreservoir`](@ref) optimises the
   stored-energy capacity; its default `Inf` leaves the level unlimited.
 - `cap=nothing` in [`makedemandresponse`](@ref) leaves response output without
   a capacity limit.
+
+A symbolic capacity is treated as structurally active because its optimized
+value is not known while the component is built. Consequently, symbolic
+reservoir charging creates the charging port, and symbolic interconnector
+directions resolve their availability and price inputs even if the expression
+later evaluates to zero.
 
 Builders with an `ini` keyword can inherit a capacity from a solved snapshot.
 The lookup uses the generated component name, so names and principal node names

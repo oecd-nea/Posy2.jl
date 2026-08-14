@@ -21,9 +21,10 @@ Arguments:
   * `h2`: hydrogen node to connect the component to.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Fixed electrolyser input capacity. If `nothing`, input capacity is optimized.
-  * `mincap`: Bounds for optimized input capacity when `cap === nothing`.
-  * `maxcap`: Bounds for optimized input capacity when `cap === nothing`.
+  * `cap`: Input capacity. A number fixes capacity, a JuMP `VariableRef` or
+    `AffExpr` reuses that expression, and `nothing` creates a capacity decision.
+  * `mincap`: Lower bound for a new or externally supplied capacity expression.
+  * `maxcap`: Upper bound for a new or externally supplied capacity expression.
   * `ini`: Optional initial snapshot used to inherit fixed input capacity.
 
   * `gridlosses`: Proportional losses linked to electricity input flow (`0 <= gridlosses < 1`).
@@ -39,7 +40,7 @@ Arguments:
 """
 function makeelectrolyser(cname::String, techkey::String, elec::Node, h2::Node, s::Snapshot;
     # capacity / expansion
-    cap::Union{Nothing,Real}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    cap::Union{Nothing,Real,VariableRef,AffExpr}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     ini::Union{Nothing,Snapshot}=nothing, gridlosses::Real=0.,
 
     # technical overrides
@@ -115,6 +116,14 @@ function makeelectrolyser(cname::String, techkey::String, elec::Node, h2::Node, 
     push!(vb, VariableCost(:vom, "input", energy, _vom))
     if cap isa Real
         push!(vb, FixedCapacity("input", energy, cap))
+    elseif cap isa VariableRef || cap isa AffExpr
+        JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
+        push!(vb, VariableCapacity(
+            "input", energy;
+            expression=cap,
+            lb=isnothing(mincap) ? 0.0 : mincap,
+            ub=isnothing(maxcap) ? Inf : maxcap,
+        ))
     elseif isnothing(cap)
         if isnothing(ini)
             push!(vb, VariableCapacity("input", energy, integer=false, lb = isnothing(mincap) ? 0 : mincap, ub = isnothing(maxcap) ? Inf : maxcap))

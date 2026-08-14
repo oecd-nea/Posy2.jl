@@ -25,9 +25,11 @@ Arguments:
   * `co2`: CO2 node connected only when `co2_emission != 0`.
   * `s`: Target snapshot where the component and behaviors are registered.
 
-  * `cap`: Fixed output capacity in model power units. If `0`, the function returns `nothing`. If `nothing`, output capacity is a decision variable.
-  * `mincap`: Lower/upper bounds for variable capacity when `cap === nothing`.
-  * `maxcap`: Lower/upper bounds for variable capacity when `cap === nothing`.
+  * `cap`: Output capacity in model power units. A number fixes capacity, a
+    JuMP `VariableRef` or `AffExpr` reuses that expression, and `nothing`
+    creates a capacity decision. Numeric `0` returns `nothing`.
+  * `mincap`: Lower bound for a new or externally supplied capacity expression.
+  * `maxcap`: Upper bound for a new or externally supplied capacity expression.
   * `ini`: Optional initial snapshot. If provided, capacity/UC state is inherited from the matching component.
   * `capacitymultiplier`: Time varying multiplier applied to output capacity (capacity basis, not energy basis).
 
@@ -61,7 +63,7 @@ Arguments:
 """
 function makedispatchable(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / expansion
-    cap::Union{Nothing,Real}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    cap::Union{Nothing,Real,VariableRef,AffExpr}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     ini::Union{Nothing,Snapshot}=nothing, capacitymultiplier=nothing,
 
     # unit commitment / operation
@@ -176,6 +178,15 @@ function makedispatchable(cname::String, techkey::String, elec::Node, co2::Node,
             # component not created
             return nothing
         end
+    elseif cap isa VariableRef || cap isa AffExpr
+        JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
+        push!(vb, VariableCapacity(
+            "output", energy;
+            expression=cap,
+            unitsize=_usize,
+            lb=isnothing(mincap) ? 0.0 : mincap,
+            ub=isnothing(maxcap) ? Inf : maxcap,
+        ))
     elseif isnothing(cap)
         if isnothing(ini)
             push!(vb, VariableCapacity("output", energy, unitsize=_usize, integer=false, lb = isnothing(mincap) ? 0 : mincap, ub = isnothing(maxcap) ? Inf : maxcap))
@@ -291,9 +302,10 @@ Arguments:
   * `co2`: CO2 node connected when `co2_emission` is non zero.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Fixed output capacity. If `nothing`, capacity can be optimized with optional bounds.
-  * `mincap`: Bounds applied when `cap === nothing`.
-  * `maxcap`: Bounds applied when `cap === nothing`.
+  * `cap`: Output capacity. A number fixes capacity, a JuMP `VariableRef` or
+    `AffExpr` reuses that expression, and `nothing` creates a capacity decision.
+  * `mincap`: Lower bound for a new or externally supplied capacity expression.
+  * `maxcap`: Upper bound for a new or externally supplied capacity expression.
   * `integercap`: Integer flag for capacity expansion variable.
   * `ini`: Optional initial snapshot for inherited capacity/UC settings.
   * `warmstart`: Warm start value passed to variable capacity behavior when used.
@@ -333,7 +345,7 @@ Arguments:
 """
 function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / expansion
-    cap::Union{Nothing,Real}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    cap::Union{Nothing,Real,VariableRef,AffExpr}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     integercap=false, ini::Union{Nothing,Snapshot}=nothing, warmstart::Union{Nothing,Real}=nothing,
 
     # unit commitment / operation
@@ -445,6 +457,17 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
     end
     if cap isa Real
         push!(vb, FixedCapacity("output", energy, cap, unitsize=_usize))
+    elseif cap isa VariableRef || cap isa AffExpr
+        JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
+        push!(vb, VariableCapacity(
+            "output", energy;
+            expression=cap,
+            unitsize=_usize,
+            integer=integercap,
+            lb=isnothing(mincap) ? 0.0 : mincap,
+            ub=isnothing(maxcap) ? Inf : maxcap,
+            warmstart=warmstart,
+        ))
     elseif isnothing(cap)
         if isnothing(ini)
             push!(vb, VariableCapacity("output", energy, unitsize=_usize, integer=integercap, lb = isnothing(mincap) ? 0 : mincap, ub = isnothing(maxcap) ? Inf : maxcap, warmstart=warmstart))
@@ -643,9 +666,10 @@ Arguments:
   * `co2`: CO2 node connected when `co2_emission` is non zero.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Fixed output capacity. If `nothing`, capacity is optimized.
-  * `mincap`: Bounds for optimized capacity when `cap === nothing`.
-  * `maxcap`: Bounds for optimized capacity when `cap === nothing`.
+  * `cap`: Output capacity. A number fixes capacity, a JuMP `VariableRef` or
+    `AffExpr` reuses that expression, and `nothing` creates a capacity decision.
+  * `mincap`: Lower bound for a new or externally supplied capacity expression.
+  * `maxcap`: Upper bound for a new or externally supplied capacity expression.
   * `ini`: Optional initial snapshot used to inherit fixed capacity.
   * `weatheryear`: Year suffix used to select profile series `profiles_<year>`.
     Required for workbook lookup; unused when `profile` is supplied explicitly.
@@ -667,7 +691,7 @@ Arguments:
 """
 function makeintermittentsource(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / profile
-    cap::Union{Nothing,Real}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    cap::Union{Nothing,Real,VariableRef,AffExpr}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     ini::Union{Nothing,Snapshot}=nothing, weatheryear::Union{Nothing,Integer}=nothing, profile=nothing,
 
     co2price::Real=co2_price(s),
@@ -761,6 +785,14 @@ function makeintermittentsource(cname::String, techkey::String, elec::Node, co2:
     end
     if cap isa Real
         push!(vb, FixedCapacity("output", energy, cap))
+    elseif cap isa VariableRef || cap isa AffExpr
+        JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
+        push!(vb, VariableCapacity(
+            "output", energy;
+            expression=cap,
+            lb=isnothing(mincap) ? 0.0 : mincap,
+            ub=isnothing(maxcap) ? Inf : maxcap,
+        ))
     elseif isnothing(cap)
         if isnothing(ini)
             push!(vb, VariableCapacity("output", energy, lb=isnothing(mincap) ? 0 : mincap, ub=isnothing(maxcap) ? Inf : maxcap))
@@ -824,7 +856,7 @@ Arguments:
 """
 function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     # capacity / profile
-    cap::Union{Nothing,Real,GenericVariableRef,GenericAffExpr}=nothing,
+    cap::Union{Nothing,Real,VariableRef,AffExpr}=nothing,
     mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     techkey::String="Hydro ror", weatheryear::Union{Nothing,Integer}=nothing, intake_profile=nothing,
 
@@ -859,12 +891,19 @@ function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     vb = []
     if cap isa Real
         push!(vb, FixedCapacity("output", energy, cap))
-    else
+    elseif cap isa VariableRef || cap isa AffExpr
+        JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
+        push!(vb, VariableCapacity(
+            "output", energy;
+            expression=cap,
+            lb=isnothing(mincap) ? 0.0 : mincap,
+            ub=isnothing(maxcap) ? Inf : maxcap,
+        ))
+    elseif isnothing(cap)
         push!(vb, VariableCapacity(
             "output", energy;
             lb=isnothing(mincap) ? 0.0 : mincap,
             ub=isnothing(maxcap) ? Inf : maxcap,
-            expression=cap,
         ))
     end
 

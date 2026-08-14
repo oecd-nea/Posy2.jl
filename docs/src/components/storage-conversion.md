@@ -17,12 +17,13 @@ capacity, port, and tagging conventions.
 - `output` is electricity generation;
 - `level` is stored energy.
 
-`cap_discharging` fixes `output` capacity when numeric and creates a capacity
-decision when `nothing`. For `cap_charging`, a positive number fixes `input`
-capacity, zero disables grid charging, and `nothing` creates an input-capacity
-decision. A finite real `cap_reservoir` fixes `level` capacity; `nothing`
-creates a level-capacity decision, while `Inf` (the default) leaves the
-stored-energy level unlimited.
+Each of `cap_discharging`, `cap_charging`, and `cap_reservoir` accepts a JuMP
+variable or affine expression as externally defined capacity. Numeric
+discharging and charging capacities remain fixed, and `nothing` creates a new
+decision. Numeric zero charging disables the grid-charging branch; a symbolic
+charging capacity creates that branch because it may be positive. A finite
+numeric `cap_reservoir` fixes `level` capacity, `nothing` creates a level
+decision, and `Inf` (the default) leaves the stored-energy level unlimited.
 
 For example, use `cap_reservoir=12_000.0` for a fixed 12 GWh reservoir,
 `cap_reservoir=nothing` to let the model choose its energy capacity, or omit the
@@ -44,8 +45,9 @@ The generated component is tagged `generation`, `storage`, and `carbonfree`.
 ## Batteries
 
 [`makebatterystorage`](@ref) creates electricity storage with `input`, `output`, and
-`level` ports. `cap` is charging power: a number fixes it and `nothing`
-creates a decision bounded by `mincap` and `maxcap`. When `ini` is supplied,
+`level` ports. `cap` is charging power: a number fixes it, a JuMP variable or
+affine expression reuses an external decision, and `nothing` creates a new
+decision. `mincap` and `maxcap` bound either variable form. When `ini` is supplied,
 the builder fixes charging power to the matching solved component's capacity.
 
 `duration` links energy level to power capacity. It is structural: it comes
@@ -64,9 +66,11 @@ charging and discharging enter the appropriate Posy2 reports.
 
 [`makehydrogenstorage`](@ref) creates a simplified storage component on a
 hydrogen node. Capacity is attached to `level`, not to charge or discharge
-power. A numeric `cap` fixes level capacity; `nothing` creates a decision
-bounded by `mincap` and `maxcap`. With `ini`, a matching component inherits its
-fixed capacity, while a missing component is represented by zero capacity.
+power. A numeric `cap` fixes level capacity; a JuMP variable or affine
+expression reuses an external decision; and `nothing` creates a new decision.
+`mincap` and `maxcap` bound either variable form. With `ini`, a matching
+component inherits its fixed capacity, while a missing component is represented
+by zero capacity.
 
 In `:excel` mode, omitted values come from the `storage` technology column. In
 `:arguments` mode, `eff` defaults to one and economic terms to zero; inactive
@@ -89,9 +93,10 @@ are required only for nonzero overnight cost, and the decommissioning profile
 only when decommissioning cost is active.
 
 Capacity and all cost behaviours are attached to electricity `input`. A
-numeric `cap` fixes input power; `nothing` creates a decision bounded by
-`mincap` and `maxcap`; and `ini` fixes capacity from the matching solved
-component. `gridlosses` adds a proportional electricity input flow.
+numeric `cap` fixes input power; a JuMP variable or affine expression reuses an
+external decision; `nothing` creates a new decision; and `ini` fixes capacity
+from the matching solved component. `mincap` and `maxcap` bound either variable
+form. `gridlosses` adds a proportional electricity input flow.
 
 The generated name is `"$cname $(elec.name)"`. Function tags are `demand`,
 `electrolysis`, and `hydrogen`, allowing electrical consumption to appear in
