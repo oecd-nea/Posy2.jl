@@ -4,7 +4,7 @@ Posy2.jl is a country- and regional-level power system capacity expansion and
 dispatch model developed at the
 [OECD Nuclear Energy Agency](https://oecd-nea.org/). It builds on
 [Nosy.jl](https://github.com/oecd-nea/Nosy.jl) and provides a higher-level Julia
-workflow for constructing power and multi-vector energy system studies from
+workflow for constructing power and multi-carrier energy system studies from
 standard technology assumptions and hourly time series.
 
 Posy2 components remain ordinary Nosy components. The component builders
@@ -19,7 +19,7 @@ convenient Posy2 workflow and still extend a study directly with Nosy.
   components with consistent naming and tags on top of Nosy.
 - Load technology assumptions and hourly profiles from input data, or set
   them from Julia.
-- Run multi-zone capacity expansion and dispatch with price- or node-based
+- Run multi-zone capacity expansion and dispatch with price-based or node-based
   interconnections and optional DC power flow.
 - Cover power-system features such as unit commitment, demand response,
   electric vehicles, hydrogen, and CO2.

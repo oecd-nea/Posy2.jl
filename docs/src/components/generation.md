@@ -50,9 +50,10 @@ integer interval supplied by the caller. `startupmask` and `shutdownmask` can
 further restrict transitions. Reload fraction and duration default to the
 `dispatchable` technology column; `reloadmask` has no workbook default.
 
-The specialised reload constraints distinguish the technology names
-`Nuclear`, `Nuclear flexible`, and `SMR`. They also assume an 8,760-hour model
-horizon. Use these exact conventions only for a full non-leap-year study.
+The specialised reload constraints apply only when `techkey` is exactly
+`Nuclear`, `Nuclear flexible`, or `SMR`. They also assume an 8,760-hour model
+horizon. Other `techkey` values may omit those constraints. Use these exact
+conventions only for a full non-leap-year study.
 
 The component carries `generation` and `dispatchable` function tags. Direct
 emissions are controlled by `co2_emission`; the builder does not infer a

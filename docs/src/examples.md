@@ -67,6 +67,6 @@ Posy2 moves it to `results/old/` before writing the new report. Call
 
 Posy2 follows Nosy's unit-agnostic convention: values only need to be
 self-consistent. Here, power and capacity are MW, energy is MWh, overnight
-investment is USD/kW, fixed operation and maintenance is USD/kW/year, and
-variable costs are USD/MWh. The numerical assumptions are deliberately simple
-teaching values, not reference projections.
+investment is currency/kW, fixed operation and maintenance is currency/kW/year,
+and variable costs are currency/MWh. The numerical assumptions are deliberately
+simple teaching values, not reference projections.

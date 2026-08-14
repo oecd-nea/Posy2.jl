@@ -1,22 +1,14 @@
 # Modelling Concepts
 
-Posy2 combines a study configuration, workbook or argument-based inputs,
-high-level component builders, and Nosy's optimisation and querying workflow.
+Start with study configuration and input workbooks when setting up a study,
+then snapshot building when defining the system, then optimisation when
+solving, and finally querying and exporting when you need results.
 
-- [Study Configuration](concepts/options.md): input paths, economic
-  assumptions, and the optional DC power flow formulation.
-- [Input Workbooks](concepts/input-data.md): technology parameters and hourly
-  time-series conventions.
-- [Building a Snapshot](concepts/building-snapshot.md): simulations, carriers,
-  nodes, component builders, costs, tags, and interconnections.
-- [Extending Posy2](concepts/extending.md): design flow for custom builders:
-  physical model, behaviours, wrapper conventions, and common mistakes.
-- [Optimising a Snapshot](concepts/optimizing.md): objectives, the DC
-  power flow formulation, solution status, extraction, and multi-stage
-  studies.
-- [Querying a Snapshot](concepts/querying.md): capacities, balances, costs,
-  prices, tags, and self-system cost.
-- [Tags and Post-Processing](concepts/tags.md): which tags select which report
-  rows and indicators, and the defaults set by builders.
-- [Exporting Results](concepts/exporting.md): standard workbook reporting,
-  snapshot serialization, and optimisation-model export.
+- [Study Configuration](concepts/options.md): input paths, input modes, discount rate, CO2 price, and optional DC power flow
+- [Input Workbooks](concepts/input-data.md): technology parameters and hourly time series
+- [Building a Snapshot](concepts/building-snapshot.md): simulations, carriers, nodes, builders, costs, tags, and interconnections
+- [Extending Posy2](concepts/extending.md): custom builders, naming, and tags
+- [Optimising a Snapshot](concepts/optimizing.md): objectives, DC power flow and extraction
+- [Querying a Snapshot](concepts/querying.md): capacities, balances, costs, and prices
+- [Tags and Post-Processing](concepts/tags.md): which tags appear in reports and annual metrics
+- [Exporting Results](concepts/exporting.md): Workbook reports and saved snapshots

@@ -32,11 +32,10 @@ If the destination already exists, Posy2 moves it to
 that backup name is replaced. Use distinct filenames or copy important results
 elsewhere when retaining several revisions.
 
-`printsnapshot` rejects an unsolved snapshot. The current standard report also
-assumes a complete 8760-hour result, at least one interconnection, and the
+`printsnapshot` accepts only an extracted `Snapshot{Float64}`.
+The current standard report assumes a complete 8760-hour result and the
 Posy2 node and component tags described in
-[Tags And Post-Processing](tags.md). Use direct Nosy queries for an
-isolated model without interconnections.
+[Tags And Post-Processing](tags.md).
 
 Marginal-price and self-system interconnection tables require dual prices.
 These are available only for continuous solutions and for nodes created with

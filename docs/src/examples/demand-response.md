@@ -1,14 +1,13 @@
 # Demand Response
 
-[`makedemandresponse`](@ref) is a costed, capacity-limited flexibility on the
-demand side. Its connected flow is negative consumption. 
-It runs only when that is cheaper than the alternatives on the node.
+This example shows how demand response can shave a demand peak and avoid more
+expensive generation. A typical daily load, repeated all year, sits with fixed
+PV, gas capacity chosen in the cost minimisation, and 30 MW of demand response
+at 40 currency/MWh.
 
-Daytime PV from [`makeintermittentsource`](@ref) covers the flat 80 MW load
-while the sun is up. At night the residual is shared between demand response
-(30 MW at 40 currency/MWh) and oil (68.24 currency/MWh fuel). DR is unused in
-the day because free solar already meets demand. The PV profile repeats the
-same 12-on / 12-off day over the year.
+[`makedemandresponse`](@ref) is a costed, capacity-limited flexibility on the
+demand side. Its connected flow is negative consumption. It runs only when 
+that is cheaper than the alternatives on the node.
 
 ```jldoctest demand_response; output = false
 using Posy2

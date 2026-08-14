@@ -176,8 +176,15 @@ self_nodes = getnodes(
 )
 ```
 
-Filtering by tags is preferable to parsing names, particularly for
-interconnections that belong to two zones.
+A generator usually has one `:zone`. A node interconnection has two—one for
+each endpoint—so zone filters can find interconnections connected to a zone.
+
+```julia
+grid_node_ics = getcomponents(
+    result;
+    with=[:function => "nodeinterconnection", :zone => "grid"],
+)
+```
 
 For the reporting consequence of each `:function` and node tag—which annual
 rows and indicators include a tagged component—see

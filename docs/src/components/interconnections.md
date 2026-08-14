@@ -50,10 +50,10 @@ Exactly one `AC` and one `DC` may share the same unordered node pair
 that pair raises an error. Aggregate equivalent parallel circuits
 before calling the builder.
 
-For a finite direction, `transactioncost` is applied to its sending flow. The
-current implementation omits this cost when the corresponding capacity is
-`Inf`. The unconnected `grid losses ic` output records proportional losses for
-reporting. Both node names are stored as `:zone` values.
+`transactioncost` is applied to each direction's sending flow, including when
+that direction's capacity is `Inf`. The unconnected `grid losses ic` output 
+records proportional losses for reporting. Both node names are stored as 
+`:zone` values.
 
 The component carries `interconnection`, `nodeinterconnection`, and either
 `AC` or `DC` function tags. `foreign=true` adds `foreign`; use it when one
@@ -68,8 +68,9 @@ link, while `dc=true` excludes it from the cycle constraints added by
 [`applydcopf!`](@ref).
 
 When DC power flow is enabled in [`Posy2Options`](@ref), every AC node
-interconnection must supply a negative `susceptance`. The builder stores it in
-the snapshot's internal registry. Call [`applydcopf!`](@ref) after adding all
+interconnection must supply a negative series `susceptance`
+(``B\approx-1/X`` for inductive lines). The builder stores it in the
+snapshot's internal registry. Call [`applydcopf!`](@ref) after adding all
 links and before optimisation. See
 [Optimising A Snapshot](../concepts/optimizing.md) for the complete workflow.
 

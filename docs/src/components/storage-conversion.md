@@ -24,10 +24,10 @@ decision. A numeric `cap_reservoir` fixes `level` capacity; any other value
 leaves the level without a capacity behaviour.
 
 Inflow comes from sheet `reservoir_inflow_<weatheryear>`, column `<zone>`.
-`inflow=nothing` uses the profile multiplied by `intake_mult`, `inflow=0`
-omits natural inflow, and another numeric value scales the profile by
-`inflow * intake_mult`. With `renormalize=true`, the series is first divided
-by its annual sum before that scaling.
+`inflow=nothing` uses the profile as absolute inflow (`* intake_mult`);
+`inflow=0` omits natural inflow; a numeric value scales the profile by
+`inflow * intake_mult`. With a numeric `inflow` and `renormalize=true`, the
+series is first divided by its annual sum so the yearly total matches `inflow`.
 
 `eff` defaults to `roundtrip_eff` in the technology column named by `techkey`
 of sheet `storage`. It applies to grid charging; natural inflow and discharge have unit
