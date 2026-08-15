@@ -71,4 +71,18 @@ using HiGHS
         @test issorted(df.ZONE2, rev=true)
         @test df.ZONE2 == sort(Posy2.getexogenousprice(c), rev=true)
     end
+
+    # Fully disabled price IC: the zone column is an hourly series of zeros, not a scalar.
+    let
+        snap, elec1, _, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makepriceinterco("ZONE2", elec1, 0.0, 0.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        df = Posy2.genpricecurves(s)
+        @test size(df, 1) == Nosy.nhours(sim(s))
+        @test df.ZONE2 == zeros(Nosy.nhours(sim(s)))
+    end
 end

@@ -29,7 +29,9 @@ Arguments:
     Availability is resolved for numeric nonzero and all symbolic directions. When omitted,
     it comes from the workbook in `:excel` mode and defaults to one in
     `:arguments` mode. `spot_price` is required whenever either direction has
-    active capacity.
+    active capacity. When both capacities are numeric zeros the corridor is
+    disabled: no spot price is read and the reported exogenous price is an
+    hourly series of zeros.
 """
 function makepriceinterco(zone::String, elec::Node, mcap::Union{Real,VariableRef,AffExpr}, xcap::Union{Real,VariableRef,AffExpr}, s::Snapshot;
     # operation flags
@@ -61,7 +63,9 @@ function makepriceinterco(zone::String, elec::Node, mcap::Union{Real,VariableRef
             s, spot_price, zone, "spot_price"; keyword="spot_price", digits=2,
         )
     else
-        0.0
+        # a fully disabled corridor has no price to resolve, but reporting still
+        # expects an hourly series
+        zeros(Nosy.nhours(sim(s)))
     end
 
     # imports

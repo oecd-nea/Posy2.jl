@@ -139,4 +139,17 @@ using HiGHS
         s, elec1, _ = makesnapshot()
         @test_throws ArgumentError makepriceinterco("ZONE3", elec1, 100.0, 100.0, s)
     end
+
+    # Both directions zero: no spot price is read, but the import/export costs still
+    # hold an hourly series of zeros so that reporting can build them.
+    let
+        s, elec1, _ = makesnapshot()
+        c = makepriceinterco("ZONE2", elec1, 0.0, 0.0, s)
+        spot = [
+            b.data.val for b in Nosy.getbehaviors(c, Nosy.VariableCostBehavior)
+            if Nosy._costtype(b) in (:imports, :exports)
+        ]
+        @test length(spot) == 2
+        @test all(v -> v == zeros(Nosy.nhours(sim(s))), spot)
+    end
 end

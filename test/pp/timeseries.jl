@@ -242,4 +242,25 @@ using HiGHS
         @test "ZONE1 > ZONE2" in names(df)
         @test "ZONE2 > ZONE1" in names(df)
     end
+
+    # Fully disabled price IC (both directions numerically zero, no spot price supplied):
+    # the exogenous price is still an hourly series, so gentimeseries builds.
+    let
+        snap, elec1, _, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makepriceinterco("ZONE2", elec1, 0.0, 0.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
+        price = Posy2.getexogenousprice(c)
+        @test price == zeros(Nosy.nhours(sim(s)))
+
+        df = Posy2.gentimeseries(s)
+        @test size(df, 1) == Nosy.nhours(sim(s))
+        @test df[!, "price IC_ZONE2_ZONE1"] == price
+        @test all(iszero, df[!, "ZONE2 > ZONE1"])
+        @test all(iszero, df[!, "ZONE1 > ZONE2"])
+    end
 end

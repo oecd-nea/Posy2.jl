@@ -185,6 +185,29 @@ using DataFrames
         end
     end
 
+    # Full export with a fully disabled price IC (both directions zero): all report
+    # sections build and the xlsx write succeeds.
+    let
+        snap, elec1, _, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makepriceinterco("ZONE2", elec1, 0.0, 0.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        filepath = joinpath(mktempdir(), "pp_disabled_price_ic.xlsx")
+        Posy2.printsnapshot(s, filepath)
+        @test isfile(filepath)
+        XLSX.openxlsx(filepath) do xf
+            @test XLSX.sheetnames(xf) == [
+                "Annual values (all)",
+                "Annual values (self)",
+                "Time series",
+                "Price duration curves",
+            ]
+        end
+    end
+
     # printsnapshot requires an optimized snapshot; unoptimized snapshot raises AssertionError.
     let
         snap = Snapshot(tsim(), posyopts())

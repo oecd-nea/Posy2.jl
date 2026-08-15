@@ -107,6 +107,10 @@ internal zone.
 Price interconnections do not participate in DC power flow cycle constraints:
 they have no second explicit electrical node or susceptance.
 
+Numeric zero capacities disable a direction. When both `mcap` and `xcap` are
+zero the whole corridor is disabled: no spot price or availability column is
+read, and reports show the interconnection with a zero price and zero volumes.
+
 ## Losses And Reporting
 
 Node-interconnection losses are recorded once on the component. Annual node
