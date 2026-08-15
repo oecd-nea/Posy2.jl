@@ -378,7 +378,7 @@ using DataFrames
         char_bat = Posy2.charging(s; aggregate=false, collapse=true)["charging Battery ZONE1"]
         @test isapprox(Posy2.charging(s, "ZONE1"; collapse=true), char_bat; rtol=1e-12)
         @test Posy2.curtailment(s, "ZONE1"; collapse=true) == 0.0
-        @test Posy2.losses(s, "IC_ZONE1_ZONE2"; collapse=true) == 0.0
+        @test isempty(Posy2.losses(s; categories=(:interconnection,)))
         zone1_prod = Posy2.production(s, "ZONE1"; collapse=true)
         imports = Posy2.imports_internal(s, "ZONE1"; collapse=true)
         expected_demand = Posy2.demand(s, "ZONE1"; aggregate=true, collapse=true)
@@ -448,12 +448,13 @@ using DataFrames
         @test isapprox(row.Total, 1_000.0 / 1e6; rtol=1e-12)
 
         evname = "EV fixed grid"
-        @test isapprox(Posy2.losses(s, evname), 100.0; rtol=1e-12)
+        lo = Posy2.losses(s)
+        @test lo.source == [evname] && lo.category == [:component]
+        @test isapprox(only(lo.losses), 100.0; rtol=1e-12)
         @test isapprox(Posy2.charging(s, "grid"), 0.0; atol=1e-9)
-        @test isapprox(Posy2.storageloss(s, "grid"), 0.0; atol=1e-9)
         @test isapprox(
             Posy2.production(s, "grid"),
-            Posy2.demand(s, "grid"; aggregate=true, collapse=true) + Posy2.losses(s, evname);
+            Posy2.demand(s, "grid"; aggregate=true, collapse=true) + only(lo.losses);
             rtol=1e-12,
         )
     end
@@ -498,7 +499,7 @@ using DataFrames
 
         final_consumption = Posy2.demand(s, "grid"; aggregate=true, collapse=true)
         net_charging = Posy2.charging(s, "grid"; collapse=true)
-        charging_loss = Posy2.storageloss(s, "grid"; collapse=true)
+        charging_loss = sum(Posy2.losses(s; categories=(:storage,)).losses)
         @test isapprox(final_consumption, 480.0; rtol=1e-12)
         @test isapprox(net_charging, 120.0; rtol=1e-12)
         @test isapprox(charging_loss, 120.0; rtol=1e-12)

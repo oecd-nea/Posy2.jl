@@ -14,7 +14,7 @@ function gentimeseries(s::Snapshot)
     dis = discharging(s, collapse=false, aggregate=true)
     inta = intake(s, collapse=false, aggregate=true)
     spil = spillage(s, collapse=false, aggregate=true)
-    los = losses(s, collapse=false, aggregate=true)
+    los = sum(losses(s, collapse=false, categories=NETWORKLOSSES).losses; init=_aggregate_init(s, false))
     lev = storagelevel(s, aggregate=true)
     curt = curtailment(s, collapse=false)
     df = DataFrame()
@@ -64,6 +64,11 @@ function gentimeseries(s::Snapshot)
     dlev = storagelevel(s, aggregate=false)
     for (k,v) in dlev
         df[!,k] = v / 1000.
+    end
+
+    # network losses per source, summing to the "Total losses" column
+    for r in eachrow(losses(s, by=:source, collapse=false, categories=NETWORKLOSSES))
+        df[!,"losses " * r.source] = r.losses / 1000.
     end
 
     # available transfer capacities (GW)

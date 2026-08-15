@@ -31,6 +31,7 @@ export applydcopf!
 
 export eac
 export selfcost
+export losses
 export printsnapshot
 export Posy2Options, posy_options, discountrate, co2_price, tech_mode, timeseries_mode
 

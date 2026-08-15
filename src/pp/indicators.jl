@@ -215,16 +215,3 @@ end
 
 # return curtailment time series in MWhe
 curtailment(s; collapse=true) = sum(curtailment(s, z, collapse=collapse) for (z,_) in s.nodes)
-
-# return lossestime series in MWhe
-function losses(s; aggregate=false, collapse=true)
-    d = LittleDict()
-    for (nname, _) in getnodes(s, with=[:electricity])
-        d[nname] = sum([losses(s, cname, modifier=energy, collapse=collapse) for (cname, c) in getcomponents(s, nname)])
-    end
-    if aggregate
-        ini = collapse ? 0.0 : zeros(Nosy.nhours(sim(s)))
-        return sum(values(d); init=ini)
-    end
-    return d
-end

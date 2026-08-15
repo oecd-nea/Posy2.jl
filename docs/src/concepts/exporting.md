@@ -13,12 +13,14 @@ printsnapshot(result, "scenario.xlsx")
 ```
 
 The workbook is written to `results/scenario.xlsx` relative to the current
-working directory. The output contains four sheets:
+working directory. The output contains five sheets:
 
 - `Annual values (all)`: annual capacities, flows, prices, costs, and related
   indicators for the complete snapshot;
 - `Annual values (self)`: the corresponding view for the non-foreign system
   boundary;
+- `Losses`: annual losses per node, broken down by category and by technology,
+  and the detailed per-source table (see [Losses](#losses));
 - `Time series`: hourly demand, production, storage, interconnection, loss,
   curtailment, and price series;
 - `Price duration curves`: endogenous and exogenous electricity prices sorted
@@ -40,6 +42,54 @@ Posy2 node and component tags described in
 Marginal-price and self-system interconnection tables require dual prices.
 These are available only for continuous solutions and for nodes created with
 `evalprice=true`.
+
+## Losses
+
+[`losses`](@ref) collects every loss of the electricity system into one flat
+table, with one row per (loss source, node) pair:
+
+```julia
+julia> losses(result)
+5×5 DataFrame
+ Row │ node    source                   tech               category         losses
+─────┼──────────────────────────────────────────────────────────────────────────────
+   1 │ ZONE1   ZONE1                    network            node             18771.4
+   2 │ ZONE1   Battery ZONE1            Battery            storage           1460.0
+   3 │ ZONE1   IC_ZONE1_ZONE2           AC                 interconnection  24699.2
+   4 │ ZONE2   IC_ZONE1_ZONE2           AC                 interconnection  24699.2
+   5 │ ZONE1   Other consumption ZONE1  Other consumption  component        43800.0
+```
+
+Values are in MWhe, or hourly MWhe series with `collapse=false`. Each row is
+attributed to a single node, and a component spanning several electricity nodes
+(a node interconnection) splits its loss equally between them: the system total
+therefore counts each loss once, while grouping by `source` still recovers the
+whole corridor.
+
+`by` aggregates the table over any combination of `:node`, `:source`, `:tech`
+and `:category`:
+
+```julia
+losses(result; by=:node)                                    # losses of each node
+losses(result; by=(:tech, :category))                       # losses of each technology, split by cause
+losses(result; by=:source, categories=(:interconnection,))  # losses of each interconnection
+```
+
+`categories` restricts the table to a subset of the five loss categories:
+`node` (nodal losses of `Node(losses=...)`, a ratio of the node inflow),
+`component` (a single component's proportional `grid losses` flow),
+`interconnection` (node interconnection transfer losses), `storage` (charging
+conversion losses) and `selfdischarge`. Only the first
+three, available as `Posy2.NETWORKLOSSES`, are flows of the nodal balance;
+`storage` and `selfdischarge` are internal to their component and already
+included in its charging flow. Carrier conversion losses (electrolysis, fuel to
+power) are not losses of the electricity system and are not reported here.
+Lossless sources are omitted, so an empty table means a lossless system.
+
+The `Losses` sheet labels the three network categories `grid (node)`,
+`grid (component)` and `grid (interconnection)`, because together they are the
+`Grid losses` column of the annual tables. The categories themselves keep plain
+symbol names, so `categories` filters and `category` comparisons stay writable.
 
 ## Serializing A Snapshot
 

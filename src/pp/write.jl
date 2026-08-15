@@ -26,6 +26,7 @@ function _gensnapshotpp(s::Snapshot)
     return LittleDict(
         "Annual values (all)" => _annual_post_processing_all(s),
         "Annual values (self)" => _annual_post_processing_self(s),
+        "Losses" => genlosses(s),
         "Time series" => gentimeseries(s),
         "Price duration curves" => genpricecurves(s),
     )

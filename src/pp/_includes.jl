@@ -1,6 +1,7 @@
 include("interconnections.jl")
 include("indicators.jl")
 include("annual.jl")
+include("losses.jl")
 include("timeseries.jl")
 include("pricecurves.jl")
 include("write.jl")

@@ -70,8 +70,10 @@ using DataFrames
         dat = Posy2._gensnapshotpp(s)
         @test haskey(dat, "Annual values (all)")
         @test haskey(dat, "Annual values (self)")
+        @test haskey(dat, "Losses")
         @test haskey(dat, "Time series")
         @test haskey(dat, "Price duration curves")
+        @test dat["Losses"] isa AbstractVector
         @test dat["Time series"] isa DataFrame
         @test dat["Price duration curves"] isa DataFrame
         @test dat["Annual values (self)"] isa AbstractVector
@@ -145,6 +147,7 @@ using DataFrames
             @test XLSX.sheetnames(xf) == [
                 "Annual values (all)",
                 "Annual values (self)",
+                "Losses",
                 "Time series",
                 "Price duration curves",
             ]
@@ -179,6 +182,7 @@ using DataFrames
             @test XLSX.sheetnames(xf) == [
                 "Annual values (all)",
                 "Annual values (self)",
+                "Losses",
                 "Time series",
                 "Price duration curves",
             ]
@@ -202,6 +206,7 @@ using DataFrames
             @test XLSX.sheetnames(xf) == [
                 "Annual values (all)",
                 "Annual values (self)",
+                "Losses",
                 "Time series",
                 "Price duration curves",
             ]

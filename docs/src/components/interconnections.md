@@ -113,8 +113,11 @@ read, and reports show the interconnection with a zero price and zero volumes.
 
 ## Losses And Reporting
 
-Node-interconnection losses are recorded once on the component. Annual node
-reports allocate half to each connected node to avoid double counting.
+Node-interconnection losses are recorded once on the component. Loss reports
+allocate half to each connected node to avoid double counting, so system totals
+count a corridor once while grouping [`losses`](@ref) by `source` recovers the
+whole corridor. Price interconnections have no loss flow: their losses are
+embedded in the exogenous price.
 Directed flow reports use labels of the form `from > to`; price-interconnection
 labels combine the `:neighbor` tag and connected local node, while node links
 derive their endpoints from port carriers. Annual workbook tables include

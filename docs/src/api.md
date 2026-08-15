@@ -78,5 +78,6 @@ applydcopf!
 
 ```@docs
 selfcost
+losses
 printsnapshot
 ```

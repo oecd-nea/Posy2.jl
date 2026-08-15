@@ -2,26 +2,6 @@ using OrderedCollections: LittleDict
 using Nosy: nhours
 
 """
-    losses(s::Snapshot, compname::String; modifier=energy, collapse=true)
-Return the time series associated with grid losses of `modifier` in component named `compname` of Snapshot `s`.
-If `collapse`, return a value instead.
-"""
-function losses(s::Snapshot, compname::String; modifier=energy, collapse=true)
-    c = s.components[compname]
-    if Nosy.hasport(c, "grid losses")
-        return balance(c, Nosy.portsense(c.s, Nosy.PortRef(compname, "grid losses")), modifier, collapse=collapse, aggregate=false)["grid losses"]
-    elseif Nosy.hasport(c, "grid losses ic")
-        return balance(c, Nosy.portsense(c.s, Nosy.PortRef(compname, "grid losses ic")), modifier, collapse=collapse, aggregate=false)["grid losses ic"] / 2 # avoiding double-counting; convention for interconnectors: half of loss for each connected node
-    else
-        if collapse
-            return 0.
-        else
-            return zeros(Nosy.nhours(sim(s)))
-        end
-    end
-end
-
-"""
     production(s::Snapshot, nodename::String; modifier=energy, collapse=true)
 Return a Dict of the time series associated with production of `modifier` in node named `nodename` of Snapshot `s`.
 If `collapse`, return a Dict of values instead.
@@ -59,43 +39,6 @@ function charging(s::Snapshot, nodename::String; modifier=energy, collapse=true)
         bin = balance(v, :input, modifier, collapse=collapse, aggregate=false)
         bout = balance(v, :output, modifier, collapse=collapse, aggregate=false)
         c += (bin["input"] - bout["driving"])
-    end
-    return c
-end
-
-"""
-    storageloss(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-Return the time series associated with storage charging losses of `modifier` in node named `nodename` of Snapshot `s`.
-If `collapse`, return a value instead.
-"""
-function storageloss(s::Snapshot, nodename::String; modifier=energy, collapse=true)
-    # `with` filters are conjunctive, while storage and EV are separate
-    # component classes. Query them separately so flexible EV charging losses
-    # are not silently omitted.
-    d = merge(
-        getcomponents(s, nodename, with=[:function => "storage"]),
-        getcomponents(s, nodename, with=[:function => "ev"]),
-    )
-    if collapse
-        local c = 0.
-    else
-        local c = zeros(nhours(s.sim))
-    end
-    for (_,v) in d
-        b = balance(v, :input, modifier, collapse=collapse, aggregate=false)
-        if haskey(b, "input")
-            if v.model isa Nosy.LazyStorageModel
-                c += b["input"] * (1. - v.model.data.eff["input"])
-            elseif v.model isa Nosy.BasicStorageModel
-                c += b["input"] * (1. - v.model.data.eff_i)
-            elseif hastag(v, :function, "ev")
-                # Fixed-profile EVs are demand models: their optional grid-loss
-                # flow is reported by `losses`, not as a charging conversion loss.
-                continue
-            else
-                @warn "Could not identify storage type"
-            end
-        end
     end
     return c
 end
@@ -179,8 +122,9 @@ function _dataline_demand_prod(s; showforeign=true)
     d["Final consumption incl. electrolysis"] = [demand(s, k, aggregate=true, collapse=true)/1E6 for (k,_) in enodes]
     d["Production incl. discharging"] = [production(s, k)/1E6 for (k,_) in enodes] # includes discharging
     d["Charging"] = [charging(s, k)/1E6 for (k,_) in enodes]
-    # d["Storage losses"] = [storageloss(s,k)/1E6 for (k,_) in enodes] # already counted in charging
-    d["Grid losses"] = [sum([losses(s, cname)/1E6 for (cname, c) in getcomponents(s, k)], init=0.)  for (k,_) in enodes]
+    # storage charging losses are excluded: they are already counted in "Charging"
+    _grid = losses(s; by=:node, categories=NETWORKLOSSES)
+    d["Grid losses"] = [sum(_grid.losses[_grid.node .== k], init=0.)/1E6 for (k,_) in enodes]
     # d["Electrolysis"] = [electrolysis(s,k)/1E6 for (k,_) in enodes] # already included in final consumption
 
     flows = _all_ic_directed_flows(s; collapse=true)

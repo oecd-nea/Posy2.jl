@@ -152,7 +152,7 @@ using HiGHS
         @test "Total level" in names(df)
         @test size(df, 1) == nh
         @test isapprox(sum(df[!, "Total demand"]), sum(df[!, "Other consumption ZONE1"]) + sum(df[!, "EL ZONE1"]); rtol=1e-12)
-        zone_losses = sum(values(Posy2.losses(s; aggregate=false, collapse=true)))
+        zone_losses = sum(Posy2.losses(s; categories=Posy2.NETWORKLOSSES).losses)
         # GW column × 1000 vs MWh zone losses: rtol=1e-6 (looser than identity compares).
         @test isapprox(sum(df[!, "Total losses"]) * 1000.0, zone_losses; rtol=1e-6)
     end
