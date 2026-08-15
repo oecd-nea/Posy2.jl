@@ -42,7 +42,7 @@ includes it in the blocks below. A component may carry several values at once
 | `"nodeinterconnection"` | Subtype of interconnection between two modelled nodes. |
 | `"priceinterconnection"` | Subtype of interconnection with an exogenous neighbour price; feeds price-duration curves for that neighbour. |
 | `"AC"` / `"DC"` | On node interconnections: AC links enter the DC-OPF cycle basis; DC links are excluded from that basis. |
-| `"foreign"` | On interconnections (and related filters): marks a link that crosses the self-system boundary used by the self annual sheet and [`selfcost`](@ref). |
+| `"foreign"` | On price interconnections only: marks a link whose priced counterparty is outside the self-system boundary. Node interconnections carry no such component tag; their boundary crossing is derived from the connected nodes' `:foreign` tags. |
 | `"hydrogen"` | Marks hydrogen-side components (demand, purchase, electrolysis, H2 storage) for hydrogen-oriented filters. |
 | `"dispatchable"` / `"intermittent"` / `"carbonfree"` / `"virtual"` / `"purchase"` | Descriptive roles used by builders and filters; they are not separate annual sheet families by themselves. |
 | `"curtailment"` | On nodes that are not `rule=:curtailed`, output from components with this tag is summed into the curtailment indicator. Shipped builders do not set it; usual studies rely on `:curtailed` nodes instead. |
@@ -94,7 +94,7 @@ naming; this table is the reporting map.
 | [`makehydrogenstorage`](@ref) | `hydrogen`, `storage` |
 | [`makeelectrolyser`](@ref) | `demand`, `electrolysis`, `hydrogen` |
 | [`makepriceinterco`](@ref) | `interconnection`, `priceinterconnection` (+ `foreign` if set) |
-| [`makenodeinterco`](@ref) | `interconnection`, `nodeinterconnection`, `AC` or `DC` (+ `foreign` if set) |
+| [`makenodeinterco`](@ref) | `interconnection`, `nodeinterconnection`, `AC` or `DC` |
 
 `:tech` is set from `cname`. `:zone` is set from the principal connected
 node (both ends for node interconnections).

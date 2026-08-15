@@ -220,7 +220,7 @@ getcomponents(snapshot; with=[:function => "generation"])
 getcomponents(
     snapshot;
     with=[:function => "interconnection"],
-    without=[:function => "foreign"],
+    without=[:function => "priceinterconnection"],
 )
 ```
 
@@ -239,8 +239,9 @@ flows. It can apply directional capacities, time-varying transfer-capacity
 multipliers, losses, transaction costs, and an optional SOS1 one direction at a time
 relation on the sending ports `input` and `input2`.
 
-Set `foreign=true` when a node interconnection crosses the boundary used for
-self-system reporting. Set `dc=true` for a controllable DC link. An AC link
+A node interconnection crosses the boundary used for self-system reporting
+exactly when one of its endpoints is a node tagged `:foreign`; there is no
+builder flag for this. Set `dc=true` for a controllable DC link. An AC link
 participating in the optional DC power flow formulation uses `dc=false` and a
 negative `susceptance`. Exactly one AC and one DC may share the same unordered
 node pair (either, both, or neither is fine). A second AC or a second DC on

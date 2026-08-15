@@ -151,6 +151,40 @@ using DataFrames
         end
     end
 
+    # Full export with one self node and one :foreign electricity node linked by a node IC:
+    # all four report sections build (time series includes ATC columns) and the xlsx write succeeds.
+    let
+        _sim = tsim()
+        snap = Snapshot(_sim, posyopts())
+        elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", _sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", _sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity, :foreign])
+        co2 = Node("CO2", CO2Carrier("CO2", _sim), rule=:curtailed, tags=[:co2])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        dat = Posy2._gensnapshotpp(s)
+        ts = dat["Time series"]
+        @test ts isa DataFrame
+        @test "ATC ZONE1 > ZONE2" in names(ts)
+        @test "ATC ZONE2 > ZONE1" in names(ts)
+
+        filepath = joinpath(mktempdir(), "pp_foreign_node_ic.xlsx")
+        Posy2._printsnapshot(dat, filepath)
+        @test isfile(filepath)
+        XLSX.openxlsx(filepath) do xf
+            @test XLSX.sheetnames(xf) == [
+                "Annual values (all)",
+                "Annual values (self)",
+                "Time series",
+                "Price duration curves",
+            ]
+        end
+    end
+
     # printsnapshot requires an optimized snapshot; unoptimized snapshot raises AssertionError.
     let
         snap = Snapshot(tsim(), posyopts())

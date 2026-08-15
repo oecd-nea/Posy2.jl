@@ -218,4 +218,28 @@ using HiGHS
         dc_fwd = balance(dc, :output, energy, collapse=false, aggregate=false)["output"] / 1000.0
         @test isapprox(df[!, col], ac_fwd .+ dc_fwd; rtol=1e-12)
     end
+
+    # Node IC with a :foreign-tagged endpoint: gentimeseries exports ATC columns in GW.
+    let
+        _sim = tsim()
+        snap = Snapshot(_sim, posyopts())
+        elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", _sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", _sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity, :foreign])
+        co2 = Node("CO2", CO2Carrier("CO2", _sim), rule=:curtailed, tags=[:co2])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 5_000.0, snap; atob_availability=0.8, btoa_availability=0.5)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        df = Posy2.gentimeseries(s)
+        @test size(df, 1) == Nosy.nhours(sim(s))
+        @test "ATC ZONE1 > ZONE2" in names(df)
+        @test "ATC ZONE2 > ZONE1" in names(df)
+        @test all(isapprox.(df[!, "ATC ZONE1 > ZONE2"], 8.0; rtol=1e-12))
+        @test all(isapprox.(df[!, "ATC ZONE2 > ZONE1"], 2.5; rtol=1e-12))
+        @test "ZONE1 > ZONE2" in names(df)
+        @test "ZONE2 > ZONE1" in names(df)
+    end
 end

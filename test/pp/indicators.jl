@@ -161,6 +161,8 @@ using HiGHS
         @test isapprox(sense1["IC_ZONE1_ZONE2"], sum(hourly["IC_ZONE1_ZONE2"]); rtol=1e-12)
         @test isapprox(Posy2.ic_vol_sense1(s; aggregate=true, collapse=true), Posy2.imports_internal(s, "ZONE1"; collapse=true); rtol=1e-12)
         @test Posy2.ic_vol_sense2(s; aggregate=true, collapse=true) == 0.0
+        # neither endpoint is tagged :foreign, so this internal link reports no ATC
+        @test isempty(Posy2.availabletransfercapacities(s))
     end
 
     # Price IC sense2 is import from foreign neighbor; sense1 is zero when only import direction flows.
@@ -293,5 +295,73 @@ using HiGHS
         @test length(atc["ATC ZONE2 > ZONE1"]) == Nosy.nhours(sim(s))
         df = Posy2.gentimeseries(s)
         @test isapprox(df[!, "ATC ZONE2 > ZONE1"], atc["ATC ZONE2 > ZONE1"] / 1000.0; rtol=1e-12)
+    end
+
+    # Node IC with a :foreign-tagged endpoint counts as foreign (no builder flag); ATC directions come
+    # from port topology (input: from->to, input2: to->from), not the price IC neighbor tag.
+    let
+        _sim = tsim()
+        snap = Snapshot(_sim, posyopts())
+        elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", _sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", _sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity, :foreign])
+        co2 = Node("CO2", CO2Carrier("CO2", _sim), rule=:curtailed, tags=[:co2])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("IC", elec1, elec2, 10_000.0, 5_000.0, snap; atob_availability=0.8, btoa_availability=0.5)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        atc = Posy2.availabletransfercapacities(s)
+        @test haskey(atc, "ATC ZONE1 > ZONE2")
+        @test haskey(atc, "ATC ZONE2 > ZONE1")
+        @test length(atc["ATC ZONE1 > ZONE2"]) == Nosy.nhours(sim(s))
+        @test all(isapprox.(atc["ATC ZONE1 > ZONE2"], 10_000.0 * 0.8; rtol=1e-12))
+        @test all(isapprox.(atc["ATC ZONE2 > ZONE1"], 5_000.0 * 0.5; rtol=1e-12))
+    end
+
+    # Foreign node IC edge directions: unlimited (Inf) direction reports no ATC; zero fixed capacity exports hourly zeros.
+    let
+        _sim = tsim()
+        snap = Snapshot(_sim, posyopts())
+        elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", _sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", _sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity, :foreign])
+        co2 = Node("CO2", CO2Carrier("CO2", _sim), rule=:curtailed, tags=[:co2])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("IC", elec1, elec2, Inf, 0.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        atc = Posy2.availabletransfercapacities(s)
+        @test !haskey(atc, "ATC ZONE1 > ZONE2")
+        @test haskey(atc, "ATC ZONE2 > ZONE1")
+        @test length(atc["ATC ZONE2 > ZONE1"]) == Nosy.nhours(sim(s))
+        @test all(iszero, atc["ATC ZONE2 > ZONE1"])
+
+        df = Posy2.gentimeseries(s)
+        @test "ATC ZONE2 > ZONE1" in names(df)
+        @test !("ATC ZONE1 > ZONE2" in names(df))
+    end
+
+    # Foreign AC + DC on one corridor: ATC sums per directed pair, matching corridor volume columns.
+    let
+        _sim = tsim()
+        snap = Snapshot(_sim, posyopts())
+        elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", _sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", _sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity, :foreign])
+        co2 = Node("CO2", CO2Carrier("CO2", _sim), rule=:curtailed, tags=[:co2])
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makenodeinterco("AC", elec1, elec2, 2_000.0, 1_000.0, snap; atob_availability=1.0, btoa_availability=1.0)
+        makenodeinterco("DC", elec1, elec2, 500.0, 250.0, snap; dc=true, atob_availability=1.0, btoa_availability=1.0)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        atc = Posy2.availabletransfercapacities(s)
+        @test all(isapprox.(atc["ATC ZONE1 > ZONE2"], 2_500.0; rtol=1e-12))
+        @test all(isapprox.(atc["ATC ZONE2 > ZONE1"], 1_250.0; rtol=1e-12))
     end
 end

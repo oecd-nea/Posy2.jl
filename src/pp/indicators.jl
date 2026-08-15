@@ -69,11 +69,25 @@ end
 
 function availabletransfercapacities(s) # no aggregate or collapse options (no meaning)
     d = LittleDict()
-    dcomps = getcomponents(s, with=[:function => "interconnection", :function => "foreign"])
-    for (k,v) in dcomps
-        (_from, _to) = _fromto_ic_external(s, v)
-        d["ATC " * string(_from, " > ", _to)] = capacity(v, "output", multiplier=true)
-        d["ATC " * string(_to, " > ", _from)] = capacity(v, "input", multiplier=true)
+    for (k, v) in getcomponents(s, with=[:function => "interconnection"])
+        # price ICs are foreign by builder intent (no modeled counterparty node);
+        # node ICs are foreign when at least one connected node is tagged :foreign
+        if hastag(v, :function, "priceinterconnection")
+            hastag(v, :function, "foreign") || continue
+            (_from, _to) = _fromto_ic_external(s, v)
+            ports = (("output", _from, _to), ("input", _to, _from))
+        else
+            isempty(_node_ic_endpoints(s, k)[3]) && continue
+            (_from, _to) = _fromto_ic_internal(s, v)
+            ports = (("input", _from, _to), ("input2", _to, _from))
+        end
+        for (port, pfrom, pto) in ports
+            Nosy.hascapacitybehavior(v, port) || continue # unlimited direction: no ATC to report
+            cap = capacity(v, port, multiplier=true)
+            cap isa Real && (cap = fill(Float64(cap), Nosy.nhours(sim(s)))) # scalar = no multiplier; expand for hourly export
+            key = "ATC " * string(pfrom, " > ", pto)
+            d[key] = haskey(d, key) ? d[key] .+ cap : cap # AC and DC sharing a corridor sum
+        end
     end
     return d
 end

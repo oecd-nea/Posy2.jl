@@ -70,9 +70,10 @@ records proportional losses for reporting. Both node names are stored as
 `:zone` values.
 
 The component carries `interconnection`, `nodeinterconnection`, and either
-`AC` or `DC` function tags. `foreign=true` adds `foreign`; use it when one
-endpoint represents the external system. The nodes themselves still need the
-appropriate `:electricity` and `:foreign` tags for self-versus-foreign reports.
+`AC` or `DC` function tags. There is no component-level foreign flag: a node
+interconnection counts as foreign in reports exactly when at least one of its
+endpoints is a node tagged `:foreign`. Give nodes the appropriate
+`:electricity` and `:foreign` tags for self-versus-foreign reports.
 
 ### DC Power-flow Metadata
 
@@ -120,7 +121,12 @@ are reported as `(AC or DC)` (hour counts if either link
 is binding), then `(AC)` and `(DC)` separately. In the hourly time-series sheet,
 the same directed `from > to` label is used; when AC and DC share a corridor
 their flows are summed into one column (there are no separate AC/DC time-series
-columns).
+columns). The hourly sheet also reports available transfer capacities
+(`ATC from > to`) for foreign links, using the same endpoint conventions: price
+interconnections built with `foreign=true`, and node interconnections with at
+least one `:foreign`-tagged endpoint (foreign-foreign transit corridors
+included). A direction without a capacity limit is omitted, and ATCs of AC and
+DC links sharing a corridor are summed into one column.
 
 Give each explicit electricity node a distinct carrier name. Endpoint discovery
 uses those carrier names rather than parsing underscores or other punctuation

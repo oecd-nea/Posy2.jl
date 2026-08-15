@@ -113,13 +113,15 @@ end
 
 """
     makenodeinterco(cname::String, a::Node, b::Node, atob, btoa, s::Snapshot;
-        dir::Bool=false, foreign::Bool=false, dc::Bool=false,
+        dir::Bool=false, dc::Bool=false,
         transactioncost::Real=0., lossfactor::Real=0.,
         susceptance::Union{Nothing,Real}=nothing,
         atob_availability=nothing, btoa_availability=nothing,
     )
 
 Build, connect and return an interconnection component linking two nodes.
+Whether the link crosses the self-system boundary is derived at reporting time
+from the connected nodes' `:foreign` tags; there is no component-level flag.
 
 Arguments:
   * `cname`: interconnector name prefix.
@@ -132,7 +134,6 @@ Arguments:
   * `s`: snapshot to register the component in.
 
   * `dir`: apply an SOS1 one direction at a time flow constraint.
-  * `foreign`: if `true`, tag interconnector as `:foreign`.
   * `dc`: if `true`, tag as `:DC`; otherwise tag as `:AC`.
 
   * `transactioncost`: per unit transaction adder on each direction.
@@ -154,7 +155,7 @@ this builder.
 """
 function makenodeinterco(cname::String, a::Node, b::Node, atob::Union{Real,VariableRef,AffExpr}, btoa::Union{Real,VariableRef,AffExpr}, s::Snapshot;
     # operation flags
-    dir::Bool=false, foreign::Bool=false, dc::Bool=false,
+    dir::Bool=false, dc::Bool=false,
 
     # economic / physical controls
     transactioncost::Real=0., lossfactor::Real=0.,
@@ -249,7 +250,6 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Union{Real,Varia
     for t in ("interconnection", "nodeinterconnection")
         tag!(c, :function, t)
     end
-    foreign && tag!(c, :function, "foreign") # IC between self and other country
     dc ? tag!(c, :function, "DC") : tag!(c, :function, "AC") # AC or DC
 
     connect!(s, c, a)
