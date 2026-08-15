@@ -93,6 +93,11 @@ function availabletransfercapacities(s) # no aggregate or collapse options (no m
 end
 
 
+# neutral element for the `aggregate=true` sums below: collapsed entries are
+# scalars, hourly entries are series. Also the value returned when no component
+# matches the query.
+_aggregate_init(s, collapse) = collapse ? 0.0 : zeros(Nosy.nhours(sim(s)))
+
 # return production time series in MWhe
 function production(s; aggregate=false, collapse=false)
     d = LittleDict()
@@ -100,7 +105,7 @@ function production(s; aggregate=false, collapse=false)
     for (k,v) in dcomps
         d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["output"]
     end
-    aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
+    aggregate && return sum(values(d); init=_aggregate_init(s, collapse))
     return d
 end
 
@@ -114,7 +119,7 @@ function charging(s; aggregate=false, collapse=false)
             d["charging "* k] = b["input"]
         end
     end
-    aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
+    aggregate && return sum(values(d); init=_aggregate_init(s, collapse))
     return d
 end
 
@@ -130,7 +135,7 @@ function discharging(s; aggregate=false, collapse=false)
             end
         end
     end
-    aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
+    aggregate && return sum(values(d); init=_aggregate_init(s, collapse))
     return d
 end
 
@@ -144,7 +149,20 @@ function intake(s; aggregate=false, collapse=false)
             d["intake " * k] = b["natural"]
         end
     end
-    aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
+    aggregate && return sum(values(d); init=_aggregate_init(s, collapse))
+    return d
+end
+
+# return spillage time series in MWhe
+function spillage(s; aggregate=false, collapse=false)
+    d = LittleDict()
+    for (k,v) in getcomponents(s, with=[:function => "storage"])
+        if Nosy.hasport(v, "spill")
+            b = balance(v, :output, energy, collapse=collapse, aggregate=false)
+            d["spillage " * k] = b["spill"]
+        end
+    end
+    aggregate && return sum(values(d); init=_aggregate_init(s, collapse))
     return d
 end
 
@@ -173,7 +191,7 @@ function demand(s; aggregate=false, collapse=false)
     for (k,v) in dev
         d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["driving"]
     end
-    aggregate && return sum(values(d), init=zeros(Nosy.nhours(sim(s))))
+    aggregate && return sum(values(d); init=_aggregate_init(s, collapse))
     return d
 end
 

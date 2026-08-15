@@ -232,6 +232,13 @@ using HiGHS
         s = extract(snap)
 
         @test isempty(Posy2.intake(s; aggregate=false, collapse=false))
+        @test isempty(Posy2.spillage(s; aggregate=false, collapse=false))
+        # An empty result aggregates to the neutral element of the requested
+        # shape, not to an hourly vector of zeros in both cases.
+        @test Posy2.intake(s; aggregate=true, collapse=true) == 0.0
+        @test Posy2.spillage(s; aggregate=true, collapse=true) == 0.0
+        @test Posy2.intake(s; aggregate=true, collapse=false) == zeros(Nosy.nhours(sim(s)))
+        @test Posy2.spillage(s; aggregate=true, collapse=false) == zeros(Nosy.nhours(sim(s)))
     end
 
     # Hydro reservoir: normalized intake matches the workbook shape and requested total.
@@ -258,6 +265,41 @@ using HiGHS
             Posy2.intake(s; aggregate=false, collapse=true)[key],
             sum(inta[key]);
             rtol=1e-12,
+        )
+        # Collapsed aggregation returns a scalar, not a series.
+        agg = Posy2.intake(s; aggregate=true, collapse=true)
+        @test agg isa Real
+        @test isapprox(agg, sum(inta[key]); rtol=1e-12)
+        @test isapprox(Posy2.intake(s; aggregate=true, collapse=false), inta[key]; rtol=1e-12)
+    end
+
+    # Spilling reservoir: spillage aggregates in both hourly and collapsed shapes.
+    let
+        snap, elec, co2 = makesnapshot2()
+        turbine = 10.0
+        total_intake = 100.0 * turbine * Nosy.nhours(sim(snap))
+        makedemand("Other consumption", "ZONE1", elec, snap; profile=turbine)
+        makedispatchable("CCGT", "CCGT", elec, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makehydroreservoir(
+            "Hydro reservoir", "Battery", "ZONE1", elec, turbine, 0.0, total_intake, snap;
+            spillage=true, intake_profile=1.0, gridlosses=0.0, eff=1.0,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0, decommissioning=0.0,
+        )
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        spil = Posy2.spillage(s; aggregate=false, collapse=false)
+        key = "spillage Hydro reservoir ZONE1"
+        @test haskey(spil, key)
+        @test length(spil[key]) == Nosy.nhours(sim(s))
+        agg = Posy2.spillage(s; aggregate=true, collapse=true)
+        @test agg isa Real
+        @test isapprox(agg, sum(spil[key]); rtol=1e-9)
+        @test isapprox(Posy2.spillage(s; aggregate=true, collapse=false), spil[key]; rtol=1e-9)
+        @test isapprox(
+            Posy2.spillage(s; aggregate=false, collapse=true)[key],
+            sum(spil[key]);
+            rtol=1e-9,
         )
     end
 

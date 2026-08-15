@@ -167,6 +167,63 @@ using HiGHS
         @test isempty(unlimited_variable_capacities)
     end
 
+    # Periodic storage forces all natural intake through the turbine, so an
+    # overflowing reservoir is infeasible unless spillage is enabled. With
+    # `spillage=true` the turbine saturates and the excess intake is spilled.
+    let
+        hours = 24
+        turbine = 10.0
+        total_intake = 1_000.0 # far above turbine * hours = 240
+        common = (
+            intake_profile=1.0, gridlosses=0.0, eff=1.0,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
+            decommissioning=0.0,
+        )
+
+        s, elec, _ = makesnapshot(hours=hours)
+        makehydroreservoir(
+            "Overflowing reservoir", "Battery", "ZONE1", elec,
+            turbine, 0.0, total_intake, s; common...,
+        )
+        Nosy.optimize!(s, cost(s))
+        @test !is_solved_and_feasible(s.sim.model)
+
+        s, elec, _ = makesnapshot(hours=hours)
+        # Flat demand at turbine capacity: the reservoir is the only supply, so
+        # its output is pinned to the turbine rating in every hour.
+        makedemand("Other consumption", "ZONE1", elec, s; profile=turbine)
+        c = makehydroreservoir(
+            "Overflowing reservoir", "Battery", "ZONE1", elec,
+            turbine, 0.0, total_intake, s; spillage=true, common...,
+        )
+        @test Nosy.hasport(c, "spill")
+        Nosy.optimize!(s, cost(s))
+        result = extract(s)
+        @test is_solved_and_feasible(s.sim.model)
+
+        rc = Nosy.getcomponent(result, "Overflowing reservoir ZONE1")
+        generation = balance(rc, :output, energy, collapse=false, aggregate=false)["output"]
+        spilled = only(values(Posy2.spillage(result; aggregate=false, collapse=false)))
+        @test generation ≈ fill(turbine, hours)
+        @test sum(spilled) ≈ total_intake - turbine * hours
+        # Conservation over the periodic cycle: intake = generation + spillage.
+        @test sum(generation) + sum(spilled) ≈ total_intake
+    end
+
+    # Spillage is opt-in: no spill port is created by default.
+    let
+        s, elec, _ = makesnapshot(hours=24)
+        c = makehydroreservoir(
+            "Default reservoir", "Battery", "ZONE1", elec,
+            100.0, 0.0, 100.0, s;
+            intake_profile=1.0, gridlosses=0.0, eff=1.0,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
+            decommissioning=0.0,
+        )
+        @test !Nosy.hasport(c, "spill")
+        @test isempty(Posy2.spillage(s; aggregate=false, collapse=false))
+    end
+
     # A zero-sum intake profile cannot be normalized.
     let
         s, elec, _ = makesnapshot()

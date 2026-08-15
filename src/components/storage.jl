@@ -5,7 +5,7 @@ Generate storage components.
 """
     makehydroreservoir(cname::String, techkey::String, zone::String, elec::Node,
         cap_discharging, cap_charging, intake, s::Snapshot;
-        cap_reservoir=Inf,
+        cap_reservoir=Inf, spillage=false,
         weatheryear=nothing, gridlosses=0., simplified=false,
         intake_profile=nothing,
         eff::Union{Nothing,Real}=nothing,
@@ -33,6 +33,9 @@ Arguments:
   * `cap_reservoir`: Storage level capacity. A finite number fixes capacity, a
     JuMP `VariableRef` or `AffExpr` reuses that expression, `nothing` creates a
     capacity decision, and `Inf` (the default) leaves the level unlimited.
+  * `spillage`: Add an unconnected, unlimited `spill` output that lets the
+    reservoir release stored energy without generating. It defaults to `false`,
+    which forces all natural intake to eventually become generation.
 
   * `weatheryear`: Year suffix used to select the intake series stored in
     `reservoir_inflow_<year>`. Required when `intake_profile` is read from the
@@ -58,7 +61,7 @@ function makehydroreservoir(cname::String, techkey::String, zone::String, elec::
     cap_discharging::Union{Nothing,Real,VariableRef,AffExpr}, cap_charging::Union{Nothing,Real,VariableRef,AffExpr},
     intake::Real, s::Snapshot;
     # storage operation controls
-    cap_reservoir::Union{Nothing,Real,VariableRef,AffExpr}=Inf,
+    cap_reservoir::Union{Nothing,Real,VariableRef,AffExpr}=Inf, spillage::Bool=false,
     weatheryear::Union{Nothing,Integer}=nothing, gridlosses::Real=0.,
     simplified::Bool=false,
     intake_profile=nothing,
@@ -122,10 +125,14 @@ function makehydroreservoir(cname::String, techkey::String, zone::String, elec::
 
     _gridlosses = Float64(gridlosses)
     _eff = Float64(_eff)
-    m = LazyStorage(elec.carrier, eff=Dict("natural" => 1., "output" => 1., "input" => _eff, "grid losses" => 0.), simplified=simplified)
+    _effs = Dict("natural" => 1., "output" => 1., "input" => _eff, "grid losses" => 0.)
+    spillage && (_effs["spill"] = 1.)
+    m = LazyStorage(elec.carrier, eff=_effs, simplified=simplified)
     vb = []
     # joint flows for input and output
     push!(vb, FreeJointFlow("output", elec.carrier, :output))
+    # unconnected free output: releases stored energy without generating
+    spillage && push!(vb, FreeJointFlow("spill", elec.carrier, :output, mustconnect=false))
 
     # costs
     _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discountrate(s), Int(_lt_raw), _cp)

@@ -13,6 +13,7 @@ function gentimeseries(s::Snapshot)
     char = charging(s, collapse=false, aggregate=true)
     dis = discharging(s, collapse=false, aggregate=true)
     inta = intake(s, collapse=false, aggregate=true)
+    spil = spillage(s, collapse=false, aggregate=true)
     los = losses(s, collapse=false, aggregate=true)
     lev = storagelevel(s, aggregate=true)
     curt = curtailment(s, collapse=false)
@@ -26,6 +27,7 @@ function gentimeseries(s::Snapshot)
     df[!,"Total charging"] = char / 1000.
     df[!,"Total discharging"] = dis / 1000.
     df[!,"Total intake"] = inta / 1000.
+    df[!,"Total spillage"] = spil / 1000.
     df[!,"Total curtailment"] = curt / 1000.
     df[!,"Total level"] = lev / 1000.
 
@@ -51,6 +53,11 @@ function gentimeseries(s::Snapshot)
 
     dinta = intake(s, collapse=false, aggregate=false)
     for (k,v) in dinta
+        df[!,k] = v / 1000.
+    end
+
+    dspil = spillage(s, collapse=false, aggregate=false)
+    for (k,v) in dspil
         df[!,k] = v / 1000.
     end
 

@@ -157,6 +157,34 @@ using HiGHS
         @test isapprox(sum(df[!, "Total losses"]) * 1000.0, zone_losses; rtol=1e-6)
     end
 
+    # A spilling reservoir reports aggregate and per-component spillage in GW.
+    let
+        snap, elec1, _, _ = makesnapshot()
+        nh = Nosy.nhours(sim(snap))
+        turbine = 10.0
+        total_intake = 100.0 * turbine * nh # far above what the turbine can release
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile=turbine)
+        makehydroreservoir(
+            "Reservoir", "Battery", "ZONE1", elec1,
+            turbine, 0.0, total_intake, snap;
+            spillage=true, intake_profile=1.0, gridlosses=0.0, eff=1.0,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0, decommissioning=0.0,
+        )
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        df = Posy2.gentimeseries(s)
+        @test "Total spillage" in names(df)
+        @test "spillage Reservoir ZONE1" in names(df)
+        @test isapprox(sum(df[!, "Total spillage"]), sum(df[!, "spillage Reservoir ZONE1"]); rtol=1e-12)
+        # Periodic conservation: intake = generation + spillage.
+        @test isapprox(
+            sum(df[!, "Total intake"]),
+            sum(df[!, "Total production"]) + sum(df[!, "Total spillage"]);
+            rtol=1e-9,
+        )
+    end
+
     # Node IC columns use rewrite labels; export column sum matches imports_internal in GW.
     let
         snap, elec1, elec2, co2 = makesnapshot()

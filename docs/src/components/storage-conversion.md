@@ -10,11 +10,12 @@ capacity, port, and tagging conventions.
 
 ## Hydro Reservoir
 
-[`makehydroreservoir`](@ref) creates a storage component with up to four flows:
+[`makehydroreservoir`](@ref) creates a storage component with up to five flows:
 
 - `natural` is unconnected fixed intake from the reservoir series;
 - `input` is optional grid charging;
 - `output` is electricity generation;
+- `spill` is optional unconnected release, enabled by `spillage`;
 - `level` is stored energy.
 
 Each of `cap_discharging`, `cap_charging`, and `cap_reservoir` accepts a JuMP
@@ -28,6 +29,14 @@ decision, and `Inf` (the default) leaves the stored-energy level unlimited.
 For example, use `cap_reservoir=12_000.0` for a fixed 12 GWh reservoir,
 `cap_reservoir=nothing` to let the model choose its energy capacity, or omit the
 keyword (equivalently, pass `Inf`) for an unlimited level.
+
+Storage is periodic, so without a spill flow every unit of natural intake must
+eventually be turbined. That can force uneconomic generation, or make the
+reservoir infeasible when intake, turbine capacity, and level capacity do not
+fit together. `spillage=true` adds an unlimited, uncosted `spill` output that
+absorbs the excess. It is opt-in: the default `spillage=false` keeps the forced
+use of all inflow. Spilled energy is reported by the hourly sheet's
+`Total spillage` and `spillage <component>` columns.
 
 The intake profile comes from sheet `reservoir_inflow_<weatheryear>`, column `<zone>`.
 When `intake_profile` is omitted and intake is enabled, `weatheryear` must be
