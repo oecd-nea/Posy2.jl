@@ -1227,6 +1227,16 @@ function _dataline_electrolysers_capacityfactors(s; showforeign=true)
     )
 end
 
+# true if the component of a costs()/selfcosts() row is associated with costs, i.e. if it
+# either carries a cost behavior or has a non-zero (or unavailable) value in the row.
+# The second test also catches the columns computed outside of cost behaviors
+# (self imports/exports, congestion rent).
+function _hascosts(s, row)
+    cname = row["component"]
+    Nosy.hascomponent(s, cname) && !isempty(Nosy.getbehaviors(Nosy.getcomponent(s, cname), Nosy.AbstractCostBehavior)) && return true
+    return any(ismissing(v) || !iszero(v) for v in row[2:end])
+end
+
 # return a line containing a dataframe containing the cost categories for the different components
 function _dataline_costs(s; showforeign=true)
     if showforeign
@@ -1236,13 +1246,11 @@ function _dataline_costs(s; showforeign=true)
     end
 
     # filter out items not associated with costs
-    vcomp = getcomponents(s, without=[:function => "demand"])
-    for cname in collect(df[!,"component"]) # prevent lazy iteration because we modify the df
-        if !haskey(vcomp, cname) && cname != "all"
-            deleteat!(df, df[!,"component"] .== cname)
-        end
-    end
-    
+    # the filter is on the costs themselves, not on the component function: some
+    # demand-tagged components (electrolysers, V2G EVs) do bear costs and must be
+    # kept, otherwise the displayed rows no longer sum to the "all" row
+    filter!(row -> row["component"] == "all" || _hascosts(s, row), df)
+
     df2 = DataFrame()
     df2[!,"Component"] = df[!,:"component"]
     

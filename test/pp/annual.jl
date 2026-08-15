@@ -734,6 +734,56 @@ using DataFrames
         )
     end
 
+    # Detailed costs keeps demand-tagged components that bear costs (electrolysers, V2G EVs):
+    # the displayed rows must still sum to the "all" row.
+    let
+        snap, elec, co2 = argument_snapshot(hours=24)
+        h2 = Node("H2", EnergyCarrier("hydrogen", sim(snap)); rule=:curtailed, tags=[:hydrogen])
+        makedemand("Other consumption", "grid", elec, snap; profile=10.0)
+        makedispatchable("CCGT", "unused", elec, co2, snap; cap=100.0, fuel_cost=1.0)
+        makeelectrolyser(
+            "EL", "PEM", elec, h2, snap;
+            cap=10.0, gridlosses=0.0, eff=0.8,
+            overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
+            construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
+        )
+        makeflathydrogendemand("H2 demand", h2, 8760.0 * 5, snap)
+        makeEV(
+            "EV V2G", 240.0, elec, snap;
+            fixed_profile=false, smart_charging=false, vehicle_to_grid=true,
+            charging_availability=1.0, driving_profile=1.0,
+            charging_eff=0.8, self_discharge=0.0, min_level_morning=0.0,
+            max_charging_power_per_ev=2.0, max_dispatch_power_per_ev=2.0,
+            battery_capacity_per_ev=10.0, yearly_consumption_per_ev=24.0,
+            compensation=100.0,
+        )
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        for showforeign in (true, false)
+            detail = Posy2._dataline_costs(s; showforeign=showforeign)
+            comps = Set(detail.d.Component)
+            # components carrying costs are kept despite their "demand" function tag
+            @test "EL grid" in comps
+            @test "EV V2G grid" in comps
+            # pure demand components have no cost behavior and no cost: still filtered out
+            @test !("Other consumption grid" in comps)
+            @test !("H2 demand H2" in comps)
+
+            rows = detail.d[detail.d.Component .!= "all", :]
+            allrow = first(detail.d[detail.d.Component .== "all", :])
+            @test isapprox(sum(rows.total), allrow.total; rtol=1e-9)
+            for cname in names(detail.d)[2:end]
+                @test isapprox(sum(rows[!, cname]), allrow[cname]; rtol=1e-9, atol=1e-12)
+            end
+        end
+
+        # the electrolyser fixed costs are a significant share of the total
+        detail = Posy2._dataline_costs(s; showforeign=true)
+        el_total = first(detail.d[detail.d.Component .== "EL grid", :total])
+        @test el_total > 0.0
+    end
+
     # Cost table cleanup: rows with all zero numeric columns are dropped.
     let
         df = DataFrame(component=["A", "B", "C"], fuel=[0.0, 1.0, 0.0], total=[0.0, 1.0, 0.0])
