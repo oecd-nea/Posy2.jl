@@ -49,6 +49,8 @@ using HiGHS
         @test "Total demand" in names(df)
         @test "Total production" in names(df)
         @test "Total net interconnection" in names(df)
+        # both endpoints are self nodes: the corridor is an internal transfer, not a boundary flow
+        @test all(iszero, df[!, "Total net interconnection"])
     end
 
     # Hourly demand columns are in GW (100 MW -> 0.1 GW); annual sum matches MWh/1000.
@@ -269,6 +271,8 @@ using HiGHS
         @test all(isapprox.(df[!, "ATC ZONE2 > ZONE1"], 2.5; rtol=1e-12))
         @test "ZONE1 > ZONE2" in names(df)
         @test "ZONE2 > ZONE1" in names(df)
+        # ZONE2 is the foreign endpoint: net interconnection is imports from it minus exports to it
+        @test isapprox(df[!, "Total net interconnection"], df[!, "ZONE2 > ZONE1"] .- df[!, "ZONE1 > ZONE2"]; rtol=1e-12)
     end
 
     # Fully disabled price IC (both directions numerically zero, no spot price supplied):

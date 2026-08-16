@@ -4,34 +4,35 @@ Post-processing functions.
 The functions below rely on the tag system 
 """
 
-# return exports time series
-function ic_vol_sense1(s; aggregate=false, collapse=false)
-    d = LittleDict()
-    for (k, v) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"])
-        d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input2"]
-    end
-    for (k, v) in getcomponents(s, with=[:function => "interconnection", :function => "priceinterconnection"])
-        d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input"]
-    end
-    if aggregate
-        ini = collapse ? 0.0 : zeros(Nosy.nhours(sim(s)))
-        return sum(values(d); init=ini)
-    end
-    return d
-end
+"""
+    netinterconnection(s; collapse=false)
+Return the net interconnection time series of the self system in MWhe: flows entering
+self (non-`:foreign`) electricity nodes from outside minus flows leaving them, summed
+over every interconnection. Positive means net imports.
 
-# return imports time series
-function ic_vol_sense2(s; aggregate=false, collapse=false)
-    d = LittleDict()
-    dcomps = getcomponents(s, with=[:function => "interconnection"])
-    for (k,v) in dcomps
-        d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["output"]
+Orientation comes from the endpoints' foreignness, not from builder port names, so a
+corridor with both endpoints on the same side of the boundary contributes nothing, and
+swapping the endpoints passed to a builder does not change the result. A node
+interconnection endpoint is foreign when its node is tagged `:foreign`; a price
+interconnection has no counterparty node, so its `foreign` tag (`makepriceinterco(...;
+foreign)`) decides, and a `foreign=false` corridor to another internal zone is excluded.
+Flows are measured at the sending end, as in the annual interconnection tables.
+"""
+function netinterconnection(s; collapse=false)
+    selfnodes = getnodes(s, with=[:electricity], without=[:foreign])
+    net = _aggregate_init(s, collapse)
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        isprice = hastag(c, :function, "priceinterconnection")
+        isprice && !hastag(c, :function, "foreign") && continue # priced internal zone: no boundary crossing
+        extzone = isprice ? only(get(c.tags, :neighbor, String[])) : nothing # implicit endpoint, never self
+        for (_from, _to, flow) in _ic_directed_flows(s, c; collapse=collapse)
+            from_self = _from != extzone && haskey(selfnodes, _from)
+            to_self = _to != extzone && haskey(selfnodes, _to)
+            from_self == to_self && continue # internal transfer, or foreign transit: no boundary crossing
+            net = to_self ? net .+ flow : net .- flow
+        end
     end
-    if aggregate
-        ini = collapse ? 0.0 : zeros(Nosy.nhours(sim(s)))
-        return sum(values(d); init=ini)
-    end
-    return d
+    return net
 end
 
 # rewrite interconnection component names to "from > to" flow labels for reporting

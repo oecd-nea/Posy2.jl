@@ -133,7 +133,14 @@ columns). The hourly sheet also reports available transfer capacities
 interconnections built with `foreign=true`, and node interconnections with at
 least one `:foreign`-tagged endpoint (foreign-foreign transit corridors
 included). A direction without a capacity limit is omitted, and ATCs of AC and
-DC links sharing a corridor are summed into one column.
+DC links sharing a corridor are summed into one column. The sheet's
+`Total net interconnection` column is the net import of the self system across
+its boundary, using the same foreignness convention as the ATC columns: node
+interconnections are classified by their endpoint nodes' `:foreign` tags, price
+interconnections by their own `foreign` flag. Corridors between two self nodes,
+between two foreign endpoints, and price interconnections built with
+`foreign=false` all cancel out, and swapping the two nodes passed to
+`makenodeinterco` does not change the column.
 
 Give each explicit electricity node a distinct carrier name. Endpoint discovery
 uses those carrier names rather than parsing underscores or other punctuation

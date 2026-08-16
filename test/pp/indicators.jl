@@ -135,7 +135,7 @@ using HiGHS
         @test isapprox(collapsed["CCGT ZONE2"], expected; rtol=1e-12)
     end
 
-    # Node IC sense1 is forward (ZONE1 import); sense2 is reverse export — only forward flow in default fixture.
+    # An internal corridor between two self nodes carries flow but crosses no boundary: net is zero.
     let
         snap, elec1, elec2, h2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
@@ -150,22 +150,44 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        sense1 = Posy2.ic_vol_sense1(s; aggregate=false, collapse=true)
-        sense2 = Posy2.ic_vol_sense2(s; aggregate=false, collapse=true)
-        hourly = Posy2.ic_vol_sense1(s; aggregate=false, collapse=false)
-
-        @test haskey(sense1, "IC_ZONE1_ZONE2")
-        @test isapprox(sense1["IC_ZONE1_ZONE2"], Posy2.imports_internal(s, "ZONE1"; collapse=true); rtol=1e-12)
-        @test sense2["IC_ZONE1_ZONE2"] == 0.0
-        @test sense1["IC_ZONE1_ZONE2"] != sense2["IC_ZONE1_ZONE2"]
-        @test isapprox(sense1["IC_ZONE1_ZONE2"], sum(hourly["IC_ZONE1_ZONE2"]); rtol=1e-12)
-        @test isapprox(Posy2.ic_vol_sense1(s; aggregate=true, collapse=true), Posy2.imports_internal(s, "ZONE1"; collapse=true); rtol=1e-12)
-        @test Posy2.ic_vol_sense2(s; aggregate=true, collapse=true) == 0.0
+        @test Posy2.imports_internal(s, "ZONE1"; collapse=true) > 0.0 # the corridor does flow
+        @test Posy2.netinterconnection(s; collapse=true) == 0.0
+        @test all(iszero, Posy2.netinterconnection(s; collapse=false))
         # neither endpoint is tagged :foreign, so this internal link reports no ATC
         @test isempty(Posy2.availabletransfercapacities(s))
     end
 
-    # Price IC sense2 is import from foreign neighbor; sense1 is zero when only import direction flows.
+    # Net interconnection is boundary net imports and does not depend on the builder's endpoint order.
+    let
+        function foreignfixture(reversed::Bool)
+            sim = tsim()
+            snap = Snapshot(sim, posyopts())
+            elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+            elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity, :foreign])
+            co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
+            makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+            makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+            if reversed
+                makenodeinterco("IC", elec2, elec1, 10_000.0, 10_000.0, snap; transactioncost=1.)
+            else
+                makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; transactioncost=1.)
+            end
+            Nosy.optimize!(snap, cost(snap))
+            return extract(snap)
+        end
+
+        s = foreignfixture(false)
+        srev = foreignfixture(true)
+        net = Posy2.netinterconnection(s; collapse=true)
+
+        # ZONE2 supplies ZONE1 across the boundary: positive net imports, matching the annual layer
+        @test net > 0.0
+        @test isapprox(net, Posy2.imports_foreign(s, "ZONE1"; collapse=true); rtol=1e-12)
+        @test isapprox(net, Posy2.netinterconnection(srev; collapse=true); rtol=1e-12)
+        @test isapprox(net, sum(Posy2.netinterconnection(s; collapse=false)); rtol=1e-12)
+    end
+
+    # Price ICs cross the boundary by construction: import-only corridor gives positive net imports.
     let
         snap, elec1, _, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
@@ -173,14 +195,25 @@ using HiGHS
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        sense1 = Posy2.ic_vol_sense1(s; aggregate=false, collapse=true)
-        sense2 = Posy2.ic_vol_sense2(s; aggregate=false, collapse=true)
-        hourly = Posy2.ic_vol_sense2(s; aggregate=false, collapse=false)
+        net = Posy2.netinterconnection(s; collapse=true)
+        @test net > 0.0
+        @test isapprox(net, Posy2.imports_foreign(s, "ZONE1"; collapse=true); rtol=1e-12)
+        @test isapprox(net, sum(Posy2.netinterconnection(s; collapse=false)); rtol=1e-12)
+    end
 
-        @test isapprox(sense2["IC_ZONE2_ZONE1"], Posy2.imports_foreign(s, "ZONE1"; collapse=true); rtol=1e-12)
-        @test sense1["IC_ZONE2_ZONE1"] == 0.0
-        @test sense1["IC_ZONE2_ZONE1"] != sense2["IC_ZONE2_ZONE1"]
-        @test isapprox(sense2["IC_ZONE2_ZONE1"], sum(hourly["IC_ZONE2_ZONE1"]); rtol=1e-12)
+    # A price IC built with foreign=false prices another internal zone: it crosses no boundary.
+    let
+        snap, elec1, _, _, _ = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; foreign=false, transactioncost=1.)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
+        @test !hastag(c, :function, "foreign")
+        @test sum(balance(c, :output, energy, collapse=false, aggregate=false)["output"]) > 0.0 # the corridor does flow
+        @test Posy2.netinterconnection(s; collapse=true) == 0.0
+        @test all(iszero, Posy2.netinterconnection(s; collapse=false))
     end
 
     # Battery storage helpers expose hourly charging/discharging/level series with correct collapse semantics.
