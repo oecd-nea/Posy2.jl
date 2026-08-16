@@ -198,14 +198,18 @@ to `makedispatchable`, not `makenuclear`.
 For the fuel group, `makedispatchable` and `makenuclear` read `fuel_cost`
 without `fuelnode`, or `efficiency` with `fuelnode`.
 
-For `makedispatchable` and `makenuclear`, `uc=true` reads `no_load_cost` and
-`startup_cost`. When no initial snapshot supplies unit-commitment behaviour,
-it also reads `min_power`, `min_uptime`, `min_downtime`,
-`startup_duration`, and `shutdown_duration`.
+For `makedispatchable` and `makenuclear`, enabling unit commitment reads
+`no_load_cost` and `startup_cost`. Only `uc=true` also reads `min_power`,
+`min_uptime`, `min_downtime`, `startup_duration`, and `shutdown_duration`:
+`uc=<extracted snapshot>` replays a solved commitment schedule and needs none
+of them.
 
-Nuclear unit commitment additionally reads `reload_fraction_per_year`. A
+`uc=true` on nuclear additionally reads `reload_fraction_per_year`, and a
 positive reload fraction causes `reload_duration` to be read. `reloadmask` is
-an argument-only scheduling interval and has no workbook row.
+an argument-only scheduling interval and has no workbook row. A replayed
+schedule already contains whatever reload outages it was solved with, so
+`uc=<extracted snapshot>` builds no reload constraints and warns if reload
+arguments are supplied.
 
 `ramp_up` and `ramp_down` are used by `makedispatchable` only when
 `unit_size > 0`; omitted, `nothing`, or zero ramp values omit the corresponding

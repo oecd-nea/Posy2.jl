@@ -6,7 +6,7 @@ using ArgCheck: @argcheck
 
 """
     makedispatchable(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
-        cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing, capacitymultiplier=nothing,
+        cap=nothing, mincap=nothing, maxcap=nothing, capacitymultiplier=nothing,
         integeruc=false, uc=false, fuelnode=nothing,
         co2price=co2_price(s),
         overnight_cost, om_fixed_cost, decommissioning, lifetime,
@@ -26,15 +26,19 @@ Arguments:
   * `s`: Target snapshot where the component and behaviors are registered.
 
   * `cap`: Output capacity in model power units. A number fixes capacity, a
-    JuMP `VariableRef` or `AffExpr` reuses that expression, and `nothing`
-    creates a capacity decision. Numeric `0` returns `nothing`.
-  * `mincap`: Lower bound for a new or externally supplied capacity expression.
-  * `maxcap`: Upper bound for a new or externally supplied capacity expression.
-  * `ini`: Optional initial snapshot. If provided, capacity/UC state is inherited from the matching component.
+    JuMP `VariableRef` or `AffExpr` reuses that expression, `nothing` creates a
+    capacity decision, and an extracted `Snapshot` inherits the capacity of
+    `"<cname> <node name>"` in it. Numeric `0` builds a zero-capacity component.
+  * `mincap`: Lower bound on an optimized or externally supplied capacity;
+    checked as an assertion against a fixed or inherited one.
+  * `maxcap`: Upper bound on an optimized or externally supplied capacity;
+    checked as an assertion against a fixed or inherited one.
   * `capacitymultiplier`: Time varying multiplier applied to output capacity (capacity basis, not energy basis).
 
   * `integeruc`: If `true`, UC commitment variables are integer (mixed integer UC).
   * `uc`: Enables UC constraints and UC linked costs (`no_load_cost`, `startup_cost`).
+    An extracted `Snapshot` instead replays the commitment schedule already
+    solved for the matching component, and then requires a fixed `cap`.
   * `fuelnode`: If provided, fuel is modeled as an input flow linked by efficiency. If `nothing`, fuel is modeled as a variable cost on output energy (`fuel_cost`).
 
   * `co2price`: CO2 cost coefficient used with emitted CO2 flow.
@@ -63,11 +67,11 @@ Arguments:
 """
 function makedispatchable(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / expansion
-    cap::Union{Nothing,Real,VariableRef,AffExpr}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
-    ini::Union{Nothing,Snapshot}=nothing, capacitymultiplier=nothing,
+    cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    capacitymultiplier=nothing,
 
     # unit commitment / operation
-    integeruc=false, uc=false, fuelnode=nothing,
+    integeruc=false, uc::Union{Bool,Snapshot}=false, fuelnode=nothing,
 
     co2price::Real=co2_price(s),
 
@@ -84,6 +88,7 @@ function makedispatchable(cname::String, techkey::String, elec::Node, co2::Node,
     min_downtime::Union{Nothing,Real}=nothing,
     startup_duration::Union{Nothing,Real}=nothing, shutdown_duration::Union{Nothing,Real}=nothing,
 )
+    _checkucsource(uc, cap)
     excel = tech_mode(s) === :excel
     if excel
         _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "dispatchable") : overnight_cost
@@ -171,29 +176,8 @@ function makedispatchable(cname::String, techkey::String, elec::Node, co2::Node,
         @argcheck _usize_raw > 0 "unit_size must be > 0 when non-zero."
         _usize = _usize_raw
     end
-    if cap isa Real
-        if !iszero(cap)
-            push!(vb, FixedCapacity("output", energy, cap, unitsize=_usize))
-        else
-            # component not created
-            return nothing
-        end
-    elseif cap isa VariableRef || cap isa AffExpr
-        JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
-        push!(vb, VariableCapacity(
-            "output", energy;
-            expression=cap,
-            unitsize=_usize,
-            lb=isnothing(mincap) ? 0.0 : mincap,
-            ub=isnothing(maxcap) ? Inf : maxcap,
-        ))
-    elseif isnothing(cap)
-        if isnothing(ini)
-            push!(vb, VariableCapacity("output", energy, unitsize=_usize, integer=false, lb = isnothing(mincap) ? 0 : mincap, ub = isnothing(maxcap) ? Inf : maxcap))
-        else
-            push!(vb, FixedCapacity("output", energy, capacity(ini, cname * " " * elec.name), unitsize=_usize))
-        end
-    end
+    push!(vb, gencapacity(cap, "output", s, cname * " " * elec.name;
+        mincap=mincap, maxcap=maxcap, unitsize=_usize))
 
     # fuel node management
     if isnothing(fuelnode)
@@ -203,11 +187,13 @@ function makedispatchable(cname::String, techkey::String, elec::Node, co2::Node,
         push!(vb, LinkedJointFlow("fuel", fuelnode.carrier, :input, "output", x->x[1] / _eff))
     end
 
-    if uc
+    if _ucenabled(uc)
         isnothing(_usize) && throw(ArgumentError(
             "`unit_size` must be supplied as a positive number when uc=true",
         ))
-        if isnothing(ini)
+        if uc isa Snapshot
+            _pushinheriteduc!(vb, uc, cname * " " * elec.name, "output")
+        else
             _min_power = isnothing(min_power) ? (excel ? gettechparam(s, techkey, "min_power", "dispatchable") : 0.0) : min_power
             _min_uptime = isnothing(min_uptime) ? (excel ? gettechparam(s, techkey, "min_uptime", "dispatchable") : 0.0) : min_uptime
             _min_downtime = isnothing(min_downtime) ? (excel ? gettechparam(s, techkey, "min_downtime", "dispatchable") : 0.0) : min_downtime
@@ -226,8 +212,6 @@ function makedispatchable(cname::String, techkey::String, elec::Node, co2::Node,
                 shutdown=_shutdown_dur, 
                 integer=integeruc)
             )
-        else
-            push!(vb, UnitCommitment(first(Nosy.getbehaviors(ini.components[cname * " " * elec.name], Nosy.FleetUnitCommitmentBehavior))))
         end
         _noload = isnothing(no_load_cost) ? (excel ? gettechparam(s, techkey, "no_load_cost", "dispatchable") : 0.0) : no_load_cost
         _startup = isnothing(startup_cost) ? (excel ? gettechparam(s, techkey, "startup_cost", "dispatchable") : 0.0) : startup_cost
@@ -280,7 +264,7 @@ end
 
 """
     makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
-        cap=nothing, mincap=nothing, maxcap=nothing, integercap=false, ini=nothing, warmstart=nothing,
+        cap=nothing, mincap=nothing, maxcap=nothing, integercap=false, warmstart=nothing,
         uc=false, integeruc=false, startupmask=nothing, shutdownmask=nothing,
         reload_duration::Union{Nothing,Real}=nothing, reloadmask::Union{Nothing,Real}=nothing, reload_fraction_per_year::Union{Nothing,Real}=nothing,
         fuelnode=nothing, co2price=co2_price(s),
@@ -303,14 +287,18 @@ Arguments:
   * `s`: snapshot to register the component in.
 
   * `cap`: Output capacity. A number fixes capacity, a JuMP `VariableRef` or
-    `AffExpr` reuses that expression, and `nothing` creates a capacity decision.
-  * `mincap`: Lower bound for a new or externally supplied capacity expression.
-  * `maxcap`: Upper bound for a new or externally supplied capacity expression.
+    `AffExpr` reuses that expression, `nothing` creates a capacity decision, and
+    an extracted `Snapshot` inherits the capacity of `"<cname> <node name>"` in it.
+  * `mincap`: Lower bound on an optimized or externally supplied capacity;
+    checked as an assertion against a fixed or inherited one.
+  * `maxcap`: Upper bound on an optimized or externally supplied capacity;
+    checked as an assertion against a fixed or inherited one.
   * `integercap`: Integer flag for capacity expansion variable.
-  * `ini`: Optional initial snapshot for inherited capacity/UC settings.
   * `warmstart`: Warm start value passed to variable capacity behavior when used.
 
-  * `uc`: Enables UC constraints and UC linked costs. Reloading logic is only modeled when `uc=true`; if `uc=false` and any reloading argument is provided, a warning is emitted and reloading is ignored.
+  * `uc`: Enables UC constraints and UC linked costs. An extracted `Snapshot`
+    instead replays the commitment schedule already solved for the matching
+    component, and then requires a fixed `cap`. Reloading logic is only modeled when unit commitment is enabled; if `uc=false` and any reloading argument is provided, a warning is emitted and reloading is ignored.
   * `integeruc`: Integer UC commitment variables.
   * `startupmask`: Optional masks restricting UC startup/shutdown availability over time.
   * `shutdownmask`: Optional masks restricting UC startup/shutdown availability over time.
@@ -345,11 +333,11 @@ Arguments:
 """
 function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / expansion
-    cap::Union{Nothing,Real,VariableRef,AffExpr}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
-    integercap=false, ini::Union{Nothing,Snapshot}=nothing, warmstart::Union{Nothing,Real}=nothing,
+    cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    integercap=false, warmstart::Union{Nothing,Real}=nothing,
 
     # unit commitment / operation
-    uc=false, integeruc=false, startupmask=nothing, shutdownmask=nothing,
+    uc::Union{Bool,Snapshot}=false, integeruc=false, startupmask=nothing, shutdownmask=nothing,
 
     # reloading controls
     reload_duration::Union{Nothing,Real}=nothing, reloadmask::Union{Nothing,Real}=nothing, reload_fraction_per_year::Union{Nothing,Real}=nothing,
@@ -367,6 +355,7 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
     min_uptime::Union{Nothing,Real}=nothing, min_downtime::Union{Nothing,Real}=nothing,
     startup_duration::Union{Nothing,Real}=nothing, shutdown_duration::Union{Nothing,Real}=nothing,
 )
+    _checkucsource(uc, cap)
     m = DispatchableSource(elec.carrier)
     vb = []
     excel = tech_mode(s) === :excel
@@ -452,31 +441,11 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
         @argcheck _usize_raw > 0 "unit_size must be > 0 when non-zero."
         _usize = _usize_raw
     end
-    if (uc || (integercap && isnothing(cap) && isnothing(ini))) && isnothing(_usize)
+    if (_ucenabled(uc) || (integercap && isnothing(cap))) && isnothing(_usize)
         throw(ArgumentError("`unit_size` must be positive when unit commitment or integer capacity expansion is enabled"))
     end
-    if cap isa Real
-        push!(vb, FixedCapacity("output", energy, cap, unitsize=_usize))
-    elseif cap isa VariableRef || cap isa AffExpr
-        JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
-        push!(vb, VariableCapacity(
-            "output", energy;
-            expression=cap,
-            unitsize=_usize,
-            integer=integercap,
-            lb=isnothing(mincap) ? 0.0 : mincap,
-            ub=isnothing(maxcap) ? Inf : maxcap,
-            warmstart=warmstart,
-        ))
-    elseif isnothing(cap)
-        if isnothing(ini)
-            push!(vb, VariableCapacity("output", energy, unitsize=_usize, integer=integercap, lb = isnothing(mincap) ? 0 : mincap, ub = isnothing(maxcap) ? Inf : maxcap, warmstart=warmstart))
-        elseif Nosy.hascomponent(ini, cname * " " * elec.name)
-            push!(vb, FixedCapacity("output", energy, capacity(ini, cname * " " * elec.name), unitsize=_usize))
-        else
-            push!(vb, FixedCapacity("output", energy, 0., unitsize=_usize))
-        end
-    end
+    push!(vb, gencapacity(cap, "output", s, cname * " " * elec.name;
+        mincap=mincap, maxcap=maxcap, unitsize=_usize, integer=integercap, warmstart=warmstart))
 
     # fuel node management
     # fuel cost only used if fuel node is nothing
@@ -489,10 +458,14 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
 
     # special case: cycling constraints for nuclear
     _reload_on = false
-    if !uc && (!isnothing(reload_duration) || !isnothing(reloadmask) || !isnothing(reload_fraction_per_year))
+    if !_ucenabled(uc) && (!isnothing(reload_duration) || !isnothing(reloadmask) || !isnothing(reload_fraction_per_year))
         @warn "Because uc=false for nuclear component, reloading is not modeled." component=cname techkey=techkey
     end
-    if uc
+    if uc isa Snapshot && (!isnothing(reload_duration) || !isnothing(reloadmask) || !isnothing(reload_fraction_per_year))
+        @warn "Because uc replays a solved schedule for nuclear component, reloading follows that schedule and reload arguments are ignored." component=cname techkey=techkey
+    end
+    # reload constraints are built from fresh arguments, never over a replayed schedule
+    if uc === true
         _reload_fraction = if isnothing(reload_fraction_per_year)
             excel ? gettechparam(s, techkey, "reload_fraction_per_year", "dispatchable") : 0.0
         else
@@ -518,11 +491,17 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
                 _reload_mask = Int(_reload_mask_raw)
             end
         end
+    end
+    if _ucenabled(uc)
         _noload = isnothing(no_load_cost) ? (excel ? gettechparam(s, techkey, "no_load_cost", "dispatchable") : 0.0) : no_load_cost
         _startup = isnothing(startup_cost) ? (excel ? gettechparam(s, techkey, "startup_cost", "dispatchable") : 0.0) : startup_cost
         @argcheck _noload isa Real "no_load_cost must be Real."
         @argcheck _startup isa Real "startup_cost must be Real."
-        if isnothing(ini)
+        push!(vb, NoLoadCost(:noload, "output", _noload))
+        push!(vb, StartupCost(:startup, "output", _startup))
+        if uc isa Snapshot
+            _pushinheriteduc!(vb, uc, cname * " " * elec.name, "output")
+        else
             _min_power = isnothing(min_power) ? (excel ? gettechparam(s, techkey, "min_power", "dispatchable") : 0.0) : min_power
             _min_uptime = isnothing(min_uptime) ? (excel ? gettechparam(s, techkey, "min_uptime", "dispatchable") : 0.0) : min_uptime
             _min_downtime = isnothing(min_downtime) ? (excel ? gettechparam(s, techkey, "min_downtime", "dispatchable") : 0.0) : min_downtime
@@ -556,21 +535,13 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
                     integer=integeruc)
                 )
             end
-            push!(vb, NoLoadCost(:noload, "output", _noload))
-            push!(vb, StartupCost(:startup, "output", _startup))
-        elseif Nosy.hascomponent(ini, cname * " " * elec.name)
-            push!(vb, NoLoadCost(:noload, "output", _noload))
-            push!(vb, StartupCost(:startup, "output", _startup))
-            push!(vb, UnitCommitment(first(Nosy.getbehaviors(ini.components[cname * " " * elec.name], Nosy.FleetUnitCommitmentBehavior))))
-        else
-            uc = false # not considering uc for the rest of the method
         end
     end
     
     c = Component(cname * " " * elec.name, m, vb)
     tag!(c, :tech, cname)
     tag!(c, :zone, elec.name)
-    if uc
+    if _reload_on
         _ucb = first(Nosy.getbehaviors(c, Nosy.AbstractFleetUnitCommitmentBehavior))
         if techkey in ("Nuclear", "Nuclear flexible",)
             # reduce capabilities of short shutdown
@@ -648,7 +619,7 @@ end
 
 """
     makeintermittentsource(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
-        cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
+        cap=nothing, mincap=nothing, maxcap=nothing,
         weatheryear=nothing, profile=nothing,
         co2price=co2_price(s),
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -667,10 +638,12 @@ Arguments:
   * `s`: snapshot to register the component in.
 
   * `cap`: Output capacity. A number fixes capacity, a JuMP `VariableRef` or
-    `AffExpr` reuses that expression, and `nothing` creates a capacity decision.
-  * `mincap`: Lower bound for a new or externally supplied capacity expression.
-  * `maxcap`: Upper bound for a new or externally supplied capacity expression.
-  * `ini`: Optional initial snapshot used to inherit fixed capacity.
+    `AffExpr` reuses that expression, `nothing` creates a capacity decision, and
+    an extracted `Snapshot` inherits the capacity of `"<cname> <node name>"` in it.
+  * `mincap`: Lower bound on an optimized or externally supplied capacity;
+    checked as an assertion against a fixed or inherited one.
+  * `maxcap`: Upper bound on an optimized or externally supplied capacity;
+    checked as an assertion against a fixed or inherited one.
   * `weatheryear`: Year suffix used to select profile series `profiles_<year>`.
     Required for workbook lookup; unused when `profile` is supplied explicitly.
   * `profile`: Hourly capacity-factor vector or scalar. If `nothing`, read the
@@ -691,8 +664,8 @@ Arguments:
 """
 function makeintermittentsource(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
     # capacity / profile
-    cap::Union{Nothing,Real,VariableRef,AffExpr}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
-    ini::Union{Nothing,Snapshot}=nothing, weatheryear::Union{Nothing,Integer}=nothing, profile=nothing,
+    cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    weatheryear::Union{Nothing,Integer}=nothing, profile=nothing,
 
     co2price::Real=co2_price(s),
 
@@ -783,23 +756,7 @@ function makeintermittentsource(cname::String, techkey::String, elec::Node, co2:
         push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
         push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2price))
     end
-    if cap isa Real
-        push!(vb, FixedCapacity("output", energy, cap))
-    elseif cap isa VariableRef || cap isa AffExpr
-        JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
-        push!(vb, VariableCapacity(
-            "output", energy;
-            expression=cap,
-            lb=isnothing(mincap) ? 0.0 : mincap,
-            ub=isnothing(maxcap) ? Inf : maxcap,
-        ))
-    elseif isnothing(cap)
-        if isnothing(ini)
-            push!(vb, VariableCapacity("output", energy, lb=isnothing(mincap) ? 0 : mincap, ub=isnothing(maxcap) ? Inf : maxcap))
-        else
-            push!(vb, FixedCapacity("output", energy, capacity(ini, cname * " " * elec.name)))
-        end
-    end
+    push!(vb, gencapacity(cap, "output", s, cname * " " * elec.name; mincap=mincap, maxcap=maxcap))
     c = Component(cname * " " * elec.name, m, vb)
     tag!(c, :tech, cname)
     tag!(c, :zone, elec.name)
@@ -832,10 +789,13 @@ Arguments:
   * `s`: snapshot to register the component in.
 
   * `cap`: Output capacity. A number fixes capacity, `nothing` creates a new
-    capacity decision, and a JuMP variable or affine expression reuses that
-    external decision.
-  * `mincap`: Lower bound for optimized or externally supplied capacity.
-  * `maxcap`: Upper bound for optimized or externally supplied capacity.
+    capacity decision, a JuMP variable or affine expression reuses that external
+    decision, and an extracted `Snapshot` inherits the capacity of
+    `"<cname> <node name>"` in it.
+  * `mincap`: Lower bound on an optimized or externally supplied capacity;
+    checked as an assertion against a fixed or inherited one.
+  * `maxcap`: Upper bound on an optimized or externally supplied capacity;
+    checked as an assertion against a fixed or inherited one.
   * `techkey`: technology column name in the `intermittent` tech data sheet.
   * `weatheryear`: Year suffix used to select intake series `hydro_ror_<year>`.
     Required for workbook lookup; unused when `intake_profile` is supplied
@@ -856,7 +816,7 @@ Arguments:
 """
 function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     # capacity / profile
-    cap::Union{Nothing,Real,VariableRef,AffExpr}=nothing,
+    cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing,
     mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     techkey::String="Hydro ror", weatheryear::Union{Nothing,Integer}=nothing, intake_profile=nothing,
 
@@ -867,7 +827,6 @@ function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     om_var_cost::Union{Nothing,Real}=nothing, decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing,
     construction_profile=nothing, decommissioning_profile=nothing,
 )
-    cap isa Real && @argcheck cap > 0 "makehydroror requires `cap > 0` when capacity is fixed."
     @argcheck isfinite(intake) && intake >= 0 "makehydroror `intake` must be finite and non-negative."
     intake_series = if iszero(intake)
         zeros(Nosy.nhours(sim(s)))
@@ -889,23 +848,7 @@ function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     end
     m = DispatchableSource(elec.carrier)
     vb = []
-    if cap isa Real
-        push!(vb, FixedCapacity("output", energy, cap))
-    elseif cap isa VariableRef || cap isa AffExpr
-        JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
-        push!(vb, VariableCapacity(
-            "output", energy;
-            expression=cap,
-            lb=isnothing(mincap) ? 0.0 : mincap,
-            ub=isnothing(maxcap) ? Inf : maxcap,
-        ))
-    elseif isnothing(cap)
-        push!(vb, VariableCapacity(
-            "output", energy;
-            lb=isnothing(mincap) ? 0.0 : mincap,
-            ub=isnothing(maxcap) ? Inf : maxcap,
-        ))
-    end
+    push!(vb, gencapacity(cap, "output", s, cname * " " * elec.name; mincap=mincap, maxcap=maxcap))
 
     # costs
     excel = tech_mode(s) === :excel

@@ -22,8 +22,9 @@ fuel defaults to lossless efficiency, and unit sizing and ramping default to
 disabled. Capital lifetime and profiles are required only when their associated
 cost is active. A numeric `cap` fixes output capacity; a JuMP variable or affine
 expression reuses an external capacity decision; and `nothing` creates a new
-decision. `mincap` and `maxcap` bound either variable form. This builder has one
-special convention: numeric `cap=0` omits the component and returns `nothing`.
+decision; and an extracted snapshot inherits the matching component's capacity.
+`mincap` and `maxcap` bound either variable form. Numeric `cap=0` builds a
+zero-capacity component, like every other builder.
 `capacitymultiplier` can impose a time-varying availability on output.
 
 If `fuelnode` is absent, `fuel_cost` is a variable cost on electricity output.
@@ -33,6 +34,8 @@ linked `co2` output and connects it to the CO2 node; `co2price` prices that
 flow.
 
 Setting `uc=true` adds unit commitment, no-load cost, and start-up cost.
+Passing an extracted snapshot as `uc` instead replays the commitment schedule
+already solved for that component, and then requires a fixed `cap`.
 `integeruc` selects continuous or integer commitment. The minimum power,
 up-time, down-time, start-up duration, and shut-down duration default to rows in
 the same workbook column. When `unit_size` is positive, non-zero `ramp_up` and
@@ -45,8 +48,6 @@ The builder tags the component as `generation` and `dispatchable`.
 [`makenuclear`](@ref) uses the same `dispatchable` sheet and the same principal
 electricity, fuel, and CO2 ports. It adds `waste_cost`, supports integer
 capacity with `integercap`, and accepts `warmstart` for a capacity decision.
-Unlike [`makedispatchable`](@ref), a fixed zero capacity creates a zero-capacity
-component rather than omitting it.
 
 Unit commitment may include planned fuel-reload outages. Reloading is active
 only when `uc=true`, `reload_fraction_per_year` is positive, and
@@ -60,9 +61,9 @@ feature. Economic terms and emissions also default to zero in `:arguments`
 mode, and a positive `unit_size` is required only for unit commitment or
 integer capacity expansion.
 
-Capacity follows the common numeric, external-expression, and `nothing`
-semantics. For an external expression, `mincap` and `maxcap` constrain that
-expression and `ini` is ignored. Nosy does not allow `warmstart` with an
+Capacity follows the common numeric, external-expression, `nothing`, and
+inherited-from-a-snapshot semantics. For an external expression, `mincap` and
+`maxcap` constrain that expression. Nosy does not allow `warmstart` with an
 external expression. With `integercap=true`, a `VariableRef` is made integer,
 whereas an `AffExpr` is rejected. In particular, `unit_size` does not make an
 external variable a number-of-units variable; represent that explicitly as
@@ -86,9 +87,9 @@ Workbook lookup requires an explicit `weatheryear`; the keyword defaults to
 `nothing` and is unused when `profile` is supplied directly.
 
 Numeric `cap` fixes capacity; a JuMP variable or affine expression reuses an
-external capacity decision; `nothing` creates a new decision; and `ini`
-inherits the named component's capacity. `mincap` and `maxcap` bound either
-variable form. In `:excel` mode,
+external capacity decision; `nothing` creates a new decision; and a solved
+snapshot inherits the named component's capacity. `mincap` and `maxcap` bound
+either variable form. In `:excel` mode,
 technical and cost defaults come from the technology column named by `techkey`
 in sheet `intermittent`. In `:arguments` mode, costs and emissions default to
 zero and inactive capital data are not required. The production profile

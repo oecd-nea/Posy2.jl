@@ -87,6 +87,132 @@ function validate_component_input(inputs::ComponentInputData)
     return nothing
 end
 
+"""
+    gencapacity(cap, pname, s, compname; kwargs...)
+
+Resolve one capacity argument and return the matching capacity behavior.
+
+`cap` is `nothing` (optimize), a `Real` (fix), a JuMP `VariableRef`/`AffExpr`
+(reuse that expression), or a `Snapshot` (inherit the capacity of `compname` in
+it). `mincap`/`maxcap` bound an optimized or reused capacity, and are checked as
+assertions against a fixed or inherited one. `argname` names the capacity
+argument in error messages.
+"""
+function gencapacity(cap, pname::String, s::Snapshot, compname::String;
+    mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    unitsize::Union{Nothing,Real}=nothing, integer::Bool=false,
+    warmstart::Union{Nothing,Real}=nothing, argname::String="cap",
+)
+    if cap isa Snapshot
+        val = _inheritedcapacity(cap, compname, pname, argname)
+        _checkcapacitybounds(val, mincap, maxcap, argname)
+        return FixedCapacity(pname, energy, val, unitsize=unitsize)
+    elseif cap isa Real
+        _checkcapacitybounds(cap, mincap, maxcap, argname)
+        return FixedCapacity(pname, energy, cap, unitsize=unitsize)
+    elseif cap isa VariableRef || cap isa AffExpr
+        JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
+        return VariableCapacity(
+            pname, energy;
+            expression=cap, unitsize=unitsize, integer=integer, warmstart=warmstart,
+            lb=isnothing(mincap) ? 0.0 : mincap, ub=isnothing(maxcap) ? Inf : maxcap,
+        )
+    else
+        return VariableCapacity(
+            pname, energy;
+            unitsize=unitsize, integer=integer, warmstart=warmstart,
+            lb=isnothing(mincap) ? 0.0 : mincap, ub=isnothing(maxcap) ? Inf : maxcap,
+        )
+    end
+end
+
+"""
+    _inheritsource(ini, compname, pname, argname)
+
+Return the component of `ini` that `argname` inherits from, checking that the
+snapshot is extracted, holds that component, and that the component has the
+port. Every message names the argument, the component and the port.
+"""
+function _inheritsource(ini::Snapshot, compname::String, pname::String, argname::String)
+    # inheriting reads solved values; an unextracted snapshot still holds expressions
+    ini isa Snapshot{Float64} || throw(ArgumentError(
+        "`$argname` was given a snapshot that is not extracted, so the solved value " *
+        "of component \"$compname\" port \"$pname\" is still a JuMP expression. " *
+        "Pass `extract(snapshot)` instead.",
+    ))
+    Nosy.hascomponent(ini, compname) || throw(ArgumentError(
+        "`$argname` was given a snapshot with no component named \"$compname\" to " *
+        "inherit port \"$pname\" from. Use the same component prefix and node name " *
+        "as in the source snapshot.",
+    ))
+    source = Nosy.getcomponent(ini, compname)
+    Nosy.hasport(source, pname) || throw(ArgumentError(
+        "`$argname` was given a snapshot whose component \"$compname\" has no " *
+        "port named \"$pname\": it is not the same kind of component.",
+    ))
+    return source
+end
+
+function _inheritedcapacity(ini::Snapshot, compname::String, pname::String, argname::String)
+    # per port, so that a component holding several capacities inherits each one
+    val = capacity(_inheritsource(ini, compname, pname, argname), pname)
+    isfinite(val) || throw(ArgumentError(
+        "`$argname` was given a snapshot whose component \"$compname\" has no " *
+        "capacity on port \"$pname\" to inherit.",
+    ))
+    return val
+end
+
+function _checkcapacitybounds(val::Real, mincap, maxcap, argname::String)
+    if !isnothing(mincap)
+        @argcheck val >= mincap "`$argname` is fixed at $val, below `$(replace(argname, "cap" => "mincap"))` = $mincap."
+    end
+    if !isnothing(maxcap)
+        @argcheck val <= maxcap "`$argname` is fixed at $val, above `$(replace(argname, "cap" => "maxcap"))` = $maxcap."
+    end
+    return nothing
+end
+
+"""
+    _pushinheriteduc!(vb, ini, compname, pname)
+
+Push the commitment schedule solved for port `pname` of `compname` in `ini` as a
+unit commitment behavior, replaying its startup, shutdown and state series.
+"""
+function _pushinheriteduc!(vb, ini::Snapshot, compname::String, pname::String)
+    source = _inheritsource(ini, compname, pname, "uc")
+    behaviors = Nosy.getbehaviors(source, Nosy.FleetUnitCommitmentBehavior)
+    isempty(behaviors) && throw(ArgumentError(
+        "`uc` was given a snapshot whose component \"$compname\" carries no unit " *
+        "commitment behavior on port \"$pname\" to replay.",
+    ))
+    push!(vb, UnitCommitment(first(behaviors)))
+    return nothing
+end
+
+"""
+    _ucenabled(uc)
+
+Return whether unit commitment is modeled, for `uc` being a `Bool` or a `Snapshot`.
+"""
+_ucenabled(uc) = uc isa Snapshot || uc === true
+
+"""
+    _checkucsource(uc, cap, capname)
+
+A replayed commitment schedule counts units of the source fleet, so it is only
+meaningful against a capacity fixed to that same fleet.
+"""
+function _checkucsource(uc, cap, capname::String="cap")
+    if uc isa Snapshot && !(cap isa Real || cap isa Snapshot)
+        throw(ArgumentError(
+            "`uc` replays a solved commitment schedule and requires a fixed capacity: " *
+            "pass `$capname` as a number or as the same snapshot.",
+        ))
+    end
+    return nothing
+end
+
 struct ComponentDemandInputData
     coeff::Union{Nothing,Real}
     yearlyconstant::Union{Nothing,Real}

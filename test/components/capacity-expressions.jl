@@ -87,8 +87,8 @@ using HiGHS
             cap=shared, mincap=1.0, maxcap=100.0,
         )
         reservoir = makehydroreservoir(
-            "Linked reservoir", "unused", "unused", elec1,
-            shared, affine, 0.0, s;
+            "Linked reservoir", "unused", "unused", elec1, s;
+            cap_discharging=shared, cap_charging=affine, intake=0.0,
             cap_reservoir=shared,
         )
         response = makedemandresponse("Linked DR", elec1, affine, 1.0, s)
@@ -135,8 +135,8 @@ using HiGHS
     let
         s, elec1, elec2, _, _ = expression_snapshot()
         @test_throws ArgumentError makehydroreservoir(
-            "Negative infinite reservoir", "unused", "unused", elec1,
-            1.0, 0.0, 0.0, s; cap_reservoir=-Inf,
+            "Negative infinite reservoir", "unused", "unused", elec1, s;
+            cap_discharging=1.0, cap_charging=0.0, intake=0.0, cap_reservoir=-Inf,
         )
         @test_throws ArgumentError makenodeinterco(
             "Negative infinite IC", elec1, elec2, -Inf, Inf, s,

@@ -4,7 +4,7 @@ Generate conversion components.
 
 """
     makeelectrolyser(cname::String, techkey::String, elec::Node, h2::Node, s::Snapshot;
-        cap=nothing, mincap=nothing, maxcap=nothing, ini=nothing,
+        cap=nothing, mincap=nothing, maxcap=nothing,
         gridlosses=0.,
         eff::Union{Nothing,Real}=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -22,10 +22,12 @@ Arguments:
   * `s`: snapshot to register the component in.
 
   * `cap`: Input capacity. A number fixes capacity, a JuMP `VariableRef` or
-    `AffExpr` reuses that expression, and `nothing` creates a capacity decision.
-  * `mincap`: Lower bound for a new or externally supplied capacity expression.
-  * `maxcap`: Upper bound for a new or externally supplied capacity expression.
-  * `ini`: Optional initial snapshot used to inherit fixed input capacity.
+    `AffExpr` reuses that expression, `nothing` creates a capacity decision, and
+    an extracted `Snapshot` inherits the capacity of `"<cname> <node name>"` in it.
+  * `mincap`: Lower bound on an optimized or externally supplied capacity;
+    checked as an assertion against a fixed or inherited one.
+  * `maxcap`: Upper bound on an optimized or externally supplied capacity;
+    checked as an assertion against a fixed or inherited one.
 
   * `gridlosses`: Proportional losses linked to electricity input flow (`0 <= gridlosses < 1`).
   * `eff`: Electricity to hydrogen conversion ratio in `BasicConverter`. If `nothing`, read `efficiency` from the `electrolysis` sheet.
@@ -40,8 +42,8 @@ Arguments:
 """
 function makeelectrolyser(cname::String, techkey::String, elec::Node, h2::Node, s::Snapshot;
     # capacity / expansion
-    cap::Union{Nothing,Real,VariableRef,AffExpr}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
-    ini::Union{Nothing,Snapshot}=nothing, gridlosses::Real=0.,
+    cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    gridlosses::Real=0.,
 
     # technical overrides
     eff::Union{Nothing,Real}=nothing,
@@ -114,23 +116,7 @@ function makeelectrolyser(cname::String, techkey::String, elec::Node, h2::Node, 
     push!(vb, FixedCost(:decommissioning, "input", energy, _decom_cost))
     push!(vb, FixedCost(:fom, "input", energy, _fom * 1000.))
     push!(vb, VariableCost(:vom, "input", energy, _vom))
-    if cap isa Real
-        push!(vb, FixedCapacity("input", energy, cap))
-    elseif cap isa VariableRef || cap isa AffExpr
-        JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
-        push!(vb, VariableCapacity(
-            "input", energy;
-            expression=cap,
-            lb=isnothing(mincap) ? 0.0 : mincap,
-            ub=isnothing(maxcap) ? Inf : maxcap,
-        ))
-    elseif isnothing(cap)
-        if isnothing(ini)
-            push!(vb, VariableCapacity("input", energy, integer=false, lb = isnothing(mincap) ? 0 : mincap, ub = isnothing(maxcap) ? Inf : maxcap))
-        else
-            push!(vb, FixedCapacity("input", energy, capacity(ini, cname * " " * elec.name)))
-        end
-    end
+    push!(vb, gencapacity(cap, "input", s, cname * " " * elec.name; mincap=mincap, maxcap=maxcap))
     if !iszero(_gridlosses)
         push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _gridlosses))
     end

@@ -152,26 +152,30 @@ Investment builders usually set capacity as follows:
 
 - a number fixes that capacity;
 - `nothing` optimises capacity, optionally bounded by `mincap` and `maxcap`;
-- an `ini` snapshot (normally a solved result) can replace the new decision
-  with capacity inherited from a matching component.
+- an extracted snapshot inherits the capacity of the matching component in it.
 
 Which port that capacity refers to depends on the technology:
 
 - generation uses `output` capacity;
 - batteries and electrolysers use `input` capacity;
-- hydrogen storage uses `level` capacity.
+- hydrogen storage uses `level` capacity;
+- reservoirs set `output`, `input` and `level` capacity separately.
 
-Some builders have extra rules (for example how `cap=0` is handled), so check
-the individual API entry when writing shared study code.
+### Inheriting capacity from a snapshot
 
-### Inheriting capacity with `ini`
-
-Pass a previous snapshot as `ini` to fix a new component's capacity to the
+Pass a previous snapshot as the capacity itself to fix a new component to the
 value already chosen there—for example to keep an optimised PV fleet while
-changing something else in a follow-on study. Posy2 looks up
-`cname * " " * node_name` in `ini`, so use the same component prefix and node
-name as before. Prefer an extracted result so the inherited capacity is
-numeric.
+changing something else in a follow-on study:
+
+```julia
+makeintermittentsource("PV", "PV", grid, co2, snapshot; cap=first_result)
+```
+
+Posy2 looks up `cname * " " * node_name` in that snapshot, so use the same
+component prefix and node name as before. The snapshot must be the result of
+`extract`: an optimized but unextracted one still holds JuMP expressions rather
+than numbers. A snapshot that is unextracted, has no matching component, or
+whose component lacks the relevant port throws an `ArgumentError`.
 
 ## Costs And Annualisation
 

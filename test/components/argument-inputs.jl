@@ -237,8 +237,8 @@ using HiGHS
             cap=70.0, intake=840.0, intake_profile=fill(35.0, 24), hydro_costs...,
         ))
         @test !isnothing(makehydroreservoir(
-            "Reservoir", "unused", "unused", electricity,
-            55.0, 20.0, 240.0, s;
+            "Reservoir", "unused", "unused", electricity, s;
+            cap_discharging=55.0, cap_charging=20.0, intake=240.0,
             cap_reservoir=200.0,
             intake_profile=collect(1.0:24.0), eff=0.88, hydro_costs...,
         ))

@@ -167,8 +167,8 @@ using HiGHS
         total_intake = 100.0 * turbine * nh # far above what the turbine can release
         makedemand("Other consumption", "ZONE1", elec1, snap; profile=turbine)
         makehydroreservoir(
-            "Reservoir", "Battery", "ZONE1", elec1,
-            turbine, 0.0, total_intake, snap;
+            "Reservoir", "Battery", "ZONE1", elec1, snap;
+            cap_discharging=turbine, cap_charging=0.0, intake=total_intake,
             spillage=true, intake_profile=1.0, gridlosses=0.0, eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0, decommissioning=0.0,
         )

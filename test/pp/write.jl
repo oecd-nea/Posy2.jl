@@ -213,6 +213,25 @@ using DataFrames
         end
     end
 
+    # 2.11: a turbine-only reservoir keeps a zero-capacity input port, so the annual
+    # charging column no longer throws a KeyError on the way through printsnapshot.
+    let
+        snap, elec1, _, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makehydroreservoir("Reservoir", "Battery", "ZONE1", elec1, snap;
+            cap_discharging=50.0, cap_charging=0.0, intake=1_000.0,
+            intake_profile=1.0, gridlosses=0.0, eff=1.0,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0, decommissioning=0.0,
+        )
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        filepath = joinpath(mktempdir(), "pp_turbine_only_reservoir.xlsx")
+        Posy2.printsnapshot(s, filepath)
+        @test isfile(filepath)
+    end
+
     # printsnapshot requires an optimized snapshot; unoptimized snapshot raises AssertionError.
     let
         snap = Snapshot(tsim(), posyopts())

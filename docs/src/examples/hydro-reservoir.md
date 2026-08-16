@@ -41,10 +41,10 @@ makehydroreservoir(
     "Hydro res",
     "country1",
     electricity,
-    100.0,        # turbine capacity (MW)
-    0.0,          # no pumping from the electricity grid
-    40.0 * 8760,  # annual natural intake (MWh)
     snapshot;
+    cap_discharging=100.0,      # turbine capacity (MW)
+    cap_charging=0.0,           # no pumping from the electricity grid
+    intake=40.0 * 8760,         # annual natural intake (MWh)
     cap_reservoir=40.0 * 8760, # fixed reservoir energy capacity (MWh)
     weatheryear=2019,
     simplified=true,

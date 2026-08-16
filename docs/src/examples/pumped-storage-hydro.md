@@ -73,10 +73,10 @@ makehydroreservoir(
     "Hydro res",
     "country1",
     electricity,
-    50.0,     # turbine capacity
-    75.0,     # pumping capacity
-    0.0,      # no natural intake
     snapshot;
+    cap_discharging=50.0,  # turbine capacity
+    cap_charging=75.0,     # pumping capacity
+    intake=0.0,            # no natural intake
     cap_reservoir=12_000.0, # fixed reservoir energy capacity
     simplified=false,
     eff=0.8,

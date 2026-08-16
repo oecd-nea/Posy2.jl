@@ -226,7 +226,7 @@ others, or must appear consistently in Posy2 reports.
 Except for interconnections, builders normally name components
 `"$cname $(principal_node.name)"`. That string is what
 `capacity(result, ...)`, `balance(result, ...)`, and `cost(result, ...)` look up, and
-what `ini` inheritance matches between scenarios. Names are unique inside a
+what capacity inheritance matches between scenarios. Names are unique inside a
 snapshot.
 
 ### Tags
@@ -260,7 +260,7 @@ The full consequence map (which tag enters which report block) is in
 >   port that represents plant size for that technology.
 > - `connect!`: the component joins nodal balances only after its ports are
 >   connected.
-> - Unique names: lookups and `ini` inheritance key off the component
+> - Unique names: lookups and capacity inheritance key off the component
 >   name.
 > - `:tech` and `:zone`: filters and annual aggregation group by these
 >   tags.

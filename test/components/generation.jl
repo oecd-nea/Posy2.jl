@@ -25,15 +25,16 @@ using HiGHS
         return snap, elec, co2
     end
 
-    # cap=0 should skip component creation and return nothing.
+    # cap=0 registers a zero-capacity component, like every other builder.
     let
         s, elec, co2 = makesnapshot()
         c = makedispatchable(
             "CCGT", "CCGT", elec, co2, s;
             cap=0.0, construction_profile=1.0, decommissioning_profile=1.0,
         )
-        @test isnothing(c)
-        @test !Nosy.hascomponent(s, "CCGT ZONE1")
+        @test !isnothing(c)
+        @test Nosy.getcomponent(s, "CCGT ZONE1") === c
+        @test only(Nosy.getbehaviors(c, Nosy.FixedCapacityBehavior)).data.val == 0.0
     end
 
     # A valid dispatchable input should create and register the component.

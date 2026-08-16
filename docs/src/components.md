@@ -52,32 +52,36 @@ and unit conversions are in [Input Workbooks](concepts/input-data.md).
 
 ## Capacity Semantics
 
-For builders with a user-supplied `cap` or similar capacity argument,
-a number creates fixed capacity, a JuMP `VariableRef` or `AffExpr` reuses an
-external capacity expression, and `nothing` usually creates a new capacity
-decision. `mincap` and `maxcap` bound either kind of variable capacity; they are
-unused for numeric fixed capacity. The expression must use variables owned by
-the snapshot's JuMP model. An explicit expression takes precedence over `ini`.
-Important exceptions are documented with each builder:
+Every user-supplied `cap` or similar capacity argument accepts the same four
+sources: a number creates fixed capacity, a JuMP `VariableRef` or `AffExpr`
+reuses an external capacity expression, `nothing` creates a new capacity
+decision, and an extracted `Snapshot` inherits the capacity of the matching
+component in it. An external expression must use variables owned by the
+snapshot's JuMP model.
 
-- `makedispatchable(...; cap=0)` omits the component and returns `nothing`.
-- A zero charging capacity in [`makehydroreservoir`](@ref) disables grid
-  charging rather than creating a zero-capacity input port.
-- `cap_reservoir=nothing` in [`makehydroreservoir`](@ref) optimises the
-  stored-energy capacity; its default `Inf` leaves the level unlimited.
+`mincap` and `maxcap` bound an optimized or externally supplied capacity. They
+are also accepted against a fixed or inherited one, where they act as
+assertions and throw if the value falls outside them.
+
+A capacity inherited from a snapshot is looked up by generated component name
+and port, so component prefixes and principal node names must agree between
+scenarios. The snapshot must come from `extract`, since inheriting reads solved
+values. An unextracted snapshot, a missing component, or a component without
+the relevant port is an error, in every builder.
+
+A fixed capacity of zero builds the component and its port at zero capacity;
+no builder omits a component or a port because a capacity is zero. Two
+capacity arguments still carry their own meaning for a missing limit:
+
+- `cap_reservoir=Inf` in [`makehydroreservoir`](@ref), its default, leaves the
+  stored-energy level unlimited by adding no level capacity behavior.
 - `cap=nothing` in [`makedemandresponse`](@ref) leaves response output without
   a capacity limit.
 
 A symbolic capacity is treated as structurally active because its optimized
-value is not known while the component is built. Consequently, symbolic
-reservoir charging creates the charging port, and symbolic interconnector
+value is not known while the component is built, so symbolic interconnector
 directions resolve their availability and price inputs even if the expression
 later evaluates to zero.
-
-Builders with an `ini` keyword can inherit a capacity from a solved snapshot.
-The lookup uses the generated component name, so names and principal node names
-must agree between scenarios. Missing-component behaviour is builder-specific;
-use the individual API entry when constructing sequential scenarios.
 
 `unit_size`, `integercap`, and `integeruc` control discrete formulations where
 the relevant builder supports them. These options may turn an LP into a MILP.

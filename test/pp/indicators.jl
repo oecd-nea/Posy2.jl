@@ -281,7 +281,8 @@ using HiGHS
         makedispatchable("CCGT", "CCGT", elec, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         profile = gettimeseries(snap, "ZONE1", "reservoir_inflow_2019")
         makehydroreservoir(
-            "Hydro reservoir", "Battery", "ZONE1", elec, 5000.0, 100.0, sum(profile), snap;
+            "Hydro reservoir", "Battery", "ZONE1", elec, snap;
+            cap_discharging=5000.0, cap_charging=100.0, intake=sum(profile),
             cap_reservoir=50_000_000.0, weatheryear=2019,
             gridlosses=0.0, eff=0.9,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=1.0,
@@ -314,7 +315,8 @@ using HiGHS
         makedemand("Other consumption", "ZONE1", elec, snap; profile=turbine)
         makedispatchable("CCGT", "CCGT", elec, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makehydroreservoir(
-            "Hydro reservoir", "Battery", "ZONE1", elec, turbine, 0.0, total_intake, snap;
+            "Hydro reservoir", "Battery", "ZONE1", elec, snap;
+            cap_discharging=turbine, cap_charging=0.0, intake=total_intake,
             spillage=true, intake_profile=1.0, gridlosses=0.0, eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0, decommissioning=0.0,
         )

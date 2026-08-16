@@ -166,10 +166,12 @@ mixed-integer reduced costs as Posy2 node prices.
 
 ## Initial Snapshots And Pathways
 
-Many capacity builders accept an `ini` keyword. When supplied, the builder
-uses the capacity of a matching component from the initial snapshot rather
-than creating a new investment decision. This supports dispatch studies based
-on an existing capacity mix and sequential pathway calculations.
+Pass an extracted snapshot as a capacity argument and the builder uses the
+capacity of the matching component in it rather than creating a new investment
+decision. This supports dispatch studies based on an existing capacity mix and
+sequential pathway calculations. The snapshot must come from `extract`: an
+optimized but unextracted snapshot still holds JuMP expressions rather than
+numbers, and is rejected with an `ArgumentError`.
 
 ```julia
 first_result = extract(first_snapshot)
@@ -181,17 +183,32 @@ makedispatchable(
     new_grid,
     new_co2,
     new_snapshot;
-    ini=first_result,
+    cap=first_result,
     # Other technology inputs...
 )
 ```
 
 Matching is based on the generated component name, normally
-`"<component prefix> <node name>"`. Behaviour differs slightly when an initial
-component is absent, so consult the individual builder API when constructing
-generic multi-stage code.
+`"<component prefix> <node name>"`. A snapshot with no matching component
+throws an `ArgumentError` naming the capacity keyword and the expected name.
+
+`makedispatchable` and `makenuclear` extend this to unit commitment: `uc=true`
+builds commitment from the technology parameters, while passing an extracted
+snapshot as `uc` replays the commitment schedule already solved for that
+component. Replaying a schedule counts units of the source fleet, so it
+requires a capacity fixed to that same fleet — a number, or the same snapshot:
+
+```julia
+# Fleet and commitment schedule both frozen: re-solve as an LP, e.g. for duals
+makedispatchable("Gas", "CCGT", new_grid, new_co2, new_snapshot;
+    cap=first_result, uc=first_result, unit_size=400.0)
+
+# Fleet frozen, commitment re-optimised
+makedispatchable("Gas", "CCGT", new_grid, new_co2, new_snapshot;
+    cap=first_result, uc=true, unit_size=400.0)
+```
 
 Nosy can also optimise several snapshots sharing one simulation and one JuMP
 model. This is useful for coupled pathways or stochastic problems, while
-`ini` is intended for sequentially fixing information from an already solved
-snapshot.
+inheriting from an extracted snapshot is intended for sequentially fixing
+information from an already solved one.

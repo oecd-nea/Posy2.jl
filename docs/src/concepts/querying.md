@@ -18,8 +18,8 @@ makebatterystorage("Battery", "Li-ion", grid, snapshot)
 A price interconnection is named `IC_<neighbour>_<local-node>`. A node
 interconnection is named `<prefix>_<first-node>_<second-node>`.
 
-Keep these generated names stable when querying a result or using an `ini`
-snapshot in another scenario.
+Keep these generated names stable when querying a result or inheriting a
+capacity from it in another scenario.
 
 ## Capacity
 
