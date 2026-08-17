@@ -171,6 +171,29 @@ using HiGHS
                 @test all(iszero(b.data.val) for b in Nosy.getbehaviors(component, Nosy.FixedCostBehavior))
                 @test all(iszero(b.data.val) for b in Nosy.getbehaviors(component, Nosy.VariableCostBehavior))
             end
+            @test isempty(Nosy.getbehaviors(nuclear, Nosy.RampingBehavior))
+
+            sized_nuclear = makenuclear(
+                "Neutral sized nuclear", "unused", electricity, carbon, s;
+                cap=10.0, unit_size=5.0,
+            )
+            @test isempty(Nosy.getbehaviors(sized_nuclear, Nosy.RampingBehavior))
+
+            ramped_nuclear = makenuclear(
+                "Ramped nuclear", "unused", electricity, carbon, s;
+                cap=10.0, unit_size=5.0, ramp_up=0.2, ramp_down=0.3,
+            )
+            ramping = Nosy.getbehaviors(ramped_nuclear, Nosy.RampingBehavior)
+            @test length(ramping) == 2
+            up = only(filter(b -> b.data.sense == :up, ramping))
+            down = only(filter(b -> b.data.sense == :down, ramping))
+            @test up.data.val == 0.2 * 5.0
+            @test down.data.val == 0.3 * 5.0
+
+            @test_throws ArgumentError makenuclear(
+                "Nuclear ramp without units", "unused", electricity, carbon, s;
+                cap=10.0, ramp_up=0.2,
+            )
         end
 
         let

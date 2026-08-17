@@ -273,6 +273,7 @@ end
         connection_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing, fuel_cost::Union{Nothing,Real}=nothing,
         waste_cost::Union{Nothing,Real}=nothing, no_load_cost::Union{Nothing,Real}=nothing, startup_cost::Union{Nothing,Real}=nothing,
         co2_emission::Union{Nothing,Real}=nothing, efficiency::Union{Nothing,Real}=nothing, unit_size::Union{Nothing,Real}=nothing,
+        ramp_up::Union{Nothing,Real}=nothing, ramp_down::Union{Nothing,Real}=nothing,
         min_power::Union{Nothing,Real}=nothing, min_uptime::Union{Nothing,Real}=nothing, min_downtime::Union{Nothing,Real}=nothing,
         startup_duration::Union{Nothing,Real}=nothing, shutdown_duration::Union{Nothing,Real}=nothing,
     )
@@ -325,6 +326,8 @@ Arguments:
   * `co2_emission`: Emission factor linking output energy to CO2 output flow.
   * `efficiency`: Fuel to output efficiency for linked fuel input mode.
   * `unit_size`: Unit block size for discrete capacity representation.
+  * `ramp_up`: Max ramp up as a fraction of unit capacity per hour. Passed to `Ramping(...)` as `ramp_up * unit_size`. Omitted or `nothing` adds no constraint in `:arguments` mode.
+  * `ramp_down`: Max ramp down as a fraction of unit capacity per hour. Same scaling as `ramp_up`. Omitted or `nothing` adds no constraint in `:arguments` mode.
   * `min_power`: UC minimum generation fraction while committed. Used only when `uc=true`.
   * `min_uptime`: minimum consecutive online time in hours after a start. Used only when `uc=true`.
   * `min_downtime`: minimum consecutive offline time in hours after a shutdown. Used only when `uc=true`.
@@ -351,7 +354,9 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
     connection_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing, fuel_cost::Union{Nothing,Real}=nothing,
     waste_cost::Union{Nothing,Real}=nothing, no_load_cost::Union{Nothing,Real}=nothing,
     startup_cost::Union{Nothing,Real}=nothing, co2_emission::Union{Nothing,Real}=nothing, efficiency::Union{Nothing,Real}=nothing,
-    unit_size::Union{Nothing,Real}=nothing, min_power::Union{Nothing,Real}=nothing,
+    unit_size::Union{Nothing,Real}=nothing,
+    ramp_up::Union{Nothing,Real}=nothing, ramp_down::Union{Nothing,Real}=nothing,
+    min_power::Union{Nothing,Real}=nothing,
     min_uptime::Union{Nothing,Real}=nothing, min_downtime::Union{Nothing,Real}=nothing,
     startup_duration::Union{Nothing,Real}=nothing, shutdown_duration::Union{Nothing,Real}=nothing,
 )
@@ -534,6 +539,31 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
                     shutdownmask=shutdownmask,
                     integer=integeruc)
                 )
+            end
+        end
+    end
+
+    if !isnothing(_usize)
+        _ru = isnothing(ramp_up) && excel ? gettechparam(s, techkey, "ramp_up", "dispatchable") : ramp_up
+        _rd = isnothing(ramp_down) && excel ? gettechparam(s, techkey, "ramp_down", "dispatchable") : ramp_down
+        @argcheck isnothing(_ru) || _ru isa Real "ramp_up must be Real or nothing."
+        @argcheck isnothing(_rd) || _rd isa Real "ramp_down must be Real or nothing."
+        @argcheck isnothing(_ru) || _ru >= 0 "ramp_up must be non negative."
+        @argcheck isnothing(_rd) || _rd >= 0 "ramp_down must be non negative."
+        if !isnothing(_ru) && !iszero(_ru)
+            push!(vb, Ramping("output", :up, _ru * _usize, energy))
+        end
+        if !isnothing(_rd) && !iszero(_rd)
+            push!(vb, Ramping("output", :down, _rd * _usize, energy))
+        end
+    else
+        for (param, value) in (("ramp_up", ramp_up), ("ramp_down", ramp_down))
+            if !isnothing(value)
+                @argcheck value isa Real "$param must be Real or nothing."
+                @argcheck value >= 0 "$param must be non negative."
+                iszero(value) || throw(ArgumentError(
+                    "`unit_size` must be supplied as a positive number when $param is non-zero",
+                ))
             end
         end
     end
