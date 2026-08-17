@@ -116,3 +116,24 @@ Capacity and cost behaviours are attached to a specific port, not to the
 component as a whole. When you query a solved snapshot, use the port named on
 that builder's page. For example, a dispatchable plant's investment sits on
 `output`, while a battery's investment sits on `input`.
+
+## Reading The Port Diagrams
+
+Each builder page carries a diagram of the component it builds. Input-sense
+ports are on the left, output-sense ports on the right, and arrows always point
+in the direction energy travels. A stored-energy level, when the component has
+one, is drawn inside the component box. Colour and line style encode what
+determines a flow:
+
+| Style | Meaning |
+|:------|:--------|
+| solid teal | free flow: the optimizer chooses it, subject to its capacity |
+| dashed dark blue | fixed flow: an exogenous series imposes it |
+| dotted orange | linked flow: it is a function of another flow, such as `grid losses` |
+| red | stored energy level, with its capacity; the arrow measuring it from zero is teal, since the level is itself a decision |
+
+A solid box is a node the port is connected to, tinted by carrier: pale yellow
+for electricity, pale red for heat, pale blue for hydrogen, grey otherwise. A
+dashed box marks a port that is not connected, either because an input series
+feeds it or because it releases energy outside the system. Annotations under
+each arrow name the capacity and efficiency arguments that act on that port.

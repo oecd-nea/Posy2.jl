@@ -8,6 +8,8 @@ Hydrogen conversion and storage are documented on the
 See [Component Builders](../components.md) for shared naming, workbook,
 capacity, and port conventions, and [Tags And
 Post-Processing](../concepts/tags.md) for tagging and reporting.
+Each section's diagram follows the conventions in [Reading The Port
+Diagrams](../components.md#Reading-The-Port-Diagrams).
 
 ## Hydro Reservoir
 
@@ -18,6 +20,8 @@ Post-Processing](../concepts/tags.md) for tagging and reporting.
 - `output` is electricity generation;
 - `spill` is optional unconnected release, enabled by `spillage`;
 - `level` is stored energy.
+
+![Ports of a hydro reservoir component](../assets/component-hydro-reservoir.svg)
 
 In a `balance` query, `:input` selects all input-sense ports. Thus
 `aggregate=true` sums the reservoir's `natural` and `input` flows, plus `grid
@@ -71,6 +75,8 @@ makehydroreservoir
 affine expression reuses an external decision, `nothing` creates a new
 decision, and an extracted snapshot fixes charging power to the matching
 component's capacity. `mincap` and `maxcap` bound either variable form.
+
+![Ports of a battery storage component](../assets/component-battery.svg)
 
 `duration` links energy level to power capacity. It is structural: it comes
 from the `storage` technology column in `:excel` mode and must be supplied in

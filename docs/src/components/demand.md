@@ -8,6 +8,8 @@ connected immediately. Electric vehicles are covered separately in
 See [Component Builders](../components.md) for shared naming, workbook, cost,
 capacity, and port conventions, and [Tags And
 Post-Processing](../concepts/tags.md) for tagging and reporting.
+Each section's diagram follows the conventions in [Reading The Port
+Diagrams](../components.md#Reading-The-Port-Diagrams).
 
 ## Electricity Demand
 
@@ -25,6 +27,8 @@ useful for self-contained examples and purely flat demand.
 
 When `gridlosses` is non-zero, the builder adds a linked `grid losses` input
 proportional to demand. The value must lie in `[0, 1)`.
+
+![Ports of an electricity demand component](../assets/component-demand.svg)
 
 Tags: `:tech => cname`, `:zone => n.name`, and the function tags `electricity`
 and `demand`.
@@ -46,6 +50,10 @@ hourly shape.
 
 The generated name is `"$cname $(n.name)"`. They do not read a workbook and do
 not add a cost or capacity behaviour.
+
+![Ports of a flat hydrogen demand component](../assets/component-flat-hydrogen-demand.svg)
+
+![Ports of a flexible hydrogen demand component](../assets/component-flex-hydrogen-demand.svg)
 
 Tags for both builders: `:tech => cname`, `:zone => n.name`, and the function
 tags `hydrogen` and `demand`.
@@ -69,6 +77,8 @@ expression reuses an external response-capacity decision, `nothing` creates a
 new response-capacity decision, and `Inf` leaves response output unlimited.
 Because these last two cases are easy to confuse, `cap=nothing` emits a warning
 suggesting `cap=Inf` when unlimited capacity was intended.
+
+![Ports of a demand response component](../assets/component-demand-response.svg)
 
 `cost` is the activation cost per unit of the positive `output` flow and is
 applied directly. `type` selects the variable-cost category used by reports

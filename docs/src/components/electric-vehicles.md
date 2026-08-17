@@ -3,7 +3,8 @@
 [`makeEV`](@ref) creates fixed or flexible electric-vehicle demand. See
 [Component Builders](../components.md) for shared naming, workbook, and port
 conventions, and [Tags And Post-Processing](../concepts/tags.md) for tagging
-and reporting.
+and reporting. Each mode's diagram follows the conventions in [Reading The Port
+Diagrams](../components.md#Reading-The-Port-Diagrams).
 
 !!! warning "Unstable EV API"
     The EV API is not fixed yet. The modes, keyword arguments, component and
@@ -26,6 +27,8 @@ charging hour at all (every hour an off-hour with `minratio=0`) is rejected.
 This mode requires `offhours1`, `offhours2`, and `minratio`, but performs no
 workbook lookup. It can add the same proportional `grid losses` port as
 [`makedemand`](@ref).
+
+![Ports of an EV component in fixed-profile mode](../assets/component-ev-fixed.svg)
 
 ```julia
 makeEV(
@@ -69,6 +72,8 @@ Smart charging exposes a flexible `input`, a `level`, and a fixed unconnected
 available dispatch power, and applies `compensation` as a variable output cost.
 The morning level constraint requires the connected fleet to hold at least
 `min_level_morning` of available battery capacity at 7 am each day.
+
+![Ports of an EV component in smart-charging and vehicle-to-grid modes](../assets/component-ev-flexible.svg)
 
 Tags for all EV modes: `:tech => cname`, `:zone => elec.name`, and the function
 tags `electricity`, `demand`, and `ev`. Vehicle-to-grid mode also receives the

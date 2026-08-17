@@ -9,6 +9,8 @@ See [Component Builders](../components.md) for shared capacity and port
 conventions, [Tags And Post-Processing](../concepts/tags.md) for tagging and
 reporting, and [Input Workbooks](../concepts/input-data.md) for the
 transfer-capacity and price sheets.
+Each section's diagram follows the conventions in [Reading The Port
+Diagrams](../components.md#Reading-The-Port-Diagrams).
 
 ## Direction And Transfer Multipliers
 
@@ -51,6 +53,8 @@ The reverse direction is `b -> a`:
 
 - `input2` withdraws from node `b` and carries capacity `btoa`;
 - `output2` delivers to node `a` after `lossfactor`.
+
+![Ports of a node interconnection component](../assets/component-node-interco.svg)
 
 `lossfactor` must be finite and lie in `[0, 1)`. Each delivered flow is its
 sending flow multiplied by `1 - lossfactor`; invalid factors are rejected
@@ -102,6 +106,8 @@ base capacity `mcap`, multiplier column `zone>local`, and the neighbour's
 `spot_price` series. Exports use component `input`, base capacity `xcap`, and
 multiplier column `local>zone`. Export energy earns the same exogenous spot
 price; `transactioncost` is added in both directions.
+
+![Ports of a price interconnection component](../assets/component-price-interco.svg)
 
 Tags: `:neighbor => zone`, `:zone => elec.name`, and the function tags
 `interconnection` and `priceinterconnection`. With `foreign=true`, the builder

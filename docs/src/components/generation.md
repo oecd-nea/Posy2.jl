@@ -8,6 +8,8 @@ variable costs.
 See [Component Builders](../components.md) for shared naming, workbook,
 capacity, and port conventions, and [Tags And
 Post-Processing](../concepts/tags.md) for tagging and reporting.
+Each section's diagram follows the conventions in [Reading The Port
+Diagrams](../components.md#Reading-The-Port-Diagrams).
 
 ## Dispatchable Generation
 
@@ -34,6 +36,8 @@ electricity output divided by `efficiency`. Non-zero `co2_emission` adds a
 linked `co2` output and connects it to the CO2 node; `co2price` prices that
 flow.
 
+![Ports of a dispatchable generation component](../assets/component-dispatchable.svg)
+
 Setting `uc=true` adds unit commitment, no-load cost, and start-up cost.
 Passing an extracted snapshot as `uc` instead replays the commitment schedule
 already solved for that component, and then requires a fixed `cap`.
@@ -57,6 +61,8 @@ capacity with `integercap`, and accepts `warmstart` for a capacity decision.
 Ramping follows [`makedispatchable`](@ref): non-zero `ramp_up` and `ramp_down`
 values are multiplied by `unit_size`. They default to inactive in `:arguments`
 mode; in `:excel` mode, omitted values come from the technology column.
+
+![Ports of a nuclear generation component](../assets/component-nuclear.svg)
 
 Fresh unit commitment may include planned fuel-reload outages. Reloading is
 active only when `uc=true`, `reload_fraction_per_year` is positive, and
@@ -99,6 +105,8 @@ from sheet `profiles_<weatheryear>`, column
 Workbook lookup requires an explicit `weatheryear`; the keyword defaults to
 `nothing` and is unused when `profile` is supplied directly.
 
+![Ports of an intermittent generation component](../assets/component-intermittent.svg)
+
 Numeric `cap` fixes capacity; a JuMP variable or affine expression reuses an
 external capacity decision; `nothing` creates a new decision; and a solved
 snapshot inherits the named component's capacity. `mincap` and `maxcap` bound
@@ -126,6 +134,8 @@ sum to one, distributes `intake` over it, and limits hourly output by both that
 intake envelope and installed capacity.
 Workbook lookup requires an explicit `weatheryear`; the keyword defaults to
 `nothing` and is unused when `intake_profile` is supplied directly.
+
+![Ports of a run-of-river hydro component](../assets/component-hydro-ror.svg)
 
 In `:excel` mode, cost defaults come from the technology column named by
 `techkey` in sheet `intermittent`; the default column name is `Hydro ror`. In
