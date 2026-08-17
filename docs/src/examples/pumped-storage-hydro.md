@@ -38,16 +38,6 @@ makeintermittentsource(
     "Solar", "PV", electricity, co2, snapshot;
     cap=200.0,
     weatheryear=2019,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=25,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
-    fuel_cost=0.0,
-    co2_emission=0.0,
 )
 
 # Fixed 50 MW CCGT backup for hours storage cannot cover
@@ -55,16 +45,13 @@ makedispatchable(
     "CCGT", "CCGT", electricity, co2, snapshot;
     cap=50.0,
     overnight_cost=955.0,
-    om_fixed_cost=0.0,
     decommissioning=0.05,
     lifetime=30,
     construction_profile="0.3333333333333333;0.3333333333333333;0.3333333333333334",
     decommissioning_profile="0.5;0.5",
-    connection_cost=0.0,
     om_var_cost=6.99,
     fuel_cost=47.06,
     co2_emission=348.0,
-    unit_size=0.0,
 )
 
 # Fixed pumped storage: 50 MW turbine, 75 MW pumping, 80% round-trip, no natural intake
@@ -78,15 +65,7 @@ makehydroreservoir(
     cap_charging=75.0,     # pumping capacity
     intake=0.0,            # no natural intake
     cap_reservoir=12_000.0, # fixed reservoir energy capacity
-    simplified=false,
     eff=0.8,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    om_var_cost=0.0,
-    decommissioning=0.0,
-    lifetime=80,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
 )
 
 # Minimise total system cost and extract solved values

@@ -4,12 +4,9 @@ These examples build systems with Posy2's `make...` methods. Nosy still
 provides the simulation, snapshot, carriers, and nodes, but the pages do not
 assemble Nosy `Component` objects by hand.
 
-Each page is a small working study with one idea in focus—an interconnection
-pattern, a storage technology, a hydrogen pathway—while other assets stay as
-supporting pieces. After the solve, each example includes a short analysis
-matched to that idea: capacity and annual `balance`/`cost` where totals
-matter, hourly series (and occasionally a figure) where the time pattern
-matters.
+Each page is a small working study built around one feature: an
+interconnection pattern, a storage technology, a hydrogen pathway. The
+remaining assets are kept simple.
 
 | Example | Content |
 |:--------|:--------|
@@ -19,6 +16,7 @@ matters.
 | [DC OPF](examples/dc-opf.md) | How KVL changes flows across meshed AC lines, and how controllable HVDC differs |
 | [Dispatchable Generation](examples/dispatchable-generation.md) | Choosing PV and gas capacities, then meeting the residual demand |
 | [Nuclear](examples/nuclear.md) | How reload scheduling reduces backup capacity |
+| [CO2 Pricing](examples/co2-pricing.md) | How a carbon price reorders emitting and non-emitting technologies |
 | [Battery Storage](examples/battery-storage.md) | Shifting daytime PV generation to later hours |
 | [Hydro Reservoir](examples/hydro-reservoir.md) | Timing generation by storing variable natural intake |
 | [Pumped Storage](examples/pumped-storage-hydro.md) | Using grid electricity to store energy and generate later |
@@ -48,6 +46,7 @@ The table shows which combination each example uses.
 | [Battery Storage](examples/battery-storage.md) | `:arguments` | `:excel` |
 | [Pumped Storage](examples/pumped-storage-hydro.md) | `:arguments` | `:excel` |
 | [Two Countries](examples/two-countries.md) | `:arguments` | `:excel` |
+| [CO2 Pricing](examples/co2-pricing.md) | `:arguments` | `:excel` |
 | [Electric Vehicles](examples/electric-vehicles.md) | `:arguments` | `:excel` |
 | [Demand Response](examples/demand-response.md) | `:arguments` | `:arguments` |
 

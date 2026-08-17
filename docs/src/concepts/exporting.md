@@ -20,14 +20,14 @@ working directory. The output contains five sheets:
 - `Annual values (self)`: the corresponding view for the non-foreign system
   boundary;
 - `Losses`: annual losses per node, broken down by category and by technology,
-  and the detailed per-source table (see [Losses](#losses));
+  and the detailed per-source table (see [Losses](#Losses));
 - `Time series`: hourly demand, production, storage, interconnection, loss,
   curtailment, and price series;
 - `Price duration curves`: endogenous and exogenous electricity prices sorted
   from highest to lowest.
 
 Interconnection-specific tables and column conventions are described in
-[Interconnections](../components/interconnections.md#losses-and-reporting).
+[Interconnections](../components/interconnections.md#Losses-And-Reporting).
 
 If the destination already exists, Posy2 moves it to
 `results/old/scenario.xlsx` before writing the new workbook. An older file with

@@ -184,7 +184,7 @@ rows when the matching keyword is `nothing`:
 | Builder | Base Rows | Conditional Groups |
 |:--------|:----------|:-------------------|
 | [`makedispatchable`](@ref) | Common | Fuel, unit commitment, and ramping |
-| [`makenuclear`](@ref) | Common plus `waste_cost` | Fuel, unit commitment, and reloads |
+| [`makenuclear`](@ref) | Common plus `waste_cost` | Fuel, unit commitment, ramping, and reloads |
 
 In `:arguments` mode, `makedispatchable` gives its additive cost and emission
 coefficients neutral zero defaults. It uses `nothing` for unit sizing and
@@ -211,10 +211,11 @@ schedule already contains whatever reload outages it was solved with, so
 `uc=<extracted snapshot>` builds no reload constraints and warns if reload
 arguments are supplied.
 
-`ramp_up` and `ramp_down` are used by `makedispatchable` only when
-`unit_size > 0`; omitted, `nothing`, or zero ramp values omit the corresponding
-constraint. Unit commitment and non-zero fractional ramps require a positive
-unit size.
+`ramp_up` and `ramp_down` are used by `makedispatchable` and `makenuclear` only
+when `unit_size > 0`. In `:arguments` mode, omitted, `nothing`, or zero ramp
+values omit the corresponding constraint. In `:excel` mode, omitted or
+`nothing` values are read from the technology column. Unit commitment and
+non-zero fractional ramps require a positive unit size.
 
 ### Intermittent Sheet
 
@@ -307,10 +308,12 @@ a ready-made dataset for other studies.
 The example costs are based on the IEA/NEA report
 [*Projected Costs of Generating Electricity 2020*](https://www.iea.org/reports/projected-costs-of-generating-electricity-2020)
 and its supporting data tables. 
-For each technology x parameter, the median value across countries was selected.
+For each report-based technology x parameter, the median value across countries
+was selected. The hydrogen-storage values are the illustrative assumptions used
+by the hydrogen-production example.
 
-| Workbook key | Report technology |
-|:-------------|:------------------|
+| Workbook key | Example assumption or report technology |
+|:-------------|:----------------------------------------|
 | `PV` | Utility-scale solar PV |
 | `Onwind` | Onshore wind, at least 1 MW |
 | `CCGT` | Combined-cycle gas turbine |
@@ -318,6 +321,8 @@ For each technology x parameter, the median value across countries was selected.
 | `Nuclear` | New-build nuclear |
 | `Battery` | Four-hour lithium-ion battery observation |
 | `Hydro res` | Reservoir hydro, at least 5 MW |
+| `Hydro ror` | Run-of-river hydro, at least 5 MW |
+| `Hydrogen storage` | Illustrative hydrogen storage: 100% roundtrip efficiency, 30-year lifetime |
 | `PEM` | Current PEM electrolyser |
 
 ## Time-Series Workbook

@@ -87,8 +87,6 @@ makenuclear(
     min_downtime=24.0,
     startup_duration=1.0,
     shutdown_duration=1.0,
-    no_load_cost=0.0,
-    startup_cost=0.0,
 )
 makenuclear(
     "NucB", "Nuclear", electricity, co2, snapshot;
@@ -104,8 +102,6 @@ makenuclear(
     min_downtime=24.0,
     startup_duration=1.0,
     shutdown_duration=1.0,
-    no_load_cost=0.0,
-    startup_cost=0.0,
 )
 makenuclear(
     "NucC", "Nuclear", electricity, co2, snapshot;
@@ -121,8 +117,6 @@ makenuclear(
     min_downtime=24.0,
     startup_duration=1.0,
     shutdown_duration=1.0,
-    no_load_cost=0.0,
-    startup_cost=0.0,
 )
 
 # Expandable CCGT backup for residual demand
@@ -201,8 +195,6 @@ makenuclear(
     min_downtime=24.0,
     startup_duration=1.0,
     shutdown_duration=1.0,
-    no_load_cost=0.0,
-    startup_cost=0.0,
 )
 makenuclear(
     "NucB", "Nuclear", electricity, co2, snapshot;
@@ -218,8 +210,6 @@ makenuclear(
     min_downtime=24.0,
     startup_duration=1.0,
     shutdown_duration=1.0,
-    no_load_cost=0.0,
-    startup_cost=0.0,
 )
 makenuclear(
     "NucC", "Nuclear", electricity, co2, snapshot;
@@ -235,8 +225,6 @@ makenuclear(
     min_downtime=24.0,
     startup_duration=1.0,
     shutdown_duration=1.0,
-    no_load_cost=0.0,
-    startup_cost=0.0,
 )
 
 # Same expandable CCGT backup
@@ -275,5 +263,5 @@ under a flexible schedule. Both cases impose the same 720-hour refuelling
 requirement on every nuclear unit. The difference comes only from when those
 outages occur. By choosing their timing, the optimiser reduces the coincidence
 of nuclear outages with each other and with high-demand periods, lowering the
-backup capacity the system needs to build. This scheduling pattern emerges from
-cost minimisation.
+backup capacity the system needs to build. The actual scheduling pattern emerges 
+from cost minimisation.

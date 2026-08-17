@@ -119,7 +119,9 @@ Arguments:
   * `cname`: component name prefix.
   * `elec`: electricity node to connect the component to.
   * `cap`: Response capacity. A number fixes capacity, a JuMP `VariableRef` or
-    `AffExpr` reuses that expression, and `nothing` leaves output unconstrained.
+    `AffExpr` reuses that expression, `nothing` creates a capacity decision,
+    and `Inf` leaves output unlimited. `nothing` emits a warning to distinguish
+    it from unlimited capacity.
   * `cost`: demand response activation cost coefficient.
   * `s`: snapshot to register the component in.
   * `type`: variable cost label used for reporting (default `:volDR`).
@@ -134,13 +136,11 @@ function makedemandresponse(cname::String, elec::Node, cap::Union{Nothing,Real,V
         FreeJointFlow("output", elec.carrier, :output; mustconnect=false),
         LinkedJointFlow("negative consumption", elec.carrier, :input, "output", x -> -x[1] * (1 - elec.losses)),
     ]
-    if !isnothing(cap)
-        if cap isa Real
-            push!(vb, FixedCapacity("output", energy, cap))
-        elseif cap isa VariableRef || cap isa AffExpr
-            JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
-            push!(vb, VariableCapacity("output", energy; expression=cap))
-        end
+    if isnothing(cap)
+        @warn "`cap=nothing` defines a variable demand response capacity. Use `cap=Inf` for unlimited capacity."
+    end
+    if !(cap isa Real && cap == Inf)
+        push!(vb, gencapacity(cap, "output", s, cname * " " * elec.name))
     end
     push!(vb, VariableCost(type, "output", energy, cost))
 

@@ -6,7 +6,8 @@ decommissioning costs, fixed operation and maintenance, and the applicable
 variable costs.
 
 See [Component Builders](../components.md) for shared naming, workbook,
-capacity, port, and tagging conventions.
+capacity, and port conventions, and [Tags And
+Post-Processing](../concepts/tags.md) for tagging and reporting.
 
 ## Dispatchable Generation
 
@@ -21,10 +22,10 @@ technology column named by `techkey` in sheet `dispatchable`. In
 fuel defaults to lossless efficiency, and unit sizing and ramping default to
 disabled. Capital lifetime and profiles are required only when their associated
 cost is active. A numeric `cap` fixes output capacity; a JuMP variable or affine
-expression reuses an external capacity decision; and `nothing` creates a new
+expression reuses an external capacity decision; `nothing` creates a new
 decision; and an extracted snapshot inherits the matching component's capacity.
 `mincap` and `maxcap` bound either variable form. Numeric `cap=0` builds a
-zero-capacity component, like every other builder.
+zero-capacity component.
 `capacitymultiplier` can impose a time-varying availability on output.
 
 If `fuelnode` is absent, `fuel_cost` is a variable cost on electricity output.
@@ -41,25 +42,33 @@ up-time, down-time, start-up duration, and shut-down duration default to rows in
 the same workbook column. When `unit_size` is positive, non-zero `ramp_up` and
 `ramp_down` values add ramp limits after multiplication by the unit size.
 
-The builder tags the component as `generation` and `dispatchable`.
+Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `generation`
+and `dispatchable`.
+
+```@docs; canonical=false
+makedispatchable
+```
 
 ## Nuclear Generation
 
 [`makenuclear`](@ref) uses the same `dispatchable` sheet and the same principal
 electricity, fuel, and CO2 ports. It adds `waste_cost`, supports integer
 capacity with `integercap`, and accepts `warmstart` for a capacity decision.
+Ramping follows [`makedispatchable`](@ref): non-zero `ramp_up` and `ramp_down`
+values are multiplied by `unit_size`. They default to inactive in `:arguments`
+mode; in `:excel` mode, omitted values come from the technology column.
 
-Unit commitment may include planned fuel-reload outages. Reloading is active
-only when `uc=true`, `reload_fraction_per_year` is positive, and
+Fresh unit commitment may include planned fuel-reload outages. Reloading is
+active only when `uc=true`, `reload_fraction_per_year` is positive, and
 `reload_duration` is positive. In that case `reloadmask` must be a positive
-integer interval supplied by the caller. `startupmask` and `shutdownmask` can
-further restrict transitions. In `:excel` mode, reload fraction and duration
-default to the `dispatchable` technology column. In `:arguments` mode they
-default to zero, disabling reload outages; `reloadmask` has no workbook default
-and is needed only when positive reload fraction and duration activate the
-feature. Economic terms and emissions also default to zero in `:arguments`
-mode, and a positive `unit_size` is required only for unit commitment or
-integer capacity expansion.
+integer interval supplied by the caller. In `:excel` mode, reload fraction and
+duration default to the `dispatchable` technology column. In `:arguments` mode
+they default to zero, disabling reload outages; `reloadmask` has no workbook
+default and is needed only when positive reload fraction and duration activate
+the feature. Supplying reload arguments with `uc=false` emits a warning and
+does not add reload constraints. A replayed UC schedule retains the outages it
+was solved with; explicit reload arguments emit a warning and are ignored.
+Economic terms and emissions also default to zero in `:arguments` mode.
 
 Capacity follows the common numeric, external-expression, `nothing`, and
 inherited-from-a-snapshot semantics. For an external expression, `mincap` and
@@ -74,9 +83,13 @@ The specialised reload constraints apply only when `techkey` is exactly
 horizon. Other `techkey` values may omit those constraints. Use these exact
 conventions only for a full non-leap-year study.
 
-The component carries `generation` and `dispatchable` function tags. Direct
-emissions are controlled by `co2_emission`; the builder does not infer a
-`carbonfree` tag from the technology name.
+Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `generation`
+and `dispatchable`. Direct emissions are controlled by `co2_emission`; the
+builder does not infer a `carbonfree` tag from the technology name.
+
+```@docs; canonical=false
+makenuclear
+```
 
 ## Intermittent Generation
 
@@ -95,8 +108,15 @@ in sheet `intermittent`. In `:arguments` mode, costs and emissions default to
 zero and inactive capital data are not required. The production profile
 remains structural whenever capacity is active.
 Non-zero emissions create the same linked CO2 flow as for dispatchable
-generation. The component is tagged `generation` and `intermittent`; it also
-receives `carbonfree` when `co2_emission` is zero.
+generation.
+
+Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `generation`
+and `intermittent`. The component also receives the function tag `carbonfree`
+when `co2_emission` is zero.
+
+```@docs; canonical=false
+makeintermittentsource
+```
 
 ## Run-of-river Hydro
 
@@ -113,11 +133,54 @@ In `:excel` mode, cost defaults come from the technology column named by
 required. A numeric `cap` fixes output capacity; `cap=nothing` creates a new
 capacity decision; and a JuMP variable or affine expression reuses an external
 decision. `mincap` and `maxcap` bound either variable form. The intake profile
-remains independent of capacity. The component is tagged `generation`,
+remains independent of capacity.
+
+Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `generation`,
 `intermittent`, and `carbonfree`.
 
-## API Entries
+```@docs; canonical=false
+makehydroror
+```
 
-See the [API Reference](../api.md) for [`makedispatchable`](@ref),
-[`makenuclear`](@ref), [`makeintermittentsource`](@ref), and
-[`makehydroror`](@ref).
+## Note On Capacity And Unit Commitment
+
+`unit_size` is the output of one physical unit. Unit commitment uses it to
+express commitment, startup, and shutdown in numbers of units, so every enabled
+UC formulation requires a positive `unit_size`. A fixed capacity used with
+`integeruc=true` must be an integer multiple of `unit_size`.
+
+The `uc` and `integeruc` combinations have these effects:
+
+| Arguments | Formulation |
+|:----------|:------------|
+| `uc=false` | No UC equations or UC costs; `integeruc` and UC operating arguments have no effect |
+| `uc=true, integeruc=false` | Fresh UC equations with continuous, relaxed commitment variables |
+| `uc=true, integeruc=true` | Fresh UC equations with integer commitment, startup, and shutdown variables |
+| `uc=<extracted snapshot>` | Replays the solved commitment schedule and requires `cap` to be fixed by a number or snapshot |
+
+`integercap` is supported by [`makenuclear`](@ref). With `cap=nothing`, a
+positive `unit_size` makes the new capacity decision a number of units and
+`integercap=true` makes that count integer. With an external `VariableRef`, the
+supplied variable itself is made integer; `unit_size` does not reinterpret or
+scale it. An external `AffExpr` cannot be made integer and is rejected. To
+share unit-block capacity, create an integer unit-count variable and pass
+`unit_size * integer_units` explicitly. Fixed and inherited capacities contain
+no capacity decision, so `integercap` and `warmstart` have no effect on them.
+`warmstart` applies only to a new capacity decision and is rejected for an
+external expression.
+
+`integercap` and `integeruc` are independent. If both are enabled for a new
+nuclear capacity with fresh UC, both the capacity unit count and the hourly UC
+variables are integer; Posy2 does not drop either integrality condition as a
+simplification.
+
+For fresh `uc=true`, `min_power`, `min_uptime`, `min_downtime`,
+`startup_duration`, and `shutdown_duration` configure the UC equations.
+Nuclear `startupmask` and `shutdownmask` also apply only to fresh UC. A replayed
+schedule already contains those choices, so these operating arguments and
+`integeruc` do not alter it. `no_load_cost` and `startup_cost` are attached
+whenever UC is enabled, including replayed UC. For [`makedispatchable`](@ref)
+and [`makenuclear`](@ref), ramping is separate from UC: non-zero `ramp_up` or
+`ramp_down` adds a limit whenever `unit_size` is positive, even with `uc=false`.
+After workbook defaults and explicit overrides are resolved, zero or `nothing`
+omits that limit.

@@ -42,20 +42,10 @@ makedemand("Demand", "country1", electricity, snapshot; coeff=0.0, yearlyconstan
 makedispatchable(
     "CCGT", "CCGT", electricity, co2, snapshot;
     cap=100.0,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=30,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
     fuel_cost=47.06,
-    co2_emission=0.0,
-    unit_size=0.0,
 )
 
-# Priced import from "country2" (spot series); Lange import capacity, export capacity off
+# Priced import from "country2" (spot series); Large import capacity, export capacity off
 makepriceinterco("country2", electricity, 10_000.0, 0.0, snapshot; transactioncost=1.0)
 
 # Minimise total system cost and extract solved values
@@ -85,4 +75,3 @@ julia> balance(result, "IC_country2_country1", :output, energy; collapse=true, a
 julia> balance(result, "CCGT country1", :output, energy; collapse=true, aggregate=true)
 499600.0
 ```
-

@@ -43,17 +43,7 @@ makedemand("Demand", "country2", country2, snapshot)
 makedispatchable(
     "CCGT", "CCGT", country1, co2, snapshot;
     cap=1500.0,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=30,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
     fuel_cost=47.06,
-    co2_emission=0.0,
-    unit_size=0.0,
 )
 
 # Country 2: 1.2 GW PV
@@ -61,16 +51,6 @@ makeintermittentsource(
     "Solar", "PV", country2, co2, snapshot;
     cap=1200.0,
     weatheryear=2019,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=25,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
-    fuel_cost=0.0,
-    co2_emission=0.0,
 )
 
 # Country 2: 400 MW, 4 hour duration battery
@@ -79,31 +59,13 @@ makebatterystorage(
     cap=400.0,
     eff=0.85,
     duration=4.0,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=10,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
 )
 
 # Country 2: 1 GW Gas
 makedispatchable(
     "Gas", "Gas", country2, co2, snapshot;
     cap=1000.0,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=30,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
     fuel_cost=90.0,
-    co2_emission=0.0,
-    unit_size=0.0,
 )
 
 # Unlimited bidirectional interconnections
@@ -198,17 +160,7 @@ makedemand("Demand", "country2", country2, snapshot)
 makedispatchable(
     "CCGT", "CCGT", country1, co2, snapshot;
     cap=1500.0,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=30,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
     fuel_cost=47.06,
-    co2_emission=0.0,
-    unit_size=0.0,
 )
 
 # Country 2: 1.2 GW PV
@@ -216,16 +168,6 @@ makeintermittentsource(
     "Solar", "PV", country2, co2, snapshot;
     cap=1200.0,
     weatheryear=2019,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=25,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
-    fuel_cost=0.0,
-    co2_emission=0.0,
 )
 
 # Country 2: 400 MW, 4 hour duration battery
@@ -234,35 +176,21 @@ makebatterystorage(
     cap=400.0,
     eff=0.85,
     duration=4.0,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=10,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
 )
 
 # Country 2: 1 GW Gas
 makedispatchable(
     "Gas", "Gas", country2, co2, snapshot;
     cap=1000.0,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=30,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
     fuel_cost=90.0,
-    co2_emission=0.0,
-    unit_size=0.0,
 )
 
 # Limit transfers to 500 MW in each direction at full availability
-makenodeinterco("IC", country1, country2, 500.0, 500.0, snapshot; atob_availability=1.0, btoa_availability=1.0,)
+makenodeinterco(
+    "IC", country1, country2, 500.0, 500.0, snapshot;
+    atob_availability=1.0,
+    btoa_availability=1.0,
+)
 
 # Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))

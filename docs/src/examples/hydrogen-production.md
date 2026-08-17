@@ -49,13 +49,6 @@ makeelectrolyser("Electrolyser", "PEM", electricity, hydrogen, snapshot; maxcap=
 makehydrogenstorage(
     "H2 storage", "Hydrogen storage", hydrogen, snapshot;
     cap=28.0 * 168,   # about one week of the mean hydrogen demand
-    eff=1.0,
-    overnight_cost=50.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=30,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
 )
 
 # Minimise total system cost and extract solved values

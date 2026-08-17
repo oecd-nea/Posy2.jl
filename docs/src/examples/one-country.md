@@ -23,7 +23,6 @@ snapshot = Snapshot(
         tech_mode=:excel,
         timeseries_mode=:excel,
         discountrate=0.05,
-        co2_price=0.0,
     )),
 )
 
@@ -93,6 +92,5 @@ julia> printsnapshot(result, "one-country.xlsx")
 ```
 
 That creates `results/one-country.xlsx` with annual indicators, time series,
-and price-duration curves. Different filenames make it easy to compare
-scenarios. Renaming the node or technology changes which workbook columns
-Posy2 reads.
+and price-duration curves. Renaming the node or technology changes which
+workbook columns Posy2 reads.

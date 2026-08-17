@@ -24,8 +24,8 @@ This page keeps the same plants and demand and changes only the network:
 After each solve, [`printsnapshot`](@ref) writes the standard Posy2 workbook
 report under `results/`—one workbook per scenario. In `Annual values (all)`,
 the Interconnection volume tables (total, AC, and DC) summarise annual
-corridor exchanges and make scenario comparison straightforward.
-The markdown tables on this page match that workbook section.
+corridor exchanges. The markdown tables on this page match that workbook
+section.
 
 ## Transport (no KVL)
 
@@ -48,7 +48,6 @@ snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     timeseries_file="time_series.xlsx",
     tech_mode=:excel,
     timeseries_mode=:arguments,
-    dcopf=false,
 )))
 
 # Electricity zones and CO2 sink
@@ -68,12 +67,12 @@ makedemand("Demand", "D", d, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
 makedispatchable("CCGT", "CCGT", a, co2, snapshot; cap=10.0, unit_size=0.0)
 
 # AC ring with Inf capacity
-makenodeinterco("IC", a, b, Inf, Inf, snapshot; dc=false)
-makenodeinterco("IC", b, c, Inf, Inf, snapshot; dc=false)
-makenodeinterco("IC", c, d, Inf, Inf, snapshot; dc=false)
-makenodeinterco("IC", d, a, Inf, Inf, snapshot; dc=false)
+makenodeinterco("IC", a, b, Inf, Inf, snapshot)
+makenodeinterco("IC", b, c, Inf, Inf, snapshot)
+makenodeinterco("IC", c, d, Inf, Inf, snapshot)
+makenodeinterco("IC", d, a, Inf, Inf, snapshot)
 # AC diagonal A–C
-makenodeinterco("IC", a, c, Inf, Inf, snapshot; dc=false)
+makenodeinterco("IC", a, c, Inf, Inf, snapshot)
 
 # Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))
@@ -149,12 +148,12 @@ makedemand("Demand", "D", d, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
 makedispatchable("CCGT", "CCGT", a, co2, snapshot; cap=10.0, unit_size=0.0)
 
 # AC ring with susceptances
-makenodeinterco("IC", a, b, Inf, Inf, snapshot; dc=false, susceptance=-1.0)
-makenodeinterco("IC", b, c, Inf, Inf, snapshot; dc=false, susceptance=-2.0)
-makenodeinterco("IC", c, d, Inf, Inf, snapshot; dc=false, susceptance=-1.5)
-makenodeinterco("IC", d, a, Inf, Inf, snapshot; dc=false, susceptance=-2.5)
+makenodeinterco("IC", a, b, Inf, Inf, snapshot; susceptance=-1.0)
+makenodeinterco("IC", b, c, Inf, Inf, snapshot; susceptance=-2.0)
+makenodeinterco("IC", c, d, Inf, Inf, snapshot; susceptance=-1.5)
+makenodeinterco("IC", d, a, Inf, Inf, snapshot; susceptance=-2.5)
 # AC diagonal A–C with susceptance
-makenodeinterco("IC", a, c, Inf, Inf, snapshot; dc=false, susceptance=-3.0)
+makenodeinterco("IC", a, c, Inf, Inf, snapshot; susceptance=-3.0)
 
 # Apply KVL, then optimise
 applydcopf!(snapshot)
@@ -239,10 +238,10 @@ makedemand("Demand", "D", d, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
 makedispatchable("CCGT", "CCGT", a, co2, snapshot; cap=10.0, unit_size=0.0)
 
 # AC ring with susceptances
-makenodeinterco("IC", a, b, Inf, Inf, snapshot; dc=false, susceptance=-1.0)
-makenodeinterco("IC", b, c, Inf, Inf, snapshot; dc=false, susceptance=-2.0)
-makenodeinterco("IC", c, d, Inf, Inf, snapshot; dc=false, susceptance=-1.5)
-makenodeinterco("IC", d, a, Inf, Inf, snapshot; dc=false, susceptance=-2.5)
+makenodeinterco("IC", a, b, Inf, Inf, snapshot; susceptance=-1.0)
+makenodeinterco("IC", b, c, Inf, Inf, snapshot; susceptance=-2.0)
+makenodeinterco("IC", c, d, Inf, Inf, snapshot; susceptance=-1.5)
+makenodeinterco("IC", d, a, Inf, Inf, snapshot; susceptance=-2.5)
 # HVDC diagonal A–C (outside KVL)
 makenodeinterco("HVDC", a, c, Inf, Inf, snapshot; dc=true)
 

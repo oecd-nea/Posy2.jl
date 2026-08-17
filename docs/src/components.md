@@ -3,22 +3,23 @@
 Posy2 component builders assemble common energy-system technologies from Nosy
 archetypes, behaviours, and joint flows. A builder creates a component, adds it
 to a snapshot, connects its compatible ports, attaches reporting metadata, and
-returns the component. The result is a consistent vocabulary across studies. 
+returns the component.
 Builders are a convenience layer on Nosy, not a closed API: 
 if a study needs a custom formulation, build it with Nosy directly.
 
 The builders are grouped by modelling role:
 
 - [Demand And Flexibility](components/demand.md) covers
-  [`makedemand`](@ref), hydrogen demand, electric vehicles, and demand
-  response.
+  [`makedemand`](@ref), hydrogen demand, and demand response.
 - [Generation](components/generation.md) covers dispatchable, nuclear,
   intermittent, and hydro sources.
-- [Hydrogen](components/hydrogen.md) covers exogenous hydrogen purchase.
-- [Storage And Conversion](components/storage-conversion.md) covers
-  reservoirs, batteries, hydrogen storage, and electrolysers.
+- [Storage](components/storage-conversion.md) covers reservoirs and batteries.
+- [Electric Vehicles](components/electric-vehicles.md) covers fixed-profile,
+  smart-charging, and vehicle-to-grid operation.
 - [Interconnections](components/interconnections.md) covers links between
   explicit nodes and links represented by an exogenous price series.
+- [Hydrogen](components/hydrogen.md) covers exogenous hydrogen purchase,
+  electrolysers, and hydrogen storage.
 
 ## Common Arguments
 
@@ -52,31 +53,41 @@ and unit conversions are in [Input Workbooks](concepts/input-data.md).
 
 ## Capacity Semantics
 
-Every user-supplied `cap` or similar capacity argument accepts the same four
-sources: a number creates fixed capacity, a JuMP `VariableRef` or `AffExpr`
-reuses an external capacity expression, `nothing` creates a new capacity
-decision, and an extracted `Snapshot` inherits the capacity of the matching
-component in it. An external expression must use variables owned by the
-snapshot's JuMP model.
+Every user-supplied `cap` or similar capacity argument normally follows this
+contract:
 
-`mincap` and `maxcap` bound an optimized or externally supplied capacity. They
-are also accepted against a fixed or inherited one, where they act as
-assertions and throw if the value falls outside them.
+| Value | Capacity used by the builder | Effect of `mincap` and `maxcap` |
+|:------|:-----------------------------|:--------------------------------|
+| number | Fixed at that number | Checked as assertions |
+| `nothing` | New capacity decision | Bounds on the new decision |
+| JuMP `VariableRef` or `AffExpr` | Reuses that external expression | Constraints on the expression |
+| extracted `Snapshot` | Fixed at the matching solved capacity | Checked as assertions |
+
+An external expression must use variables owned by the snapshot's JuMP model.
+Reusing the same expression in several builders shares one decision; every
+builder's bounds constrain that same expression. The individual builder page
+states which port the capacity measures. For example, generation capacity is
+on `output`, battery and electrolyser capacity is on `input`, and hydrogen
+storage capacity is on `level`.
 
 A capacity inherited from a snapshot is looked up by generated component name
 and port, so component prefixes and principal node names must agree between
 scenarios. The snapshot must come from `extract`, since inheriting reads solved
 values. An unextracted snapshot, a missing component, or a component without
-the relevant port is an error, in every builder.
+the relevant port is an error.
 
-A fixed capacity of zero builds the component and its port at zero capacity;
-no builder omits a component or a port because a capacity is zero. Two
-capacity arguments still carry their own meaning for a missing limit:
+A fixed capacity of zero builds the component and its port at zero capacity.
+A builder may nevertheless skip input lookup for an inactive branch: zero
+intermittent capacity does not require a production profile, zero hydro intake
+does not require an intake profile, and a zero interconnector direction does
+not require an availability series. Two arguments use `Inf` as an
+unlimited-capacity sentinel:
 
 - `cap_reservoir=Inf` in [`makehydroreservoir`](@ref), its default, leaves the
   stored-energy level unlimited by adding no level capacity behavior.
-- `cap=nothing` in [`makedemandresponse`](@ref) leaves response output without
-  a capacity limit.
+- `cap=Inf` in [`makedemandresponse`](@ref) leaves response output unlimited.
+  `cap=nothing` creates a capacity decision and emits a warning suggesting
+  `Inf` when unlimited capacity was intended.
 
 A symbolic capacity is treated as structurally active because its optimized
 value is not known while the component is built, so symbolic interconnector
@@ -84,7 +95,10 @@ directions resolve their availability and price inputs even if the expression
 later evaluates to zero.
 
 `unit_size`, `integercap`, and `integeruc` control discrete formulations where
-the relevant builder supports them. These options may turn an LP into a MILP.
+the relevant builder supports them. Their applicability and combined behavior
+are described in
+[Note On Capacity And Unit Commitment](components/generation.md#Note-On-Capacity-And-Unit-Commitment).
+These options may turn an LP into a MILP.
 
 ## Ports And Connections
 
@@ -102,23 +116,3 @@ Capacity and cost behaviours are attached to a specific port, not to the
 component as a whole. When you query a solved snapshot, use the port named on
 that builder's page. For example, a dispatchable plant's investment sits on
 `output`, while a battery's investment sits on `input`.
-
-## Tags And Reporting
-
-Builders add metadata used by Posy2 post-processing. Most components receive
-one `:tech` value, a `:zone` value, and one or more `:function` values. Common
-function tags include `generation`, `demand`, `storage`, `electrolysis`,
-`interconnection`, and `foreign`.
-
-Node tags are equally important. Electricity nodes should carry
-`:electricity`, hydrogen nodes should carry `:hydrogen`, and modelled external
-zones should also carry `:foreign`. Interconnection topology is inferred from
-connected ports and carrier names, so distinct electricity nodes should use
-distinct carrier names.
-
-Custom Nosy components are valid in a Posy2 snapshot. To include them in Posy2
-reports, give them compatible tags and conventional port names. The individual
-component pages list the tags created by each builder. For which tags select
-which report rows, see [Tags And Post-Processing](concepts/tags.md). For the
-design sequence when adding a technology—physical model, behaviours, naming,
-tags, and connection—see [Extending Posy2](concepts/extending.md).

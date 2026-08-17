@@ -96,16 +96,39 @@ balance(result, "Electrolyser grid", :output, energy;
     collapse=true, aggregate=true)
 ```
 
+## Losses
+
+[`losses`](@ref) returns electricity losses by node, source, technology, and
+category:
+
+```julia
+losses(result)                          # every loss source
+losses(result; by=:node)                # total for each node
+losses(result; by=(:tech, :category))   # each technology, split by cause
+losses(result; collapse=false)          # hourly series
+```
+
+The categories are `:node`, `:component`, `:interconnection`, `:storage`, and
+`:selfdischarge`. Restrict the result with `categories`, for example:
+
+```julia
+losses(result; by=:source, categories=(:interconnection,))
+```
+
+Lossless sources are omitted. See [Losses](exporting.md#Losses) for category
+definitions, attribution of interconnection losses, and their relationship to
+the annual reports.
+
 ## Costs
 
 Nosy cost queries expose the terms added by Posy2 builders:
 
 ```julia
-cost(result)
-cost(result, :investment)
-cost(result, :fuel)
-cost(result, "Gas grid")
-costs(result)
+cost(result)                  # Total system cost.
+cost(result, :investment)     # Investment cost across all components.
+cost(result, :fuel)           # Fuel cost across all components.
+cost(result, "CCGT")          # Total cost of the CCGT.
+cost(result, "CCGT", :fuel)   # Fuel cost of the CCGT.
 ```
 
 Common Posy2 cost tags include `:investment`, `:connection`, `:fom`,
@@ -113,13 +136,19 @@ Common Posy2 cost tags include `:investment`, `:connection`, `:fom`,
 `:startup`, `:imports`, `:exports`, and `:transaction`. Only tags used by the
 components in a given model appear in its cost table.
 
+Use `costs` to inspect the breakdown by component and cost tag:
+
+```julia
+costs(result) # Cost table by component and cost tag.
+```
+
 `costs(result)` reports costs as represented in the optimisation objective.
 For a study containing foreign nodes or exogenous-price interconnections,
 [`selfcost`](@ref) instead evaluates the total attributed to the system
 boundary represented by non-foreign electricity nodes:
 
 ```julia
-selfcost(result)
+selfcost(result) # Total cost attributed to the local system boundary.
 ```
 
 It excludes components belonging only to foreign nodes and re-evaluates
@@ -133,10 +162,7 @@ created with `evalprice=true`.
 For a continuous solution:
 
 ```julia
-price = dualprice(result.nodes["grid"])
-minimum(price)
-maximum(price)
-sum(price) / length(price)
+dualprice(result.nodes["grid"]) # Hourly marginal price at the grid node.
 ```
 
 The sign and unit follow the node-balance convention and the cost and flow
@@ -146,6 +172,25 @@ solutions.
 Price-based interconnections carry an exogenous neighbour price as variable
 import and export costs. These price series are included in Posy2's standard
 workbook post-processing alongside endogenous electricity-node prices.
+
+## Querying Problems
+
+An optimisation problem can be queried in the same way as an extracted
+solution, except for prices. Use the original snapshot in place of `result`:
+
+```julia
+capacity(snapshot, "Gas grid")
+balance(snapshot, "Gas grid", :output, energy; collapse=true, aggregate=true)
+cost(snapshot)
+```
+
+Quantities that depend on decision variables are returned as JuMP expressions
+instead of numbers. Prices are the exception because dual prices only exist
+after solving a continuous model.
+
+Symbolic queries are useful when building higher-order algorithms that inspect
+or reuse model quantities, including iterative loops, multi-level optimisation,
+and search heuristics.
 
 ## Tags And Filtering
 

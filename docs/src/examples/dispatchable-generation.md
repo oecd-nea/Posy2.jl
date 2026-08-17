@@ -36,15 +36,8 @@ makeintermittentsource(
     maxcap=5_000.0,
     weatheryear=2019,
     overnight_cost=500.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
     lifetime=25,
     construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
-    fuel_cost=0.0,
-    co2_emission=0.0,
 )
 
 # Optimised gas capacity for the residual load
@@ -52,16 +45,9 @@ makedispatchable(
     "Gas", "CCGT", electricity, co2, snapshot;
     maxcap=2_000.0,
     overnight_cost=955.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
     lifetime=30,
     construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
     fuel_cost=47.06,
-    co2_emission=0.0,
-    unit_size=0.0,
 )
 
 # Minimise total system cost and extract solved values

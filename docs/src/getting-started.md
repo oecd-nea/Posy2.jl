@@ -46,7 +46,7 @@ carbon = CO2Carrier("CO2", s)
 grid = Node("grid", power; rule=:curtailed, tags=[:electricity])
 atmosphere = Node("CO2", carbon; rule=:curtailed, tags=[:co2])
 
-# Add a demand with sin shape centered arouund 100 MW
+# Add a demand with sin shape centered around 100 MW
 makedemand("Load", "grid", grid, snapshot; profile=100.0 .+ 30 * sin.(h*2pi/24 for h in 1:8760))
 
 # Add a dispatchable generator with optimisable capacity.

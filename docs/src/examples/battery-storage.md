@@ -35,16 +35,7 @@ makeintermittentsource(
     "Solar", "PV", electricity, co2, snapshot;
     cap=100.0,
     weatheryear=2019,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=25,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
     om_var_cost=15.0,
-    fuel_cost=0.0,
-    co2_emission=0.0,
 )
 
 # Fixed battery: 50 MW charge rating, 85% round-trip, 4 h energy duration
@@ -53,31 +44,13 @@ makebatterystorage(
     cap=50.0,
     eff=0.85,
     duration=4.0,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=10,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
 )
 
 # Fixed 50 MW OCGT backup for hours storage cannot cover
 makedispatchable(
     "OCGT", "OCGT", electricity, co2, snapshot;
     cap=50.0,
-    overnight_cost=0.0,
-    om_fixed_cost=0.0,
-    decommissioning=0.0,
-    lifetime=30,
-    construction_profile=1.0,
-    decommissioning_profile=1.0,
-    connection_cost=0.0,
-    om_var_cost=0.0,
     fuel_cost=68.24,
-    co2_emission=0.0,
-    unit_size=0.0,
 )
 
 # Minimise total system cost and extract solved values

@@ -107,7 +107,7 @@ makedispatchable(
     connection_cost=0.0,
     om_var_cost=2.0,                # variable O&M per MWh
     fuel_cost=50.0,                 # fuel cost per MWh
-    co2_emission=0.0,               # tCO2 per MWh
+    co2_emission=0.0,               # kgCO2 per MWh
     unit_size=0.0,                  # allow continuous capacity expansion
 )
 
@@ -126,7 +126,7 @@ balance(result, "Plant grid", :output, energy; collapse=true, aggregate=true) # 
 Nosy is the composable, component-based energy system modelling toolkit beneath
 Posy2. Where Nosy exposes model archetypes and behaviours directly, Posy2 adds
 workbook-backed data handling, standard technology constructors, multi-zone
-power flow, and energy system reporting for analysts and scenario builders.
+power flow, and energy system reporting.
 
 ## Authors
 

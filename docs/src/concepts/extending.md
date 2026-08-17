@@ -3,9 +3,12 @@
 This page is about building custom Posy2 component builders on top of the
 Nosy compositional API: assemble a Nosy physical model, attach
 optimisation behaviours, then wrap the result with Posy2 naming and tags so
-querying and post-processing recognise it. Existing builders such as
-[`makedispatchable`](@ref) and [`makeelectrolyser`](@ref) are complete examples
-of that pattern—open them once the design steps below are clear.
+querying and post-processing recognise it.
+
+The general workflow at OECD-NEA is to use the Posy2 component builders as
+templates for customized builders crafted for specific scenarios. One easy
+example of builder extension is to add joint flows (e.g. additional 
+electricity consumption term) to an already existing builder.
 
 ## Design Flow
 

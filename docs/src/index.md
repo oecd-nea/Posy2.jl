@@ -10,17 +10,17 @@ standard technology assumptions and hourly time series.
 Posy2 components remain ordinary Nosy components. The component builders
 assemble model archetypes, behaviours, costs, capacities, emissions, storage
 relations, and connections, while Nosy supplies the shared simulation,
-optimisation, and querying machinery. This makes it possible to use the
-convenient Posy2 workflow and still extend a study directly with Nosy.
+optimisation, and querying machinery. A study can therefore use the Posy2
+workflow and still be extended directly with Nosy.
 
-## Key Capabilities
+## Capabilities
 
-- Assemble demand, generation, storage, conversion, and interconnection
-  components with consistent naming and tags on top of Nosy.
+- Assemble pre-conceived demand, generation, storage, conversion, and interconnection
+  components.
 - Load technology assumptions and hourly profiles from input data, or set
   them from Julia.
 - Run multi-zone capacity expansion and dispatch with price-based or node-based
-  interconnections and optional DC power flow.
+  interconnections and optional DC optimal power flow (DCOPF).
 - Cover power-system features such as unit commitment, demand response,
   electric vehicles, hydrogen, and CO2.
 - Inspect costs, capacities, balances, and prices, then export standard

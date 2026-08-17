@@ -5,8 +5,9 @@ interconnection connects two explicit model nodes. A price interconnection
 represents an external market through import and export capacities and an
 exogenous price series.
 
-See [Component Builders](../components.md) for shared capacity, port, and
-tagging conventions. See [Input Workbooks](../concepts/input-data.md) for the
+See [Component Builders](../components.md) for shared capacity and port
+conventions, [Tags And Post-Processing](../concepts/tags.md) for tagging and
+reporting, and [Input Workbooks](../concepts/input-data.md) for the
 transfer-capacity and price sheets.
 
 ## Direction And Transfer Multipliers
@@ -65,15 +66,15 @@ that pair raises an error. Aggregate equivalent parallel circuits
 before calling the builder.
 
 `transactioncost` is applied to each direction's sending flow, including when
-that direction's capacity is `Inf`. The unconnected `grid losses ic` output 
-records proportional losses for reporting. Both node names are stored as 
-`:zone` values.
+that direction's capacity is `Inf`. The unconnected `grid losses ic` output
+records proportional losses for reporting.
 
-The component carries `interconnection`, `nodeinterconnection`, and either
-`AC` or `DC` function tags. There is no component-level foreign flag: a node
-interconnection counts as foreign in reports exactly when at least one of its
-endpoints is a node tagged `:foreign`. Give nodes the appropriate
-`:electricity` and `:foreign` tags for self-versus-foreign reports.
+Tags: `:zone => a.name`, `:zone => b.name`, and the function tags
+`interconnection`, `nodeinterconnection`, and either `AC` or `DC`. There is no
+component-level foreign tag: a node interconnection counts as foreign in
+reports exactly when at least one of its endpoints is a node tagged
+`:foreign`. Give nodes the appropriate `:electricity` and `:foreign` tags for
+self-versus-foreign reports.
 
 ### DC Power-flow Metadata
 
@@ -89,6 +90,10 @@ snapshot's internal registry. Call [`applydcopf!`](@ref) after adding all
 links and before optimisation. See
 [Optimising A Snapshot](../concepts/optimizing.md) for the complete workflow.
 
+```@docs; canonical=false
+makenodeinterco
+```
+
 ## Price Interconnections
 
 [`makepriceinterco`](@ref) creates `"IC_$(zone)_$(elec.name)"` without creating
@@ -98,11 +103,11 @@ base capacity `mcap`, multiplier column `zone>local`, and the neighbour's
 multiplier column `local>zone`. Export energy earns the same exogenous spot
 price; `transactioncost` is added in both directions.
 
-The builder adds `interconnection` and `priceinterconnection` function tags,
-stores `zone` as the `:neighbor` value, and stores the local node as `:zone`.
-`foreign` defaults to true because the common use case is a market outside the
-modelled system. Set it to false when the price series represents another
-internal zone.
+Tags: `:neighbor => zone`, `:zone => elec.name`, and the function tags
+`interconnection` and `priceinterconnection`. With `foreign=true`, the builder
+also adds the function tag `foreign`. This is the default because the common
+use case is a market outside the modelled system. Set it to false when the
+price series represents another internal zone.
 
 Price interconnections do not participate in DC power flow cycle constraints:
 they have no second explicit electrical node or susceptance.
@@ -110,6 +115,10 @@ they have no second explicit electrical node or susceptance.
 Numeric zero capacities disable a direction. When both `mcap` and `xcap` are
 zero the whole corridor is disabled: no spot price or availability column is
 read, and reports show the interconnection with a zero price and zero volumes.
+
+```@docs; canonical=false
+makepriceinterco
+```
 
 ## Losses And Reporting
 
@@ -145,8 +154,3 @@ between two foreign endpoints, and price interconnections built with
 Give each explicit electricity node a distinct carrier name. Endpoint discovery
 uses those carrier names rather than parsing underscores or other punctuation
 from the component name.
-
-## API Entries
-
-See the [API Reference](../api.md) for [`makenodeinterco`](@ref) and
-[`makepriceinterco`](@ref).

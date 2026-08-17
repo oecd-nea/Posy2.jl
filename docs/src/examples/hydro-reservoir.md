@@ -80,6 +80,6 @@ Over these four weeks the level rises, then falls:
 
 ![Natural intake, turbine output, and reservoir level over four weeks](../assets/hydro-reservoir-timing.svg)
 
-The reservoir therefore decouples water arrival from electricity generation.
-Natural intake follows its weather-driven profile, while stored water can be
-released at a different time to serve the electricity node.
+The reservoir therefore decouples water intake from electricity generation.
+Intake follows its weather-driven profile, while stored water is released when
+the electricity system needs it.

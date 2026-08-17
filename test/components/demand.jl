@@ -174,6 +174,19 @@ using HiGHS
         @test Nosy.getcomponent(s, "DR ZONE1") === c
     end
 
+    # Nothing creates a capacity decision.
+    let
+        s, elec, _ = makesnapshot()
+        variable = @test_logs (
+            :warn,
+            "`cap=nothing` defines a variable demand response capacity. Use `cap=Inf` for unlimited capacity.",
+        ) makedemandresponse("Variable DR", elec, nothing, 50.0, s)
+        @test length(Nosy.getbehaviors(variable, Nosy.VariableCapacityBehavior)) == 1
+
+        unlimited = @test_nowarn makedemandresponse("Unlimited DR", elec, Inf, 50.0, s)
+        @test isempty(Nosy.getbehaviors(unlimited, Nosy.AbstractCapacityBehavior))
+    end
+
     # Demand response keeps a positive output for reporting while connecting
     # its negative to the demand side of the electricity node.
     let

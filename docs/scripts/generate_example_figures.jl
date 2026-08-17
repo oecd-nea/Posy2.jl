@@ -124,13 +124,6 @@ function solve_hydrogen()
     makehydrogenstorage(
         "H2 storage", "Hydrogen storage", hydrogen, snapshot;
         cap=28.0 * 168,
-        eff=1.0,
-        overnight_cost=50.0,
-        om_fixed_cost=0.0,
-        decommissioning=0.0,
-        lifetime=30,
-        construction_profile=1.0,
-        decommissioning_profile=1.0,
     )
 
     optimize!(snapshot, cost(snapshot))
@@ -164,16 +157,6 @@ function solve_ev(vehicle_to_grid)
         "Solar", "PV", electricity, co2, snapshot;
         cap=1500.0,
         weatheryear=2019,
-        overnight_cost=0.0,
-        om_fixed_cost=0.0,
-        decommissioning=0.0,
-        lifetime=25,
-        construction_profile=1.0,
-        decommissioning_profile=1.0,
-        connection_cost=0.0,
-        om_var_cost=0.0,
-        fuel_cost=0.0,
-        co2_emission=0.0,
     )
     makeEV(
         "EV", 50000.0, electricity, snapshot;
@@ -182,8 +165,6 @@ function solve_ev(vehicle_to_grid)
         vehicle_to_grid=vehicle_to_grid,
         zone="country1",
         charging_eff=0.9,
-        self_discharge=0.0,
-        min_level_morning=0.0,
         max_charging_power_per_ev=0.01,
         max_dispatch_power_per_ev=vehicle_to_grid ? 0.01 : nothing,
         battery_capacity_per_ev=0.06,
@@ -193,27 +174,15 @@ function solve_ev(vehicle_to_grid)
     makedispatchable(
         "OCGT", "OCGT", electricity, co2, snapshot;
         cap=1200.0,
-        overnight_cost=0.0,
-        om_fixed_cost=0.0,
-        decommissioning=0.0,
-        lifetime=30,
-        construction_profile=1.0,
-        decommissioning_profile=1.0,
-        connection_cost=0.0,
-        om_var_cost=0.0,
         fuel_cost=68.24,
-        co2_emission=0.0,
         unit_size=100.0,
         uc=true,
         startup_cost=6_270.0,
-        no_load_cost=0.0,
         min_power=0.3,
         min_uptime=2.0,
         min_downtime=2.0,
         startup_duration=1.0,
         shutdown_duration=1.0,
-        ramp_up=1.0,
-        ramp_down=1.0,
     )
 
     optimize!(snapshot, cost(snapshot))

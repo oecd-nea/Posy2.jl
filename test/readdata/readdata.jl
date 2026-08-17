@@ -39,6 +39,22 @@
         end
     end
 
+    @testset "Documented shipped technology keys" begin
+        xl = readtechdata("tech_data.xlsx"; data_dir=joinpath(pkgdir(Posy2), "data"))
+        for param in (
+            "overnight_cost", "om_fixed_cost", "om_var_cost", "decommissioning",
+            "lifetime", "construction_profile", "decommissioning_profile",
+        )
+            @test !ismissing(gettechparam(xl, "Hydro ror", param, "intermittent", 6))
+        end
+        for param in (
+            "roundtrip_eff", "overnight_cost", "om_fixed_cost", "decommissioning",
+            "lifetime", "construction_profile", "decommissioning_profile",
+        )
+            @test !ismissing(gettechparam(xl, "Hydrogen storage", param, "storage", 6))
+        end
+    end
+
     @testset "Time series workbook columns" begin
         cd(dirname(@__DIR__)) do
             xl = readtimeseries("time_series_test.xlsx")

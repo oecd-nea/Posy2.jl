@@ -32,8 +32,13 @@ gettimeseries
 makedemand
 makeflathydrogendemand
 makeflexhydrogendemand
-makeEV
 makedemandresponse
+```
+
+## Electric Vehicles
+
+```@docs
+makeEV
 ```
 
 ## Generation

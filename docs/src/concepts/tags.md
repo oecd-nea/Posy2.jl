@@ -5,9 +5,6 @@ components without parsing names. Tags do not change the optimisation model.
 They decide which report rows and indicators a component enters when you
 call [`printsnapshot`](@ref).
 
-The practical question is always: what is the consequence of having this
-tag?
-
 ## Tag Kinds
 
 | Kind | Examples | Role |
@@ -76,28 +73,27 @@ Give each electricity node a distinct carrier name as well as the
 
 ## Default Tags From Builders
 
-Builders set the defaults below. Individual component pages list ports and
-naming; this table is the reporting map.
+Builders set the component tags below. Individual component pages list ports
+and naming; this table is the reporting map.
 
-| Builder | Typical `:function` tags |
-|:--------|:-------------------------|
-| [`makedemand`](@ref) | `electricity`, `demand` |
-| [`makeflathydrogendemand`](@ref) / [`makeflexhydrogendemand`](@ref) | `hydrogen`, `demand` |
-| [`makeflathydrogenpurchase`](@ref) | `hydrogen`, `purchase` |
-| [`makeEV`](@ref) | `electricity`, `demand`, `ev` (+ `generation` when V2G) |
-| [`makedemandresponse`](@ref) | `virtual`, `demandresponse` |
-| [`makedispatchable`](@ref) / [`makenuclear`](@ref) | `generation`, `dispatchable` |
-| [`makeintermittentsource`](@ref) | `generation`, `intermittent` (+ `carbonfree` when `co2_emission` is zero) |
-| [`makehydroror`](@ref) | `generation`, `intermittent`, `carbonfree` |
-| [`makehydroreservoir`](@ref) | `generation`, `storage`, `carbonfree` |
-| [`makebatterystorage`](@ref) | `electricity`, `storage`, `generation` |
-| [`makehydrogenstorage`](@ref) | `hydrogen`, `storage` |
-| [`makeelectrolyser`](@ref) | `demand`, `electrolysis`, `hydrogen` |
-| [`makepriceinterco`](@ref) | `interconnection`, `priceinterconnection` (+ `foreign` if set) |
-| [`makenodeinterco`](@ref) | `interconnection`, `nodeinterconnection`, `AC` or `DC` |
-
-`:tech` is set from `cname`. `:zone` is set from the principal connected
-node (both ends for node interconnections).
+| Builder | `:function` values | Other tags |
+|:--------|:-------------------|:-----------|
+| [`makedemand`](@ref) | `electricity`, `demand` | `:tech => cname`, `:zone => n.name` |
+| [`makeflathydrogendemand`](@ref) | `hydrogen`, `demand` | `:tech => cname`, `:zone => n.name` |
+| [`makeflexhydrogendemand`](@ref) | `hydrogen`, `demand` | `:tech => cname`, `:zone => n.name` |
+| [`makeflathydrogenpurchase`](@ref) | `hydrogen`, `purchase` | `:tech => cname`, `:zone => n.name` |
+| [`makeEV`](@ref) | `electricity`, `demand`, `ev`; also `generation` when `vehicle_to_grid=true` | `:tech => cname`, `:zone => elec.name` |
+| [`makedemandresponse`](@ref) | `virtual`, `demandresponse` | `:tech => cname`, `:zone => elec.name` |
+| [`makedispatchable`](@ref) | `generation`, `dispatchable` | `:tech => cname`, `:zone => elec.name` |
+| [`makenuclear`](@ref) | `generation`, `dispatchable` | `:tech => cname`, `:zone => elec.name` |
+| [`makeintermittentsource`](@ref) | `generation`, `intermittent`; also `carbonfree` when `co2_emission` is zero | `:tech => cname`, `:zone => elec.name` |
+| [`makehydroror`](@ref) | `generation`, `intermittent`, `carbonfree` | `:tech => cname`, `:zone => elec.name` |
+| [`makehydroreservoir`](@ref) | `generation`, `storage`, `carbonfree` | `:tech => cname`, `:zone => elec.name` |
+| [`makebatterystorage`](@ref) | `electricity`, `storage`, `generation` | `:tech => cname`, `:zone => elec.name` |
+| [`makehydrogenstorage`](@ref) | `hydrogen`, `storage` | `:tech => cname`, `:zone => h2.name` |
+| [`makeelectrolyser`](@ref) | `demand`, `electrolysis`, `hydrogen` | `:tech => cname`, `:zone => elec.name` |
+| [`makepriceinterco`](@ref) | `interconnection`, `priceinterconnection`; also `foreign` when `foreign=true` | `:neighbor => zone`, `:zone => elec.name` |
+| [`makenodeinterco`](@ref) | `interconnection`, `nodeinterconnection`, and `AC` or `DC` | `:zone => a.name`, `:zone => b.name` |
 
 ## Custom Components
 

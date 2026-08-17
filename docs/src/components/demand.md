@@ -1,11 +1,13 @@
 # Demand And Flexibility
 
 Demand-side builders cover fixed consumption, annually constrained flexible
-consumption, electric-vehicle charging, and virtual demand response. All
-components are created and connected immediately.
+consumption, and virtual demand response. All components are created and
+connected immediately. Electric vehicles are covered separately in
+[Electric Vehicles](electric-vehicles.md).
 
 See [Component Builders](../components.md) for shared naming, workbook, cost,
-capacity, port, and tagging conventions.
+capacity, and port conventions, and [Tags And
+Post-Processing](../concepts/tags.md) for tagging and reporting.
 
 ## Electricity Demand
 
@@ -22,12 +24,17 @@ flat term is added. Setting `coeff=0` suppresses the workbook lookup, which is
 useful for self-contained examples and purely flat demand.
 
 When `gridlosses` is non-zero, the builder adds a linked `grid losses` input
-proportional to demand. The value must lie in `[0, 1)`. The component receives
-the `electricity` and `demand` function tags, as well as `:tech=>cname` and
-`:zone=>n.name`.
+proportional to demand. The value must lie in `[0, 1)`.
+
+Tags: `:tech => cname`, `:zone => n.name`, and the function tags `electricity`
+and `demand`.
 
 The workbook series is read from sheet `demand`, column `<zone>`. With the
 standard hourly MW/MWh convention, `yearlyconstant` is in MWh/year.
+
+```@docs; canonical=false
+makedemand
+```
 
 ## Hydrogen Demand
 
@@ -37,83 +44,16 @@ hydrogen node. [`makeflexhydrogendemand`](@ref) instead creates a flexible
 take an annual hydrogen-energy quantity, but only the flat builder fixes its
 hourly shape.
 
-The generated name is `"$cname $(n.name)"`. Both components carry the
-`hydrogen` and `demand` function tags. They do not read a workbook and do not
-add a cost or capacity behaviour.
+The generated name is `"$cname $(n.name)"`. They do not read a workbook and do
+not add a cost or capacity behaviour.
 
-## Electric Vehicles
+Tags for both builders: `:tech => cname`, `:zone => n.name`, and the function
+tags `hydrogen` and `demand`.
 
-!!! warning "Unstable EV API"
-    The EV API is not fixed yet. The modes, keyword arguments, component and
-    port structure, and reporting semantics may change substantially in later
-    Posy2 versions.
-
-[`makeEV`](@ref) supports three mutually exclusive modes. Exactly one of
-`fixed_profile`, `smart_charging`, and `vehicle_to_grid` must be true.
-
-### Fixed Profile
-
-The fixed mode creates a conventional demand component. `offhours1` and
-`offhours2` give zero-based hours of day for the winter and summer patterns;
-`minratio` scales demand in those hours. `days_threshold` locates the boundary
-between the first winter segment and summer. The generated 365-day profile is
-normalised to the annual consumption `yearly`, so its hourly values always sum
-to `yearly` exactly. Off-hour indices must be unique, and a schedule leaving no
-charging hour at all (every hour an off-hour with `minratio=0`) is rejected.
-
-This mode requires `offhours1`, `offhours2`, and `minratio`, but performs no
-workbook lookup. It can add the same proportional `grid losses` port as
-[`makedemand`](@ref).
-
-```julia
-makeEV(
-    "EV", 50_000.0, electricity, snapshot;
-    fixed_profile=true,
-    smart_charging=false,
-    vehicle_to_grid=false,
-    offhours1=0:5,
-    offhours2=0:5,
-    minratio=0.2,
-)
+```@docs; canonical=false
+makeflathydrogendemand
+makeflexhydrogendemand
 ```
-
-### Smart Charging And Vehicle To Grid
-
-The flexible modes represent the connected vehicle fleet as storage. Both use
-these time-series columns for `zone`:
-
-- `EV_charging_availability` controls the available charging power and storage
-  level;
-- `EV_driving_profile` allocates annual driving consumption across the year.
-
-Per-vehicle values come from the technology column named by `techkey` in the
-`storage` sheet:
-`charging_eff`, `self_discharge`, `min_level_morning`, `max_charging_power`,
-`max_dispatch_power`, `battery_capacity`, and `yearly_consumption`. Each has a
-corresponding keyword override. The fleet size is `yearly` divided by annual
-consumption per vehicle, and the per-vehicle limits are scaled by that size.
-`max_dispatch_power` is resolved only in vehicle-to-grid mode; smart charging
-does not require it.
-
-In `tech_mode=:arguments`, charging efficiency defaults to one,
-self-discharge and the morning minimum to zero. Maximum charging power,
-battery capacity, and yearly consumption per vehicle remain structural and
-must be supplied; V2G additionally requires maximum dispatch power. In
-`timeseries_mode=:arguments`, omitted charging availability defaults to one,
-while the driving profile remains required.
-
-Smart charging exposes a flexible `input`, a `level`, and a fixed unconnected
-`driving` output. Vehicle-to-grid mode also exposes `output`, limited by
-available dispatch power, and applies `compensation` as a variable output cost.
-The morning level constraint requires the connected fleet to hold at least
-`min_level_morning` of available battery capacity at 7 am each day.
-
-All EV modes carry `electricity`, `demand`, and `ev` function tags. V2G also
-carries `generation`, so its discharge appears in production reporting.
-
-!!! note
-    EV profiles and level constraints currently use a 365-day, 8,760-hour
-    convention. Use a full non-leap-year hourly mesh for these modes.
 
 ## Demand Response
 
@@ -125,19 +65,20 @@ accounting flow used for capacity, activation cost, and reporting. A linked
 components remain unchanged while demand response enters the nodal balance
 from the demand side. With zero node losses this is exactly `-output`. A
 numeric `cap` adds fixed response capacity, a JuMP variable or affine
-expression reuses an external response-capacity decision, and `nothing` leaves
-the positive output unconstrained by a capacity behaviour.
+expression reuses an external response-capacity decision, `nothing` creates a
+new response-capacity decision, and `Inf` leaves response output unlimited.
+Because these last two cases are easy to confuse, `cap=nothing` emits a warning
+suggesting `cap=Inf` when unlimited capacity was intended.
 
 `cost` is the activation cost per unit of the positive `output` flow and is
 applied directly. `type` selects the variable-cost category used by reports
 and defaults to `:volDR`.
 
-The generated component is named `"$cname $(elec.name)"` and carries the
-`virtual` and `demandresponse` function tags.
+The generated component is named `"$cname $(elec.name)"`.
 
-## API Entries
+Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `virtual`
+and `demandresponse`.
 
-The complete keyword lists and validation rules are in the
-[API Reference](../api.md): [`makedemand`](@ref),
-[`makeflathydrogendemand`](@ref), [`makeflexhydrogendemand`](@ref),
-[`makeEV`](@ref), and [`makedemandresponse`](@ref).
+```@docs; canonical=false
+makedemandresponse
+```
