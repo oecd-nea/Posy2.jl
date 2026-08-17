@@ -64,6 +64,11 @@ come from the same technology column and are attached to discharge capacity.
 Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `generation`,
 `storage`, and `carbonfree`.
 
+See the [Hydro Reservoir example](../examples/hydro-reservoir.md) for a
+turbine-only reservoir, and the [Pumped Storage
+example](../examples/pumped-storage-hydro.md) for a reservoir with grid
+charging.
+
 ```@docs; canonical=false
 makehydroreservoir
 ```
@@ -90,6 +95,9 @@ flow. `gridlosses` adds a linked charging loss.
 Tags: `:tech => cname`, `:zone => elec.name`, and the function tags
 `electricity`, `storage`, and `generation`. These tags make charging and
 discharging enter the appropriate Posy2 reports.
+
+See the [Battery Storage example](../examples/battery-storage.md) for a complete
+model using this builder.
 
 ```@docs; canonical=false
 makebatterystorage

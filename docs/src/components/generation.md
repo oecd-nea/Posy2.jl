@@ -49,6 +49,9 @@ the same workbook column. When `unit_size` is positive, non-zero `ramp_up` and
 Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `generation`
 and `dispatchable`.
 
+See the [Dispatchable Generation example](../examples/dispatchable-generation.md)
+for a complete model using this builder.
+
 ```@docs; canonical=false
 makedispatchable
 ```
@@ -93,6 +96,9 @@ Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `generation`
 and `dispatchable`. Direct emissions are controlled by `co2_emission`; the
 builder does not infer a `carbonfree` tag from the technology name.
 
+See the [Nuclear example](../examples/nuclear.md) for models using this builder
+with forced and flexible reload schedules.
+
 ```@docs; canonical=false
 makenuclear
 ```
@@ -121,6 +127,9 @@ generation.
 Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `generation`
 and `intermittent`. The component also receives the function tag `carbonfree`
 when `co2_emission` is zero.
+
+See the [Dispatchable Generation example](../examples/dispatchable-generation.md)
+for a model that co-optimises intermittent and dispatchable capacity.
 
 ```@docs; canonical=false
 makeintermittentsource

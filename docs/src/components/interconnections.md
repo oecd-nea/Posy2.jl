@@ -94,6 +94,10 @@ snapshot's internal registry. Call [`applydcopf!`](@ref) after adding all
 links and before optimisation. See
 [Optimising A Snapshot](../concepts/optimizing.md) for the complete workflow.
 
+See the [Two Countries example](../examples/two-countries.md) for a transport
+link, and the [DC OPF example](../examples/dc-opf.md) for AC and DC networks
+with Kirchhoff voltage-law constraints.
+
 ```@docs; canonical=false
 makenodeinterco
 ```
@@ -121,6 +125,9 @@ they have no second explicit electrical node or susceptance.
 Numeric zero capacities disable a direction. When both `mcap` and `xcap` are
 zero the whole corridor is disabled: no spot price or availability column is
 read, and reports show the interconnection with a zero price and zero volumes.
+
+See the [Price Interconnection example](../examples/price-interconnection.md)
+for a complete model using this builder.
 
 ```@docs; canonical=false
 makepriceinterco

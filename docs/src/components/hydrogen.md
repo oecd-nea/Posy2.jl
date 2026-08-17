@@ -52,6 +52,9 @@ Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `demand`,
 `electrolysis`, and `hydrogen`. These tags allow electrical consumption to
 appear in demand reporting.
 
+See the [Hydrogen Production example](../examples/hydrogen-production.md) for a
+complete model using this builder.
+
 ```@docs; canonical=false
 makeelectrolyser
 ```
@@ -78,6 +81,9 @@ The component is named `"$cname $(h2.name)"`.
 
 Tags: `:tech => cname`, `:zone => h2.name`, and the function tags `hydrogen`
 and `storage`.
+
+See the [Hydrogen Production example](../examples/hydrogen-production.md) for a
+complete model using this builder.
 
 ```@docs; canonical=false
 makehydrogenstorage

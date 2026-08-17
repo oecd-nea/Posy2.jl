@@ -36,6 +36,9 @@ and `demand`.
 The workbook series is read from sheet `demand`, column `<zone>`. With the
 standard hourly MW/MWh convention, `yearlyconstant` is in MWh/year.
 
+See the [One Country example](../examples/one-country.md) for a complete model
+using this builder.
+
 ```@docs; canonical=false
 makedemand
 ```
@@ -88,6 +91,9 @@ The generated component is named `"$cname $(elec.name)"`.
 
 Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `virtual`
 and `demandresponse`.
+
+See the [Demand Response example](../examples/demand-response.md) for a complete
+model using this builder.
 
 ```@docs; canonical=false
 makedemandresponse

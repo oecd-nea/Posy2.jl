@@ -83,6 +83,9 @@ function tag `generation`, so its discharge appears in production reporting.
     EV profiles and level constraints currently use a 365-day, 8,760-hour
     convention. Use a full non-leap-year hourly mesh for these modes.
 
+See the [Electric Vehicles example](../examples/electric-vehicles.md) for smart
+charging and vehicle-to-grid models using this builder.
+
 ```@docs; canonical=false
 makeEV
 ```
