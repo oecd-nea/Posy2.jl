@@ -67,7 +67,7 @@ Over the year, total natural intake equals total turbine generation. The reservo
 change how much water is used. It changes when that water is released.
 
 ```jldoctest hydro_reservoir
-julia> balance(result, "Reservoir hydro country1", :input, energy; collapse=true, aggregate=true)
+julia> balance(result, "Reservoir hydro country1", :input, energy; collapse=true, aggregate=false)["natural"]
 350399.9999999993
 
 julia> balance(result, "Reservoir hydro country1", :output, energy; collapse=true, aggregate=true)

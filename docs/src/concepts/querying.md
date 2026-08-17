@@ -83,8 +83,10 @@ balance(
 ```
 
 With `collapse=true`, flow series are integrated over the horizon. Levels
-cannot be meaningfully collapsed. With `aggregate=false`, separate named ports
-or connected components are retained in a dictionary.
+cannot be meaningfully collapsed. With `aggregate=true`, all ports or connected
+components matching the selected sense are summed; `:input` selects the input
+sense, not a port named `input`. With `aggregate=false`, the separate entries
+are retained in a dictionary under their port or component names.
 
 A `MassCarrier` with an energy density can be queried with either `mass` or
 `energy`. This is useful for hydrogen models:

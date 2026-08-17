@@ -19,6 +19,11 @@ Post-Processing](../concepts/tags.md) for tagging and reporting.
 - `spill` is optional unconnected release, enabled by `spillage`;
 - `level` is stored energy.
 
+In a `balance` query, `:input` selects all input-sense ports. Thus
+`aggregate=true` sums the reservoir's `natural` and `input` flows, plus `grid
+losses` when configured. To distinguish natural intake from grid charging, use
+`aggregate=false` and read the `"natural"` or `"input"` entry.
+
 Each of `cap_discharging`, `cap_charging`, and `cap_reservoir` accepts a JuMP
 variable or affine expression as externally defined capacity, an extracted snapshot
 to inherit the matching component's capacity on that port, a number to fix it,
