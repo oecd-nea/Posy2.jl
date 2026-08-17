@@ -34,7 +34,7 @@ function makedemand(cname::String, zone::String, n::Node, s::Snapshot;
         var = 0.
     else
         var = coeff * _resolve_timeseries(s, profile, zone, "demand"; keyword="profile")
-        circshift!(var, shift)
+        var = circshift(var, shift)
     end
 
     m = Demand(n.carrier, (var .+ yearlyconstant / 8760))
