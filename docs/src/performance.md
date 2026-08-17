@@ -44,10 +44,11 @@ JuMP.set_string_names_on_creation(model(s), false)
 Keep names enabled while developing or when solver conflict reports are part
 of the workflow.
 
-Nosy also exposes model-generation options through `Sim`, including objective
-coefficient cleanup, constraint scaling, small-bound cleanup, and the ability
-to disable the scaling bridge. See the Nosy performance documentation for the
-full behaviour of these levers.
+## Constraint Scaling
+
+Nosy applies its constraint-scaling bridge only when `Sim` receives an
+optimiser constructor. Pass `HiGHS.Optimizer` directly when configuring
+`constraint_scaling`, `scalingtarget`, or `expthreshold`:
 
 ```julia
 s = Sim(
