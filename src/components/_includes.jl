@@ -1,5 +1,6 @@
 include("input.jl")
 include("demand.jl")
+include("electricvehicles.jl")
 include("generation.jl")
 include("storage.jl")
 include("conversion.jl")

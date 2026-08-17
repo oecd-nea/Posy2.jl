@@ -53,9 +53,9 @@ Arguments:
     natural intake is disabled.
   * `gridlosses`: Proportional losses linked to charging input flow (`0 <= gridlosses < 1`).
   * `simplified`: Passed to `LazyStorage(..., simplified=...)`.
-  * `intake_profile`: Hourly natural-intake shape or scalar. It is always
-    normalized to sum to one before `intake` is applied. If `nothing`, read
-    `zone` from `reservoir_inflow_<weatheryear>`.
+  * `intake_profile`: Hourly natural-intake shape or scalar, nonnegative with a
+    strictly positive sum. It is always normalized to sum to one before `intake`
+    is applied. If `nothing`, read `zone` from `reservoir_inflow_<weatheryear>`.
 
   * `eff`: Roundtrip charging efficiency (input side conversion).
 
@@ -174,9 +174,8 @@ function makehydroreservoir(cname::String, techkey::String, zone::String, elec::
         profile_sheet = isnothing(weatheryear) ? nothing : "reservoir_inflow_$weatheryear"
         profile = _resolve_timeseries(
             s, intake_profile, zone, profile_sheet;
-            keyword="intake_profile",
+            keyword="intake_profile", lower=0.0,
         )
-        @argcheck all(profile .>= 0) "reservoir intake profile cannot be negative."
         profile_sum = sum(profile)
         @argcheck profile_sum > 0 "reservoir intake profile must have a positive sum."
         profile / profile_sum * intake

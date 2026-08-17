@@ -57,7 +57,9 @@ The fixed mode creates a conventional demand component. `offhours1` and
 `offhours2` give zero-based hours of day for the winter and summer patterns;
 `minratio` scales demand in those hours. `days_threshold` locates the boundary
 between the first winter segment and summer. The generated 365-day profile is
-normalised to the annual consumption `yearly`.
+normalised to the annual consumption `yearly`, so its hourly values always sum
+to `yearly` exactly. Off-hour indices must be unique, and a schedule leaving no
+charging hour at all (every hour an off-hour with `minratio=0`) is rejected.
 
 This mode requires `offhours1`, `offhours2`, and `minratio`, but performs no
 workbook lookup. It can add the same proportional `grid losses` port as

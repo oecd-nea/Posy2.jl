@@ -350,9 +350,13 @@ The principal series semantics are:
   foreign-zone spot price. Each can be supplied explicitly or read from its
   workbook fallback.
 
-Posy2 does not require `profiles_<year>` or `transfer_capacities` values to
-lie in a fixed range (such as 0–1) when they are read. Validate such data
-before a production run.
+Physical domains are enforced when a series is resolved, whether it comes from
+the workbook or from a keyword. Availability and capacity multipliers
+(`profiles_<year>`, `transfer_capacities`, `EV_charging_availability`) must lie
+in `[0, 1]`; intake and driving shapes (`hydro_ror_<year>`,
+`reservoir_inflow_<year>`, `EV_driving_profile`) must be nonnegative and sum to
+a strictly positive value. `demand` and `spot_price` are unrestricted beyond
+being numeric and finite.
 
 ## Full-year Hourly Assumption
 

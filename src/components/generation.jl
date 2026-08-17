@@ -646,8 +646,8 @@ Arguments:
     checked as an assertion against a fixed or inherited one.
   * `weatheryear`: Year suffix used to select profile series `profiles_<year>`.
     Required for workbook lookup; unused when `profile` is supplied explicitly.
-  * `profile`: Hourly capacity-factor vector or scalar. If `nothing`, read the
-    `<techkey>_<node>` workbook column.
+  * `profile`: Hourly capacity-factor vector or scalar, each value in `[0, 1]`.
+    If `nothing`, read the `<techkey>_<node>` workbook column.
 
   * `co2price`: CO2 cost coefficient applied to emitted CO2 flow.
 
@@ -684,7 +684,7 @@ function makeintermittentsource(cname::String, techkey::String, elec::Node, co2:
     profile_sheet = isnothing(weatheryear) ? nothing : "profiles_$weatheryear"
     m = ProfileSource(elec.carrier, _resolve_timeseries(
         s, profile_value, techkey * "_" * elec.name, profile_sheet;
-        keyword="profile",
+        keyword="profile", lower=0.0, upper=1.0,
     ))
     vb = []
     excel = tech_mode(s) === :excel
@@ -800,9 +800,10 @@ Arguments:
   * `weatheryear`: Year suffix used to select intake series `hydro_ror_<year>`.
     Required for workbook lookup; unused when `intake_profile` is supplied
     explicitly.
-  * `intake_profile`: Hourly run-of-river intake shape or scalar. The profile is
-    normalized to sum to one before the total intake is applied. If `nothing`,
-    read `zone` from the selected workbook sheet.
+  * `intake_profile`: Hourly run-of-river intake shape or scalar, nonnegative
+    with a strictly positive sum. The profile is normalized to sum to one before
+    the total intake is applied. If `nothing`, read `zone` from the selected
+    workbook sheet.
 
   * `intake`: Total intake distributed over the normalized intake profile.
 
@@ -839,9 +840,8 @@ function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
         profile_sheet = isnothing(weatheryear) ? nothing : "hydro_ror_$weatheryear"
         profile = _resolve_timeseries(
             s, intake_profile, zone, profile_sheet;
-            keyword="intake_profile",
+            keyword="intake_profile", lower=0.0,
         )
-        @argcheck all(profile .>= 0) "run-of-river intake profile cannot be negative."
         profile_sum = sum(profile)
         @argcheck profile_sum > 0 "run-of-river intake profile must have a positive sum."
         profile / profile_sum * intake

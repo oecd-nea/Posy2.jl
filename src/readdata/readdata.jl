@@ -146,18 +146,23 @@ end
 
 """
     _validate_timeseries(value; expected_length=nothing, allow_scalar=false,
-        keyword="profile", context=nothing, digits=6)
+        keyword="profile", context=nothing, digits=6, lower=nothing, upper=nothing)
 
 Validate and normalize a scalar or vector time series. Scalars are accepted
 only when `allow_scalar=true` and are expanded to `expected_length`. When an
-expected length is supplied, vectors must match it exactly.
+expected length is supplied, vectors must match it exactly. `lower` and `upper`
+restrict the physical domain of the rounded series: pass `lower=0` for a
+quantity that cannot be negative, and `lower=0, upper=1` for an availability or
+capacity multiplier.
 """
 function _validate_timeseries(value;
                               expected_length::Union{Nothing,Integer}=nothing,
                               allow_scalar::Bool=false,
                               keyword::String="profile",
                               context::Union{Nothing,String}=nothing,
-                              digits::Int=6)
+                              digits::Int=6,
+                              lower::Union{Nothing,Real}=nothing,
+                              upper::Union{Nothing,Real}=nothing)
     label = isnothing(context) ? "`$keyword`" : "$context, $keyword"
     values = if value isa Real && !(value isa Bool)
         allow_scalar || throw(ArgumentError("$label must be an hourly vector"))
@@ -187,21 +192,34 @@ function _validate_timeseries(value;
         allowed = allow_scalar ? "a real number or an hourly vector" : "an hourly vector"
         throw(ArgumentError("$label must be $allowed"))
     end
-    return round.(values; digits=digits)
+    rounded = round.(values; digits=digits)
+    if !isnothing(lower) || !isnothing(upper)
+        domain = "[$(isnothing(lower) ? "-Inf" : lower), $(isnothing(upper) ? "Inf" : upper)]"
+        for (i, x) in enumerate(rounded)
+            ((!isnothing(lower) && x < lower) || (!isnothing(upper) && x > upper)) &&
+                throw(ArgumentError(
+                    "$label must stay within $domain, got $x at index $i"))
+        end
+    end
+    return rounded
 end
 
 """
-    _resolve_timeseries(s, value, title, sheetname; keyword="profile", digits=6)
+    _resolve_timeseries(s, value, title, sheetname; keyword="profile", digits=6,
+        lower=nothing, upper=nothing)
 
 Select an explicit value or a workbook column, then validate the result against
-the simulation horizon. `sheetname` is needed only for workbook lookup.
+the simulation horizon and, when given, against the `lower`/`upper` physical
+domain. `sheetname` is needed only for workbook lookup.
 """
 function _resolve_timeseries(s::Snapshot,
                              value,
                              title::String,
                              sheetname::Union{Nothing,String};
                              keyword::String="profile",
-                             digits::Int=6)
+                             digits::Int=6,
+                             lower::Union{Nothing,Real}=nothing,
+                             upper::Union{Nothing,Real}=nothing)
     context = nothing
     if isnothing(value)
         timeseries_mode(s) === :excel || throw(ArgumentError(
@@ -217,6 +235,6 @@ function _resolve_timeseries(s::Snapshot,
     return _validate_timeseries(
         value;
         expected_length=Nosy.nhours(sim(s)), allow_scalar=true,
-        keyword=keyword, context=context, digits=digits,
+        keyword=keyword, context=context, digits=digits, lower=lower, upper=upper,
     )
 end

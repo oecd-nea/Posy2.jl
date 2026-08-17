@@ -85,6 +85,43 @@ using HiGHS
         @test Nosy.hasport(c, "driving")
     end
 
+    # The fixed profile is normalized on the series that is actually generated,
+    # so it consumes exactly `yearly` whatever the off-hour schedule is.
+    let
+        yearly = 1000.0
+        schedules = (
+            (offhours1=[0, 1], offhours2=[2, 3], minratio=0.2, days_threshold=104),
+            (offhours1=Int[], offhours2=Int[], minratio=0.0, days_threshold=104),   # no off-hour
+            (offhours1=collect(0:23), offhours2=collect(0:23), minratio=1.0, days_threshold=0),  # flat
+            (offhours1=collect(0:22), offhours2=collect(0:22), minratio=0.0, days_threshold=183), # one hour a day
+        )
+        for schedule in schedules
+            s, elec, _ = makesnapshot()
+            c = makeEV("EV", yearly, elec, s; fixed_profile=true, schedule...)
+            # a demand series is exogenous, so its balance is a constant
+            consumed = JuMP.constant(Nosy.balance(c, :input, energy; collapse=true, aggregate=true))
+            @test isapprox(consumed, yearly; rtol=1e-9)
+        end
+    end
+
+    # Duplicate off-hours used to be counted twice in the normalization denominator.
+    let
+        s, elec, _ = makesnapshot()
+        @test_throws ArgumentError makeEV(
+            "EV", 1000.0, elec, s;
+            fixed_profile=true, offhours1=[0, 0], offhours2=[2, 3], minratio=0.2,
+        )
+    end
+
+    # A schedule with no charging hour at all has a zero denominator.
+    let
+        s, elec, _ = makesnapshot()
+        @test_throws ArgumentError makeEV(
+            "EV", 1000.0, elec, s;
+            fixed_profile=true, offhours1=collect(0:23), offhours2=collect(0:23), minratio=0.0,
+        )
+    end
+
     # Charging efficiency applies when electricity enters the EV battery, not
     # when stored energy leaves through the V2G or driving outputs.
     let
@@ -101,6 +138,32 @@ using HiGHS
         @test c.model.data.eff["input"] == 0.8
         @test c.model.data.eff["output"] == 1.0
         @test c.model.data.eff["driving"] == 1.0
+    end
+
+    # A negative driving value would add free energy to the EV battery; a
+    # charging availability above one would raise the fleet's power and level
+    # limits above the modeled fleet.
+    let
+        flexible = (
+            fixed_profile=false, smart_charging=true,
+            charging_eff=0.9, self_discharge=0.0, min_level_morning=0.0,
+            max_charging_power_per_ev=0.01, battery_capacity_per_ev=0.06,
+            yearly_consumption_per_ev=2.4,
+        )
+        s, elec, _ = makesnapshot()
+        @test_throws ArgumentError makeEV(
+            "EV", 1000.0, elec, s;
+            charging_availability=1.0,
+            driving_profile=vcat(-1.0, fill(2.0, 8759)), flexible...,
+        )
+        @test_throws ArgumentError makeEV(
+            "EV", 1000.0, elec, s;
+            charging_availability=1.5, driving_profile=1.0, flexible...,
+        )
+        @test !isnothing(makeEV(
+            "EV", 1000.0, elec, s;
+            charging_availability=1.0, driving_profile=1.0, flexible...,
+        ))
     end
 
     # A valid demand response input should create and register the component.

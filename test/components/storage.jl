@@ -50,6 +50,20 @@ using HiGHS
         @test sum(actual) ≈ total_intake
     end
 
+    # A natural inflow cannot run backwards, as for run-of-river hydro.
+    let
+        s, elec, _ = makesnapshot(hours=24)
+        @test_throws ArgumentError makehydroreservoir(
+            "Negative intake reservoir", "Battery", "ZONE1", elec, s;
+            cap_discharging=500.0, cap_charging=0.0, intake=1_000.0,
+            cap_reservoir=2_000.0,
+            intake_profile=vcat(-1.0, fill(2.0, 23)),
+            gridlosses=0.0, eff=1.0,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
+            decommissioning=0.0,
+        )
+    end
+
     # Battery duration should fail when it is zero.
     let
         s, elec, _ = makesnapshot()

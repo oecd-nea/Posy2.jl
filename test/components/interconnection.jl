@@ -152,4 +152,23 @@ using HiGHS
         @test length(spot) == 2
         @test all(v -> v == zeros(Nosy.nhours(sim(s))), spot)
     end
+
+    # Transfer availabilities are multipliers of the directional capacity, so
+    # both interconnection kinds hold them within [0, 1]. Spot prices are free.
+    let
+        s, elec1, elec2 = makesnapshot()
+        @test_throws ArgumentError makenodeinterco(
+            "Above one", elec1, elec2, 100.0, 100.0, s; atob_availability=1.5, btoa_availability=1.0,
+        )
+        @test_throws ArgumentError makenodeinterco(
+            "Negative", elec1, elec2, 100.0, 100.0, s; atob_availability=1.0, btoa_availability=-0.1,
+        )
+        @test_throws ArgumentError makepriceinterco(
+            "ZONE2", elec1, 100.0, 100.0, s; import_availability=1.5,
+        )
+        @test !isnothing(makepriceinterco(
+            "ZONE2", elec1, 100.0, 100.0, s;
+            import_availability=1.0, export_availability=0.0,
+        ))
+    end
 end

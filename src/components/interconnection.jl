@@ -24,8 +24,10 @@ Arguments:
 
   * `transactioncost`: per unit transaction adder on both directions.
   * `spot_price`: Hourly foreign spot-price vector or scalar.
-  * `import_availability`: Hourly multiplier for the foreign-to-local direction.
-  * `export_availability`: Hourly multiplier for the local-to-foreign direction.
+  * `import_availability`: Hourly multiplier for the foreign-to-local direction,
+    each value in `[0, 1]`.
+  * `export_availability`: Hourly multiplier for the local-to-foreign direction,
+    with the same `[0, 1]` domain.
     Availability is resolved for numeric nonzero and all symbolic directions. When omitted,
     it comes from the workbook in `:excel` mode and defaults to one in
     `:arguments` mode. `spot_price` is required whenever either direction has
@@ -48,14 +50,14 @@ function makepriceinterco(zone::String, elec::Node, mcap::Union{Real,VariableRef
         input = isnothing(import_availability) && timeseries_mode(s) === :arguments ? 1.0 : import_availability
         _resolve_timeseries(
             s, input, zone * ">" * elec.name, "transfer_capacities";
-            keyword="import_availability",
+            keyword="import_availability", lower=0.0, upper=1.0,
         )
     end
     _exports = if exports_active
         input = isnothing(export_availability) && timeseries_mode(s) === :arguments ? 1.0 : export_availability
         _resolve_timeseries(
             s, input, elec.name * ">" * zone, "transfer_capacities";
-            keyword="export_availability",
+            keyword="export_availability", lower=0.0, upper=1.0,
         )
     end
     _spot = if imports_active || exports_active
@@ -145,8 +147,10 @@ Arguments:
     satisfy `0 <= lossfactor < 1`.
   * `susceptance`: AC susceptance for DC power flow (must be negative); stored in
     `Snapshot.options[:ic_susceptance]` (required for KVL when `Posy2Options.dcopf` is true).
-  * `atob_availability`: Hourly `a -> b` multiplier vector or scalar.
-  * `btoa_availability`: Hourly `b -> a` multiplier vector or scalar. A finite
+  * `atob_availability`: Hourly `a -> b` multiplier vector or scalar, each value
+    in `[0, 1]`.
+  * `btoa_availability`: Hourly `b -> a` multiplier vector or scalar, with the
+    same `[0, 1]` domain. A finite
     numeric nonzero or symbolic direction reads its workbook column in `:excel`
     mode when omitted, and defaults to one in `:arguments` mode. Numeric zero
     and `Inf` directions do not resolve an availability series.
@@ -210,7 +214,7 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Union{Real,Varia
             input = isnothing(atob_availability) && timeseries_mode(s) === :arguments ? 1.0 : atob_availability
             push!(vb, Nosy.CapacityMultiplier("input", _resolve_timeseries(
                 s, input, a.name * ">" * b.name, "transfer_capacities";
-                keyword="atob_availability", digits=2,
+                keyword="atob_availability", digits=2, lower=0.0, upper=1.0,
             )))
         end
     end
@@ -230,7 +234,7 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Union{Real,Varia
             input = isnothing(btoa_availability) && timeseries_mode(s) === :arguments ? 1.0 : btoa_availability
             push!(vb, Nosy.CapacityMultiplier("input2", _resolve_timeseries(
                 s, input, b.name * ">" * a.name, "transfer_capacities";
-                keyword="btoa_availability", digits=2,
+                keyword="btoa_availability", digits=2, lower=0.0, upper=1.0,
             )))
         end
     end

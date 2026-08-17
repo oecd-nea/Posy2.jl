@@ -167,6 +167,32 @@ using HiGHS
         )
     end
 
+    # An intake shape is a physical flow and cannot run backwards.
+    let
+        s, elec, _ = makesnapshot(hours=24)
+        @test_throws ArgumentError makehydroror(
+            "Hydro ROR negative profile", "ZONE1", elec, s;
+            cap=100.0, intake=100.0, intake_profile=vcat(-1.0, fill(2.0, 23)),
+        )
+    end
+
+    # An intermittent profile is a capacity factor, so it stays within [0, 1].
+    let
+        s, elec, co2 = makesnapshot(hours=24)
+        @test_throws ArgumentError makeintermittentsource(
+            "Onwind above one", "Onwind", elec, co2, s;
+            cap=100.0, profile=vcat(1.2, fill(0.3, 23)),
+        )
+        @test_throws ArgumentError makeintermittentsource(
+            "Onwind negative", "Onwind", elec, co2, s;
+            cap=100.0, profile=vcat(-0.1, fill(0.3, 23)),
+        )
+        @test !isnothing(makeintermittentsource(
+            "Onwind valid", "Onwind", elec, co2, s;
+            cap=100.0, profile=1.0, construction_profile=1.0, decommissioning_profile=1.0,
+        ))
+    end
+
     # Zero intake does not require a profile or weather year.
     let
         s, elec, _ = makesnapshot(hours=24)
