@@ -74,10 +74,10 @@ the electrolyser to meet demand at least cost:
 ```jldoctest hydrogen_production
 julia> table(result, capacity)[:, ["Electrolyser country1", "H2 storage H2 country1", "Solar country1"]]
 1×3 DataFrame
- Row │ Electrolyser country1  H2 storage H2 country1  Solar country1 
-     │ Float64                Float64                 Float64        
+ Row │ Electrolyser country1  H2 storage H2 country1  Solar country1
+     │ Float64                Float64                 Float64
 ─────┼───────────────────────────────────────────────────────────────
-   1 │               217.289                  4704.0         752.071
+   1 │               216.453                  4704.0         753.822
 ```
 
 The figure shows two timescales. Within each day, electrolyser output rises

@@ -298,9 +298,27 @@ These conversions always apply. If you enter values already in per-MW or
 tCO2 units, or change the study’s power or CO2 units, scale the inputs
 yourself so the applied values stay correct.
 
-Shared checks: `0 <= gridlosses < 1`. Demand coefficients and annual demand
-must be non-negative. EV bounds are in [`makeEV`](@ref). Costs must be numeric
-but may be negative.
+### Example technology assumptions
+
+The values in `data/tech_data.xlsx` are illustrative values selected to support 
+the documentation examples. They are not recommended technology assumptions or 
+a ready-made dataset for other studies.
+
+The example costs are based on the IEA/NEA report
+[*Projected Costs of Generating Electricity 2020*](https://www.iea.org/reports/projected-costs-of-generating-electricity-2020)
+and its supporting data tables. 
+For each technology x parameter, the median value across countries was selected.
+
+| Workbook key | Report technology |
+|:-------------|:------------------|
+| `PV` | Utility-scale solar PV |
+| `Onwind` | Onshore wind, at least 1 MW |
+| `CCGT` | Combined-cycle gas turbine |
+| `OCGT` | Open-cycle gas turbine |
+| `Nuclear` | New-build nuclear |
+| `Battery` | Four-hour lithium-ion battery observation |
+| `Hydro res` | Reservoir hydro, at least 5 MW |
+| `PEM` | Current PEM electrolyser |
 
 ## Time-Series Workbook
 
@@ -378,8 +396,9 @@ across Posy2.
     decommissioning assumptions are based on the IEA/NEA report *Projected
     Costs of Generating Electricity 2020 Edition*. All documentation
     time-series values and geographic labels are synthetic and reproducibly
-    generated. The smaller files in `test/data` remain contract fixtures for
-    automated tests.
+    generated. `tech_data.xlsx` contains only the technology keys used by the
+    documentation examples (including the implicit `EV` key). The smaller
+    files in `test/data` remain contract fixtures for automated tests.
 
 ## Inspecting Workbook Values
 

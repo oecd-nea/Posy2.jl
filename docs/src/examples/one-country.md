@@ -79,10 +79,10 @@ julia> costs(result)[:, [:component, :investment, :fuel, :total]]
  Row │ component              investment  fuel       total
      │ String                 Float64     Float64    Float64
 ─────┼─────────────────────────────────────────────────────────
-   1 │ CCGT country1           5.80805e7  1.90446e8  2.77409e8
+   1 │ CCGT country1           5.80805e7  1.90446e8  2.8712e8
    2 │ Demand country1         0.0        0.0        0.0
-   3 │ Onshore wind country1   8.16805e7  0.0        1.14384e8
-   4 │ all                     1.39761e8  1.90446e8  3.91793e8
+   3 │ Onshore wind country1   8.16805e7  0.0        1.14258e8
+   4 │ all                     1.39761e8  1.90446e8  4.01378e8
 ```
 
 Write the solved result with [`printsnapshot`](@ref) if you want the

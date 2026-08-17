@@ -1,66 +1,107 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000.0 560.0" role="img" aria-label="V2G: grid charging, V2G discharge, dual price, and driving demand over two days">
-<rect width="100%" height="100%" fill="#ffffff"/>
-<line x1="70.0" y1="160.0" x2="972.0" y2="160.0" stroke="#e9ecef" stroke-width="1"/>
-<text x="62.0" y="164.0" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">0</text>
-<line x1="70.0" y1="127.45819638657646" x2="972.0" y2="127.45819638657646" stroke="#e9ecef" stroke-width="1"/>
-<text x="62.0" y="131.45819638657645" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">200</text>
-<line x1="70.0" y1="94.91639277315292" x2="972.0" y2="94.91639277315292" stroke="#e9ecef" stroke-width="1"/>
-<text x="62.0" y="98.91639277315292" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">400</text>
-<line x1="70.0" y1="62.37458915972938" x2="972.0" y2="62.37458915972938" stroke="#e9ecef" stroke-width="1"/>
-<text x="62.0" y="66.37458915972938" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">600</text>
-<line x1="70.0" y1="29.832785546305843" x2="972.0" y2="29.832785546305843" stroke="#e9ecef" stroke-width="1"/>
-<text x="62.0" y="33.83278554630584" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">800</text>
-<line x1="70.0" y1="18.0" x2="70.0" y2="160.0" stroke="#2f3540" stroke-width="1"/>
-<line x1="70.0" y1="160.0" x2="972.0" y2="160.0" stroke="#2f3540" stroke-width="1"/>
-<text x="16" y="89.0" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="12" fill="#2f3540" transform="rotate(-90 16 89.0)">Power (MW)</text>
-<polyline fill="none" stroke="#2a9d8f" stroke-width="1.8" points="70.00,160.00 89.19,125.52 108.38,86.04 127.57,55.81 146.77,42.45 165.96,38.71 185.15,49.98 204.34,78.05 223.53,116.60 242.72,160.00 261.91,160.00 281.11,160.00 300.30,160.00 319.49,160.00 338.68,160.00 357.87,160.00 377.06,160.00 396.26,160.00 415.45,160.00 434.64,160.00 453.83,160.00 473.02,160.00 492.21,160.00 511.40,160.00 530.60,160.00 549.79,120.93 568.98,87.62 588.17,61.19 607.36,36.77 626.55,33.21 645.74,51.34 664.94,91.33 684.13,121.79 703.32,160.00 722.51,160.00 741.70,160.00 760.89,160.00 780.09,160.00 799.28,160.00 818.47,160.00 837.66,160.00 856.85,160.00 876.04,160.00 895.23,160.00 914.43,160.00 933.62,160.00 952.81,160.00 972.00,160.00"/>
-<polyline fill="none" stroke="#7b68a6" stroke-width="1.8" points="70.00,160.00 89.19,160.00 108.38,160.00 127.57,160.00 146.77,160.00 165.96,160.00 185.15,160.00 204.34,160.00 223.53,160.00 242.72,160.00 261.91,146.61 281.11,105.10 300.30,82.59 319.49,85.54 338.68,90.33 357.87,98.51 377.06,105.58 396.26,114.26 415.45,114.53 434.64,114.70 453.83,114.32 473.02,113.15 492.21,133.00 511.40,160.00 530.60,160.00 549.79,160.00 568.98,160.00 588.17,160.00 607.36,160.00 626.55,160.00 645.74,160.00 664.94,160.00 684.13,160.00 703.32,160.00 722.51,143.56 741.70,107.74 760.89,83.71 780.09,86.96 799.28,92.69 818.47,99.00 837.66,104.55 856.85,112.90 876.04,113.92 895.23,115.10 914.43,113.14 933.62,110.83 952.81,126.27 972.00,147.64"/>
-<line x1="70.0" y1="18.0" x2="70.0" y2="160.0" stroke="#e9ecef" stroke-width="1"/>
-<line x1="530.5957446808511" y1="18.0" x2="530.5957446808511" y2="160.0" stroke="#e9ecef" stroke-width="1"/>
-<line x1="972.0" y1="18.0" x2="972.0" y2="160.0" stroke="#e9ecef" stroke-width="1"/>
-<line x1="70.0" y1="316.12943382804656" x2="972.0" y2="316.12943382804656" stroke="#e9ecef" stroke-width="1"/>
-<text x="62.0" y="320.12943382804656" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">55</text>
-<line x1="70.0" y1="278.74300772787524" x2="972.0" y2="278.74300772787524" stroke="#e9ecef" stroke-width="1"/>
-<text x="62.0" y="282.74300772787524" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">60</text>
-<line x1="70.0" y1="241.35658162770386" x2="972.0" y2="241.35658162770386" stroke="#e9ecef" stroke-width="1"/>
-<text x="62.0" y="245.35658162770386" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">65</text>
-<line x1="70.0" y1="203.97015552753248" x2="972.0" y2="203.97015552753248" stroke="#e9ecef" stroke-width="1"/>
-<text x="62.0" y="207.97015552753248" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">70</text>
-<line x1="70.0" y1="185.0" x2="70.0" y2="325.0" stroke="#2f3540" stroke-width="1"/>
-<line x1="70.0" y1="325.0" x2="972.0" y2="325.0" stroke="#2f3540" stroke-width="1"/>
-<text x="16" y="255.0" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="12" fill="#2f3540" transform="rotate(-90 16 255.0)">Price (currency/MWh)</text>
-<polyline fill="none" stroke="#b5651d" stroke-width="1.8" points="70.00,217.13 89.19,308.85 108.38,308.85 127.57,308.85 146.77,308.85 165.96,308.85 185.15,308.85 204.34,308.85 223.53,308.85 242.72,217.13 261.91,201.15 281.11,201.15 300.30,201.15 319.49,201.15 338.68,201.15 357.87,201.15 377.06,201.15 396.26,201.15 415.45,201.15 434.64,201.15 453.83,201.15 473.02,201.15 492.21,201.15 511.40,217.13 530.60,217.13 549.79,308.85 568.98,308.85 588.17,308.85 607.36,308.85 626.55,308.85 645.74,308.85 664.94,308.85 684.13,308.85 703.32,217.13 722.51,201.15 741.70,201.15 760.89,201.15 780.09,201.15 799.28,201.15 818.47,201.15 837.66,201.15 856.85,201.15 876.04,201.15 895.23,201.15 914.43,201.15 933.62,201.15 952.81,201.15 972.00,201.15"/>
-<line x1="70.0" y1="185.0" x2="70.0" y2="325.0" stroke="#e9ecef" stroke-width="1"/>
-<line x1="530.5957446808511" y1="185.0" x2="530.5957446808511" y2="325.0" stroke="#e9ecef" stroke-width="1"/>
-<line x1="972.0" y1="185.0" x2="972.0" y2="325.0" stroke="#e9ecef" stroke-width="1"/>
-<line x1="70.0" y1="510.0" x2="972.0" y2="510.0" stroke="#e9ecef" stroke-width="1"/>
-<text x="62.0" y="514.0" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">0</text>
-<line x1="70.0" y1="468.46437378325766" x2="972.0" y2="468.46437378325766" stroke="#e9ecef" stroke-width="1"/>
-<text x="62.0" y="472.46437378325766" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">5</text>
-<line x1="70.0" y1="426.92874756651526" x2="972.0" y2="426.92874756651526" stroke="#e9ecef" stroke-width="1"/>
-<text x="62.0" y="430.92874756651526" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">10</text>
-<line x1="70.0" y1="385.39312134977285" x2="972.0" y2="385.39312134977285" stroke="#e9ecef" stroke-width="1"/>
-<text x="62.0" y="389.39312134977285" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">15</text>
-<line x1="70.0" y1="350.0" x2="70.0" y2="510.0" stroke="#2f3540" stroke-width="1"/>
-<line x1="70.0" y1="510.0" x2="972.0" y2="510.0" stroke="#2f3540" stroke-width="1"/>
-<text x="16" y="430.0" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="12" fill="#2f3540" transform="rotate(-90 16 430.0)">Power (MW)</text>
-<polyline fill="none" stroke="#264653" stroke-width="1.8" stroke-dasharray="5 4" points="70.00,424.45 89.19,402.85 108.38,424.45 127.57,464.32 146.77,489.65 165.96,497.54 185.15,497.96 204.34,491.73 223.53,472.62 242.72,435.24 261.91,391.22 281.11,370.87 300.30,391.22 319.49,435.24 338.68,472.62 357.87,491.73 377.06,497.96 396.26,499.62 415.45,499.62 434.64,499.62 453.83,499.62 473.02,497.96 492.21,489.65 511.40,464.32 530.60,424.45 549.79,402.85 568.98,424.45 588.17,464.32 607.36,489.65 626.55,497.54 645.74,497.96 664.94,491.73 684.13,472.62 703.32,435.24 722.51,391.22 741.70,370.87 760.89,391.22 780.09,435.24 799.28,472.62 818.47,491.73 837.66,497.96 856.85,499.62 876.04,499.62 895.23,499.62 914.43,499.62 933.62,497.96 952.81,489.65 972.00,464.32"/>
-<line x1="70.0" y1="350.0" x2="70.0" y2="510.0" stroke="#e9ecef" stroke-width="1"/>
-<line x1="530.5957446808511" y1="350.0" x2="530.5957446808511" y2="510.0" stroke="#e9ecef" stroke-width="1"/>
-<line x1="972.0" y1="350.0" x2="972.0" y2="510.0" stroke="#e9ecef" stroke-width="1"/>
-<line x1="70.0" y1="510.0" x2="70.0" y2="516.0" stroke="#2f3540" stroke-width="1"/>
-<text x="70.0" y="532.0" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">0 h</text>
-<line x1="530.5957446808511" y1="510.0" x2="530.5957446808511" y2="516.0" stroke="#2f3540" stroke-width="1"/>
-<text x="530.5957446808511" y="532.0" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">24 h</text>
-<line x1="972.0" y1="510.0" x2="972.0" y2="516.0" stroke="#2f3540" stroke-width="1"/>
-<text x="972.0" y="532.0" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">48 h</text>
-<rect x="794.0" y="24.0" width="168" height="98.0" fill="#ffffff" fill-opacity="0.94" stroke="#adb5bd" stroke-width="1"/>
-<line x1="806.0" y1="42.0" x2="828.0" y2="42.0" stroke="#2a9d8f" stroke-width="1.8"/>
-<text x="834.0" y="46.0" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">Grid charging</text>
-<line x1="806.0" y1="62.0" x2="828.0" y2="62.0" stroke="#7b68a6" stroke-width="1.8"/>
-<text x="834.0" y="66.0" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">V2G discharge</text>
-<line x1="806.0" y1="82.0" x2="828.0" y2="82.0" stroke="#b5651d" stroke-width="1.8"/>
-<text x="834.0" y="86.0" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">Dual price</text>
-<line x1="806.0" y1="102.0" x2="828.0" y2="102.0" stroke="#264653" stroke-width="1.8" stroke-dasharray="5 4"/>
-<text x="834.0" y="106.0" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">Driving</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="720" viewBox="0 0 1000 720" role="img">
+<style>
+    text { font-family: system-ui, sans-serif; fill: #263238; }
+    .title { font-size: 14px; font-weight: 600; }
+    .legend { font-size: 12px; }
+    .axis-label { font-size: 12px; text-anchor: middle; }
+    .tick { font-size: 11px; text-anchor: end; fill: #546e7a; }
+    .tick.x { text-anchor: middle; }
+    .grid { stroke: #dfe5e8; stroke-width: 1; }
+    .grid.vertical { stroke-dasharray: 2 4; }
+    .frame { fill: none; stroke: #78909c; stroke-width: 1; }
+</style>
+<rect width="100%" height="100%" fill="white"/>
+<text class="title" x="70" y="26.0">EV grid exchange</text>
+<text class="axis-label" transform="translate(18 93.0) rotate(-90)">Power (MW)</text>
+<line class="grid" x1="70.0" y1="148.0" x2="972.0" y2="148.0"/>
+<text class="tick" x="62" y="152.0">0.0</text>
+<line class="grid" x1="70.0" y1="120.5" x2="972.0" y2="120.5"/>
+<text class="tick" x="62" y="124.5">250</text>
+<line class="grid" x1="70.0" y1="93.0" x2="972.0" y2="93.0"/>
+<text class="tick" x="62" y="97.0">500</text>
+<line class="grid" x1="70.0" y1="65.5" x2="972.0" y2="65.5"/>
+<text class="tick" x="62" y="69.5">750</text>
+<line class="grid" x1="70.0" y1="38.0" x2="972.0" y2="38.0"/>
+<text class="tick" x="62" y="42.0">1000</text>
+<line class="grid vertical" x1="70.0" y1="38.0" x2="70.0" y2="148.0"/>
+<line class="grid vertical" x1="295.5" y1="38.0" x2="295.5" y2="148.0"/>
+<line class="grid vertical" x1="521.0" y1="38.0" x2="521.0" y2="148.0"/>
+<line class="grid vertical" x1="746.5" y1="38.0" x2="746.5" y2="148.0"/>
+<line class="grid vertical" x1="972.0" y1="38.0" x2="972.0" y2="148.0"/>
+<rect class="frame" x="70.0" y="38.0" width="902.0" height="110.0"/>
+<polyline fill="none" stroke="#2a9d8f" stroke-width="2.4" points="70.00,148.00 89.19,148.00 108.38,148.00 127.57,148.00 146.77,148.00 165.96,148.00 185.15,148.00 204.34,148.00 223.53,131.10 242.72,106.73 261.91,88.93 281.11,84.23 300.30,88.57 319.49,88.70 338.68,106.99 357.87,124.32 377.06,148.00 396.26,148.00 415.45,148.00 434.64,148.00 453.83,148.00 473.02,148.00 492.21,148.00 511.40,148.00 530.60,148.00 549.79,148.00 568.98,148.00 588.17,148.00 607.36,148.00 626.55,148.00 645.74,148.00 664.94,148.00 684.13,134.23 703.32,108.59 722.51,82.86 741.70,80.26 760.89,90.42 780.09,86.45 799.28,100.73 818.47,128.94 837.66,148.00 856.85,148.00 876.04,148.00 895.23,148.00 914.43,148.00 933.62,148.00 952.81,148.00 972.00,148.00"/>
+<polyline fill="none" stroke="#c44536" stroke-width="2.4" points="70.00,125.89 89.19,126.47 108.38,128.49 127.57,126.90 146.77,125.37 165.96,134.37 185.15,148.00 204.34,148.00 223.53,148.00 242.72,148.00 261.91,148.00 281.11,148.00 300.30,148.00 319.49,148.00 338.68,148.00 357.87,148.00 377.06,148.00 396.26,134.21 415.45,115.21 434.64,107.42 453.83,102.01 473.02,109.75 492.21,117.45 511.40,122.94 530.60,127.00 549.79,129.05 568.98,129.86 588.17,130.01 607.36,127.38 626.55,136.50 645.74,148.00 664.94,148.00 684.13,148.00 703.32,148.00 722.51,148.00 741.70,148.00 760.89,148.00 780.09,148.00 799.28,148.00 818.47,148.00 837.66,148.00 856.85,139.43 876.04,122.64 895.23,116.08 914.43,110.10 933.62,117.09 952.81,124.33 972.00,129.05"/>
+<line x1="660" y1="22" x2="684" y2="22" stroke="#2a9d8f" stroke-width="2.4"/>
+<text class="legend" x="690" y="26">Grid charging</text>
+<line x1="807.6" y1="22" x2="831.6" y2="22" stroke="#c44536" stroke-width="2.4"/>
+<text class="legend" x="837.6" y="26">V2G discharge</text>
+<text class="title" x="70" y="183.0">EV battery level</text>
+<text class="axis-label" transform="translate(18 250.0) rotate(-90)">Stored energy (MWh)</text>
+<line class="grid" x1="70.0" y1="305.0" x2="972.0" y2="305.0"/>
+<text class="tick" x="62" y="309.0">19000</text>
+<line class="grid" x1="70.0" y1="277.5" x2="972.0" y2="277.5"/>
+<text class="tick" x="62" y="281.5">20250</text>
+<line class="grid" x1="70.0" y1="250.0" x2="972.0" y2="250.0"/>
+<text class="tick" x="62" y="254.0">21500</text>
+<line class="grid" x1="70.0" y1="222.5" x2="972.0" y2="222.5"/>
+<text class="tick" x="62" y="226.5">22750</text>
+<line class="grid" x1="70.0" y1="195.0" x2="972.0" y2="195.0"/>
+<text class="tick" x="62" y="199.0">24000</text>
+<line class="grid vertical" x1="70.0" y1="195.0" x2="70.0" y2="305.0"/>
+<line class="grid vertical" x1="295.5" y1="195.0" x2="295.5" y2="305.0"/>
+<line class="grid vertical" x1="521.0" y1="195.0" x2="521.0" y2="305.0"/>
+<line class="grid vertical" x1="746.5" y1="195.0" x2="746.5" y2="305.0"/>
+<line class="grid vertical" x1="972.0" y1="195.0" x2="972.0" y2="305.0"/>
+<rect class="frame" x="70.0" y="195.0" width="902.0" height="110.0"/>
+<polyline fill="none" stroke="#e76f51" stroke-width="2.4" points="70.00,254.96 89.19,259.41 108.38,263.75 127.57,267.68 146.77,271.93 165.96,276.48 185.15,279.26 204.34,279.39 223.53,279.61 242.72,276.85 261.91,269.65 281.11,259.14 300.30,247.72 319.49,237.05 338.68,226.41 357.87,219.08 377.06,214.91 396.26,215.11 415.45,218.19 434.64,225.11 453.83,233.54 473.02,242.94 492.21,250.69 511.40,256.85 530.60,261.89 549.79,266.12 568.98,269.93 588.17,273.59 607.36,277.22 626.55,281.37 645.74,283.72 664.94,283.85 684.13,284.07 703.32,281.88 722.51,275.01 741.70,263.41 760.89,251.27 780.09,240.94 799.28,229.89 818.47,221.43 837.66,218.10 856.85,218.30 876.04,220.33 895.23,225.77 914.43,232.46 933.62,240.24 952.81,246.52 972.00,251.30"/>
+<line x1="835" y1="179" x2="859" y2="179" stroke="#e76f51" stroke-width="2.4"/>
+<text class="legend" x="865" y="183">Battery level</text>
+<text class="title" x="70" y="340.0">Electricity price</text>
+<text class="axis-label" transform="translate(18 407.0) rotate(-90)">Dual price</text>
+<line class="grid" x1="70.0" y1="462.0" x2="972.0" y2="462.0"/>
+<text class="tick" x="62" y="466.0">0.0</text>
+<line class="grid" x1="70.0" y1="434.5" x2="972.0" y2="434.5"/>
+<text class="tick" x="62" y="438.5">25</text>
+<line class="grid" x1="70.0" y1="407.0" x2="972.0" y2="407.0"/>
+<text class="tick" x="62" y="411.0">50</text>
+<line class="grid" x1="70.0" y1="379.5" x2="972.0" y2="379.5"/>
+<text class="tick" x="62" y="383.5">75</text>
+<line class="grid" x1="70.0" y1="352.0" x2="972.0" y2="352.0"/>
+<text class="tick" x="62" y="356.0">100</text>
+<line class="grid vertical" x1="70.0" y1="352.0" x2="70.0" y2="462.0"/>
+<line class="grid vertical" x1="295.5" y1="352.0" x2="295.5" y2="462.0"/>
+<line class="grid vertical" x1="521.0" y1="352.0" x2="521.0" y2="462.0"/>
+<line class="grid vertical" x1="746.5" y1="352.0" x2="746.5" y2="462.0"/>
+<line class="grid vertical" x1="972.0" y1="352.0" x2="972.0" y2="462.0"/>
+<rect class="frame" x="70.0" y="352.0" width="902.0" height="110.0"/>
+<polyline fill="none" stroke="#264653" stroke-width="2.4" points="70.00,382.76 89.19,382.76 108.38,382.76 127.57,382.76 146.77,382.76 165.96,382.76 185.15,385.09 204.34,386.94 223.53,410.48 242.72,410.48 261.91,410.48 281.11,410.48 300.30,410.48 319.49,410.48 338.68,410.48 357.87,410.48 377.06,386.94 396.26,382.76 415.45,382.76 434.64,382.76 453.83,382.76 473.02,382.76 492.21,382.76 511.40,382.76 530.60,382.76 549.79,382.76 568.98,382.76 588.17,382.76 607.36,382.76 626.55,382.76 645.74,384.76 664.94,386.94 684.13,410.48 703.32,410.48 722.51,410.48 741.70,410.48 760.89,410.48 780.09,410.48 799.28,410.48 818.47,410.48 837.66,386.94 856.85,382.76 876.04,382.76 895.23,382.76 914.43,382.76 933.62,382.76 952.81,382.76 972.00,382.76"/>
+<line x1="845" y1="336" x2="869" y2="336" stroke="#264653" stroke-width="2.4"/>
+<text class="legend" x="875" y="340">Dual price</text>
+<text class="title" x="70" y="497.0">Driving demand</text>
+<text class="axis-label" transform="translate(18 564.0) rotate(-90)">Power (MW)</text>
+<line class="grid" x1="70.0" y1="619.0" x2="972.0" y2="619.0"/>
+<text class="tick" x="62" y="623.0">0.0</text>
+<line class="grid" x1="70.0" y1="591.5" x2="972.0" y2="591.5"/>
+<text class="tick" x="62" y="595.5">5.0</text>
+<line class="grid" x1="70.0" y1="564.0" x2="972.0" y2="564.0"/>
+<text class="tick" x="62" y="568.0">10</text>
+<line class="grid" x1="70.0" y1="536.5" x2="972.0" y2="536.5"/>
+<text class="tick" x="62" y="540.5">15</text>
+<line class="grid" x1="70.0" y1="509.0" x2="972.0" y2="509.0"/>
+<text class="tick" x="62" y="513.0">20</text>
+<line class="grid vertical" x1="70.0" y1="509.0" x2="70.0" y2="619.0"/>
+<text class="tick x" x="70.0" y="637.0">0</text>
+<line class="grid vertical" x1="295.5" y1="509.0" x2="295.5" y2="619.0"/>
+<text class="tick x" x="295.5" y="637.0">12</text>
+<line class="grid vertical" x1="521.0" y1="509.0" x2="521.0" y2="619.0"/>
+<text class="tick x" x="521.0" y="637.0">24</text>
+<line class="grid vertical" x1="746.5" y1="509.0" x2="746.5" y2="619.0"/>
+<text class="tick x" x="746.5" y="637.0">36</text>
+<line class="grid vertical" x1="972.0" y1="509.0" x2="972.0" y2="619.0"/>
+<text class="tick x" x="972.0" y="637.0">48</text>
+<rect class="frame" x="70.0" y="509.0" width="902.0" height="110.0"/>
+<polyline fill="none" stroke="#7b68a6" stroke-width="2.4" points="70.00,612.13 89.19,612.13 108.38,612.13 127.57,612.13 146.77,611.03 165.96,605.53 185.15,588.75 204.34,562.36 223.53,548.06 242.72,562.36 261.91,588.75 281.11,605.53 300.30,610.75 319.49,611.03 338.68,606.90 357.87,594.25 377.06,569.50 396.26,540.36 415.45,526.88 434.64,540.36 453.83,569.50 473.02,594.25 492.21,606.90 511.40,611.03 530.60,612.13 549.79,612.13 568.98,612.13 588.17,612.13 607.36,611.03 626.55,605.53 645.74,588.75 664.94,562.36 684.13,548.06 703.32,562.36 722.51,588.75 741.70,605.53 760.89,610.75 780.09,611.03 799.28,606.90 818.47,594.25 837.66,569.50 856.85,540.36 876.04,526.88 895.23,540.36 914.43,569.50 933.62,594.25 952.81,606.90 972.00,611.03"/>
+<text class="axis-label" x="521.0" y="657.0">Hour</text>
+<line x1="860" y1="493" x2="884" y2="493" stroke="#7b68a6" stroke-width="2.4"/>
+<text class="legend" x="890" y="497">Driving</text>
 </svg>

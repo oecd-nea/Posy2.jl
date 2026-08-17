@@ -2,8 +2,8 @@
 
 Flat demand with variable PV leaves evenings short of solar.
 With a battery [`makebatterystorage`](@ref) shifts daytime surplus forward on
-the same electricity node so less oil is needed in the evening. An oil plant
-covers hours the battery cannot reach. Capacities are fixed.
+the same electricity node so less OCGT generation is needed in the evening.
+An OCGT plant covers hours the battery cannot reach. Capacities are fixed.
 
 ```jldoctest battery_storage; output = false
 using Posy2
@@ -63,9 +63,9 @@ makebatterystorage(
     om_var_cost=0.0,
 )
 
-# Fixed 50 MW oil backup for hours storage cannot cover
+# Fixed 50 MW OCGT backup for hours storage cannot cover
 makedispatchable(
-    "Oil", "Oil", electricity, co2, snapshot;
+    "OCGT", "OCGT", electricity, co2, snapshot;
     cap=50.0,
     overnight_cost=0.0,
     om_fixed_cost=0.0,
@@ -91,7 +91,7 @@ Snapshot with 4 component(s) and 1 node(s)
 ```
 
 Annual battery charge (`:input`) and discharge (`:output`) recover the stated
-85% round-trip efficiency. The gap is storage loss. Oil still covers most of the
+85% round-trip efficiency. The gap is storage loss. OCGT still covers most of the
 year because the battery only shifts a slice of the daytime surplus.
 
 ```jldoctest battery_storage
@@ -113,10 +113,10 @@ julia> printsnapshot(result, "battery-storage.xlsx")
 
 On the `Time series` sheet look at the rows where `Hour` is 4065–4077
 (GW / GWh). Daytime PV surplus charges the battery and the level rises. After
-the level peaks the battery discharges as solar falls. Oil takes over again
+the level peaks the battery discharges as solar falls. OCGT takes over again
 when discharge stops:
 
-| Hour | Solar country1 | charging Battery country1 | level Battery country1 | discharging Battery country1 | Oil country1 |
+| Hour | Solar country1 | charging Battery country1 | level Battery country1 | discharging Battery country1 | OCGT country1 |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | 4065 | 0.0579648 | 0.0079648 | 0 | 0 | 0 |
 | 4066 | 0.0726536 | 0.0226536 | 0.01301282 | 0 | 0 |
