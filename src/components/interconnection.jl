@@ -155,6 +155,9 @@ Arguments:
     mode when omitted, and defaults to one in `:arguments` mode. Numeric zero
     and `Inf` directions do not resolve an availability series.
 
+Node interconnections cannot be added after [`applydcopf!`](@ref) has run on the
+snapshot; build the full topology first.
+
 Exactly one `AC` and one `DC` may share the same unordered node pair
 (either, both, or neither is fine). A second `AC` or a second `DC` on
 that pair raises an error. Component-name collisions are also rejected before
@@ -175,6 +178,11 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Union{Real,Varia
     a.name == b.name && throw(ArgumentError("a node interconnection must connect two distinct nodes"))
     Nosy.hascomponent(s, component_name) && throw(ArgumentError("snapshot already has a component named $component_name"))
     Nosy.hasnode(s, component_name) && throw(ArgumentError("snapshot already has a node named $component_name"))
+    # KVL is built from the node ICs present when applydcopf! runs; a later IC
+    # would leave those constraints describing a network that no longer exists.
+    haskey(s.options, :kvl_applied) && throw(ArgumentError(
+        "cannot add node interconnection $component_name after applydcopf!: the KVL constraints already in the model were built from the interconnections present at that time. Build the full topology before calling applydcopf!",
+    ))
 
     # One AC and one DC may share a pair; a second AC or second DC is rejected.
     pair = Set([a.name, b.name])

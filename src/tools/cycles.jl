@@ -68,11 +68,18 @@ end
 
 # Put KVL at snapshot level so cycles are enforced globally.
 # For each cycle in the AC network, apply KVL constraint: sum(flow_ij / B_ij) = 0.
-# Called from `applydcopf!` when `Posy2Options.dcopf` is true.
+# Called from `applydcopf!` when `Posy2Options.dcopf` is true. Applies once per
+# snapshot: `Snapshot.options[:kvl_applied]` marks the topology as frozen.
 function addkvl!(s::Snapshot{T}) where T
+    haskey(s.options, :kvl_applied) && throw(ArgumentError(
+        "KVL constraints have already been applied to this snapshot; applydcopf! must be called exactly once, after the full node interconnection topology is built",
+    ))
     # build B-matrix (susceptance matrix) from AC node ICs only
     mat, nodelist, node_map = getic_susceptancematrix(s)
     cycles = gencycles(mat)
+    # marker set once the topology has been read: it freezes the node ICs and
+    # blocks a second application, which would stack duplicate constraints.
+    s.options[:kvl_applied] = true
     if isempty(node_map) || isempty(cycles)
         @warn "No AC loops were found. no KVL constraints were added."
         return nothing

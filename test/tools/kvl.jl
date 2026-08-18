@@ -216,6 +216,47 @@ using HiGHS
         @test !Posy2.dcopf(snap)
     end
 
+    # applydcopf! applies once: a second call raises rather than stacking KVL constraints.
+    let
+        snap, sim = makesnapshot()
+        n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        n3 = Node("ZONE3", EnergyCarrier("electricity ZONE3", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-1.5)
+        makenodeinterco("IC", n2, n3, Inf, Inf, snap; dc=false, susceptance=-0.7)
+        makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=false, susceptance=-2.0)
+
+        Posy2.applydcopf!(snap)
+        ncons = num_constraints(sim.model; count_variable_in_set_constraints=false)
+        @test_throws ArgumentError Posy2.applydcopf!(snap)
+        @test num_constraints(sim.model; count_variable_in_set_constraints=false) == ncons
+    end
+
+    # Node interconnections are frozen once applydcopf! has run, AC and DC alike.
+    let
+        snap, sim = makesnapshot()
+        n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        n3 = Node("ZONE3", EnergyCarrier("electricity ZONE3", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-1.5)
+        makenodeinterco("IC", n2, n3, Inf, Inf, snap; dc=false, susceptance=-0.7)
+
+        @test_logs (:warn, r"No AC loops were found") Posy2.applydcopf!(snap)
+        @test_throws ArgumentError makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=false, susceptance=-2.0)
+        @test_throws ArgumentError makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=true)
+        @test !Nosy.hascomponent(snap, "IC_ZONE3_ZONE1")
+    end
+
+    # With dcopf false no marker is set, so interconnections stay editable after applydcopf!.
+    let
+        snap, sim = makesnapshot(dcopf=false)
+        n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        Posy2.applydcopf!(snap)
+        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-1.0)
+        @test Nosy.hascomponent(snap, "IC_ZONE1_ZONE2")
+    end
+
     # AC node IC without registered susceptance raises ArgumentError when addkvl! runs.
     let
         snap, sim = makesnapshot()

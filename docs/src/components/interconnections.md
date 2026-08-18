@@ -91,7 +91,8 @@ When DC power flow is enabled in [`Posy2Options`](@ref), every AC node
 interconnection must supply a negative series `susceptance`
 (``B\approx-1/X`` for inductive lines). The builder stores it in the
 snapshot's internal registry. Call [`applydcopf!`](@ref) after adding all
-links and before optimisation. See
+links and before optimisation; once it has run, the node interconnections are
+frozen and a further `makenodeinterco` call raises an `ArgumentError`. See
 [Optimising A Snapshot](../concepts/optimizing.md) for the complete workflow.
 
 See the [Two Countries example](../examples/two-countries.md) for a transport

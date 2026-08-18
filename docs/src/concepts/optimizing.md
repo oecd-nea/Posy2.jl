@@ -56,6 +56,10 @@ applydcopf!(snapshot)
 Nosy.optimize!(snapshot, cost(snapshot))
 ```
 
+Calling it a second time, or adding a node interconnection afterwards, raises
+an `ArgumentError`: the constraints already in the model were built from the
+earlier topology and cannot be refreshed in place.
+
 Nodal carrier balances and interconnection capacity bounds are already
 enforced by the underlying Nosy model; [`applydcopf!`](@ref) only adds the
 Kirchhoff voltage law (KVL) constraints that restrict AC flows.
