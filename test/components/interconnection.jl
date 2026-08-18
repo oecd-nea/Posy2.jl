@@ -171,4 +171,52 @@ using HiGHS
             import_availability=1.0, export_availability=0.0,
         ))
     end
+
+    # Each link type reads its own worksheet: AC from transfer_capacities_AC and
+    # DC from transfer_capacities_DC, on the same node pair. The test workbook
+    # holds a constant 0.5 in the DC sheet, so the multipliers name their source.
+    let
+        s, elec1, elec2 = makesnapshot()
+
+        function multipliers(c)
+            return Dict(
+                b.data.pname => b.val.data
+                for b in Nosy.getbehaviors(c, Nosy.CapacityMultiplierBehavior)
+            )
+        end
+
+        c_ac = makenodeinterco("AC", elec1, elec2, 100.0, 100.0, s; dc=false)
+        c_dc = makenodeinterco("DC", elec1, elec2, 100.0, 100.0, s; dc=true)
+
+        ac = multipliers(c_ac)
+        @test ac["input"] == gettimeseries(s, "ZONE1>ZONE2", "transfer_capacities_AC", digits=2)
+        @test ac["input2"] == gettimeseries(s, "ZONE2>ZONE1", "transfer_capacities_AC", digits=2)
+        @test multipliers(c_dc) == Dict("input" => fill(0.5, 8760), "input2" => fill(0.5, 8760))
+    end
+
+    # Price interconnections keep reading transfer_capacities; the node sheets
+    # do not replace it.
+    let
+        s, elec1, _ = makesnapshot()
+        c = makepriceinterco("ZONE2", elec1, 100.0, 100.0, s)
+        vals = Dict(
+            b.data.pname => b.val.data
+            for b in Nosy.getbehaviors(c, Nosy.CapacityMultiplierBehavior)
+        )
+        @test vals["output"] == gettimeseries(s, "ZONE2>ZONE1", "transfer_capacities")
+        @test vals["input"] == gettimeseries(s, "ZONE1>ZONE2", "transfer_capacities")
+    end
+
+    # A node pair missing from its own sheet names that sheet, not transfer_capacities.
+    let
+        s, elec1, _ = makesnapshot()
+        elec3 = Node("ZONE3", EnergyCarrier("electricity ZONE3", sim(s)), rule=:curtailed, losses=0.0, tags=[:electricity])
+        err = try
+            makenodeinterco("AC", elec1, elec3, 100.0, 100.0, s; dc=false)
+        catch e
+            e
+        end
+        @test err isa ArgumentError
+        @test occursin("transfer_capacities_AC", err.msg)
+    end
 end

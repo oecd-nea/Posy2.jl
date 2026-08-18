@@ -5,7 +5,7 @@ using JuMP
 using HiGHS
 
 @testset "KVL" begin
-    function makesnapshot(; dcopf::Bool=true)
+    function makesnapshot()
         sim = Sim(Model(HiGHS.Optimizer), mesh=TimeMesh(fill(1//1, 24)))
         set_silent(sim.model)
         snap = Snapshot(sim, Dict(
@@ -15,7 +15,6 @@ using HiGHS
                 timeseries_file="time_series_test.xlsx",
                 tech_mode=:excel,
                 timeseries_mode=:excel,
-                dcopf=dcopf,
             ),
         ))
         return snap, sim
@@ -204,16 +203,20 @@ using HiGHS
         @test all(isapprox.(src_hourly.data, dmd3_hourly.data .+ dmd4_hourly.data; atol=1e-6))
     end
 
-    # With dcopf false, applydcopf! skips KVL even when AC susceptance is registered.
+    # Leaving applydcopf! out adds no KVL constraint and leaves the snapshot unmarked.
     let
-        snap, sim = makesnapshot(dcopf=false)
+        snap, sim = makesnapshot()
+        ncons = num_constraints(sim.model; count_variable_in_set_constraints=false)
 
         n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-1.0)
+        n3 = Node("ZONE3", EnergyCarrier("electricity ZONE3", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-1.5)
+        makenodeinterco("IC", n2, n3, Inf, Inf, snap; dc=false, susceptance=-0.7)
+        makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=false, susceptance=-2.0)
 
-        @test Posy2.applydcopf!(snap) === nothing
-        @test !Posy2.dcopf(snap)
+        @test !haskey(snap.options, :kvl_applied)
+        @test num_constraints(sim.model; count_variable_in_set_constraints=false) == ncons
     end
 
     # applydcopf! applies once: a second call raises rather than stacking KVL constraints.
@@ -247,22 +250,12 @@ using HiGHS
         @test !Nosy.hascomponent(snap, "IC_ZONE3_ZONE1")
     end
 
-    # With dcopf false no marker is set, so interconnections stay editable after applydcopf!.
-    let
-        snap, sim = makesnapshot(dcopf=false)
-        n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
-        n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
-        Posy2.applydcopf!(snap)
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-1.0)
-        @test Nosy.hascomponent(snap, "IC_ZONE1_ZONE2")
-    end
-
-    # AC node IC without registered susceptance raises ArgumentError when addkvl! runs.
+    # AC node IC without registered susceptance raises ArgumentError when applydcopf! runs.
     let
         snap, sim = makesnapshot()
         n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false)
-        @test_throws ArgumentError Posy2.addkvl!(snap)
+        @test_throws ArgumentError Posy2.applydcopf!(snap)
     end
 end

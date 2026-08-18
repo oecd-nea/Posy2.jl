@@ -66,11 +66,24 @@ function _net_ic_flow(s::Snapshot, from::String, to::String, node_map::Dict{Stri
     return net
 end
 
-# Put KVL at snapshot level so cycles are enforced globally.
-# For each cycle in the AC network, apply KVL constraint: sum(flow_ij / B_ij) = 0.
-# Called from `applydcopf!` when `Posy2Options.dcopf` is true. Applies once per
-# snapshot: `Snapshot.options[:kvl_applied]` marks the topology as frozen.
-function addkvl!(s::Snapshot{T}) where T
+"""
+    applydcopf!(s::Snapshot)
+
+Add KVL (DC power flow) constraints at snapshot level, so that cycles in the AC
+network are enforced globally. For each independent cycle, constrain
+`sum(flow_ij / B_ij) = 0`, where `flow_ij` is the net midpoint flow and `B_ij`
+the susceptance registered by [`makenodeinterco`](@ref). DC interconnections are
+excluded. Warns when there is no AC loop to constrain.
+
+Call it before `Nosy.optimize!` in the studies that need DC power flow, and
+leave it out of the others: there is no snapshot option to switch it off.
+
+It may be called only once per snapshot, and no node interconnection may be
+added afterwards: the constraints are built from the topology present at the
+call, so a second call would stack duplicates and a later interconnection would
+leave them describing a different network. Both raise an `ArgumentError`.
+"""
+function applydcopf!(s::Snapshot{T}) where T
     haskey(s.options, :kvl_applied) && throw(ArgumentError(
         "KVL constraints have already been applied to this snapshot; applydcopf! must be called exactly once, after the full node interconnection topology is built",
     ))

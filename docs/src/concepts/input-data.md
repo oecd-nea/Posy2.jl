@@ -128,8 +128,8 @@ number, expanded to all hours, or a vector with exactly
 | [`makepriceinterco`](@ref) | `spot_price` | `<foreign-zone>` in `spot_price` |
 | [`makepriceinterco`](@ref) | `import_availability` | `zone>local` in `transfer_capacities` |
 | [`makepriceinterco`](@ref) | `export_availability` | `local>zone` in `transfer_capacities` |
-| [`makenodeinterco`](@ref) | `atob_availability` | `a>b` in `transfer_capacities` |
-| [`makenodeinterco`](@ref) | `btoa_availability` | `b>a` in `transfer_capacities` |
+| [`makenodeinterco`](@ref) | `atob_availability` | `a>b` in `transfer_capacities_AC` (`dc=false`) or `transfer_capacities_DC` (`dc=true`) |
+| [`makenodeinterco`](@ref) | `btoa_availability` | `b>a` in `transfer_capacities_AC` (`dc=false`) or `transfer_capacities_DC` (`dc=true`) |
 
 For example, this demand never reads `time_series.xlsx`:
 
@@ -346,7 +346,9 @@ directly.
 | `EV_charging_availability` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
 | `EV_driving_profile` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
 | `spot_price` | `<foreign-zone>` | [`makepriceinterco`](@ref) |
-| `transfer_capacities` | `From>To` | Price IC always; node IC when that direction's capacity is finite |
+| `transfer_capacities` | `From>To` | [`makepriceinterco`](@ref), always |
+| `transfer_capacities_AC` | `From>To` | [`makenodeinterco`](@ref) with `dc=false`, when that direction's capacity is finite |
+| `transfer_capacities_DC` | `From>To` | [`makenodeinterco`](@ref) with `dc=true`, when that direction's capacity is finite |
 
 For example, technology `Onwind` connected to electricity node `country1` in
 weather year 2019 requests column `Onwind_country1` from sheet `profiles_2019`.
@@ -369,17 +371,24 @@ The principal series semantics are:
 - EV charging availability is a capacity multiplier. The driving profile is
   normalised to the requested annual EV consumption and must have a positive
   sum.
-- `transfer_capacities` holds hourly availability multipliers per direction
-  (`From>To`). For [`makenodeinterco`](@ref), a finite `atob` reads column
-  `a>b` and a finite `btoa` reads `b>a`. An `Inf` direction has no capacity
-  limit, so that column is not read.
+- The three `transfer_capacities*` sheets all hold hourly availability
+  multipliers per direction (`From>To`), and differ only in which builder reads
+  them. Each interconnection kind owns one sheet, so an AC and a DC link on the
+  same node pair, or a priced corridor sharing a zone name with a modelled node,
+  keep separate series:
+  - `transfer_capacities` for [`makepriceinterco`](@ref);
+  - `transfer_capacities_AC` for [`makenodeinterco`](@ref) with `dc=false`;
+  - `transfer_capacities_DC` for [`makenodeinterco`](@ref) with `dc=true`.
+- For [`makenodeinterco`](@ref), a finite `atob` reads column `a>b` and a finite
+  `btoa` reads `b>a`, both from that link's own sheet. An `Inf` direction has no
+  capacity limit, so that column is not read.
 - [`makepriceinterco`](@ref) uses both directional transfer series and the
   foreign-zone spot price. Each can be supplied explicitly or read from its
   workbook fallback.
 
 Physical domains are enforced when a series is resolved, whether it comes from
 the workbook or from a keyword. Availability and capacity multipliers
-(`profiles_<year>`, `transfer_capacities`, `EV_charging_availability`) must lie
+(`profiles_<year>`, the `transfer_capacities*` sheets, `EV_charging_availability`) must lie
 in `[0, 1]`; intake and driving shapes (`hydro_ror_<year>`,
 `reservoir_inflow_<year>`, `EV_driving_profile`) must be nonnegative and sum to
 a strictly positive value. `demand` and `spot_price` are unrestricted beyond

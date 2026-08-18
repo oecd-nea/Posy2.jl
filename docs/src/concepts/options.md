@@ -18,7 +18,6 @@ options = Posy2Options(
     timeseries_mode=:excel,
     discountrate=0.05,
     co2_price=100.0,
-    dcopf=false,
 )
 
 snapshot = Snapshot(s, Dict(:posy => options))
@@ -185,28 +184,25 @@ default.
 
 ## Optional DC Power Flow
 
-The `dcopf` flag controls whether [`applydcopf!`](@ref) adds Kirchhoff voltage
-law constraints. Setting the flag does not add constraints by itself.
+DC power flow is not a snapshot option: [`applydcopf!`](@ref) adds Kirchhoff
+voltage law constraints, and a study that does not call it is a transport model.
 
 For a DC power flow study:
 
-1. Set `dcopf=true` in `Posy2Options`.
-2. Build electricity nodes with the `:electricity` tag.
-3. Build AC node interconnections with [`makenodeinterco`](@ref),
+1. Build electricity nodes with the `:electricity` tag.
+2. Build AC node interconnections with [`makenodeinterco`](@ref),
    `dc=false`, and a negative series `susceptance` (``B\approx-1/X`` for
    inductive lines).
-4. Build any controllable DC links with `dc=true`.
-5. Call `applydcopf!(snapshot)` once, after all interconnections have been
+3. Build any controllable DC links with `dc=true`.
+4. Call `applydcopf!(snapshot)` once, after all interconnections have been
    added and before optimisation.
 
-With `dcopf=true` this order is enforced. `applydcopf!` builds the constraints
-from the topology present at the call, so a second call and any later
-[`makenodeinterco`](@ref) both raise an `ArgumentError` rather than leave the
-model carrying stale KVL relations. Rebuilding the network means rebuilding the
-snapshot.
+This order is enforced. `applydcopf!` builds the constraints from the topology
+present at the call, so a second call and any later [`makenodeinterco`](@ref)
+both raise an `ArgumentError` rather than leave the model carrying stale KVL
+relations. Rebuilding the network means rebuilding the snapshot.
 
 ```julia
-options = Posy2Options(dcopf=true)
 snapshot = Snapshot(s, Dict(:posy => options))
 
 makenodeinterco(
@@ -232,6 +228,6 @@ and does not obey the AC cycle equations.
 The susceptance registry is stored in `snapshot.options[:ic_susceptance]`.
 This entry is managed by [`makenodeinterco`](@ref).
 
-When `dcopf=false`, `applydcopf!` leaves the model unchanged. Call it after the
-network is built in every study. Only the `dcopf` flag then chooses between
-transport and DC power flow.
+Omitting the `applydcopf!` call is what makes a study a transport model: the
+directional capacities still bound each link, but nothing ties the flows to the
+cycle equations.

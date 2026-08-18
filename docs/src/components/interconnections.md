@@ -17,12 +17,21 @@ Diagrams](../components.md#Reading-The-Port-Diagrams).
 Directional capacities are base capacities and may be numeric or externally
 defined by a JuMP variable or affine expression. For a numeric nonzero finite
 direction or any symbolic direction, Posy2 uses an hourly multiplier. In
-`timeseries_mode=:excel`, an omitted
-multiplier is read from sheet `transfer_capacities`; in `:arguments` mode it
-defaults to one. Its column is
-named for the direction, written as `From>To` with no spaces. Effective
-capacity is the base capacity multiplied by that series. The values are
-therefore fractions or other multipliers, not absolute MW capacities.
+`timeseries_mode=:excel`, an omitted multiplier is read from the sheet that
+belongs to the builder and link type; in `:arguments` mode it defaults to one.
+
+| Builder | Sheet |
+|:--------|:------|
+| [`makepriceinterco`](@ref) | `transfer_capacities` |
+| [`makenodeinterco`](@ref), `dc=false` | `transfer_capacities_AC` |
+| [`makenodeinterco`](@ref), `dc=true` | `transfer_capacities_DC` |
+
+Splitting the node sheets by link type lets an AC and a DC link on the same node
+pair carry their own availability, and keeps both separate from the priced
+corridors. In every sheet the column is named for the direction, written as
+`From>To` with no spaces. Effective capacity is the base capacity multiplied by
+that series. The values are therefore fractions or other multipliers, not
+absolute MW capacities.
 
 Setting a node-interconnection direction to zero skips its multiplier lookup;
 setting it to `Inf` omits both its capacity behaviour and multiplier lookup. A

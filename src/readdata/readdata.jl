@@ -135,8 +135,8 @@ function gettimeseries(xl, title::String, sheetname::String, digits::Int)
     df = gettimeseriesdatasheet(xl, sheetname)
     tw = "time series workbook, sheet '$(sheetname)'"
     if !(title in names(df))
-        hint = sheetname == "transfer_capacities" ?
-            " For sheet 'transfer_capacities', expected column names follow 'From>To' between zone/node names (e.g. country3>country1)." : ""
+        hint = startswith(sheetname, "transfer_capacities") ?
+            " For sheet '$(sheetname)', expected column names follow 'From>To' between zone/node names (e.g. country3>country1). Price interconnections read 'transfer_capacities', AC node interconnections 'transfer_capacities_AC', and DC node interconnections 'transfer_capacities_DC'." : ""
         throw(ArgumentError("$(tw): no column '$(title)'.$(hint) Columns: $(join(string.(names(df)), ", "))"))
     end
     return _validate_timeseries(

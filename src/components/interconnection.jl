@@ -146,7 +146,8 @@ Arguments:
   * `lossfactor`: proportional losses applied on conversion; must be finite and
     satisfy `0 <= lossfactor < 1`.
   * `susceptance`: AC susceptance for DC power flow (must be negative); stored in
-    `Snapshot.options[:ic_susceptance]` (required for KVL when `Posy2Options.dcopf` is true).
+    `Snapshot.options[:ic_susceptance]` (required for KVL when
+    [`applydcopf!`](@ref) is called).
   * `atob_availability`: Hourly `a -> b` multiplier vector or scalar, each value
     in `[0, 1]`.
   * `btoa_availability`: Hourly `b -> a` multiplier vector or scalar, with the
@@ -154,6 +155,12 @@ Arguments:
     numeric nonzero or symbolic direction reads its workbook column in `:excel`
     mode when omitted, and defaults to one in `:arguments` mode. Numeric zero
     and `Inf` directions do not resolve an availability series.
+
+In `:excel` mode both directions are read from the sheet that matches the link
+type: `transfer_capacities_AC` when `dc=false`, `transfer_capacities_DC` when
+`dc=true`. Columns are named `From>To` after the node names. An AC and a DC link
+on the same node pair therefore carry their own availability series, and neither
+reads `transfer_capacities`, which belongs to [`makepriceinterco`](@ref).
 
 Node interconnections cannot be added after [`applydcopf!`](@ref) has run on the
 snapshot; build the full topology first.
@@ -205,6 +212,10 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Union{Real,Varia
         end
     end
 
+    # AC and DC links keep separate worksheets: one node pair may carry both, and
+    # each needs its own availability series.
+    transfer_sheet = dc ? "transfer_capacities_DC" : "transfer_capacities_AC"
+
     vb = []
 
     # a -> b
@@ -221,7 +232,7 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Union{Real,Varia
         if !(atob isa Real && iszero(atob))
             input = isnothing(atob_availability) && timeseries_mode(s) === :arguments ? 1.0 : atob_availability
             push!(vb, Nosy.CapacityMultiplier("input", _resolve_timeseries(
-                s, input, a.name * ">" * b.name, "transfer_capacities";
+                s, input, a.name * ">" * b.name, transfer_sheet;
                 keyword="atob_availability", digits=2, lower=0.0, upper=1.0,
             )))
         end
@@ -241,7 +252,7 @@ function makenodeinterco(cname::String, a::Node, b::Node, atob::Union{Real,Varia
         if !(btoa isa Real && iszero(btoa))
             input = isnothing(btoa_availability) && timeseries_mode(s) === :arguments ? 1.0 : btoa_availability
             push!(vb, Nosy.CapacityMultiplier("input2", _resolve_timeseries(
-                s, input, b.name * ">" * a.name, "transfer_capacities";
+                s, input, b.name * ">" * a.name, transfer_sheet;
                 keyword="btoa_availability", digits=2, lower=0.0, upper=1.0,
             )))
         end

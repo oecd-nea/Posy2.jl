@@ -47,9 +47,9 @@ Nosy.optimize!(snapshot, cost(snapshot))
 
 ## DC Power Flow
 
-If `Posy2Options.dcopf` is true, you must call [`applydcopf!`](@ref) once after
-every AC and DC interconnection has been added and before optimisation.
-Setting the flag alone does not add KVL constraints:
+A DC power flow study calls [`applydcopf!`](@ref) once, after every AC and DC
+interconnection has been added and before optimisation. There is no snapshot
+option to enable it: the call is what adds the KVL constraints.
 
 ```julia
 applydcopf!(snapshot)
@@ -102,7 +102,7 @@ used here, ``B_{ij}\approx-1/X_{ij}<0``. With the usual lossless DC flow
 is Kirchhoff's voltage law on those angles. Posy2 therefore requires a strictly
 negative `susceptance` on every AC link that enters the cycle basis.
 
-The call is a no-op when `dcopf=false`. Call it once for a given snapshot; it
+Leave the call out for a transport study. Call it once for a given snapshot; it
 is a model-construction step, not part of the solver call.
 
 ## LP And MILP Models

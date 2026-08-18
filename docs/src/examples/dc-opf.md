@@ -2,10 +2,10 @@
 
 Four electricity zones A–B–C–D sit on an AC ring of
 [`makenodeinterco`](@ref) lines, with one extra diagonal A–C. A single CCGT
-on A supplies flat 1 MW demand in every zone. With `dcopf=false` the mesh is a
+on A supplies flat 1 MW demand in every zone. Left alone, the mesh is a
 transport model: a network flow problem that enforces nodal balance (and
-capacity limits) but not Kirchhoff's voltage law. With `dcopf=true` and
-[`applydcopf!`](@ref), Posy2 adds KVL on every independent AC cycle, so the
+capacity limits) but not Kirchhoff's voltage law. Calling
+[`applydcopf!`](@ref) adds KVL on every independent AC cycle, so the
 study becomes a DC optimal power-flow approximation of the AC mesh: corridor
 flows follow the split implied by the line susceptances.
 
@@ -17,8 +17,8 @@ definition and the cycle constraints used by [`applydcopf!`](@ref).
 
 This page keeps the same plants and demand and changes only the network:
 
-1. transport (`dcopf=false`, all AC, including an AC diagonal);
-2. DC OPF on the same AC mesh (`dcopf=true` and [`applydcopf!`](@ref));
+1. transport (no [`applydcopf!`](@ref), all AC, including an AC diagonal);
+2. DC OPF on the same AC mesh ([`applydcopf!`](@ref) after the network is built);
 3. DC OPF again, but with the diagonal built as controllable HVDC (`dc=true`).
 
 After each solve, [`printsnapshot`](@ref) writes the standard Posy2 workbook
@@ -29,7 +29,7 @@ section.
 
 ## Transport (no KVL)
 
-With `dcopf=false` there is no need for susceptances or [`applydcopf!`](@ref).
+Without [`applydcopf!`](@ref) there is no need for susceptances.
 The solver may pick any feasible transport pattern.
 
 ```jldoctest dc_opf_transport; output = false
@@ -107,10 +107,9 @@ this solve.
 
 ## DC OPF (with KVL)
 
-Same AC network, but `dcopf=true`. Set a negative series susceptance
+Same AC network, but with [`applydcopf!`](@ref). Set a negative series susceptance
 (``B\approx-1/X`` for inductive lines) on every AC line, then call
-[`applydcopf!`](@ref) before optimisation. The flag alone does not add KVL
-constraints.
+[`applydcopf!`](@ref) once the whole network is built and before optimisation.
 
 ```jldoctest dc_opf; output = false
 using Posy2
@@ -128,7 +127,6 @@ snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     timeseries_file="time_series.xlsx",
     tech_mode=:excel,
     timeseries_mode=:arguments,
-    dcopf=true,
 )))
 
 # Electricity zones and CO2 sink
@@ -218,7 +216,6 @@ snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     timeseries_file="time_series.xlsx",
     tech_mode=:excel,
     timeseries_mode=:arguments,
-    dcopf=true,
 )))
 
 # Electricity zones and CO2 sink

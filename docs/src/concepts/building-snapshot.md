@@ -21,7 +21,6 @@ snapshot = Snapshot(
         :posy => Posy2Options(
             discountrate=0.05,
             co2_price=100.0,
-            dcopf=false,
         ),
     ),
 )
@@ -253,9 +252,11 @@ that pair raises an error. Aggregate equivalent parallel circuits before
 calling [`makenodeinterco`](@ref).
 
 Finite directional capacities on node interconnections use the corresponding
-`From>To` columns of the `transfer_capacities` time-series sheet as
-multipliers. Passing `Inf` removes that directional capacity and its profile
-lookup.
+`From>To` columns of a time-series sheet as multipliers: `transfer_capacities_AC`
+for an AC link and `transfer_capacities_DC` for a DC one, so both links of a
+pair carrying each can hold their own series. `transfer_capacities` belongs to
+[`makepriceinterco`](@ref). Passing `Inf` removes that directional capacity and
+its profile lookup.
 
 After all components and interconnections have been created, continue with
 [Optimising A Snapshot](optimizing.md).
