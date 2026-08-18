@@ -89,7 +89,7 @@ if get(ENV, "CI", "false") == "true"
         devbranch="main",
         devurl="dev",
         versions=[
-            "main" => "main",
+            "main" => "dev",
             "stable" => "v^",
             "v#.#" => "v#.#",
         ],
