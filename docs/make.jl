@@ -71,6 +71,7 @@ makedocs(
             "Electric Vehicles" => "examples/electric-vehicles.md",
             "Demand Response" => "examples/demand-response.md",
             "Dispatch Optimization" => "examples/dispatch-optimization.md",
+            "Stochastic Programming" => "examples/stochastic.md",
             "Infeasibility" => "examples/infeasibility.md",
         ],
         "API Reference" => "api.md",

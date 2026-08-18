@@ -25,6 +25,7 @@ remaining assets are kept simple.
 | [Electric Vehicles](examples/electric-vehicles.md) | Comparing smart charging with vehicle-to-grid operation |
 | [Demand Response](examples/demand-response.md) | Demand-side flexibility that shaves a demand peak |
 | [Dispatch Optimization](examples/dispatch-optimization.md) | Comparing merit-order dispatch with ramp-limited operation of a fixed CCGT fleet |
+| [Stochastic Programming](examples/stochastic.md) | Sharing investment capacities across two snapshots while operation adapts to each future |
 | [Infeasibility](examples/infeasibility.md) | Using `conflicts` to locate incompatible constraints in an infeasible model |
 
 ## Data sources
@@ -54,6 +55,7 @@ The table shows which combination each example uses.
 | [Demand Response](examples/demand-response.md) | `:arguments` | `:arguments` |
 | [Dispatch Optimization](examples/dispatch-optimization.md) | `:arguments` | `:arguments` |
 | [Negative Locational Prices](examples/negative-prices.md) | `:arguments` | `:arguments` |
+| [Stochastic Programming](examples/stochastic.md) | `:arguments` | `:arguments` |
 | [Infeasibility](examples/infeasibility.md) | `:arguments` | `:arguments` |
 
 ## Exporting Example Results
