@@ -13,7 +13,7 @@ including: [A Least-cost Capacity Mix to Satisfy Growing Electricity Demand with
 
 ## Documentation
 
-The [Posy2 manual](docs/src/index.md) covers setup, input workbooks, component
+The [Posy2 manual](docs/src/index.md) covers setup, input, component
 builders, optimisation, querying, export, performance, and complete examples.
 Posy2 builds on the modelling concepts in the
 [Nosy user guide](https://oecd-nea.github.io/Nosy.jl/dev/).
@@ -30,25 +30,10 @@ Posy2 also requires an LP or MILP solver compatible with
 [JuMP-compatible solvers](https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers)
 can be used when creating the Nosy `Sim`.
 
-Scenario data can be supplied through two input workbooks, directly through
-builder arguments, or with a mixture of both. Independent `tech_mode` and
-`timeseries_mode` switches in `Posy2Options` control the fallback behavior.
-Posy2 includes neutral, illustrative workbooks in [`data/`](data/) for the
-manual and examples; they are not calibrated scenario projections.
-
-## Time Horizon
-
-Posy2 currently assumes a non-leap year of 8760 hourly steps. Nosy supports
-more flexible meshes; Posy2 does not yet. See
-[Full-year Hourly Assumption](docs/src/concepts/input-data.md#full-year-hourly-assumption).
-
 ## Core Ideas
 
 Posy2 adds a power system modelling layer on top of Nosy:
 
-- `Posy2Options` configures technology data, time-series data, the discount
-  rate, the CO2 price, and optional DC power flow. Call `applydcopf!` before
-  optimisation to add KVL constraints when DC power flow is enabled.
 - High-level constructors(`make*`) assemble and connect common technologies, including
   demand, dispatchable and intermittent generation, nuclear power, hydro,
   batteries, demand response, electrolysers, hydrogen storage, and
@@ -64,62 +49,74 @@ Carriers, nodes, behaviours, optimisation, and generic metrics remain provided b
 
 ## Basic Example
 
-The following self-contained example creates a flat 100 MW demand and optimises
-the capacity and dispatch of one generator. The parameters used by the model
-are supplied directly, so no input workbooks are read.
+The following model has a flat 100 MW electricity demand and one dispatchable
+plant with optimisable capacity.
 
 ```julia
 using Posy2
 using Nosy
 using HiGHS
 
-# Create a simulation with the default hourly time mesh.
-sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
-snapshot = Snapshot(
-    sim,
-    Dict(:posy => Posy2Options(
-        tech_mode=:arguments,       # supply technology parameters directly
-        timeseries_mode=:arguments, # supply time series directly
-    )),
+# Create the Nosy simulation and silence solver output.
+s = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+
+# Posy2 options are stored under the :posy key of the snapshot.
+options = Posy2Options(
+    tech_mode=:arguments,       # supply technology parameters directly
+    timeseries_mode=:arguments, # supply time series directly
 )
+snapshot = Snapshot(s, Dict(:posy => options))
 
-# Create electricity and CO2 nodes.
-electricity = Node("grid", EnergyCarrier("electricity", sim); rule=:curtailed, evalprice=true, tags=[:electricity])
-co2 = Node("CO2", CO2Carrier("CO2", sim); rule=:curtailed, tags=[:co2])
+# Create the carriers and nodes used by the component builders.
+power = EnergyCarrier("electricity", s)
+carbon = CO2Carrier("CO2", s)
 
-# Add a flat 100 MW demand.
-makedemand("Load", "grid", electricity, snapshot; profile=100.0)
+grid = Node("grid", power; rule=:curtailed, tags=[:electricity])
+atmosphere = Node("CO2", carbon; rule=:curtailed, tags=[:co2])
+
+# Add a demand with sin shape centered around 100 MW
+makedemand("Load", "grid", grid, snapshot; profile=100.0 .+ 30 * sin.(h*2pi/24 for h in 1:8760))
 
 # Add a dispatchable generator with optimisable capacity.
 makedispatchable(
-    "Plant",
     "CCGT",
-    electricity,
-    co2,
+    "CCGT",
+    grid,
+    atmosphere,
     snapshot;
     maxcap=200.0,                   # upper bound on capacity (MW)
-    overnight_cost=1_000.0,         # overnight investment cost
-    om_fixed_cost=10.0,             # fixed O&M
-    decommissioning=0.1,            # decommissioning as fraction of overnight
+    overnight_cost=1_000.0,         # overnight investment cost (USD/kW)
+    om_fixed_cost=10.0,             # fixed O&M (USD/kW/y)
+    decommissioning=0.05,           # fraction of overnight cost, paid at end of lifetime
     lifetime=30,                    # economic lifetime (years)
     construction_profile=1.0,       # one-year construction spend
     decommissioning_profile=1.0,    # one-year decommissioning spend
-    connection_cost=0.0,
-    om_var_cost=2.0,                # variable O&M per MWh
-    fuel_cost=50.0,                 # fuel cost per MWh
-    co2_emission=0.0,               # kgCO2 per MWh
-    unit_size=0.0,                  # allow continuous capacity expansion
+    connection_cost=0.1,            # fraction of investment cost, paid at commissioning
+    om_var_cost=2.0,                # variable O&M per MWh (USD/MWh)
+    fuel_cost=70.0,                 # fuel cost per MWh (USD/MWh)
+    co2_emission=350.,              # CO2 emission (kg/MWh)
+    unit_size=100.0,                # unit size (MW)
 )
 
-# Minimise total system cost and extract the solved values.
-optimize!(snapshot, cost(snapshot)) # minimise total system cost
-result = extract(snapshot)          # snapshot with numeric solution values
-
-# Inspect results.
-cost(result) # total cost, per year
-capacity(result, "Plant grid") # 100.0 MW
-balance(result, "Plant grid", :output, energy; collapse=true, aggregate=true) # 876000.0 MWh/year
+# Minimise total system cost and extract numeric results.
+optimize!(snapshot, cost(snapshot))
+result = extract(snapshot)
 ```
+
+The component name combines the builder's name prefix and the node name.
+The solved capacity and annual generation are therefore:
+
+```julia
+capacity(result, "CCGT grid") # in MW
+# 130.0
+
+balance(result, "CCGT grid", :output, energy; collapse=true, aggregate=true) # in MWh/y
+# 876000.0
+```
+
+The original `snapshot` contains JuMP variables and expressions. The extracted
+`result` has the same structure, but is populated with optimal values when the
+optimisation succeeds.
 
 ## Underlying Toolkit: Nosy
 
@@ -130,7 +127,7 @@ power flow, and energy system reporting.
 
 ## Authors
 
-- Guillaume KRIVTCHIK, OECD Nuclear Energy Agency
+- Guillaume KRIVTCHIK, OECD Nuclear Energy Agency (main author)
 - Yuri BAE, KENTECH
 
 ## License
