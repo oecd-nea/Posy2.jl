@@ -82,8 +82,8 @@ problem combinatorial even when dispatch itself is simple.
 
 For nuclear unit commitment, use `startupmask` and `shutdownmask` to avoid
 creating event choices at timesteps where transitions are not allowed.
-Nuclear reload masks should similarly reflect the actual set of permissible
-reload windows.
+Nuclear refuel masks should similarly reflect the actual set of permissible
+refuelling windows.
 
 ## Interconnections
 

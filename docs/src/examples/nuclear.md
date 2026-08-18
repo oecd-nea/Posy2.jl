@@ -10,41 +10,40 @@ changes how much dispatchable backup the system needs.
 
 Other technologies also have planned outages, but usually for different reasons.
 Coal and CCGT plants schedule maintenance. They do not stop for weeks because
-they need to reload fuel. Wind, solar, and hydro have no refuelling concept at
-all. Posy2 therefore gives nuclear dedicated reload parameters that model this
-refuelling outage, rather than a generic maintenance switch shared by every
-generator.
+they need fresh fuel. Wind, solar, and hydro have no refuelling concept at all.
+Posy2 therefore gives nuclear dedicated refuelling parameters that model this
+outage, rather than a generic maintenance switch shared by every generator.
 
-Reloading is optional and off by default. This example turns it on. Once it is
+Refuelling is optional and off by default. This example turns it on. Once it is
 on, the yearly outage is fixed in length and must be taken. The optimiser only
-chooses when each unit reloads within the allowed starts. The example setup is:
+chooses when each unit refuels within the allowed starts. The example setup is:
 
 - three 1 000 MW nuclear units
-- hourly `country1` demand from the time-series workbook, scaled with
-  `coeff=5.5` (peak demand is about 5.67 GW)
+- hourly `country1` demand from the time-series workbook, scaled with `coeff=5.5`
 - expandable CCGT backup
-- a 720-hour reload per unit once reloading is enabled
+- a 720-hour refuelling outage per unit once refuelling is enabled
 
 Scaling keeps the workbook demand shape while raising its magnitude, so the
-nuclear fleet covers only part of the peak and reload timing still changes how
+nuclear fleet covers only part of the peak and refuelling timing still changes how
 much CCGT is built.
 
 This page runs two related studies so that the capacity difference is easy to
 read:
 
-1. forced overlap: `reloadmask=8760` leaves only one allowed start, so all
-   three units reload together early in the year. That window covers the
-   annual peak, and the model builds about 5.67 GW of CCGT.
-2. flexible schedule: `reloadmask=730` opens about twelve monthly starts, so
+1. forced overlap: `refuelmask=8760` leaves only one allowed start, so all
+   three units refuel together from 1 February. Demand in that February–March
+   outage window reaches about 5.64 GW, and the model builds about 5.64 GW of CCGT.
+2. flexible schedule: `refuelmask=730` opens about twelve monthly starts, so
    the optimiser can keep the full fleet online at the peak and limit how
-   much the outages overlap. It builds about 2.67 GW of CCGT.
+   much the outages overlap. It builds about 2.78 GW of CCGT.
 
 ## Forced overlap
 
-With only one allowed reload start in the year (hour 1), every unit must take
-that slot, so the three 1 000 MW outages coincide. That early-year window
-includes the scaled annual demand peak (about 5.67 GW), nuclear output drops to
-0 MW there, and CCGT must cover the full peak.
+With only one allowed refuelling start in the year (hour 1, 1 February after the
+demand shift), every unit must take that slot, so the three 1 000 MW outages
+coincide. The 720-hour window runs through early March; demand there reaches
+about 5.64 GW. Nuclear output drops to 0 MW there, and CCGT must cover demand
+in that window.
 
 ```jldoctest nuclear_overlap; output = false
 using Posy2
@@ -69,24 +68,19 @@ snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
 electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=:curtailed, tags=[:electricity])
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
-# Workbook demand shape, scaled up so nuclear covers only part of the peak
-makedemand("Demand", "country1", electricity, snapshot; coeff=5.5)
+# Workbook demand shape, scaled up and shifted so hour 1 is 1 February
+makedemand("Demand", "country1", electricity, snapshot; coeff=5.5, shift=-744)
 
-# Three fixed 1 GW units with reloading on (720 h each). Only the start hour is chosen.
+# Three fixed 1 GW units with refuelling on (720 h each). Only the start hour is chosen.
 makenuclear(
     "NucA", "Nuclear", electricity, co2, snapshot;
     cap=1_000.0,
     unit_size=1_000.0,
     uc=true,
     integeruc=true,
-    reload_fraction_per_year=1.0,  # >=1 reload per unit per year
-    reload_duration=720.0,         # fixed outage length (~30 days), not shortened by the optimiser
-    reloadmask=8760,               # only one allowed start (hour 1), so all three coincide
-    min_power=0.5,
-    min_uptime=24.0,
-    min_downtime=24.0,
-    startup_duration=1.0,
-    shutdown_duration=1.0,
+    refuel_fraction_per_year=1.0,  # >=1 refuelling outage per unit per year
+    refuel_duration=720.0,         # fixed outage length (~30 days), not shortened by the optimiser
+    refuelmask=8760,               # only one allowed start (1 February), so all three coincide
 )
 makenuclear(
     "NucB", "Nuclear", electricity, co2, snapshot;
@@ -94,14 +88,9 @@ makenuclear(
     unit_size=1_000.0,
     uc=true,
     integeruc=true,
-    reload_fraction_per_year=1.0,
-    reload_duration=720.0,
-    reloadmask=8760,
-    min_power=0.5,
-    min_uptime=24.0,
-    min_downtime=24.0,
-    startup_duration=1.0,
-    shutdown_duration=1.0,
+    refuel_fraction_per_year=1.0,
+    refuel_duration=720.0,
+    refuelmask=8760,
 )
 makenuclear(
     "NucC", "Nuclear", electricity, co2, snapshot;
@@ -109,14 +98,9 @@ makenuclear(
     unit_size=1_000.0,
     uc=true,
     integeruc=true,
-    reload_fraction_per_year=1.0,
-    reload_duration=720.0,
-    reloadmask=8760,
-    min_power=0.5,
-    min_uptime=24.0,
-    min_downtime=24.0,
-    startup_duration=1.0,
-    shutdown_duration=1.0,
+    refuel_fraction_per_year=1.0,
+    refuel_duration=720.0,
+    refuelmask=8760,
 )
 
 # Expandable CCGT backup for residual demand
@@ -138,20 +122,20 @@ Snapshot with 5 component(s) and 2 node(s)
 
 ```jldoctest nuclear_overlap
 julia> capacity(result_overlap, "CCGT country1")
-5669.201999999999
+5644.594999999999
 ```
 
-CCGT capacity matches the annual peak: with all three nuclear units offline in
-that early window, backup must cover the full scaled demand. The figure shows
+CCGT capacity matches demand in that February–March window: with all three
+nuclear units offline, backup must cover load in that window. The figure shows
 the same story in time. Unit outage bars sit on top. Nuclear and CCGT stack
-against hourly demand underneath. The three grey reload blocks coincide early
-in the year, and CCGT fills the peak inside that window.
+against hourly demand underneath. The three grey refuelling blocks coincide in
+February–March, and CCGT fills the high demand inside that window.
 
-![Forced early-year reload: unit reloads and generation stack](../assets/nuclear-reload-overlap.svg)
+![Forced February–March refuelling: unit outages and generation stack](../assets/nuclear-refuel-overlap.svg)
 
 ## Flexible schedule
 
-Keep the same plants, demand, and costs, but allow about one reload start per
+Keep the same plants, demand, and costs, but allow about one refuelling start per
 month (roughly twelve options over the year).
 
 ```jldoctest nuclear_nonoverlap; output = false
@@ -178,23 +162,18 @@ electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
 # Same scaled workbook demand as in the forced case
-makedemand("Demand", "country1", electricity, snapshot; coeff=5.5)
+makedemand("Demand", "country1", electricity, snapshot; coeff=5.5, shift=-744)
 
-# Same three units and 720 h reload. Only the allowed starts change.
+# Same three units and 720 h refuelling outage. Only the allowed starts change.
 makenuclear(
     "NucA", "Nuclear", electricity, co2, snapshot;
     cap=1_000.0,
     unit_size=1_000.0,
     uc=true,
     integeruc=true,
-    reload_fraction_per_year=1.0,  # >=1 reload per unit per year
-    reload_duration=720.0,         # same fixed outage length as above
-    reloadmask=730,                # ~12 allowed starts per year (~monthly)
-    min_power=0.5,
-    min_uptime=24.0,
-    min_downtime=24.0,
-    startup_duration=1.0,
-    shutdown_duration=1.0,
+    refuel_fraction_per_year=1.0,  # >=1 refuelling outage per unit per year
+    refuel_duration=720.0,         # same fixed outage length as above
+    refuelmask=730,                # ~12 allowed starts per year (~monthly)
 )
 makenuclear(
     "NucB", "Nuclear", electricity, co2, snapshot;
@@ -202,14 +181,9 @@ makenuclear(
     unit_size=1_000.0,
     uc=true,
     integeruc=true,
-    reload_fraction_per_year=1.0,
-    reload_duration=720.0,
-    reloadmask=730,
-    min_power=0.5,
-    min_uptime=24.0,
-    min_downtime=24.0,
-    startup_duration=1.0,
-    shutdown_duration=1.0,
+    refuel_fraction_per_year=1.0,
+    refuel_duration=720.0,
+    refuelmask=730,
 )
 makenuclear(
     "NucC", "Nuclear", electricity, co2, snapshot;
@@ -217,14 +191,9 @@ makenuclear(
     unit_size=1_000.0,
     uc=true,
     integeruc=true,
-    reload_fraction_per_year=1.0,
-    reload_duration=720.0,
-    reloadmask=730,
-    min_power=0.5,
-    min_uptime=24.0,
-    min_downtime=24.0,
-    startup_duration=1.0,
-    shutdown_duration=1.0,
+    refuel_fraction_per_year=1.0,
+    refuel_duration=720.0,
+    refuelmask=730,
 )
 
 # Same expandable CCGT backup
@@ -246,19 +215,19 @@ Snapshot with 5 component(s) and 2 node(s)
 
 ```jldoctest nuclear_nonoverlap
 julia> capacity(result_nonoverlap, "CCGT country1")
-2669.2019999999993
+2777.8640000000005
 ```
 
-The reload duration remains fixed at 720 h for every unit. The scheduling
+The refuelling duration remains fixed at 720 h for every unit. The scheduling
 flexibility comes only from having more possible start times. The optimiser uses
 that choice to keep the full nuclear fleet available at the annual demand peak
 and to avoid a simultaneous outage of all three units. Required CCGT capacity
-therefore falls to about 2.67 GW. The figure shows how the three reload periods
+therefore falls to about 2.78 GW. The figure shows how the three refuelling periods
 are distributed over the year and how CCGT fills the remaining demand.
 
-![Flexible reload schedule: unit reloads and generation stack](../assets/nuclear-reload-schedule.svg)
+![Flexible refuelling schedule: unit outages and generation stack](../assets/nuclear-refuel-schedule.svg)
 
-Forced reload timing needs about 5.67 GW of CCGT, compared with about 2.67 GW
+Forced refuelling timing needs about 5.64 GW of CCGT, compared with about 2.78 GW
 under a flexible schedule. Both cases impose the same 720-hour refuelling
 requirement on every nuclear unit. The difference comes only from when those
 outages occur. By choosing their timing, the optimiser reduces the coincidence

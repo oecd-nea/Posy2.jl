@@ -30,7 +30,7 @@
 <line x1="650" y1="82.0" x2="822" y2="82.0" stroke="#2a9d8f" stroke-width="2" stroke-dasharray="none" marker-end="url(#head-free)"/>
 <circle cx="650" cy="82.0" r="4.5" fill="#2a9d8f"/>
 <text class="port" x="740.0" y="72.0" fill="#2a9d8f">output</text>
-<text class="note" x="740.0" y="96.0">cap, unit_size, uc, reload</text>
+<text class="note" x="740.0" y="96.0">cap, unit_size, uc, refuel</text>
 <text class="note" x="740.0" y="108.0">investment, fom, vom, waste</text>
 <line x1="650" y1="160.0" x2="822" y2="160.0" stroke="#e76f51" stroke-width="2" stroke-dasharray="3 3" marker-end="url(#head-linked)"/>
 <circle cx="650" cy="160.0" r="4.5" fill="#e76f51"/>

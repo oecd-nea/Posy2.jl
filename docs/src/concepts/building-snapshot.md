@@ -100,7 +100,7 @@ discharge compensation cost.
   optimisable capacity, fixed and variable costs, optional fuel and CO2 flows,
   ramping, and optional unit commitment.
 - [`makenuclear`](@ref) adds nuclear-specific waste cost, integer capacity,
-  warm starts, unit-commitment masks, and optional scheduled reload shutdowns.
+  warm starts, unit-commitment masks, and optional scheduled refuelling shutdowns.
 - [`makeintermittentsource`](@ref) combines a weather-year profile with fixed
   or optimisable capacity.
 - [`makehydroror`](@ref) creates fixed- or variable-capacity run-of-river hydro
@@ -120,8 +120,8 @@ can be modelled elsewhere in the same snapshot.
 
 Unit commitment is enabled with `uc=true`. A  positive `unit_size` sets the
 fleet unit scale (`0` means no unit-size constraint). `integeruc=true` makes
-commitment decisions integer. Nuclear reload constraints are only active together 
-with unit commitment and require consistent reload duration, frequency, and mask
+commitment decisions integer. Nuclear refuelling constraints are only active together
+with unit commitment and require consistent refuel duration, frequency, and mask
 inputs.
 
 ### Storage And Conversion

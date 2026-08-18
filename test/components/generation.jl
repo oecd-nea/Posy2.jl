@@ -65,7 +65,7 @@ using HiGHS
         @test isempty(Nosy.getbehaviors(c, Nosy.RampingBehavior))
     end
 
-    # If reloading is enabled, a missing reloadmask should be rejected.
+    # If refuelling is enabled, a missing refuelmask should be rejected.
     let
         s, elec, co2 = makesnapshot()
         @test_throws ArgumentError makenuclear(
@@ -78,7 +78,7 @@ using HiGHS
             co2_emission=0.0, unit_size=0.0,
             min_power=0.3, min_uptime=1, min_downtime=1,
             startup_duration=1, shutdown_duration=1,
-            reload_fraction_per_year=0.2, reload_duration=12, reloadmask=nothing,
+            refuel_fraction_per_year=0.2, refuel_duration=12, refuelmask=nothing,
         )
     end
 

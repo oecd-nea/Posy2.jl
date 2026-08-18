@@ -16,7 +16,7 @@ remaining assets are kept simple.
 | [DC OPF](examples/dc-opf.md) | How KVL changes flows across meshed AC lines, and how controllable HVDC differs |
 | [Negative Locational Prices](examples/negative-prices.md) | How congestion can make a locational price negative despite positive generation costs |
 | [Dispatchable Generation](examples/dispatchable-generation.md) | Choosing PV and gas capacities, then meeting the residual demand |
-| [Nuclear](examples/nuclear.md) | How reload scheduling reduces backup capacity |
+| [Nuclear](examples/nuclear.md) | How refuelling schedule flexibility reduces backup capacity |
 | [CO2 Pricing](examples/co2-pricing.md) | How a carbon price reorders emitting and non-emitting technologies |
 | [Battery Storage](examples/battery-storage.md) | Shifting daytime PV generation to later hours |
 | [Hydro Reservoir](examples/hydro-reservoir.md) | Timing generation by storing variable natural intake |

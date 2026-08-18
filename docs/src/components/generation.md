@@ -67,16 +67,16 @@ mode; in `:excel` mode, omitted values come from the technology column.
 
 ![Ports of a nuclear generation component](../assets/component-nuclear.svg)
 
-Fresh unit commitment may include planned fuel-reload outages. Reloading is
-active only when `uc=true`, `reload_fraction_per_year` is positive, and
-`reload_duration` is positive. In that case `reloadmask` must be a positive
-integer interval supplied by the caller. In `:excel` mode, reload fraction and
+Fresh unit commitment may include planned refuelling outages. Refuelling is
+active only when `uc=true`, `refuel_fraction_per_year` is positive, and
+`refuel_duration` is positive. In that case `refuelmask` must be a positive
+integer interval supplied by the caller. In `:excel` mode, refuel fraction and
 duration default to the `dispatchable` technology column. In `:arguments` mode
-they default to zero, disabling reload outages; `reloadmask` has no workbook
-default and is needed only when positive reload fraction and duration activate
-the feature. Supplying reload arguments with `uc=false` emits a warning and
-does not add reload constraints. A replayed UC schedule retains the outages it
-was solved with; explicit reload arguments emit a warning and are ignored.
+they default to zero, disabling refuelling outages; `refuelmask` has no workbook
+default and is needed only when positive refuel fraction and duration activate
+the feature. Supplying refuelling arguments with `uc=false` emits a warning and
+does not add refuelling constraints. A replayed UC schedule retains the outages it
+was solved with; explicit refuelling arguments emit a warning and are ignored.
 Economic terms and emissions also default to zero in `:arguments` mode.
 
 Capacity follows the common numeric, external-expression, `nothing`, and
@@ -87,7 +87,7 @@ whereas an `AffExpr` is rejected. In particular, `unit_size` does not make an
 external variable a number-of-units variable; represent that explicitly as
 `unit_size * integer_units` when unit-block integrality is required.
 
-The specialised reload constraints apply only when `techkey` is exactly
+The specialised refuelling constraints apply only when `techkey` is exactly
 `Nuclear`, `Nuclear flexible`, or `SMR`. They also assume an 8,760-hour model
 horizon. Other `techkey` values may omit those constraints. Use these exact
 conventions only for a full non-leap-year study.
@@ -97,7 +97,7 @@ and `dispatchable`. Direct emissions are controlled by `co2_emission`; the
 builder does not infer a `carbonfree` tag from the technology name.
 
 See the [Nuclear example](../examples/nuclear.md) for models using this builder
-with forced and flexible reload schedules.
+with forced and flexible refuelling schedules.
 
 ```@docs; canonical=false
 makenuclear

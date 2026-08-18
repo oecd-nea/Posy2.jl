@@ -188,7 +188,7 @@ rows when the matching keyword is `nothing`:
 | Builder | Base Rows | Conditional Groups |
 |:--------|:----------|:-------------------|
 | [`makedispatchable`](@ref) | Common | Fuel, unit commitment, and ramping |
-| [`makenuclear`](@ref) | Common plus `waste_cost` | Fuel, unit commitment, ramping, and reloads |
+| [`makenuclear`](@ref) | Common plus `waste_cost` | Fuel, unit commitment, ramping, and refuelling |
 
 In `:arguments` mode, `makedispatchable` gives its additive cost and emission
 coefficients neutral zero defaults. It uses `nothing` for unit sizing and
@@ -208,11 +208,11 @@ For `makedispatchable` and `makenuclear`, enabling unit commitment reads
 `uc=<extracted snapshot>` replays a solved commitment schedule and needs none
 of them.
 
-`uc=true` on nuclear additionally reads `reload_fraction_per_year`, and a
-positive reload fraction causes `reload_duration` to be read. `reloadmask` is
+`uc=true` on nuclear additionally reads `refuel_fraction_per_year`, and a
+positive refuel fraction causes `refuel_duration` to be read. `refuelmask` is
 an argument-only scheduling interval and has no workbook row. A replayed
-schedule already contains whatever reload outages it was solved with, so
-`uc=<extracted snapshot>` builds no reload constraints and warns if reload
+schedule already contains whatever refuelling outages it was solved with, so
+`uc=<extracted snapshot>` builds no refuelling constraints and warns if refuelling
 arguments are supplied.
 
 `ramp_up` and `ramp_down` are used by `makedispatchable` and `makenuclear` only
@@ -399,7 +399,7 @@ being numeric and finite.
 Nosy supports custom and heterogeneous meshes, but several Posy2 builders and
 reports currently assume a non-leap year of 8,760 hourly values. Flat annual
 demands divide by 8,760, fixed-profile EVs construct 8,760 entries, nuclear
-reload logic iterates over 8,760 hours, and the standard report labels 8,760 time
+refuelling logic iterates over 8,760 hours, and the standard report labels 8,760 time
 rows.
 
 Use 8,760-value workbook columns with Nosy's default

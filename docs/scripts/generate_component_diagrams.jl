@@ -252,7 +252,7 @@ const SPECS = [
                 endpoint=(label=["fuel node", "fuelnode"], kind=:node, carrier=:other)),
         ],
         outputs=[
-            (name="output", kind=:free, note=["cap, unit_size, uc, reload", "investment, fom, vom, waste"], endpoint=ELEC),
+            (name="output", kind=:free, note=["cap, unit_size, uc, refuel", "investment, fom, vom, waste"], endpoint=ELEC),
             (name="co2", kind=:linked, note=["only if co2_emission > 0", "output x co2_emission / 1000"], endpoint=CO2),
         ],
         level=nothing,

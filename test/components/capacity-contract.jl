@@ -172,8 +172,8 @@ using HiGHS
             "CCGT", "CCGT", xelec, xco2, x; cap=10.0, uc=nouc, unit_size=50.0)
     end
 
-    # Replaying a nuclear schedule never builds fresh reload constraints: the
-    # source may have no reload selector to index into.
+    # Replaying a nuclear schedule never builds fresh refuelling constraints: the
+    # source may have no refuelling selector to index into.
     let
         s, elec, _, co2 = contract_snapshot(hours=24)
         makenuclear("EPR", "Nuclear", elec, co2, s;
@@ -181,7 +181,7 @@ using HiGHS
         makedemand("Load", "Z1", elec, s; coeff=0.0, yearlyconstant=8760.0 * 60.0)
         Nosy.optimize!(s, cost(s))
         ini = extract(s)
-        # the source was solved without reloading, so it has a single shutdown selector
+        # the source was solved without refuelling, so it has a single shutdown selector
         @test length(first(Nosy.getbehaviors(
             Nosy.getcomponent(ini, "EPR E1"), Nosy.FleetUnitCommitmentBehavior,
         )).shutdownselector) == 1
@@ -189,7 +189,7 @@ using HiGHS
         t, telec, _, tco2 = contract_snapshot(hours=24)
         replayed = @test_logs (:warn,) match_mode=:any makenuclear("EPR", "Nuclear", telec, tco2, t;
             cap=ini, uc=ini, unit_size=50.0, om_var_cost=1.0,
-            reload_fraction_per_year=1.0, reload_duration=30.0, reloadmask=24.0)
+            refuel_fraction_per_year=1.0, refuel_duration=30.0, refuelmask=24.0)
         @test !isempty(Nosy.getbehaviors(replayed, Nosy.FleetUnitCommitmentFromIniBehavior))
     end
 

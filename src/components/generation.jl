@@ -266,7 +266,7 @@ end
     makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, integercap=false, warmstart=nothing,
         uc=false, integeruc=false, startupmask=nothing, shutdownmask=nothing,
-        reload_duration::Union{Nothing,Real}=nothing, reloadmask::Union{Nothing,Real}=nothing, reload_fraction_per_year::Union{Nothing,Real}=nothing,
+        refuel_duration::Union{Nothing,Real}=nothing, refuelmask::Union{Nothing,Real}=nothing, refuel_fraction_per_year::Union{Nothing,Real}=nothing,
         fuelnode=nothing, co2price=co2_price(s),
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
@@ -299,14 +299,14 @@ Arguments:
 
   * `uc`: Enables UC constraints and UC linked costs. An extracted `Snapshot`
     instead replays the commitment schedule already solved for the matching
-    component, and then requires a fixed `cap`. Reloading logic is only modeled when unit commitment is enabled; if `uc=false` and any reloading argument is provided, a warning is emitted and reloading is ignored.
+    component, and then requires a fixed `cap`. Refuelling logic is only modeled when unit commitment is enabled; if `uc=false` and any refuelling argument is provided, a warning is emitted and refuelling is ignored.
   * `integeruc`: Integer UC commitment variables.
   * `startupmask`: Optional masks restricting UC startup/shutdown availability over time.
   * `shutdownmask`: Optional masks restricting UC startup/shutdown availability over time.
 
-  * `reload_duration`: Duration of planned reload outage. If `nothing`, read from the technology workbook. Must be >= 0; reloading constraints are enabled only when this value is > 0.
-  * `reloadmask`: Interval between allowed reload windows. Non default parameter (not read from the technology workbook). When reloading is enabled, it must be provided , strictly positive, and integer-valued.
-  * `reload_fraction_per_year`: Minimum yearly reload requirement (fraction per unit per year). If `nothing`, read from the technology workbook. Must be >= 0; reloading constraints are enabled only when this value is > 0.
+  * `refuel_duration`: Duration of planned refuelling outage. If `nothing`, read from the technology workbook. Must be >= 0; refuelling constraints are enabled only when this value is > 0.
+  * `refuelmask`: Interval between allowed refuelling windows. Non-default parameter (not read from the technology workbook). When refuelling is enabled, it must be provided, strictly positive, and integer-valued.
+  * `refuel_fraction_per_year`: Minimum yearly refuelling requirement (fraction per unit per year). If `nothing`, read from the technology workbook. Must be >= 0; refuelling constraints are enabled only when this value is > 0.
 
   * `fuelnode`: If provided, fuel is represented as linked input flow using `efficiency`. If `nothing`, `fuel_cost` is applied as output variable cost.
   * `co2price`: CO2 price coefficient for emitted CO2 flow.
@@ -342,8 +342,8 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
     # unit commitment / operation
     uc::Union{Bool,Snapshot}=false, integeruc=false, startupmask=nothing, shutdownmask=nothing,
 
-    # reloading controls
-    reload_duration::Union{Nothing,Real}=nothing, reloadmask::Union{Nothing,Real}=nothing, reload_fraction_per_year::Union{Nothing,Real}=nothing,
+    # refuelling controls
+    refuel_duration::Union{Nothing,Real}=nothing, refuelmask::Union{Nothing,Real}=nothing, refuel_fraction_per_year::Union{Nothing,Real}=nothing,
 
     # external nodes / prices
     fuelnode=nothing, co2price::Real=co2_price(s),
@@ -462,38 +462,38 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
     end
 
     # special case: cycling constraints for nuclear
-    _reload_on = false
-    if !_ucenabled(uc) && (!isnothing(reload_duration) || !isnothing(reloadmask) || !isnothing(reload_fraction_per_year))
-        @warn "Because uc=false for nuclear component, reloading is not modeled." component=cname techkey=techkey
+    _refuel_on = false
+    if !_ucenabled(uc) && (!isnothing(refuel_duration) || !isnothing(refuelmask) || !isnothing(refuel_fraction_per_year))
+        @warn "Because uc=false for nuclear component, refuelling is not modeled." component=cname techkey=techkey
     end
-    if uc isa Snapshot && (!isnothing(reload_duration) || !isnothing(reloadmask) || !isnothing(reload_fraction_per_year))
-        @warn "Because uc replays a solved schedule for nuclear component, reloading follows that schedule and reload arguments are ignored." component=cname techkey=techkey
+    if uc isa Snapshot && (!isnothing(refuel_duration) || !isnothing(refuelmask) || !isnothing(refuel_fraction_per_year))
+        @warn "Because uc replays a solved schedule for nuclear component, refuelling follows that schedule and refuelling arguments are ignored." component=cname techkey=techkey
     end
-    # reload constraints are built from fresh arguments, never over a replayed schedule
+    # refuelling constraints are built from fresh arguments, never over a replayed schedule
     if uc === true
-        _reload_fraction = if isnothing(reload_fraction_per_year)
-            excel ? gettechparam(s, techkey, "reload_fraction_per_year", "dispatchable") : 0.0
+        _refuel_fraction = if isnothing(refuel_fraction_per_year)
+            excel ? gettechparam(s, techkey, "refuel_fraction_per_year", "dispatchable") : 0.0
         else
-            reload_fraction_per_year
+            refuel_fraction_per_year
         end
-        @argcheck _reload_fraction isa Real "reload_fraction_per_year must be Real."
-        @argcheck _reload_fraction >= 0 "reload_fraction_per_year must be >= 0."
-        if _reload_fraction > 0
-            _reload_duration = if isnothing(reload_duration)
-                excel ? gettechparam(s, techkey, "reload_duration", "dispatchable") : 0.0
+        @argcheck _refuel_fraction isa Real "refuel_fraction_per_year must be Real."
+        @argcheck _refuel_fraction >= 0 "refuel_fraction_per_year must be >= 0."
+        if _refuel_fraction > 0
+            _refuel_duration = if isnothing(refuel_duration)
+                excel ? gettechparam(s, techkey, "refuel_duration", "dispatchable") : 0.0
             else
-                reload_duration
+                refuel_duration
             end
-            @argcheck _reload_duration isa Real "reload_duration must be Real."
-            @argcheck _reload_duration >= 0 "reload_duration must be >= 0."
-            _reload_on = (_reload_fraction > 0) && (_reload_duration > 0)
-            if _reload_on
-                @argcheck !isnothing(reloadmask) "reloadmask must be provided when reloading is enabled."
-                _reload_mask_raw = reloadmask
-                @argcheck _reload_mask_raw isa Real "reloadmask must be Real."
-                @argcheck _reload_mask_raw > 0 "reloadmask must be > 0 when reloading is enabled."
-                @argcheck isinteger(_reload_mask_raw) "reloadmask must be integer-valued."
-                _reload_mask = Int(_reload_mask_raw)
+            @argcheck _refuel_duration isa Real "refuel_duration must be Real."
+            @argcheck _refuel_duration >= 0 "refuel_duration must be >= 0."
+            _refuel_on = (_refuel_fraction > 0) && (_refuel_duration > 0)
+            if _refuel_on
+                @argcheck !isnothing(refuelmask) "refuelmask must be provided when refuelling is enabled."
+                _refuel_mask_raw = refuelmask
+                @argcheck _refuel_mask_raw isa Real "refuelmask must be Real."
+                @argcheck _refuel_mask_raw > 0 "refuelmask must be > 0 when refuelling is enabled."
+                @argcheck isinteger(_refuel_mask_raw) "refuelmask must be integer-valued."
+                _refuel_mask = Int(_refuel_mask_raw)
             end
         end
     end
@@ -517,11 +517,11 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
             @argcheck _min_downtime isa Real "min_downtime must be Real."
             @argcheck _startup_dur isa Real "startup_duration must be Real."
             @argcheck _shutdown_dur isa Real "shutdown_duration must be Real."
-            if _reload_on
+            if _refuel_on
                 push!(vb, Nosy.UnitCommitment("output", 
                     _min_power, 
                     uptime=_min_uptime, 
-                    downtime=[_min_downtime, _reload_duration], 
+                    downtime=[_min_downtime, _refuel_duration],
                     startup=_startup_dur, 
                     shutdown=_shutdown_dur,
                     startupmask=startupmask,
@@ -571,13 +571,13 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
     c = Component(cname * " " * elec.name, m, vb)
     tag!(c, :tech, cname)
     tag!(c, :zone, elec.name)
-    if _reload_on
+    if _refuel_on
         _ucb = first(Nosy.getbehaviors(c, Nosy.AbstractFleetUnitCommitmentBehavior))
         if techkey in ("Nuclear", "Nuclear flexible",)
             # reduce capabilities of short shutdown
-            if _reload_on
+            if _refuel_on
                 for h in 1:8760
-                    # reduce possibilities for reloading type shutdown
+                    # reduce possibilities for refuelling type shutdown
                     if !iszero((h-1)%(12))
                         # reduce possibilities for startup
                         e = _ucb.startup[h]
@@ -596,40 +596,40 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
                 end
             end
 
-            # reloading of nuclear fuel
-            if _reload_on
-                sum_reload = AffExpr(0.)
+            # refuelling of nuclear fuel
+            if _refuel_on
+                sum_refuel = AffExpr(0.)
                 for h in 1:8760
-                    # reduce possibilities for reloading type shutdown
-                    if !iszero((h-1)%_reload_mask)
+                    # reduce possibilities for refuelling type shutdown
+                    if !iszero((h-1)%_refuel_mask)
                         e = _ucb.shutdownselector[2][h]
                         if (e isa GenericAffExpr) && !iszero(e)
                             v = first(e.terms)[1]
                             fix(v, 0., force=true)
                         end
                     else
-                        add_to_expression!(sum_reload, _ucb.shutdownselector[2][h])
+                        add_to_expression!(sum_refuel, _ucb.shutdownselector[2][h])
                     end
                 end
-                @constraint(s.sim.model, sum_reload >= _reload_fraction * nbunits(c))
+                @constraint(s.sim.model, sum_refuel >= _refuel_fraction * nbunits(c))
             end
         elseif techkey == "SMR"
-            # reloading of nuclear fuel
-            if _reload_on
-                sum_reload = AffExpr(0.)
+            # refuelling of nuclear fuel
+            if _refuel_on
+                sum_refuel = AffExpr(0.)
                 for h in 1:8760
-                    # reduce possibilities for reloading type shutdown
-                    if !iszero((h-1)%_reload_mask)
+                    # reduce possibilities for refuelling type shutdown
+                    if !iszero((h-1)%_refuel_mask)
                         e = _ucb.shutdownselector[2][h]
                         if (e isa GenericAffExpr) && !iszero(e)
                             v = first(e.terms)[1]
                             fix(v, 0., force=true)
                         end
                     else
-                        add_to_expression!(sum_reload, _ucb.shutdownselector[2][h])
+                        add_to_expression!(sum_refuel, _ucb.shutdownselector[2][h])
                     end
                 end
-                @constraint(s.sim.model, sum_reload >= _reload_fraction * nbunits(c))
+                @constraint(s.sim.model, sum_refuel >= _refuel_fraction * nbunits(c))
             end
         end
     end
