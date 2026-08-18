@@ -29,6 +29,11 @@
             @test gettechparam(xl, "CCGT", "overnight_cost", "dispatchable", 6) == 1000.0
             @test gettechparam(xl, "CCGT", "lifetime", "dispatchable", 6) == 30
             @test gettechparam(xl, "Onwind", "overnight_cost", "intermittent", 6) == 1200.0
+
+            # Profile rows are stored as ";"-separated shares and read back as vectors.
+            @test gettechparam(xl, "Battery", "decommissioning_profile", "storage", 6) == [0.5, 0.5]
+            # A single-year profile stays a number.
+            @test gettechparam(xl, "Battery", "construction_profile", "storage", 6) == 1
             
             # Missing sheet: expect ArgumentError (message lists available sheets)
             @test_throws ArgumentError gettechparam(xl, "CCGT", "overnight_cost", "missing_sheet", 6)

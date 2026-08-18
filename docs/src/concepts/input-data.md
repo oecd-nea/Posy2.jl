@@ -146,13 +146,17 @@ makedemand(
 ## Construction And Decommissioning Profiles
 
 `construction_profile` and `decommissioning_profile` accept either a number
-or a semicolon-separated string. Values are non-negative chronological cost
+or a vector of yearly shares. Values are non-negative chronological cost
 shares and must sum approximately to one:
 
 ```julia
-construction_profile = "0.3;0.4;0.3"
+construction_profile = [0.3, 0.4, 0.3]
 decommissioning_profile = 1.0
 ```
+
+Workbook cells hold the same shares as a semicolon-separated string such as
+`"0.3;0.4;0.3"`; `gettechparam` turns them into a vector when the sheet is
+read.
 
 A single number means the whole cost falls in one year, so that number must be
 about `1.0`. Shares that sum only approximately to one are renormalised after

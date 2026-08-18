@@ -55,9 +55,10 @@ selects the technology column and `param` selects the row.
 
 The snapshot method resolves the workbook through [`Posy2Options`](@ref) when
 `tech_mode=:excel`; `:arguments` rejects direct snapshot lookups.
-Numeric values are rounded to `digits`; strings, including semicolon-separated
-construction profiles, are returned unchanged. Missing sheets, columns, rows,
-or values raise `ArgumentError` with workbook context.
+Numeric values are rounded to `digits`. Cells of a `*_profile` row hold the
+yearly cost shares as a semicolon-separated string and are returned as a
+`Vector{Float64}`; other strings are returned unchanged. Missing sheets,
+columns, rows, or values raise `ArgumentError` with workbook context.
 """
 function gettechparam(xl, techkey::String, param::String, sheetname::String, digits::Int)
     df = gettechdatasheet(xl, sheetname)
@@ -78,6 +79,13 @@ function gettechparam(xl, techkey::String, param::String, sheetname::String, dig
     end
     if val isa Real
         return round(val, digits=digits)
+    elseif val isa AbstractString && endswith(param, "_profile")
+        # Workbooks store yearly cost shares as "0.3;0.4;0.3"; the model works with vectors.
+        shares = tryparse.(Float64, split(val, ';'))
+        if any(isnothing, shares)
+            throw(ArgumentError("$(tw): parameter row tech=='$(param)', technology column '$(techkey)': expected yearly shares separated by ';', got '$(val)'"))
+        end
+        return Vector{Float64}(shares)
     else
         return val
     end

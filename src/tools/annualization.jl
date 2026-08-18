@@ -6,6 +6,12 @@ Return the annualized investment cost in function of the overnight cost, the dis
 The effects are the following:
   * total cost (financing taking construction time into account + overnight)
   * annualization via corrected CRF (so that operation starts right after construction, no white year)
+
+Units: `overnight` is a cost per unit of capacity and the result is that cost per unit of capacity per year.
+Builders take `overnight_cost` in currency per kW and multiply it by 1000 before calling `eac`, so a direct
+call takes currency per MW and returns currency per MW per year.
+`discountrate` is a fraction per year, `lifetime` is a number of years, and `constructionprofile` is a
+number or a vector of yearly shares summing to 1.
 """
 function eac(overnight::Real, discountrate::Real, lifetime, constructionprofile)
     if ismissing(constructionprofile)
@@ -16,27 +22,30 @@ function eac(overnight::Real, discountrate::Real, lifetime, constructionprofile)
     end
 end
 
-# construction_factor
-function construction_factor(discountrate::Real, constructionprofile)
-    @argcheck constructionprofile isa Union{String, Real} "Construction profile must be a String like \"0.3;0.4;0.3\" or a single number."
-    vc = isa(constructionprofile, String) ? parse.(Float64, split(constructionprofile, ';')) : [Float64(constructionprofile)]
-    @argcheck all(x -> x >= 0, vc) "Construction profile must be non-negative."
-    total = sum(vc)
-    @argcheck isapprox(total, 1.0; rtol=1E-3) "Sum of the construction profile must be close to 1."
+"""
+    profile_shares(profile, name::String)
+Return the yearly cost shares of `profile` as a fresh vector summing exactly to 1.
+`profile` is a single number (whole cost in one year) or one share per year, e.g. `[1/3, 1/3, 1/3]`.
+"""
+function profile_shares(profile, name::String)
+    @argcheck profile isa Union{Real,AbstractVector{<:Real}} "$name must be a number or a vector of yearly shares, such as [1/3, 1/3, 1/3]."
+    shares = profile isa Real ? [Float64(profile)] : Float64.(profile)
+    @argcheck !isempty(shares) "$name must cover at least one year."
+    @argcheck all(isfinite, shares) "$name must be finite."
+    @argcheck all(>=(0), shares) "$name must be non-negative."
+    total = sum(shares)
+    @argcheck isapprox(total, 1.0; rtol=1E-3) "Sum of the $name must be close to 1."
     # Accept small rounding errors, but compute with a profile that sums exactly to 1.
-    vc = vc ./ total
-    cf = sum((vc[y]) * (1 + discountrate)^(length(vc)+1-y) for y in eachindex(vc))
-    return cf
+    return shares ./ total
+end
+
+function construction_factor(discountrate::Real, constructionprofile)
+    vc = profile_shares(constructionprofile, "construction profile")
+    return sum(vc[y] * (1 + discountrate)^(length(vc) + 1 - y) for y in eachindex(vc))
 end
 
 function decommissioning_factor(discountrate::Real, decommissionprofile)
-    @argcheck decommissionprofile isa Union{String, Real} "Decommissioning profile must be a String like \"0.3;0.4;0.3\" or a single number."
-    shares = isa(decommissionprofile, String) ? parse.(Float64, split(decommissionprofile, ';')) : [Float64(decommissionprofile)]
-    @argcheck all(x -> x >= 0, shares) "Decommissioning profile must be non-negative."
-    total = sum(shares)
-    @argcheck isapprox(total, 1.0; rtol=1E-3) "Sum of the decommissioning profile must be close to 1."
-    # Accept small rounding errors, but compute with a profile that sums exactly to 1.
-    shares = shares ./ total
+    shares = profile_shares(decommissionprofile, "decommissioning profile")
     return sum(share / (1 + discountrate)^(year - 1) for (year, share) in enumerate(shares))
 end
 

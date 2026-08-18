@@ -117,8 +117,8 @@ See [Input Workbooks](input-data.md) for the full rules and sheet layout.
 `discountrate` is used when builders annualise overnight investment and
 decommissioning costs. [`eac`](@ref) combines the overnight cost, construction
 profile, lifetime, and discount rate into an equivalent annual cost.
-Construction profiles can be provided as one numeric value or as a
-semicolon-separated sequence whose entries sum approximately to one.
+Construction profiles can be provided as one numeric value or as a vector of
+yearly shares whose entries sum approximately to one.
 
 In compact form, annualised investment is written as
 
@@ -161,8 +161,18 @@ where ``\delta`` is the `decommissioning` ratio and
 implied by `decommissioning_profile`.
 
 ```julia
-eac(4_000_000.0, discountrate(snapshot), 60, "0.3;0.4;0.3")
+eac(
+    4_000_000.0,             # overnight cost, currency per MW (4000 currency/kW)
+    discountrate(snapshot),  # discount rate r, here the default 0.05
+    60,                      # lifetime L, in years
+    [0.3, 0.4, 0.3],         # construction profile: 30%, 40%, 30% over three years
+)
+# 222036.85956799964, i.e. about 222 000 currency per MW per year
 ```
+
+Note the unit: builders take `overnight_cost` in currency per kW and multiply
+it by 1000 before calling [`eac`](@ref), so a direct call takes currency per MW.
+The returned annual cost is then in currency per MW per year.
 
 The technology builders apply the resulting annual cost through Nosy fixed-cost
 behaviours.
