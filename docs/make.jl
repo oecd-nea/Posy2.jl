@@ -22,11 +22,11 @@ makedocs(
     modules=[Posy2],
     sitename="Posy2.jl",
     authors="Guillaume KRIVTCHIK, OECD Nuclear Energy Agency, and contributors",
-    repo="https://github.com/GKrivtchik/Posy2.jl/blob/{commit}{path}#L{line}",
+    repo="https://github.com/oecd-nea/Posy2.jl/blob/{commit}{path}#L{line}",
     format=Documenter.HTML(
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://gkrivtchik.github.io/Posy2.jl/$(docs_version)/",
-        repolink="https://github.com/GKrivtchik/Posy2.jl",
+        canonical="https://oecd-nea.github.io/Posy2.jl/$(docs_version)/",
+        repolink="https://github.com/oecd-nea/Posy2.jl",
         assets=String[],
         edit_link=edit_branch,
     ),
@@ -85,7 +85,7 @@ makedocs(
 
 if get(ENV, "CI", "false") == "true"
     deploydocs(
-        repo="github.com/GKrivtchik/Posy2.jl.git",
+        repo="github.com/oecd-nea/Posy2.jl.git",
         devbranch="main",
         devurl="dev",
         versions=[

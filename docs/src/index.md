@@ -32,4 +32,4 @@ Nosy objects, and [Examples](examples.md) develops complete systems one feature
 at a time.
 
 ## Licence
-Posy2 is available under the [MIT licence](https://github.com/GKrivtchik/Posy2.jl/blob/main/LICENSE.md).
+Posy2 is available under the [MIT licence](https://github.com/oecd-nea/Posy2.jl/blob/main/LICENSE.md).
