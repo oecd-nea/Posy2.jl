@@ -82,6 +82,45 @@ using HiGHS
         )
     end
 
+    # Refuelling applies independently of the technology data column.
+    let
+        s, elec, co2 = makesnapshot()
+        c = makenuclear(
+            "Generic refuelling", "CCGT", elec, co2, s;
+            uc=true, cap=100.0, unit_size=100.0,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
+            decommissioning=0.0, connection_cost=0.0, fuel_cost=0.0,
+            waste_cost=0.0, no_load_cost=0.0, startup_cost=0.0,
+            co2_emission=0.0, ramp_up=0.0, ramp_down=0.0,
+            min_power=0.3, min_uptime=1, min_downtime=1,
+            startup_duration=1, shutdown_duration=1,
+            refuel_fraction_per_year=0.2, refuel_duration=12, refuelmask=12,
+        )
+        ucb = only(Nosy.getbehaviors(c, Nosy.AbstractFleetUnitCommitmentBehavior))
+        @test length(ucb.shutdownselector) == 2
+        refuel_shutdown = ucb.shutdownselector[2][2]
+        @test refuel_shutdown isa GenericAffExpr
+        @test is_fixed(first(refuel_shutdown.terms)[1])
+    end
+
+    # The master switch skips refuelling parameters and builds ordinary UC.
+    let
+        s, elec, co2 = makesnapshot(hours=24)
+        c = makenuclear(
+            "Refuelling disabled", "CCGT", elec, co2, s;
+            uc=true, cap=100.0, unit_size=100.0, refuel=false,
+            overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
+            decommissioning=0.0, connection_cost=0.0, fuel_cost=0.0,
+            waste_cost=0.0, no_load_cost=0.0, startup_cost=0.0,
+            co2_emission=0.0, ramp_up=0.0, ramp_down=0.0,
+            min_power=0.3, min_uptime=1, min_downtime=1,
+            startup_duration=1, shutdown_duration=1,
+            refuel_fraction_per_year=0.2, refuel_duration=12, refuelmask=nothing,
+        )
+        ucb = only(Nosy.getbehaviors(c, Nosy.AbstractFleetUnitCommitmentBehavior))
+        @test length(ucb.shutdownselector) == 1
+    end
+
     # Run of river can optimize output capacity within explicit bounds.
     let
         s, elec, _ = makesnapshot(hours=24)

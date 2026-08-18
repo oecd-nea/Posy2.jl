@@ -208,12 +208,13 @@ For `makedispatchable` and `makenuclear`, enabling unit commitment reads
 `uc=<extracted snapshot>` replays a solved commitment schedule and needs none
 of them.
 
-`uc=true` on nuclear additionally reads `refuel_fraction_per_year`, and a
-positive refuel fraction causes `refuel_duration` to be read. `refuelmask` is
-an argument-only scheduling interval and has no workbook row. A replayed
-schedule already contains whatever refuelling outages it was solved with, so
-`uc=<extracted snapshot>` builds no refuelling constraints and warns if refuelling
-arguments are supplied.
+With the default `refuel=true`, `uc=true` on nuclear additionally reads
+`refuel_fraction_per_year`, and a positive refuel fraction causes
+`refuel_duration` to be read. Set `refuel=false` to skip these reads and disable
+refuelling. `refuelmask` is an argument-only scheduling interval and has no
+workbook row. A replayed schedule already contains whatever refuelling outages
+it was solved with, so `uc=<extracted snapshot>` builds no refuelling constraints
+and warns if refuelling arguments are supplied.
 
 `ramp_up` and `ramp_down` are used by `makedispatchable` and `makenuclear` only
 when `unit_size > 0`. In `:arguments` mode, omitted, `nothing`, or zero ramp

@@ -68,16 +68,17 @@ mode; in `:excel` mode, omitted values come from the technology column.
 ![Ports of a nuclear generation component](../assets/component-nuclear.svg)
 
 Fresh unit commitment may include planned refuelling outages. Refuelling is
-active only when `uc=true`, `refuel_fraction_per_year` is positive, and
-`refuel_duration` is positive. In that case `refuelmask` must be a positive
-integer interval supplied by the caller. In `:excel` mode, refuel fraction and
-duration default to the `dispatchable` technology column. In `:arguments` mode
-they default to zero, disabling refuelling outages; `refuelmask` has no workbook
-default and is needed only when positive refuel fraction and duration activate
-the feature. Supplying refuelling arguments with `uc=false` emits a warning and
-does not add refuelling constraints. A replayed UC schedule retains the outages it
-was solved with; explicit refuelling arguments emit a warning and are ignored.
-Economic terms and emissions also default to zero in `:arguments` mode.
+active only when `refuel=true`, `uc=true`, `refuel_fraction_per_year` is
+positive, and `refuel_duration` is positive. Set `refuel=false` to disable it
+without reading or validating the other refuelling arguments. When active,
+`refuelmask` must be a positive integer interval supplied by the caller. In
+`:excel` mode, refuel fraction and duration default to the `dispatchable`
+technology column. In `:arguments` mode they default to zero, disabling
+refuelling outages; `refuelmask` has no workbook default. Supplying refuelling
+arguments with `uc=false` emits a warning and does not add refuelling
+constraints. A replayed UC schedule retains the outages it was solved with;
+explicit refuelling arguments emit a warning and are ignored. Economic terms
+and emissions also default to zero in `:arguments` mode.
 
 Capacity follows the common numeric, external-expression, `nothing`, and
 inherited-from-a-snapshot semantics. For an external expression, `mincap` and
@@ -87,10 +88,8 @@ whereas an `AffExpr` is rejected. In particular, `unit_size` does not make an
 external variable a number-of-units variable; represent that explicitly as
 `unit_size * integer_units` when unit-block integrality is required.
 
-The specialised refuelling constraints apply only when `techkey` is exactly
-`Nuclear`, `Nuclear flexible`, or `SMR`. They also assume an 8,760-hour model
-horizon. Other `techkey` values may omit those constraints. Use these exact
-conventions only for a full non-leap-year study.
+Refuelling constraints do not depend on `techkey`. They assume an 8,760-hour
+model horizon, so use them only for a full non-leap-year study.
 
 Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `generation`
 and `dispatchable`. Direct emissions are controlled by `co2_emission`; the

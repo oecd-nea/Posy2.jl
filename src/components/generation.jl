@@ -266,7 +266,8 @@ end
     makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing, integercap=false, warmstart=nothing,
         uc=false, integeruc=false, startupmask=nothing, shutdownmask=nothing,
-        refuel_duration::Union{Nothing,Real}=nothing, refuelmask::Union{Nothing,Real}=nothing, refuel_fraction_per_year::Union{Nothing,Real}=nothing,
+        refuel::Bool=true, refuel_duration::Union{Nothing,Real}=nothing,
+        refuelmask::Union{Nothing,Real}=nothing, refuel_fraction_per_year::Union{Nothing,Real}=nothing,
         fuelnode=nothing, co2price=co2_price(s),
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
@@ -304,6 +305,7 @@ Arguments:
   * `startupmask`: Optional masks restricting UC startup/shutdown availability over time.
   * `shutdownmask`: Optional masks restricting UC startup/shutdown availability over time.
 
+  * `refuel`: Enables planned refuelling constraints. Set to `false` to disable refuelling regardless of the other refuelling arguments.
   * `refuel_duration`: Duration of planned refuelling outage. If `nothing`, read from the technology workbook. Must be >= 0; refuelling constraints are enabled only when this value is > 0.
   * `refuelmask`: Interval between allowed refuelling windows. Non-default parameter (not read from the technology workbook). When refuelling is enabled, it must be provided, strictly positive, and integer-valued.
   * `refuel_fraction_per_year`: Minimum yearly refuelling requirement (fraction per unit per year). If `nothing`, read from the technology workbook. Must be >= 0; refuelling constraints are enabled only when this value is > 0.
@@ -343,7 +345,8 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
     uc::Union{Bool,Snapshot}=false, integeruc=false, startupmask=nothing, shutdownmask=nothing,
 
     # refuelling controls
-    refuel_duration::Union{Nothing,Real}=nothing, refuelmask::Union{Nothing,Real}=nothing, refuel_fraction_per_year::Union{Nothing,Real}=nothing,
+    refuel::Bool=true, refuel_duration::Union{Nothing,Real}=nothing,
+    refuelmask::Union{Nothing,Real}=nothing, refuel_fraction_per_year::Union{Nothing,Real}=nothing,
 
     # external nodes / prices
     fuelnode=nothing, co2price::Real=co2_price(s),
@@ -462,15 +465,15 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
     end
 
     # special case: cycling constraints for nuclear
-    _refuel_on = false
-    if !_ucenabled(uc) && (!isnothing(refuel_duration) || !isnothing(refuelmask) || !isnothing(refuel_fraction_per_year))
+    _refuel = false
+    if refuel && !_ucenabled(uc) && (!isnothing(refuel_duration) || !isnothing(refuelmask) || !isnothing(refuel_fraction_per_year))
         @warn "Because uc=false for nuclear component, refuelling is not modeled." component=cname techkey=techkey
     end
-    if uc isa Snapshot && (!isnothing(refuel_duration) || !isnothing(refuelmask) || !isnothing(refuel_fraction_per_year))
+    if refuel && uc isa Snapshot && (!isnothing(refuel_duration) || !isnothing(refuelmask) || !isnothing(refuel_fraction_per_year))
         @warn "Because uc replays a solved schedule for nuclear component, refuelling follows that schedule and refuelling arguments are ignored." component=cname techkey=techkey
     end
     # refuelling constraints are built from fresh arguments, never over a replayed schedule
-    if uc === true
+    if refuel && uc === true
         _refuel_fraction = if isnothing(refuel_fraction_per_year)
             excel ? gettechparam(s, techkey, "refuel_fraction_per_year", "dispatchable") : 0.0
         else
@@ -486,8 +489,8 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
             end
             @argcheck _refuel_duration isa Real "refuel_duration must be Real."
             @argcheck _refuel_duration >= 0 "refuel_duration must be >= 0."
-            _refuel_on = (_refuel_fraction > 0) && (_refuel_duration > 0)
-            if _refuel_on
+            _refuel = (_refuel_fraction > 0) && (_refuel_duration > 0)
+            if _refuel
                 @argcheck !isnothing(refuelmask) "refuelmask must be provided when refuelling is enabled."
                 _refuel_mask_raw = refuelmask
                 @argcheck _refuel_mask_raw isa Real "refuelmask must be Real."
@@ -517,7 +520,7 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
             @argcheck _min_downtime isa Real "min_downtime must be Real."
             @argcheck _startup_dur isa Real "startup_duration must be Real."
             @argcheck _shutdown_dur isa Real "shutdown_duration must be Real."
-            if _refuel_on
+            if _refuel
                 push!(vb, Nosy.UnitCommitment("output", 
                     _min_power, 
                     uptime=_min_uptime, 
@@ -571,67 +574,41 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
     c = Component(cname * " " * elec.name, m, vb)
     tag!(c, :tech, cname)
     tag!(c, :zone, elec.name)
-    if _refuel_on
+    if _refuel
         _ucb = first(Nosy.getbehaviors(c, Nosy.AbstractFleetUnitCommitmentBehavior))
-        if techkey in ("Nuclear", "Nuclear flexible",)
-            # reduce capabilities of short shutdown
-            if _refuel_on
-                for h in 1:8760
-                    # reduce possibilities for refuelling type shutdown
-                    if !iszero((h-1)%(12))
-                        # reduce possibilities for startup
-                        e = _ucb.startup[h]
-                        if (e isa GenericAffExpr) && !iszero(e)
-                            v = first(e.terms)[1]
-                            fix(v, 0., force=true)
-                        end                
+        # reduce capabilities of short shutdown
+        for h in 1:8760
+            if !iszero((h-1)%(12))
+                # reduce possibilities for startup
+                e = _ucb.startup[h]
+                if (e isa GenericAffExpr) && !iszero(e)
+                    v = first(e.terms)[1]
+                    fix(v, 0., force=true)
+                end
 
-                        # reduce possibilities for normal shutdown
-                        e = _ucb.shutdownselector[1][h]
-                        if (e isa GenericAffExpr) && !iszero(e)
-                            v = first(e.terms)[1]
-                            fix(v, 0., force=true)
-                        end
-                    end
+                # reduce possibilities for normal shutdown
+                e = _ucb.shutdownselector[1][h]
+                if (e isa GenericAffExpr) && !iszero(e)
+                    v = first(e.terms)[1]
+                    fix(v, 0., force=true)
                 end
-            end
-
-            # refuelling of nuclear fuel
-            if _refuel_on
-                sum_refuel = AffExpr(0.)
-                for h in 1:8760
-                    # reduce possibilities for refuelling type shutdown
-                    if !iszero((h-1)%_refuel_mask)
-                        e = _ucb.shutdownselector[2][h]
-                        if (e isa GenericAffExpr) && !iszero(e)
-                            v = first(e.terms)[1]
-                            fix(v, 0., force=true)
-                        end
-                    else
-                        add_to_expression!(sum_refuel, _ucb.shutdownselector[2][h])
-                    end
-                end
-                @constraint(s.sim.model, sum_refuel >= _refuel_fraction * nbunits(c))
-            end
-        elseif techkey == "SMR"
-            # refuelling of nuclear fuel
-            if _refuel_on
-                sum_refuel = AffExpr(0.)
-                for h in 1:8760
-                    # reduce possibilities for refuelling type shutdown
-                    if !iszero((h-1)%_refuel_mask)
-                        e = _ucb.shutdownselector[2][h]
-                        if (e isa GenericAffExpr) && !iszero(e)
-                            v = first(e.terms)[1]
-                            fix(v, 0., force=true)
-                        end
-                    else
-                        add_to_expression!(sum_refuel, _ucb.shutdownselector[2][h])
-                    end
-                end
-                @constraint(s.sim.model, sum_refuel >= _refuel_fraction * nbunits(c))
             end
         end
+
+        # refuelling
+        sum_refuel = AffExpr(0.)
+        for h in 1:8760
+            if !iszero((h-1)%_refuel_mask)
+                e = _ucb.shutdownselector[2][h]
+                if (e isa GenericAffExpr) && !iszero(e)
+                    v = first(e.terms)[1]
+                    fix(v, 0., force=true)
+                end
+            else
+                add_to_expression!(sum_refuel, _ucb.shutdownselector[2][h])
+            end
+        end
+        @constraint(s.sim.model, sum_refuel >= _refuel_fraction * nbunits(c))
     end
     for t in ("generation", "dispatchable")
         tag!(c, :function, t)

@@ -120,9 +120,10 @@ can be modelled elsewhere in the same snapshot.
 
 Unit commitment is enabled with `uc=true`. A  positive `unit_size` sets the
 fleet unit scale (`0` means no unit-size constraint). `integeruc=true` makes
-commitment decisions integer. Nuclear refuelling constraints are only active together
-with unit commitment and require consistent refuel duration, frequency, and mask
-inputs.
+commitment decisions integer. With `refuel=true` (the default), nuclear
+refuelling constraints are active only together with unit commitment and
+require consistent refuel duration, frequency, and mask inputs. Set
+`refuel=false` to disable them.
 
 ### Storage And Conversion
 
