@@ -1,5 +1,8 @@
 # Posy2.jl
 
+[![CI](https://github.com/oecd-nea/Posy2.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/oecd-nea/Posy2.jl/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/oecd-nea/Posy2.jl/graph/badge.svg)](https://codecov.io/gh/oecd-nea/Posy2.jl)
+
 Posy2 is a country- and regional-level power system capacity expansion and
 dispatch model developed at the OECD Nuclear Energy Agency (OECD-NEA). Built on
 [Nosy.jl](https://github.com/oecd-nea/Nosy.jl), it provides a Julia workflow
@@ -49,8 +52,8 @@ Carriers, nodes, behaviours, optimisation, and generic metrics remain provided b
 
 ## Basic Example
 
-The following model has a flat 100 MW electricity demand and one dispatchable
-plant with optimisable capacity.
+The following model has a sinusoidal electricity demand centred on 100 MW and
+one dispatchable plant with optimisable capacity.
 
 ```julia
 using Posy2
