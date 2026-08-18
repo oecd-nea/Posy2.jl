@@ -14,6 +14,7 @@ remaining assets are kept simple.
 | [Two Countries](examples/two-countries.md) | Comparing trade and local generation with and without a transmission limit |
 | [Price Interconnection](examples/price-interconnection.md) | Choosing between domestic generation and priced imports |
 | [DC OPF](examples/dc-opf.md) | How KVL changes flows across meshed AC lines, and how controllable HVDC differs |
+| [Negative Locational Prices](examples/negative-prices.md) | How congestion can make a locational price negative despite positive generation costs |
 | [Dispatchable Generation](examples/dispatchable-generation.md) | Choosing PV and gas capacities, then meeting the residual demand |
 | [Nuclear](examples/nuclear.md) | How reload scheduling reduces backup capacity |
 | [CO2 Pricing](examples/co2-pricing.md) | How a carbon price reorders emitting and non-emitting technologies |
@@ -23,6 +24,7 @@ remaining assets are kept simple.
 | [Hydrogen Production](examples/hydrogen-production.md) | Producing hydrogen from PV and shifting supply with storage |
 | [Electric Vehicles](examples/electric-vehicles.md) | Comparing smart charging with vehicle-to-grid operation |
 | [Demand Response](examples/demand-response.md) | Demand-side flexibility that shaves a demand peak |
+| [Dispatch Optimization](examples/dispatch-optimization.md) | Comparing merit-order dispatch with ramp-limited operation of a fixed CCGT fleet |
 
 ## Data sources
 
@@ -49,6 +51,8 @@ The table shows which combination each example uses.
 | [CO2 Pricing](examples/co2-pricing.md) | `:arguments` | `:excel` |
 | [Electric Vehicles](examples/electric-vehicles.md) | `:arguments` | `:excel` |
 | [Demand Response](examples/demand-response.md) | `:arguments` | `:arguments` |
+| [Dispatch Optimization](examples/dispatch-optimization.md) | `:arguments` | `:arguments` |
+| [Negative Locational Prices](examples/negative-prices.md) | `:arguments` | `:arguments` |
 
 ## Exporting Example Results
 

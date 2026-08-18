@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="420" viewBox="0 0 1000.0 420.0" role="img" aria-label="Stacked solar, CCGT and OCGT output against demand over one high-solar day, ramp-constrained dispatch">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<defs>
+  <pattern id="curtHatch" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-45)">
+    <rect width="7" height="7" fill="#e9c46a" fill-opacity="0.55"/>
+    <line x1="0" y1="0" x2="0" y2="7" stroke="#6c757d" stroke-width="1.8"/>
+  </pattern>
+</defs>
+<line x1="78.0" y1="340.0" x2="970.0" y2="340.0" stroke="#e9ecef" stroke-width="1"/>
+<text x="68.0" y="344.0" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">0</text>
+<line x1="78.0" y1="262.0" x2="970.0" y2="262.0" stroke="#e9ecef" stroke-width="1"/>
+<text x="68.0" y="266.0" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">1000</text>
+<line x1="78.0" y1="184.0" x2="970.0" y2="184.0" stroke="#e9ecef" stroke-width="1"/>
+<text x="68.0" y="188.0" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">2000</text>
+<line x1="78.0" y1="106.0" x2="970.0" y2="106.0" stroke="#e9ecef" stroke-width="1"/>
+<text x="68.0" y="110.0" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">3000</text>
+<line x1="78.0" y1="28.0" x2="970.0" y2="28.0" stroke="#e9ecef" stroke-width="1"/>
+<text x="68.0" y="32.0" text-anchor="end" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">4000</text>
+<line x1="78.0" y1="28.0" x2="78.0" y2="340.0" stroke="#2f3540" stroke-width="1"/>
+<line x1="78.0" y1="340.0" x2="970.0" y2="340.0" stroke="#2f3540" stroke-width="1"/>
+<text x="18" y="184.0" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="12" fill="#2f3540" transform="rotate(-90 18,184.0)">Power (MW)</text>
+<line x1="78.0" y1="340.0" x2="78.0" y2="345.0" stroke="#2f3540" stroke-width="1"/>
+<text x="78.0" y="360.0" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">1</text>
+<line x1="194.35" y1="340.0" x2="194.35" y2="345.0" stroke="#2f3540" stroke-width="1"/>
+<text x="194.35" y="360.0" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">4</text>
+<line x1="349.48" y1="340.0" x2="349.48" y2="345.0" stroke="#2f3540" stroke-width="1"/>
+<text x="349.48" y="360.0" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">8</text>
+<line x1="504.61" y1="340.0" x2="504.61" y2="345.0" stroke="#2f3540" stroke-width="1"/>
+<text x="504.61" y="360.0" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">12</text>
+<line x1="659.74" y1="340.0" x2="659.74" y2="345.0" stroke="#2f3540" stroke-width="1"/>
+<text x="659.74" y="360.0" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">16</text>
+<line x1="814.87" y1="340.0" x2="814.87" y2="345.0" stroke="#2f3540" stroke-width="1"/>
+<text x="814.87" y="360.0" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">20</text>
+<line x1="970.0" y1="340.0" x2="970.0" y2="345.0" stroke="#2f3540" stroke-width="1"/>
+<text x="970.0" y="360.0" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">24</text>
+<line x1="698.52" y1="28.0" x2="698.52" y2="340.0" stroke="#adb5bd" stroke-width="1" stroke-dasharray="4 3"/>
+<polygon points="78.0,340.0 116.78,340.0 155.57,340.0 194.35,340.0 233.13,340.0 271.91,340.0 310.7,324.4 349.48,283.84 388.26,221.44 427.04,193.36 465.83,194.92 504.61,196.48 543.39,198.04 582.17,196.48 620.96,190.24 659.74,180.88 698.52,302.56 737.3,327.52 776.09,340.0 814.87,340.0 853.65,340.0 892.43,340.0 931.22,340.0 970.0,340.0 970.0,340.0 931.22,340.0 892.43,340.0 853.65,340.0 814.87,340.0 776.09,340.0 737.3,340.0 698.52,340.0 659.74,340.0 620.96,340.0 582.17,340.0 543.39,340.0 504.61,340.0 465.83,340.0 427.04,340.0 388.26,340.0 349.48,340.0 310.7,340.0 271.91,340.0 233.13,340.0 194.35,340.0 155.57,340.0 116.78,340.0 78.0,340.0" fill="#e9c46a" fill-opacity="0.65" stroke="#c9a227" stroke-width="0.8"/>
+<polygon points="78.0,216.76 116.78,221.44 155.57,224.56 194.35,226.12 233.13,224.56 271.91,218.32 310.7,208.96 349.48,201.16 388.26,194.92 427.04,193.36 465.83,194.92 504.61,196.48 543.39,198.04 582.17,196.48 620.96,190.24 659.74,180.88 698.52,215.63 737.3,166.14 776.09,166.14 814.87,176.2 853.65,190.24 892.43,201.16 931.22,208.96 970.0,213.64 970.0,340.0 931.22,340.0 892.43,340.0 853.65,340.0 814.87,340.0 776.09,340.0 737.3,327.52 698.52,302.56 659.74,180.88 620.96,190.24 582.17,196.48 543.39,198.04 504.61,196.48 465.83,194.92 427.04,193.36 388.26,221.44 349.48,283.84 310.7,324.4 271.91,340.0 233.13,340.0 194.35,340.0 155.57,340.0 116.78,340.0 78.0,340.0" fill="#e76f51" fill-opacity="0.88" stroke="#c44536" stroke-width="1.1"/>
+<polygon points="78.0,216.76 116.78,221.44 155.57,224.56 194.35,226.12 233.13,224.56 271.91,218.32 310.7,208.96 349.48,201.16 388.26,194.92 427.04,193.36 465.83,194.92 504.61,196.48 543.39,198.04 582.17,196.48 620.96,190.24 659.74,180.88 698.52,168.4 737.3,166.14 776.09,166.14 814.87,176.2 853.65,190.24 892.43,201.16 931.22,208.96 970.0,213.64 970.0,213.64 931.22,208.96 892.43,201.16 853.65,190.24 814.87,176.2 776.09,166.14 737.3,166.14 698.52,215.63 659.74,180.88 620.96,190.24 582.17,196.48 543.39,198.04 504.61,196.48 465.83,194.92 427.04,193.36 388.26,194.92 349.48,201.16 310.7,208.96 271.91,218.32 233.13,224.56 194.35,226.12 155.57,224.56 116.78,221.44 78.0,216.76" fill="#9b2226" fill-opacity="0.92" stroke="#6a1518" stroke-width="0.9"/>
+<polygon points="78.0,216.76 116.78,221.44 155.57,224.56 194.35,226.12 233.13,224.56 271.91,218.32 310.7,208.96 349.48,201.16 388.26,194.92 427.04,146.56 465.83,84.16 504.61,43.6 543.39,28.0 582.17,43.6 620.96,96.64 659.74,177.76 698.52,168.4 737.3,166.14 776.09,166.14 814.87,176.2 853.65,190.24 892.43,201.16 931.22,208.96 970.0,213.64 970.0,213.64 931.22,208.96 892.43,201.16 853.65,190.24 814.87,176.2 776.09,166.14 737.3,166.14 698.52,168.4 659.74,180.88 620.96,190.24 582.17,196.48 543.39,198.04 504.61,196.48 465.83,194.92 427.04,193.36 388.26,194.92 349.48,201.16 310.7,208.96 271.91,218.32 233.13,224.56 194.35,226.12 155.57,224.56 116.78,221.44 78.0,216.76" fill="url(#curtHatch)" stroke="none"/>
+<polyline fill="none" stroke="#2f3540" stroke-width="1.8" points="78.0,216.76 116.78,221.44 155.57,224.56 194.35,226.12 233.13,224.56 271.91,218.32 310.7,208.96 349.48,201.16 388.26,194.92 427.04,193.36 465.83,194.92 504.61,196.48 543.39,198.04 582.17,196.48 620.96,190.24 659.74,180.88 698.52,168.4 737.3,166.14 776.09,166.14 814.87,176.2 853.65,190.24 892.43,201.16 931.22,208.96 970.0,213.64"/>
+<rect x="780" y="40" width="176" height="122" fill="#ffffff" fill-opacity="0.94" stroke="#adb5bd" stroke-width="1"/>
+<rect x="792" y="52" width="14" height="10" fill="#e9c46a" fill-opacity="0.65" stroke="#c9a227" stroke-width="1"/>
+<text x="814" y="61" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">Solar</text>
+<rect x="792" y="72" width="14" height="10" fill="#e76f51" fill-opacity="0.88" stroke="#c44536" stroke-width="1"/>
+<text x="814" y="81" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">CCGT</text>
+<rect x="792" y="92" width="14" height="10" fill="#9b2226" fill-opacity="0.92" stroke="#6a1518" stroke-width="1"/>
+<text x="814" y="101" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">OCGT</text>
+<line x1="792" y1="118" x2="814" y2="118" stroke="#2f3540" stroke-width="1.8"/>
+<text x="822" y="122" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">Demand</text>
+<rect x="792" y="134" width="14" height="10" fill="url(#curtHatch)" stroke="#6c757d" stroke-width="1"/>
+<text x="814" y="143" font-family="DejaVu Sans, sans-serif" font-size="11" fill="#2f3540">Curtailment</text>
+<text x="524" y="400" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="12" fill="#2f3540">Hour of day</text>
+</svg>
