@@ -16,7 +16,7 @@ including: [A Least-cost Capacity Mix to Satisfy Growing Electricity Demand with
 
 ## Documentation
 
-The [Posy2 manual](docs/src/index.md) covers setup, input, component
+The [Posy2 manual](https://oecd-nea.github.io/Posy2.jl/dev/) covers setup, input, component
 builders, optimisation, querying, export, performance, and complete examples.
 Posy2 builds on the modelling concepts in the
 [Nosy user guide](https://oecd-nea.github.io/Nosy.jl/dev/).
