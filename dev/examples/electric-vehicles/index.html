@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Electric Vehicles · Posy2.jl</title><meta name="title" content="Electric Vehicles · Posy2.jl"/><meta property="og:title" content="Electric Vehicles · Posy2.jl"/><meta property="twitter:title" content="Electric Vehicles · Posy2.jl"/><meta name="description" content="Documentation for Posy2.jl."/><meta property="og:description" content="Documentation for Posy2.jl."/><meta property="twitter:description" content="Documentation for Posy2.jl."/><meta property="og:url" content="https://oecd-nea.github.io/Posy2.jl/main/examples/electric-vehicles/"/><meta property="twitter:url" content="https://oecd-nea.github.io/Posy2.jl/main/examples/electric-vehicles/"/><link rel="canonical" href="https://oecd-nea.github.io/Posy2.jl/main/examples/electric-vehicles/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Posy2.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../getting-started/">Getting Started</a></li><li><span class="tocitem">Modelling Concepts</span><ul><li><a class="tocitem" href="../../concepts/">Overview</a></li><li><a class="tocitem" href="../../concepts/options/">Study Configuration</a></li><li><a class="tocitem" href="../../concepts/input-data/">Input Workbooks</a></li><li><a class="tocitem" href="../../concepts/building-snapshot/">Building a Snapshot</a></li><li><input class="collapse-toggle" id="menuitem-3-5" type="checkbox"/><label class="tocitem" for="menuitem-3-5"><span class="docs-label">Component Builders</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../components/">Overview</a></li><li><a class="tocitem" href="../../components/demand/">Demand and Flexibility</a></li><li><a class="tocitem" href="../../components/generation/">Generation</a></li><li><a class="tocitem" href="../../components/storage-conversion/">Storage</a></li><li><a class="tocitem" href="../../components/electric-vehicles/">Electric Vehicles</a></li><li><a class="tocitem" href="../../components/interconnections/">Interconnections</a></li><li><a class="tocitem" href="../../components/hydrogen/">Hydrogen</a></li></ul></li><li><a class="tocitem" href="../../concepts/extending/">Extending Posy2</a></li><li><a class="tocitem" href="../../concepts/optimizing/">Optimizing a Snapshot</a></li><li><a class="tocitem" href="../../concepts/querying/">Querying a Snapshot</a></li><li><a class="tocitem" href="../../concepts/tags/">Tags and Post-Processing</a></li><li><a class="tocitem" href="../../concepts/exporting/">Exporting Results</a></li></ul></li><li><a class="tocitem" href="../../performance/">Performance</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../one-country/">One Country</a></li><li><a class="tocitem" href="../two-countries/">Two Countries</a></li><li><a class="tocitem" href="../price-interconnection/">Price Interconnection</a></li><li><a class="tocitem" href="../dc-opf/">DC OPF</a></li><li><a class="tocitem" href="../negative-prices/">Negative Locational Prices</a></li><li><a class="tocitem" href="../dispatchable-generation/">Dispatchable Generation</a></li><li><a class="tocitem" href="../nuclear/">Nuclear</a></li><li><a class="tocitem" href="../co2-pricing/">CO2 Pricing</a></li><li><a class="tocitem" href="../battery-storage/">Battery Storage</a></li><li><a class="tocitem" href="../hydro-reservoir/">Hydro Reservoir</a></li><li><a class="tocitem" href="../pumped-storage-hydro/">Pumped Storage</a></li><li><a class="tocitem" href="../hydrogen-production/">Hydrogen Production</a></li><li class="is-active"><a class="tocitem" href>Electric Vehicles</a><ul class="internal"><li><a class="tocitem" href="#Smart-charging"><span>Smart charging</span></a></li><li><a class="tocitem" href="#Vehicle-to-grid"><span>Vehicle-to-grid</span></a></li></ul></li><li><a class="tocitem" href="../demand-response/">Demand Response</a></li><li><a class="tocitem" href="../dispatch-optimization/">Dispatch Optimization</a></li><li><a class="tocitem" href="../stochastic/">Stochastic Programming</a></li><li><a class="tocitem" href="../infeasibility/">Infeasibility</a></li></ul></li><li><a class="tocitem" href="../../api/">API Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Electric Vehicles</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Electric Vehicles</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/oecd-nea/Posy2.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/oecd-nea/Posy2.jl/blob/main/docs/src/examples/electric-vehicles.md#L" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Electric-Vehicles"><a class="docs-heading-anchor" href="#Electric-Vehicles">Electric Vehicles</a><a id="Electric-Vehicles-1"></a><a class="docs-heading-anchor-permalink" href="#Electric-Vehicles" title="Permalink"></a></h1><div class="admonition is-warning" id="Unstable-EV-API-583a667f76df7c06"><header class="admonition-header">Unstable EV API<a class="admonition-anchor" href="#Unstable-EV-API-583a667f76df7c06" title="Permalink"></a></header><div class="admonition-body"><p>The EV API is not fixed yet. The modes, keyword arguments, component and port structure, and reporting semantics may change substantially in later Posy2 versions.</p></div></div><p>This example compares smart charging and vehicle-to-grid on the same fleet and driving need: how grid charge, discharge, and OCGT generation change.</p><p><a href="../../api/#Posy2.makeEV"><code>makeEV</code></a> picks that behaviour with exactly one of three flags: <code>fixed_profile</code>, <code>smart_charging</code>, or <code>vehicle_to_grid</code>. This page keeps the same demand, PV, OCGT backup, and driving need, and only flips the flag: <code>smart_charging=true</code> first, then <code>vehicle_to_grid=true</code>.</p><p>The setup is:</p><ul><li>country1 workbook demand plus an explicit non-uniform daily demand profile</li><li>1500 MW of PV</li><li>a fleet whose annual driving energy is 50,000 MWh</li><li>OCGT backup that covers residual load</li></ul><p>The driving follows a fixed hourly profile. With smart charging the optimiser only chooses when to fill the battery. With V2G it also chooses when to sell power back to the node.</p><h2 id="Smart-charging"><a class="docs-heading-anchor" href="#Smart-charging">Smart charging</a><a id="Smart-charging-1"></a><a class="docs-heading-anchor-permalink" href="#Smart-charging" title="Permalink"></a></h2><p>Cars take power from the grid and give it up only as driving. Charge hours are free, so the optimiser charges when the dual is low to cover later driving. With no grid discharge, annual grid charge exceeds annual driving only by the charging losses: at 90% efficiency, 55,555.56 MWh of charge supports the 50,000 MWh driving need.</p><pre><code class="language-julia hljs">using Posy2
+using Nosy
+using HiGHS
+import JuMP: set_silent
+
+# Simulation and Posy2 input configuration
+sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+set_silent(model(sim))
+example_data_dir = joinpath(pkgdir(Posy2), &quot;data&quot;)
+snapshot = Snapshot(sim, Dict(:posy =&gt; Posy2Options(
+    data_dir=example_data_dir,
+    techdata_file=&quot;tech_data.xlsx&quot;,
+    timeseries_file=&quot;time_series.xlsx&quot;,
+    tech_mode=:arguments,
+    timeseries_mode=:excel,
+)))
+
+# Electricity node (evalprice for dualprice) and CO2 sink
+electricity = Node(&quot;country1&quot;, EnergyCarrier(&quot;electricity country1&quot;, sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+co2 = Node(&quot;CO2&quot;, CO2Carrier(&quot;CO2&quot;, sim), rule=:curtailed, tags=[:co2])
+
+# Hourly electricity demand from the time-series workbook
+makedemand(&quot;Demand&quot;, &quot;country1&quot;, electricity, snapshot)
+
+# Additional exogenous demand with distinct morning and evening peaks
+daily_extra_demand = Float64[
+    30, 15, 0, 0, 15, 45, 90, 140, 80, 30, 0, 40,
+    110, 50, 10, 20, 70, 150, 100, 30, 90, 60, 30, 20,
+]
+makedemand(
+    &quot;Variable demand&quot;, &quot;country1&quot;, electricity, snapshot;
+    profile=repeat(daily_extra_demand, 365),
+)
+
+# Fixed 1500 MW PV
+makeintermittentsource(
+    &quot;Solar&quot;, &quot;PV&quot;, electricity, co2, snapshot;
+    cap=1500.0,
+    weatheryear=2019,
+)
+
+# Smart-charging fleet: 50 000 MWh/year driving; charge only
+makeEV(
+    &quot;EV&quot;, 50000.0, electricity, snapshot;
+    fixed_profile=false,
+    smart_charging=true,
+    zone=&quot;country1&quot;,
+    charging_eff=0.9,
+    max_charging_power_per_ev=0.01,     # MW per vehicle, * fleet size
+    battery_capacity_per_ev=0.06,       # MWh per vehicle, * fleet size
+    yearly_consumption_per_ev=0.02,     # MWh/year per vehicle (sets fleet size)
+)
+
+# Fixed OCGT backup (continuous UC with startup cost, same plant in both cases)
+makedispatchable(
+    &quot;OCGT&quot;, &quot;OCGT&quot;, electricity, co2, snapshot;
+    cap=1200.0,
+    fuel_cost=68.24,
+    unit_size=100.0,
+    uc=true,
+    startup_cost=6_270.0,
+    min_power=0.3,
+    min_uptime=2.0,
+    min_downtime=2.0,
+    startup_duration=1.0,
+    shutdown_duration=1.0,
+)
+
+# Minimise total system cost and extract solved values
+optimize!(snapshot, cost(snapshot))
+result = extract(snapshot)</code></pre><p>Annual driving is the fleet&#39;s 50 000 MWh target. Charge is higher because of the 90% charging efficiency, and nothing is sold to the node. OCGT still covers residual demand:</p><pre><code class="language-julia-repl hljs">julia&gt; driving = balance(result, &quot;EV country1&quot;, :output, energy; collapse=true, aggregate=true)
+50000.00000000169
+
+julia&gt; charge = balance(result, &quot;EV country1&quot;, :input, energy; collapse=true, aggregate=true)
+55555.55555555601
+
+julia&gt; balance(result, &quot;OCGT country1&quot;, :output, energy; collapse=true, aggregate=true)
+5.091619222628578e6</code></pre><p>The figure uses 25–26 June, when the additional demand peaks, PV, and OCGT commitment produce several price levels. Charging lines up with lower duals, and the battery-level panel shows how energy moves between charging and the fixed driving profile. Nothing is sold back to the node.</p><p><img src="../../assets/electric-vehicles-smart.svg" alt="Smart charging: grid charging, battery level, dual price, and driving demand over two days"/></p><h2 id="Vehicle-to-grid"><a class="docs-heading-anchor" href="#Vehicle-to-grid">Vehicle-to-grid</a><a id="Vehicle-to-grid-1"></a><a class="docs-heading-anchor-permalink" href="#Vehicle-to-grid" title="Permalink"></a></h2><p>The same fleet keeps the same driving need, and may also inject into the electricity node. Discharge adds a <code>compensation</code> cost per MWh, so the optimiser sells back mainly when the node dual is high enough to cover that cost. Charging gathers when the dual is low.</p><pre><code class="language-julia hljs">using Posy2
+using Nosy
+using HiGHS
+import JuMP: set_silent
+
+# Simulation and Posy2 input configuration
+sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+set_silent(model(sim))
+example_data_dir = joinpath(pkgdir(Posy2), &quot;data&quot;)
+snapshot = Snapshot(sim, Dict(:posy =&gt; Posy2Options(
+    data_dir=example_data_dir,
+    techdata_file=&quot;tech_data.xlsx&quot;,
+    timeseries_file=&quot;time_series.xlsx&quot;,
+    tech_mode=:arguments,
+    timeseries_mode=:excel,
+)))
+
+# Electricity node (evalprice for dualprice) and CO2 sink
+electricity = Node(&quot;country1&quot;, EnergyCarrier(&quot;electricity country1&quot;, sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+co2 = Node(&quot;CO2&quot;, CO2Carrier(&quot;CO2&quot;, sim), rule=:curtailed, tags=[:co2])
+
+# Hourly electricity demand from the time-series workbook
+makedemand(&quot;Demand&quot;, &quot;country1&quot;, electricity, snapshot)
+
+# Same additional exogenous demand as in the smart-charging case
+daily_extra_demand = Float64[
+    30, 15, 0, 0, 15, 45, 90, 140, 80, 30, 0, 40,
+    110, 50, 10, 20, 70, 150, 100, 30, 90, 60, 30, 20,
+]
+makedemand(
+    &quot;Variable demand&quot;, &quot;country1&quot;, electricity, snapshot;
+    profile=repeat(daily_extra_demand, 365),
+)
+
+# Fixed 1500 MW PV (same as smart-charging case)
+makeintermittentsource(
+    &quot;Solar&quot;, &quot;PV&quot;, electricity, co2, snapshot;
+    cap=1500.0,
+    weatheryear=2019,
+)
+
+# Same fleet and driving need as smart charging, with grid discharge enabled
+makeEV(
+    &quot;EV&quot;, 50000.0, electricity, snapshot;
+    fixed_profile=false,
+    vehicle_to_grid=true,
+    zone=&quot;country1&quot;,
+    charging_eff=0.9,
+    max_charging_power_per_ev=0.01,     # MW per vehicle, * fleet size
+    max_dispatch_power_per_ev=0.01,     # MW per vehicle V2G rating, * fleet size
+    battery_capacity_per_ev=0.06,       # MWh per vehicle, * fleet size
+    yearly_consumption_per_ev=0.02,     # MWh/year per vehicle (sets fleet size)
+    compensation=20.0,                  # currency/MWh on grid discharge
+)
+
+# Same OCGT plant as the smart-charging case
+makedispatchable(
+    &quot;OCGT&quot;, &quot;OCGT&quot;, electricity, co2, snapshot;
+    cap=1200.0,
+    fuel_cost=68.24,
+    unit_size=100.0,
+    uc=true,
+    startup_cost=6_270.0,
+    min_power=0.3,
+    min_uptime=2.0,
+    min_downtime=2.0,
+    startup_duration=1.0,
+    shutdown_duration=1.0,
+)
+
+# Minimise total system cost and extract solved values
+optimize!(snapshot, cost(snapshot))
+result = extract(snapshot)</code></pre><p>Driving stays at 50 000 MWh. With V2G the fleet can also sell power back, so it cycles like a battery: annual charge rises well above driving, grid discharge appears, and OCGT generation reduces:</p><pre><code class="language-julia-repl hljs">julia&gt; outputs = balance(result, &quot;EV country1&quot;, :output, energy; collapse=true, aggregate=false);
+
+julia&gt; driving = outputs[&quot;driving&quot;]
+50000.00000000169
+
+julia&gt; discharge = outputs[&quot;output&quot;]
+375144.1624858788
+
+julia&gt; charge = balance(result, &quot;EV country1&quot;, :input, energy; collapse=true, aggregate=true)
+472382.40276208974
+
+julia&gt; balance(result, &quot;OCGT country1&quot;, :output, energy; collapse=true, aggregate=true)
+4.9339712652762635e6
+
+julia&gt; price = dualprice(result.nodes[&quot;country1&quot;]);
+
+julia&gt; sort(unique(round.(price[4201:4248]; digits=3)))
+5-element Vector{Float64}:
+ 46.835
+ 68.24
+ 69.914
+ 70.22
+ 72.039</code></pre><p><code>dualprice</code> returns the hourly node dual. The selected two-day window contains five price levels rather than the nearly flat winter window.</p><p>On the same June window as above, charge sits under low duals and V2G discharge appears under higher duals. The battery-level curve makes the intertemporal balance visible when discharge and charging differ within the plotted window.</p><p><img src="../../assets/electric-vehicles-v2g.svg" alt="V2G: grid charging, V2G discharge, battery level, dual price, and driving demand over two days"/></p><h3 id="Comparing-the-two-modes"><a class="docs-heading-anchor" href="#Comparing-the-two-modes">Comparing the two modes</a><a id="Comparing-the-two-modes-1"></a><a class="docs-heading-anchor-permalink" href="#Comparing-the-two-modes" title="Permalink"></a></h3><p>Both runs keep the same country1 demand, 1500 MW of PV, OCGT backup, and 50 000 MWh annual driving need. Only the EV mode flag flips from <code>smart_charging=true</code> to <code>vehicle_to_grid=true</code>. Smart charging exposes <code>driving</code> only. V2G adds a grid <code>output</code> (discharge). Driving energy matches in both cases. OCGT generation reduces under V2G because that discharge can cover residual load.</p><table><tr><th style="text-align: left"></th><th style="text-align: right">Smart</th><th style="text-align: right">V2G</th></tr><tr><td style="text-align: left"><code>:output</code> ports</td><td style="text-align: right"><code>driving</code> only</td><td style="text-align: right"><code>driving</code> + <code>output</code></td></tr><tr><td style="text-align: left">Grid discharge (MWh/year)</td><td style="text-align: right">0</td><td style="text-align: right">375144</td></tr><tr><td style="text-align: left">OCGT generation (MWh/year)</td><td style="text-align: right">5.092e6</td><td style="text-align: right">4.934e6</td></tr><tr><td style="text-align: left">Driving energy (MWh/year)</td><td style="text-align: right">50000</td><td style="text-align: right">50000</td></tr></table></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../hydrogen-production/">« Hydrogen Production</a><a class="docs-footer-nextpage" href="../demand-response/">Demand Response »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Tuesday 18 August 2026 19:36">Tuesday 18 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
