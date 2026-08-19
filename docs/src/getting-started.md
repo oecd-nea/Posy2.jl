@@ -14,8 +14,25 @@ linear examples used here. Other
 [JuMP-compatible solvers](https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers)
 can be used the same way. Please note: some solvers require a separate installation and licence.
 
-Use a Julia environment in which Posy2, Nosy, and the selected solver are
-already available.
+## Installation
+
+Posy2 is not yet in the Julia General registry, so install it from its
+repository. Nosy is added explicitly: a study calls Nosy directly for `Sim`,
+carriers, nodes, and the query functions, so it has to be a dependency of your
+project and not only of Posy2. Nosy itself is registered, so it is added by
+name.
+
+```julia
+using Pkg
+Pkg.add(url="https://github.com/oecd-nea/Posy2.jl")
+Pkg.add(["Nosy", "HiGHS"])  # HiGHS, or another JuMP-compatible solver
+```
+
+Check the installation with:
+
+```julia
+using Posy2, Nosy, HiGHS
+```
 
 ## Minimal Workflow
 
@@ -26,11 +43,9 @@ plant with optimisable capacity.
 using Posy2
 using Nosy
 using HiGHS
-import JuMP: set_silent
 
 # Create the Nosy simulation and silence solver output.
 s = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
-set_silent(model(s))
 
 # Posy2 options are stored under the :posy key of the snapshot.
 options = Posy2Options(
@@ -56,18 +71,11 @@ makedispatchable(
     grid,
     atmosphere,
     snapshot;
-    maxcap=200.0,                   # upper bound on capacity (MW)
-    overnight_cost=1_000.0,         # overnight investment cost (USD/kW)
-    om_fixed_cost=10.0,             # fixed O&M (USD/kW/y)
-    decommissioning=0.05,           # fraction of overnight cost, paid at end of lifetime
-    lifetime=30,                    # economic lifetime (years)
-    construction_profile=1.0,       # one-year construction spend
-    decommissioning_profile=1.0,    # one-year decommissioning spend
-    connection_cost=0.1,            # fraction of investment cost, paid at commissioning
-    om_var_cost=2.0,                # variable O&M per MWh (USD/MWh)
-    fuel_cost=70.0,                 # fuel cost per MWh (USD/MWh)
-    co2_emission=350.,              # CO2 emission (kg/MWh)
-    unit_size=100.0,                # unit size (MW)
+    overnight_cost=1_000.0,      # overnight investment cost (USD/kW)
+    lifetime=30,                 # economic lifetime (years)
+    construction_profile=1.0,    # one-year construction
+    fuel_cost=70.0,              # fuel cost per MWh (USD/MWh)
+    co2_emission=350.0,          # CO2 emission (kg/MWh)
 )
 
 # Minimise total system cost and extract numeric results.
