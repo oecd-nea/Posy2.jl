@@ -314,4 +314,18 @@ using HiGHS
         @test up.data.val == 0.2 * 2.0
         @test down.data.val == 0.3 * 2.0
     end
+
+    # With integer UC and optimized capacity, bounds are aligned to whole units.
+    let
+        s, elec, co2 = makesnapshot(hours=24)
+        c = makedispatchable(
+            "CCGT integeruc bounds", "CCGT", elec, co2, s;
+            cap=nothing, mincap=5.0, maxcap=11.0, unit_size=4.0,
+            uc=true, integeruc=true,
+            construction_profile=1.0, decommissioning_profile=1.0,
+        )
+        capacity_behavior = only(Nosy.getbehaviors(c, Nosy.VariableCapacityBehavior))
+        @test capacity_behavior.data.lb == 8.0
+        @test capacity_behavior.data.ub == 8.0
+    end
 end
