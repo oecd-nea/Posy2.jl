@@ -176,8 +176,18 @@ function makedispatchable(cname::String, techkey::String, elec::Node, co2::Node,
         @argcheck _usize_raw > 0 "unit_size must be > 0 when non-zero."
         _usize = _usize_raw
     end
+    _mincap = mincap
+    _maxcap = maxcap
+    if _ucenabled(uc) && integeruc && !isnothing(_usize) && isnothing(cap)
+        if !isnothing(_mincap)
+            _mincap = ceil(_mincap / _usize) * _usize
+        end
+        if !isnothing(_maxcap) && isfinite(_maxcap)
+            _maxcap = floor(_maxcap / _usize) * _usize
+        end
+    end
     push!(vb, gencapacity(cap, "output", s, cname * " " * elec.name;
-        mincap=mincap, maxcap=maxcap, unitsize=_usize))
+        mincap=_mincap, maxcap=_maxcap, unitsize=_usize))
 
     # fuel node management
     if isnothing(fuelnode)
