@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Dispatch Optimization · Posy2.jl</title><meta name="title" content="Dispatch Optimization · Posy2.jl"/><meta property="og:title" content="Dispatch Optimization · Posy2.jl"/><meta property="twitter:title" content="Dispatch Optimization · Posy2.jl"/><meta name="description" content="Documentation for Posy2.jl."/><meta property="og:description" content="Documentation for Posy2.jl."/><meta property="twitter:description" content="Documentation for Posy2.jl."/><meta property="og:url" content="https://oecd-nea.github.io/Posy2.jl/stable/examples/dispatch-optimization/"/><meta property="twitter:url" content="https://oecd-nea.github.io/Posy2.jl/stable/examples/dispatch-optimization/"/><link rel="canonical" href="https://oecd-nea.github.io/Posy2.jl/stable/examples/dispatch-optimization/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Posy2.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../getting-started/">Getting Started</a></li><li><span class="tocitem">Modelling Concepts</span><ul><li><a class="tocitem" href="../../concepts/">Overview</a></li><li><a class="tocitem" href="../../concepts/options/">Study Configuration</a></li><li><a class="tocitem" href="../../concepts/input-data/">Input Workbooks</a></li><li><a class="tocitem" href="../../concepts/building-snapshot/">Building a Snapshot</a></li><li><input class="collapse-toggle" id="menuitem-3-5" type="checkbox"/><label class="tocitem" for="menuitem-3-5"><span class="docs-label">Component Builders</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../components/">Overview</a></li><li><a class="tocitem" href="../../components/demand/">Demand and Flexibility</a></li><li><a class="tocitem" href="../../components/generation/">Generation</a></li><li><a class="tocitem" href="../../components/storage-conversion/">Storage</a></li><li><a class="tocitem" href="../../components/electric-vehicles/">Electric Vehicles</a></li><li><a class="tocitem" href="../../components/interconnections/">Interconnections</a></li><li><a class="tocitem" href="../../components/hydrogen/">Hydrogen</a></li></ul></li><li><a class="tocitem" href="../../concepts/extending/">Extending Posy2</a></li><li><a class="tocitem" href="../../concepts/optimizing/">Optimizing a Snapshot</a></li><li><a class="tocitem" href="../../concepts/querying/">Querying a Snapshot</a></li><li><a class="tocitem" href="../../concepts/tags/">Tags and Post-Processing</a></li><li><a class="tocitem" href="../../concepts/exporting/">Exporting Results</a></li></ul></li><li><a class="tocitem" href="../../performance/">Performance</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../one-country/">One Country</a></li><li><a class="tocitem" href="../two-countries/">Two Countries</a></li><li><a class="tocitem" href="../price-interconnection/">Price Interconnection</a></li><li><a class="tocitem" href="../dc-opf/">DC OPF</a></li><li><a class="tocitem" href="../negative-prices/">Negative Locational Prices</a></li><li><a class="tocitem" href="../dispatchable-generation/">Dispatchable Generation</a></li><li><a class="tocitem" href="../nuclear/">Nuclear</a></li><li><a class="tocitem" href="../co2-pricing/">CO2 Pricing</a></li><li><a class="tocitem" href="../battery-storage/">Battery Storage</a></li><li><a class="tocitem" href="../hydro-reservoir/">Hydro Reservoir</a></li><li><a class="tocitem" href="../pumped-storage-hydro/">Pumped Storage</a></li><li><a class="tocitem" href="../hydrogen-production/">Hydrogen Production</a></li><li><a class="tocitem" href="../electric-vehicles/">Electric Vehicles</a></li><li><a class="tocitem" href="../demand-response/">Demand Response</a></li><li class="is-active"><a class="tocitem" href>Dispatch Optimization</a><ul class="internal"><li><a class="tocitem" href="#Merit-order-dispatch"><span>Merit-order dispatch</span></a></li><li><a class="tocitem" href="#Ramp-constrained-dispatch"><span>Ramp-constrained dispatch</span></a></li></ul></li><li><a class="tocitem" href="../stochastic/">Stochastic Programming</a></li><li><a class="tocitem" href="../infeasibility/">Infeasibility</a></li></ul></li><li><a class="tocitem" href="../../api/">API Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Dispatch Optimization</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Dispatch Optimization</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/oecd-nea/Posy2.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Dispatch-Optimization"><a class="docs-heading-anchor" href="#Dispatch-Optimization">Dispatch Optimization</a><a id="Dispatch-Optimization-1"></a><a class="docs-heading-anchor-permalink" href="#Dispatch-Optimization" title="Permalink"></a></h1><p>Having enough generating capacity is not the same as having enough operational flexibility.</p><p>In this example the CCGT fleet is large enough to meet the peak residual load on its own. Yet a more expensive OCGT unit still runs in the evening. As solar output falls while demand approaches its peak, residual load rises faster than the CCGT fleet can ramp.</p><p>Capacities are fixed: 4000 MW of PV, a 2229 MW CCGT fleet (three 743 MW units), and 1000 MW of OCGT, on an illustrative high-solar day repeated over the year. All costs except fuel and variable O&amp;M are zero. The electricity node uses <code>rule=:curtailed</code>, so midday PV above demand can be spilled.</p><h2 id="Merit-order-dispatch"><a class="docs-heading-anchor" href="#Merit-order-dispatch">Merit-order dispatch</a><a id="Merit-order-dispatch-1"></a><a class="docs-heading-anchor-permalink" href="#Merit-order-dispatch" title="Permalink"></a></h2><p>First remove the ramp constraints. As expected from the merit order, the CCGT follows the residual load and OCGT is never used.</p><pre><code class="language-julia hljs">using Posy2
+using Nosy
+using HiGHS
+import JuMP: set_silent
+
+# Simulation and Posy2 input configuration
+sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+set_silent(model(sim))
+snapshot = Snapshot(sim, Dict(:posy =&gt; Posy2Options(
+    tech_mode=:arguments,
+    timeseries_mode=:arguments,
+)))
+
+# Electricity node and CO2 sink
+electricity = Node(&quot;country1&quot;, EnergyCarrier(&quot;electricity country1&quot;, sim), rule=:curtailed, tags=[:electricity])
+co2 = Node(&quot;CO2&quot;, CO2Carrier(&quot;CO2&quot;, sim), rule=:curtailed, tags=[:co2])
+
+# Evening peak demand and PV profile
+day = [1580.0, 1520.0, 1480.0, 1460.0, 1480.0, 1560.0, 1680.0, 1780.0, 1860.0, 1880.0, 1860.0, 1840.0, 1820.0, 1840.0, 1920.0, 2040.0, 2200.0, 2229.0, 2229.0, 2100.0, 1920.0, 1780.0, 1680.0, 1620.0]
+makedemand(&quot;Demand&quot;, &quot;country1&quot;, electricity, snapshot; profile=repeat(day, 365))
+
+# Fixed 4000 MW PV
+pvday = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.18, 0.38, 0.62, 0.82, 0.95, 1.0, 0.95, 0.78, 0.52, 0.12, 0.04, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+makeintermittentsource(
+    &quot;Solar&quot;, &quot;PV&quot;, electricity, co2, snapshot;
+    cap=4000.0,
+    profile=repeat(pvday, 365),
+)
+
+# Cheap CCGT fleet, free to change output by any amount each hour
+makedispatchable(
+    &quot;CCGT&quot;, &quot;CCGT&quot;, electricity, co2, snapshot;
+    cap=2229.0,
+    fuel_cost=47.06,
+    om_var_cost=6.99,
+)
+
+# More expensive OCGT unit
+makedispatchable(
+    &quot;OCGT&quot;, &quot;OCGT&quot;, electricity, co2, snapshot;
+    cap=1000.0,
+    fuel_cost=68.24,
+    om_var_cost=10.47,
+)
+
+# Minimise total operating cost and extract solved values
+optimize!(snapshot, cost(snapshot))
+result = extract(snapshot)</code></pre><pre><code class="language-julia-repl hljs">julia&gt; balance(result, &quot;OCGT country1&quot;, :output, energy; collapse=true, aggregate=true)
+0.0</code></pre><p><img src="../../assets/dispatch-optimization-merit.svg" alt="Stacked solar, CCGT and OCGT output against demand over one high-solar day, without ramp limits"/></p><p>CCGT follows the residual load through the evening. In hour 17 that residual is 1720 MW, and the fleet covers all of it. OCGT does not appear.</p><h2 id="Ramp-constrained-dispatch"><a class="docs-heading-anchor" href="#Ramp-constrained-dispatch">Ramp-constrained dispatch</a><a id="Ramp-constrained-dispatch-1"></a><a class="docs-heading-anchor-permalink" href="#Ramp-constrained-dispatch" title="Permalink"></a></h2><p>Costs and profiles are unchanged. The CCGT fleet now has <code>ramp_up=0.5</code> and <code>ramp_down=0.5</code>. With three 743 MW units that is 1114.5 MW of additional or reduced output per hour. OCGT keeps <code>ramp_up=1.0</code> and <code>ramp_down=1.0</code>, so it can still move its full 1000 MW in one hour.</p><pre><code class="language-julia hljs">using Posy2
+using Nosy
+using HiGHS
+import JuMP: set_silent
+
+# Simulation and Posy2 input configuration
+sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+set_silent(model(sim))
+snapshot = Snapshot(sim, Dict(:posy =&gt; Posy2Options(
+    tech_mode=:arguments,
+    timeseries_mode=:arguments,
+)))
+
+# Same node and CO2 sink
+electricity = Node(&quot;country1&quot;, EnergyCarrier(&quot;electricity country1&quot;, sim), rule=:curtailed, tags=[:electricity])
+co2 = Node(&quot;CO2&quot;, CO2Carrier(&quot;CO2&quot;, sim), rule=:curtailed, tags=[:co2])
+
+# Same evening peak day as above
+day = [1580.0, 1520.0, 1480.0, 1460.0, 1480.0, 1560.0, 1680.0, 1780.0, 1860.0, 1880.0, 1860.0, 1840.0, 1820.0, 1840.0, 1920.0, 2040.0, 2200.0, 2229.0, 2229.0, 2100.0, 1920.0, 1780.0, 1680.0, 1620.0]
+makedemand(&quot;Demand&quot;, &quot;country1&quot;, electricity, snapshot; profile=repeat(day, 365))
+
+# Same fixed PV
+pvday = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.18, 0.38, 0.62, 0.82, 0.95, 1.0, 0.95, 0.78, 0.52, 0.12, 0.04, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+makeintermittentsource(
+    &quot;Solar&quot;, &quot;PV&quot;, electricity, co2, snapshot;
+    cap=4000.0,
+    profile=repeat(pvday, 365),
+)
+
+# Same CCGT fleet, limited to 1114.5 MW of additional or reduced output per hour
+makedispatchable(
+    &quot;CCGT&quot;, &quot;CCGT&quot;, electricity, co2, snapshot;
+    cap=2229.0,
+    fuel_cost=47.06,
+    om_var_cost=6.99,
+    unit_size=743.0,
+    ramp_up=0.5,
+    ramp_down=0.5,
+)
+
+# Same OCGT unit, able to cross its full range within one hour
+makedispatchable(
+    &quot;OCGT&quot;, &quot;OCGT&quot;, electricity, co2, snapshot;
+    cap=1000.0,
+    fuel_cost=68.24,
+    om_var_cost=10.47,
+    unit_size=500.0,
+    ramp_up=1.0,
+    ramp_down=1.0,
+)
+
+# Minimise total operating cost and extract solved values
+optimize!(snapshot, cost(snapshot))
+result_ramp = extract(snapshot)</code></pre><p>OCGT now runs in hour 17, as PV falls and demand approaches its evening peak:</p><pre><code class="language-julia-repl hljs">julia&gt; balance(result_ramp, &quot;OCGT country1&quot;, :output, energy; collapse=false, aggregate=true)
+8760-element Nosy.Hourly{Float64}:
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   ⋮
+   0.0
+ 605.5
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0</code></pre><p><img src="../../assets/dispatch-optimization-ramp.svg" alt="Stacked solar, CCGT and OCGT output against demand over one high-solar day, with CCGT ramp limits"/></p><p>In hour 16 residual load is still zero: PV covers demand and the CCGT is off. In hour 17 residual load is 1720 MW. From 0 MW the fleet can reach at most 1114.5 MW and OCGT supplies the remaining 605.5 MW.</p><p>OCGT is not covering a shortage of installed capacity. The CCGT fleet has 2229 MW, enough for the evening peak two hours later, and it does reach that peak. OCGT runs in hour 17 because the fleet cannot ramp up from 0 MW in hour 16 to the 1720 MW residual in one hour.</p><h3 id="Summary"><a class="docs-heading-anchor" href="#Summary">Summary</a><a id="Summary-1"></a><a class="docs-heading-anchor-permalink" href="#Summary" title="Permalink"></a></h3><p>Total operating cost rises because the OCGT unit is more expensive than the capacity it replaces:</p><pre><code class="language-julia-repl hljs">julia&gt; cost(result)
+5.342015535000107e8
+
+julia&gt; cost(result_ramp)
+5.396515984500146e8
+
+julia&gt; balance(result_ramp, &quot;OCGT country1&quot;, :output, energy; collapse=true, aggregate=true)
+221007.5</code></pre><table><tr><th style="text-align: left"></th><th style="text-align: right">Merit order</th><th style="text-align: right">Ramp-constrained</th></tr><tr><td style="text-align: left">Annual OCGT generation (MWh)</td><td style="text-align: right">0</td><td style="text-align: right">221007.5</td></tr><tr><td style="text-align: left">Peak OCGT output (MW)</td><td style="text-align: right">0</td><td style="text-align: right">605.5</td></tr><tr><td style="text-align: left">Total operating cost (currency/year)</td><td style="text-align: right">5.342e8</td><td style="text-align: right">5.397e8</td></tr><tr><td style="text-align: left">Hours when OCGT runs</td><td style="text-align: right">never</td><td style="text-align: right">17</td></tr></table><p>Enough capacity does not mean enough flexibility. The cheapest generator is not always physically available when it is needed.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../demand-response/">« Demand Response</a><a class="docs-footer-nextpage" href="../stochastic/">Stochastic Programming »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Sunday 23 August 2026 07:24">Sunday 23 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

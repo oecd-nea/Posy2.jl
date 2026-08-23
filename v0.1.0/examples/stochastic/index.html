@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Stochastic Programming · Posy2.jl</title><meta name="title" content="Stochastic Programming · Posy2.jl"/><meta property="og:title" content="Stochastic Programming · Posy2.jl"/><meta property="twitter:title" content="Stochastic Programming · Posy2.jl"/><meta name="description" content="Documentation for Posy2.jl."/><meta property="og:description" content="Documentation for Posy2.jl."/><meta property="twitter:description" content="Documentation for Posy2.jl."/><meta property="og:url" content="https://oecd-nea.github.io/Posy2.jl/stable/examples/stochastic/"/><meta property="twitter:url" content="https://oecd-nea.github.io/Posy2.jl/stable/examples/stochastic/"/><link rel="canonical" href="https://oecd-nea.github.io/Posy2.jl/stable/examples/stochastic/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Posy2.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../getting-started/">Getting Started</a></li><li><span class="tocitem">Modelling Concepts</span><ul><li><a class="tocitem" href="../../concepts/">Overview</a></li><li><a class="tocitem" href="../../concepts/options/">Study Configuration</a></li><li><a class="tocitem" href="../../concepts/input-data/">Input Workbooks</a></li><li><a class="tocitem" href="../../concepts/building-snapshot/">Building a Snapshot</a></li><li><input class="collapse-toggle" id="menuitem-3-5" type="checkbox"/><label class="tocitem" for="menuitem-3-5"><span class="docs-label">Component Builders</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../components/">Overview</a></li><li><a class="tocitem" href="../../components/demand/">Demand and Flexibility</a></li><li><a class="tocitem" href="../../components/generation/">Generation</a></li><li><a class="tocitem" href="../../components/storage-conversion/">Storage</a></li><li><a class="tocitem" href="../../components/electric-vehicles/">Electric Vehicles</a></li><li><a class="tocitem" href="../../components/interconnections/">Interconnections</a></li><li><a class="tocitem" href="../../components/hydrogen/">Hydrogen</a></li></ul></li><li><a class="tocitem" href="../../concepts/extending/">Extending Posy2</a></li><li><a class="tocitem" href="../../concepts/optimizing/">Optimizing a Snapshot</a></li><li><a class="tocitem" href="../../concepts/querying/">Querying a Snapshot</a></li><li><a class="tocitem" href="../../concepts/tags/">Tags and Post-Processing</a></li><li><a class="tocitem" href="../../concepts/exporting/">Exporting Results</a></li></ul></li><li><a class="tocitem" href="../../performance/">Performance</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../one-country/">One Country</a></li><li><a class="tocitem" href="../two-countries/">Two Countries</a></li><li><a class="tocitem" href="../price-interconnection/">Price Interconnection</a></li><li><a class="tocitem" href="../dc-opf/">DC OPF</a></li><li><a class="tocitem" href="../negative-prices/">Negative Locational Prices</a></li><li><a class="tocitem" href="../dispatchable-generation/">Dispatchable Generation</a></li><li><a class="tocitem" href="../nuclear/">Nuclear</a></li><li><a class="tocitem" href="../co2-pricing/">CO2 Pricing</a></li><li><a class="tocitem" href="../battery-storage/">Battery Storage</a></li><li><a class="tocitem" href="../hydro-reservoir/">Hydro Reservoir</a></li><li><a class="tocitem" href="../pumped-storage-hydro/">Pumped Storage</a></li><li><a class="tocitem" href="../hydrogen-production/">Hydrogen Production</a></li><li><a class="tocitem" href="../electric-vehicles/">Electric Vehicles</a></li><li><a class="tocitem" href="../demand-response/">Demand Response</a></li><li><a class="tocitem" href="../dispatch-optimization/">Dispatch Optimization</a></li><li class="is-active"><a class="tocitem" href>Stochastic Programming</a></li><li><a class="tocitem" href="../infeasibility/">Infeasibility</a></li></ul></li><li><a class="tocitem" href="../../api/">API Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Stochastic Programming</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Stochastic Programming</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/oecd-nea/Posy2.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Stochastic-Programming"><a class="docs-heading-anchor" href="#Stochastic-Programming">Stochastic Programming</a><a id="Stochastic-Programming-1"></a><a class="docs-heading-anchor-permalink" href="#Stochastic-Programming" title="Permalink"></a></h1><p>This example shows that investment capacities can be shared across two snapshots, while operation adapts to each future separately.</p><ul><li>two snapshots in one simulation: High PV CF and Low PV CF</li><li>the same demand in both</li><li>an existing 100 MW CCGT fleet in both, with no new CCGT capacity</li><li>additional PV and battery capacity shared by both snapshots</li><li>a lower PV capacity factor in the Low PV CF snapshot</li></ul><p>The two snapshots are solved together with equal probability, so the objective minimises their average cost.</p><p>This is a deliberately simplified example. The same framework can consider multiple weather time series or snapshots representing other uncertain events.</p><pre><code class="language-julia hljs">using Posy2
+using Nosy
+using HiGHS
+import JuMP: @variable, set_silent
+
+# Simulation and Posy2 input configuration
+sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+set_silent(model(sim))
+opts = Dict(:posy =&gt; Posy2Options(
+    tech_mode=:arguments,
+    timeseries_mode=:arguments,
+))
+snap_high_cf = Snapshot(sim, opts)
+snap_low_cf = Snapshot(sim, opts)
+
+# Typical daily demand (daytime bump, evening peak)
+day = [58.0, 55.0, 53.0, 52.0, 54.0, 60.0, 72.0, 82.0, 88.0, 86.0, 84.0, 82.0, 80.0, 78.0, 77.0, 80.0, 88.0, 96.0, 100.0, 97.0, 90.0, 78.0, 68.0, 62.0]
+pv_high_cf = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.15, 0.35, 0.6, 0.82, 0.95, 1.0, 0.95, 0.82, 0.6, 0.35, 0.15, 0.05, 0.0, 0.0, 0.0, 0.0, 0.0]
+pv_low_cf = 0.8 * pv_high_cf
+
+# Shared PV and battery capacity decisions
+@variable(uppermodel(sim), pv_cap &gt;= 0)
+@variable(uppermodel(sim), battery_cap &gt;= 0)
+
+# Build both cases
+cases = (
+    (name=&quot;High PV CF&quot;, snapshot=snap_high_cf, pv_profile=pv_high_cf),
+    (name=&quot;Low PV CF&quot;, snapshot=snap_low_cf, pv_profile=pv_low_cf),
+)
+for case in cases
+    elec = Node(case.name, EnergyCarrier(&quot;electricity $(case.name)&quot;, sim), rule=:curtailed, tags=[:electricity])
+    co2 = Node(&quot;CO2&quot;, CO2Carrier(&quot;CO2 $(case.name)&quot;, sim), rule=:curtailed, tags=[:co2])
+
+    makedemand(&quot;Demand&quot;, case.name, elec, case.snapshot; profile=repeat(day, 365))
+    makeintermittentsource(
+        &quot;Solar&quot;, &quot;PV&quot;, elec, co2, case.snapshot;
+        cap=pv_cap,
+        profile=repeat(case.pv_profile, 365),
+        overnight_cost=500.0,
+        lifetime=25,
+        construction_profile=1.0,
+    )
+    makedispatchable(
+        &quot;CCGT&quot;, &quot;CCGT&quot;, elec, co2, case.snapshot;
+        cap=100.0,
+        fuel_cost=50.0,
+    )
+    makebatterystorage(
+        &quot;Battery&quot;, &quot;Battery&quot;, elec, case.snapshot;
+        cap=battery_cap,
+        eff=0.85,
+        duration=4.0,
+        overnight_cost=200.0,
+        lifetime=15,
+        construction_profile=1.0,
+    )
+end
+
+# Minimise the equally weighted expected cost
+optimize!([snap_high_cf, snap_low_cf], 0.5 * (cost(snap_high_cf) + cost(snap_low_cf)))
+result_high_cf = extract(snap_high_cf)
+result_low_cf = extract(snap_low_cf)</code></pre><p>No new CCGT capacity can be built: both snapshots use the existing 100 MW fleet. Additional PV and battery capacity is allowed, and both investment decisions are shared across the snapshots.</p><p>The PV and battery builders share explicit JuMP variables; no extra coupling constraint is required. Alternatively, a builder can create a capacity decision in <code>snap1</code> with <code>cap=nothing</code>, and a builder in <code>snap2</code> can reuse its JuMP <code>AffExpr</code>:</p><pre><code class="language-julia hljs">makeintermittentsource(
+    &quot;PV&quot;, &quot;PV&quot;, elec2, co2_2, snap2;
+    cap=capacity(snap1, &quot;PV&quot;),
+    profile=pv2,
+    overnight_cost=500.0,
+    lifetime=25,
+    construction_profile=1.0,
+)</code></pre><p>This sketch assumes the component in <code>snap1</code> is named <code>&quot;PV&quot;</code>. Use the complete generated component name in <code>capacity</code>. See <a href="../../components/#Capacity-Semantics">Capacity Semantics</a> for the values accepted by builders&#39; <code>cap</code> arguments.</p><pre><code class="language-julia-repl hljs">julia&gt; capacity(result_high_cf, &quot;CCGT High PV CF&quot;), capacity(result_low_cf, &quot;CCGT Low PV CF&quot;)
+(100.0, 100.0)
+
+julia&gt; capacity(result_high_cf, &quot;Solar High PV CF&quot;), capacity(result_low_cf, &quot;Solar Low PV CF&quot;)
+(353.23242938710064, 353.23242938710064)
+
+julia&gt; capacity(result_high_cf, &quot;Battery High PV CF&quot;), capacity(result_low_cf, &quot;Battery Low PV CF&quot;)
+(226.5140341444653, 226.5140341444653)</code></pre><p>The High PV CF snapshot needs no CCGT generation. In the Low PV CF snapshot, the existing CCGT fleet supplies the small amount of demand not met by PV and storage. The shared battery capacity shifts solar generation in both snapshots.</p><pre><code class="language-julia-repl hljs">julia&gt; balance(result_high_cf, &quot;CCGT High PV CF&quot;, :output, energy; collapse=true, aggregate=true) / 1_000
+-1.1681322575896046e-14
+
+julia&gt; balance(result_low_cf, &quot;CCGT Low PV CF&quot;, :output, energy; collapse=true, aggregate=true) / 1_000
+17.753661255809924
+
+julia&gt; balance(result_high_cf, &quot;Battery High PV CF&quot;, :input, energy; collapse=true, aggregate=true) / 1_000
+406.30948612660904
+
+julia&gt; balance(result_low_cf, &quot;Battery Low PV CF&quot;, :input, energy; collapse=true, aggregate=true) / 1_000
+393.0515188138517</code></pre><table><tr><th style="text-align: left"></th><th style="text-align: right">High PV CF</th><th style="text-align: right">Low PV CF</th></tr><tr><td style="text-align: left">CCGT capacity</td><td style="text-align: right">100 MW</td><td style="text-align: right">100 MW</td></tr><tr><td style="text-align: left">PV capacity</td><td style="text-align: right">353 MW</td><td style="text-align: right">353 MW</td></tr><tr><td style="text-align: left">Battery capacity</td><td style="text-align: right">227 MW</td><td style="text-align: right">227 MW</td></tr><tr><td style="text-align: left">CCGT generation</td><td style="text-align: right">0 GWh</td><td style="text-align: right">18 GWh</td></tr><tr><td style="text-align: left">Battery charging</td><td style="text-align: right">406 GWh</td><td style="text-align: right">393 GWh</td></tr></table></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../dispatch-optimization/">« Dispatch Optimization</a><a class="docs-footer-nextpage" href="../infeasibility/">Infeasibility »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Sunday 23 August 2026 07:24">Sunday 23 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

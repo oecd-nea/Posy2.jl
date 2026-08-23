@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Negative Locational Prices · Posy2.jl</title><meta name="title" content="Negative Locational Prices · Posy2.jl"/><meta property="og:title" content="Negative Locational Prices · Posy2.jl"/><meta property="twitter:title" content="Negative Locational Prices · Posy2.jl"/><meta name="description" content="Documentation for Posy2.jl."/><meta property="og:description" content="Documentation for Posy2.jl."/><meta property="twitter:description" content="Documentation for Posy2.jl."/><meta property="og:url" content="https://oecd-nea.github.io/Posy2.jl/stable/examples/negative-prices/"/><meta property="twitter:url" content="https://oecd-nea.github.io/Posy2.jl/stable/examples/negative-prices/"/><link rel="canonical" href="https://oecd-nea.github.io/Posy2.jl/stable/examples/negative-prices/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Posy2.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../getting-started/">Getting Started</a></li><li><span class="tocitem">Modelling Concepts</span><ul><li><a class="tocitem" href="../../concepts/">Overview</a></li><li><a class="tocitem" href="../../concepts/options/">Study Configuration</a></li><li><a class="tocitem" href="../../concepts/input-data/">Input Workbooks</a></li><li><a class="tocitem" href="../../concepts/building-snapshot/">Building a Snapshot</a></li><li><input class="collapse-toggle" id="menuitem-3-5" type="checkbox"/><label class="tocitem" for="menuitem-3-5"><span class="docs-label">Component Builders</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../components/">Overview</a></li><li><a class="tocitem" href="../../components/demand/">Demand and Flexibility</a></li><li><a class="tocitem" href="../../components/generation/">Generation</a></li><li><a class="tocitem" href="../../components/storage-conversion/">Storage</a></li><li><a class="tocitem" href="../../components/electric-vehicles/">Electric Vehicles</a></li><li><a class="tocitem" href="../../components/interconnections/">Interconnections</a></li><li><a class="tocitem" href="../../components/hydrogen/">Hydrogen</a></li></ul></li><li><a class="tocitem" href="../../concepts/extending/">Extending Posy2</a></li><li><a class="tocitem" href="../../concepts/optimizing/">Optimizing a Snapshot</a></li><li><a class="tocitem" href="../../concepts/querying/">Querying a Snapshot</a></li><li><a class="tocitem" href="../../concepts/tags/">Tags and Post-Processing</a></li><li><a class="tocitem" href="../../concepts/exporting/">Exporting Results</a></li></ul></li><li><a class="tocitem" href="../../performance/">Performance</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../one-country/">One Country</a></li><li><a class="tocitem" href="../two-countries/">Two Countries</a></li><li><a class="tocitem" href="../price-interconnection/">Price Interconnection</a></li><li><a class="tocitem" href="../dc-opf/">DC OPF</a></li><li class="is-active"><a class="tocitem" href>Negative Locational Prices</a></li><li><a class="tocitem" href="../dispatchable-generation/">Dispatchable Generation</a></li><li><a class="tocitem" href="../nuclear/">Nuclear</a></li><li><a class="tocitem" href="../co2-pricing/">CO2 Pricing</a></li><li><a class="tocitem" href="../battery-storage/">Battery Storage</a></li><li><a class="tocitem" href="../hydro-reservoir/">Hydro Reservoir</a></li><li><a class="tocitem" href="../pumped-storage-hydro/">Pumped Storage</a></li><li><a class="tocitem" href="../hydrogen-production/">Hydrogen Production</a></li><li><a class="tocitem" href="../electric-vehicles/">Electric Vehicles</a></li><li><a class="tocitem" href="../demand-response/">Demand Response</a></li><li><a class="tocitem" href="../dispatch-optimization/">Dispatch Optimization</a></li><li><a class="tocitem" href="../stochastic/">Stochastic Programming</a></li><li><a class="tocitem" href="../infeasibility/">Infeasibility</a></li></ul></li><li><a class="tocitem" href="../../api/">API Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Negative Locational Prices</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Negative Locational Prices</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/oecd-nea/Posy2.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Negative-Locational-Prices"><a class="docs-heading-anchor" href="#Negative-Locational-Prices">Negative Locational Prices</a><a id="Negative-Locational-Prices-1"></a><a class="docs-heading-anchor-permalink" href="#Negative-Locational-Prices" title="Permalink"></a></h1><p>This example shows how congestion on a three zone DC power-flow mesh can make a locational price negative even when every generator has a positive fuel cost. <a href="../dc-opf/">DC OPF</a> covers how KVL changes physical flows; here the same physics sets the nodal prices.</p><ul><li>zone A: a 100 MW Nuclear plant, <code>fuel_cost=7</code></li><li>zone B: a corridor node with no plant and no demand</li><li>zone C: daily demand (11–52 MW) and a 100 MW OCGT plant, <code>fuel_cost=68.24</code></li><li>A–B and C–A: 30 MW each way; B–C: 5 MW each way</li><li>equal susceptance on every AC line (<code>susceptance=-1</code>)</li></ul><pre><code class="language-julia hljs">using Posy2
+using Nosy
+using HiGHS
+import JuMP: set_silent
+
+# Simulation and Posy2 input configuration
+sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+set_silent(model(sim))
+snapshot = Snapshot(sim, Dict(:posy =&gt; Posy2Options(
+    tech_mode=:arguments,
+    timeseries_mode=:arguments,
+)))
+
+# Three electricity zones and a CO2 sink
+a = Node(&quot;A&quot;, EnergyCarrier(&quot;electricity A&quot;, sim), rule=:default, evalprice=true, tags=[:electricity])
+b = Node(&quot;B&quot;, EnergyCarrier(&quot;electricity B&quot;, sim), rule=:default, evalprice=true, tags=[:electricity])
+c = Node(&quot;C&quot;, EnergyCarrier(&quot;electricity C&quot;, sim), rule=:default, evalprice=true, tags=[:electricity])
+co2 = Node(&quot;CO2&quot;, CO2Carrier(&quot;CO2&quot;, sim), rule=:curtailed, tags=[:co2])
+
+# Daily demand at C only
+day = [12.0, 11.0, 11.0, 11.0, 12.0, 13.0, 14.0, 22.0, 30.0, 38.0, 46.0, 50.0, 52.0, 48.0, 40.0, 32.0, 24.0, 18.0, 14.0, 13.0, 12.0, 12.0, 12.0, 12.0]
+makedemand(&quot;Demand&quot;, &quot;C&quot;, c, snapshot; profile=repeat(day, 365))
+
+# Nuclear at A and OCGT at C; fuel costs match the technology workbook
+makedispatchable(&quot;Nuclear&quot;, &quot;Nuclear&quot;, a, co2, snapshot; cap=100.0, fuel_cost=7.0)
+makedispatchable(&quot;OCGT&quot;, &quot;OCGT&quot;, c, co2, snapshot; cap=100.0, fuel_cost=68.24)
+
+# AC triangle: B–C is the tight corridor
+makenodeinterco(&quot;IC&quot;, a, b, 30.0, 30.0, snapshot; dc=false, susceptance=-1.0)
+makenodeinterco(&quot;IC&quot;, b, c, 5.0, 5.0, snapshot; dc=false, susceptance=-1.0)
+makenodeinterco(&quot;IC&quot;, c, a, 30.0, 30.0, snapshot; dc=false, susceptance=-1.0)
+
+# Add KVL on the AC cycle, then minimise operating cost
+applydcopf!(snapshot)
+optimize!(snapshot, cost(snapshot))
+result = extract(snapshot)</code></pre><p>With equal susceptances, power sent from A to C splits across the two available paths: two thirds flows directly on A–C and one third through A–B–C. The 5 MW limit on B–C therefore limits Nuclear output at A to 15 MW. Once demand at C exceeds 15 MW, Nuclear cannot increase further even though it still has unused generating capacity, so OCGT at C supplies the remaining demand.</p><p>The results below show two distinct situations. Before B–C becomes congested, Nuclear is the marginal generator and all three nodes have a price of 7. Once the line binds, Nuclear remains at 15 MW, OCGT begins generating, and the nodal prices separate:</p><p><img src="../../assets/negative-prices-day.svg" alt="Locational prices at A, B, and C, and stacked generation against demand at C, over one day"/></p><pre><code class="language-julia-repl hljs">julia&gt; dualprice(result.nodes[&quot;A&quot;])
+8760-element Nosy.Hourly{Float64}:
+ 7.0
+ 7.0
+ 7.0
+ 7.0
+ 7.0
+ 7.0
+ 7.0
+ 7.0
+ 7.0
+ 7.0
+ ⋮
+ 7.0
+ 7.0
+ 7.0
+ 7.0
+ 7.0
+ 7.0
+ 7.0
+ 7.0
+ 7.0
+
+julia&gt; dualprice(result.nodes[&quot;B&quot;])
+8760-element Nosy.Hourly{Float64}:
+   7.0
+   7.0
+   7.0
+   7.0
+   7.0
+   7.0
+   7.0
+ -54.239999999999995
+ -54.239999999999995
+ -54.239999999999995
+   ⋮
+ -54.239999999999995
+ -54.239999999999995
+ -54.239999999999995
+   7.0
+   7.0
+   7.0
+   7.0
+   7.0
+   7.0
+
+julia&gt; dualprice(result.nodes[&quot;C&quot;])
+8760-element Nosy.Hourly{Float64}:
+  7.0
+  7.0
+  7.0
+  7.0
+  7.0
+  7.0
+  7.0
+ 68.24
+ 68.24
+ 68.24
+  ⋮
+ 68.24
+ 68.24
+ 68.24
+  7.0
+  7.0
+  7.0
+  7.0
+  7.0
+  7.0
+
+julia&gt; balance(result, &quot;Nuclear A&quot;, :output, energy; collapse=false, aggregate=true)
+8760-element Nosy.Hourly{Float64}:
+ 12.0
+ 11.0
+ 11.0
+ 11.0
+ 12.0
+ 13.0
+ 14.0
+ 15.0
+ 15.0
+ 15.0
+  ⋮
+ 15.0
+ 15.0
+ 15.0
+ 14.0
+ 13.0
+ 12.0
+ 12.0
+ 12.0
+ 12.0
+
+julia&gt; balance(result, &quot;OCGT C&quot;, :output, energy; collapse=false, aggregate=true)
+8760-element Nosy.Hourly{Float64}:
+  0.0
+  0.0
+  0.0
+  0.0
+  0.0
+  0.0
+  0.0
+  7.0
+ 15.0
+ 23.0
+  ⋮
+ 17.0
+  9.0
+  3.0
+  0.0
+  0.0
+  0.0
+  0.0
+  0.0
+  0.0</code></pre><p>The negative price at B can be understood by considering one additional megawatt of demand at that node. In a congested hour with 50 MW of demand at C, the left-hand flows hold; adding 1 MW of demand at B gives the right-hand pattern.</p><p><img src="../../assets/negative-prices-flows.svg" alt="Three-zone flows before and after one extra megawatt of demand at B"/></p><p>The B–C line remains at its 5 MW limit. Nuclear rises by 2 MW and OCGT falls by 1 MW, so incremental cost is <code>2 * 7 − 68.24 = −54.24</code>. That is the locational price at B.</p><p>Adding demand normally increases system cost. Here it reduces it, because the extra load at B changes the network flows and lets cheap Nuclear generation replace expensive OCGT generation. This is why congestion can produce a negative locational price even when every generator has a positive marginal cost.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../dc-opf/">« DC OPF</a><a class="docs-footer-nextpage" href="../dispatchable-generation/">Dispatchable Generation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Sunday 23 August 2026 07:24">Sunday 23 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
