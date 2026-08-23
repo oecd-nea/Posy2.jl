@@ -1,5 +1,7 @@
 # Posy2.jl
 
+[![Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://oecd-nea.github.io/Posy2.jl/dev/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 [![CI](https://github.com/oecd-nea/Posy2.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/oecd-nea/Posy2.jl/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/oecd-nea/Posy2.jl/graph/badge.svg)](https://codecov.io/gh/oecd-nea/Posy2.jl)
 
