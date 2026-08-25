@@ -223,23 +223,21 @@ struct ComponentDemandInputData
     minratio::Union{Nothing,Real}
     charging_eff::Union{Nothing,Real}
     self_discharge::Union{Nothing,Real}
-    min_level_morning::Union{Nothing,Real}
     max_charging_power::Union{Nothing,Real}
     max_dispatch_power::Union{Nothing,Real}
     battery_capacity::Union{Nothing,Real}
-    yearly_consumption::Union{Nothing,Real}
 end
 
 function demand_input(;
     coeff=nothing, yearlyconstant=nothing, gridlosses=nothing, val=nothing, yearly=nothing,
     compensation=nothing, minratio=nothing, charging_eff=nothing, self_discharge=nothing,
-    min_level_morning=nothing, max_charging_power=nothing, max_dispatch_power=nothing,
-    battery_capacity=nothing, yearly_consumption=nothing,
+    max_charging_power=nothing, max_dispatch_power=nothing,
+    battery_capacity=nothing,
 )
     return ComponentDemandInputData(
         coeff, yearlyconstant, gridlosses, val, yearly, compensation, minratio, charging_eff,
-        self_discharge, min_level_morning, max_charging_power, max_dispatch_power,
-        battery_capacity, yearly_consumption,
+        self_discharge, max_charging_power, max_dispatch_power,
+        battery_capacity,
     )
 end
 
@@ -284,10 +282,6 @@ function validate_demand_input(inputs::ComponentDemandInputData)
         @argcheck inputs.self_discharge isa Real "self_discharge must be Real."
         @argcheck 0 <= inputs.self_discharge < 1 "self_discharge must be in [0, 1)."
     end
-    if !isnothing(inputs.min_level_morning)
-        @argcheck inputs.min_level_morning isa Real "min_level_morning must be Real."
-        @argcheck 0 <= inputs.min_level_morning <= 1 "min_level_morning must be in [0, 1]."
-    end
     if !isnothing(inputs.max_charging_power)
         @argcheck inputs.max_charging_power isa Real "max_charging_power must be Real."
         @argcheck inputs.max_charging_power > 0 "max_charging_power must be > 0."
@@ -299,10 +293,6 @@ function validate_demand_input(inputs::ComponentDemandInputData)
     if !isnothing(inputs.battery_capacity)
         @argcheck inputs.battery_capacity isa Real "battery_capacity must be Real."
         @argcheck inputs.battery_capacity > 0 "battery_capacity must be > 0."
-    end
-    if !isnothing(inputs.yearly_consumption)
-        @argcheck inputs.yearly_consumption isa Real "yearly_consumption must be Real."
-        @argcheck inputs.yearly_consumption > 0 "yearly_consumption must be > 0."
     end
     return nothing
 end

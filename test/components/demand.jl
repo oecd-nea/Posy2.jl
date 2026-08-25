@@ -57,7 +57,8 @@ using HiGHS
     let
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makeEV(
-            "EV", 1000.0, elec, s;
+            "EV", elec, s;
+            yearly=1000.0,
             fixed_profile=true, smart_charging=true, vehicle_to_grid=false,
             offhours1=[0, 1], offhours2=[2, 3], minratio=0.2,
         )
@@ -67,9 +68,21 @@ using HiGHS
     let
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makeEV(
-            "EV", 1000.0, elec, s;
+            "EV", elec, s;
+            yearly=1000.0,
             fixed_profile=true, smart_charging=false, vehicle_to_grid=false,
             offhours1=nothing, offhours2=[2, 3], minratio=0.2,
+        )
+    end
+
+    # EV smart-charging should fail when number_ev is missing.
+    let
+        s, elec, _ = makesnapshot()
+        @test_throws ArgumentError makeEV(
+            "EV", elec, s;
+            fixed_profile=false, smart_charging=true,
+            charging_availability=1.0, departure_per_ev=1.0, arrival_per_ev=0.0,
+            max_charging_power_per_ev=0.01, battery_capacity_per_ev=0.06,
         )
     end
 
@@ -78,7 +91,8 @@ using HiGHS
     let
         s, elec, _ = makesnapshot()
         c = makeEV(
-            "EV", 1000.0, elec, s;
+            "EV", elec, s;
+            yearly=1000.0,
             fixed_profile=true, smart_charging=false, vehicle_to_grid=false,
             offhours1=[0, 1], offhours2=[2, 3], minratio=0.2,
         )
@@ -97,7 +111,7 @@ using HiGHS
         )
         for schedule in schedules
             s, elec, _ = makesnapshot()
-            c = makeEV("EV", yearly, elec, s; fixed_profile=true, schedule...)
+            c = makeEV("EV", elec, s; yearly=yearly, fixed_profile=true, schedule...)
             # a demand series is exogenous, so its balance is a constant
             consumed = JuMP.constant(Nosy.balance(c, :input, energy; collapse=true, aggregate=true))
             @test isapprox(consumed, yearly; rtol=1e-9)
@@ -108,7 +122,8 @@ using HiGHS
     let
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makeEV(
-            "EV", 1000.0, elec, s;
+            "EV", elec, s;
+            yearly=1000.0,
             fixed_profile=true, offhours1=[0, 0], offhours2=[2, 3], minratio=0.2,
         )
     end
@@ -117,52 +132,58 @@ using HiGHS
     let
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makeEV(
-            "EV", 1000.0, elec, s;
+            "EV", elec, s;
+            yearly=1000.0,
             fixed_profile=true, offhours1=collect(0:23), offhours2=collect(0:23), minratio=0.0,
         )
     end
 
-    # Charging efficiency applies when electricity enters the EV battery, not
-    # when stored energy leaves through the V2G or driving outputs.
+    # Charging efficiency applies when grid electricity enters the battery.
+    # V2G, departure and arrival are already stored energy (eff = 1).
     let
         s, elec, _ = makesnapshot()
         c = makeEV(
-            "EV", 1000.0, elec, s;
+            "EV", elec, s;
+            number_ev=500.0,
             fixed_profile=false, smart_charging=false, vehicle_to_grid=true,
-            charging_availability=1.0, driving_profile=1.0,
-            charging_eff=0.8, self_discharge=0.0, min_level_morning=0.0,
+            charging_availability=1.0, departure_per_ev=1.0, arrival_per_ev=0.0,
+            charging_eff=0.8, self_discharge=0.0,
             max_charging_power_per_ev=0.01, max_dispatch_power_per_ev=0.01,
-            battery_capacity_per_ev=0.06, yearly_consumption_per_ev=2.0,
+            battery_capacity_per_ev=0.06,
         )
 
         @test c.model.data.eff["input"] == 0.8
         @test c.model.data.eff["output"] == 1.0
-        @test c.model.data.eff["driving"] == 1.0
+        @test c.model.data.eff["departure"] == 1.0
+        @test c.model.data.eff["arrival"] == 1.0
+        @test Nosy.hasport(c, "departure")
+        @test Nosy.hasport(c, "arrival")
+        @test !Nosy.hasport(c, "driving")
     end
 
-    # A negative driving value would add free energy to the EV battery; a
+    # A negative departure value would add free energy to the EV battery; a
     # charging availability above one would raise the fleet's power and level
     # limits above the modeled fleet.
     let
         flexible = (
+            number_ev=1000.0,
             fixed_profile=false, smart_charging=true,
-            charging_eff=0.9, self_discharge=0.0, min_level_morning=0.0,
+            charging_eff=0.9, self_discharge=0.0,
             max_charging_power_per_ev=0.01, battery_capacity_per_ev=0.06,
-            yearly_consumption_per_ev=2.4,
         )
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makeEV(
-            "EV", 1000.0, elec, s;
+            "EV", elec, s;
             charging_availability=1.0,
-            driving_profile=vcat(-1.0, fill(2.0, 8759)), flexible...,
+            departure_per_ev=vcat(-1.0, fill(2.0, 8759)), arrival_per_ev=0.0, flexible...,
         )
         @test_throws ArgumentError makeEV(
-            "EV", 1000.0, elec, s;
-            charging_availability=1.5, driving_profile=1.0, flexible...,
+            "EV", elec, s;
+            charging_availability=1.5, departure_per_ev=1.0, arrival_per_ev=0.0, flexible...,
         )
         @test !isnothing(makeEV(
-            "EV", 1000.0, elec, s;
-            charging_availability=1.0, driving_profile=1.0, flexible...,
+            "EV", elec, s;
+            charging_availability=1.0, departure_per_ev=1.0, arrival_per_ev=0.0, flexible...,
         ))
     end
 

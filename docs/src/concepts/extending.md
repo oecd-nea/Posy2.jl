@@ -68,7 +68,7 @@ groups:
 | Sink | `ProfileSink` | Capacity * consumption profile (mandatory capacity on `input`) |
 | Sink | `BasicSink` | Flexible consumption; mirrors `DispatchableSource` |
 | Storage | `BasicStorage` | Charge / discharge / level on one machine (battery, H2 store, ...) |
-| Storage | `LazyStorage` | Level plus joint flows for extra ports (hydro intake, EV driving, ...) |
+| Storage | `LazyStorage` | Level plus joint flows for extra ports (hydro intake, EV departure / arrival, ...) |
 | Converter | `BasicConverter` | One-to-one conversion (electrolyser, node interconnection, ...) |
 
 Posy2 builders already wrap most of these. `Demand`, `DispatchableSource`,

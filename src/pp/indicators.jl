@@ -180,6 +180,16 @@ function storagelevel(s; aggregate=false)
     return d
 end
 
+# EV driving consumption: `driving`, or `departure - arrival`
+function _ev_driving(c; collapse::Bool)
+    if Nosy.hasport(c, "departure")
+        dep = balance(c, :output, energy, collapse=collapse, aggregate=false)["departure"]
+        arr = balance(c, :input, energy, collapse=collapse, aggregate=false)["arrival"]
+        return dep - arr
+    end
+    return balance(c, :output, energy, collapse=collapse, aggregate=false)["driving"]
+end
+
 # return demand time series in MWhe
 function demand(s; aggregate=false, collapse=false)
     d = LittleDict()
@@ -190,7 +200,7 @@ function demand(s; aggregate=false, collapse=false)
         d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input"]
     end
     for (k,v) in dev
-        d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["driving"]
+        d[k] = _ev_driving(v; collapse=collapse)
     end
     aggregate && return sum(values(d); init=_aggregate_init(s, collapse))
     return d
@@ -205,7 +215,7 @@ function demand(s, nodename::String; aggregate=false, collapse=false)
         d[k] = balance(v, :input, energy, collapse=collapse, aggregate=false)["input"]
     end
     for (k, v) in getcomponents(s, nodename, with=[:function => "ev"])
-        d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["driving"]
+        d[k] = _ev_driving(v; collapse=collapse)
     end
     if aggregate
         ini = collapse ? 0.0 : zeros(Nosy.nhours(sim(s)))

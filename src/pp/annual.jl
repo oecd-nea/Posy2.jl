@@ -37,8 +37,7 @@ function charging(s::Snapshot, nodename::String; modifier=energy, collapse=true)
     end
     for (_,v) in dev
         bin = balance(v, :input, modifier, collapse=collapse, aggregate=false)
-        bout = balance(v, :output, modifier, collapse=collapse, aggregate=false)
-        c += (bin["input"] - bout["driving"])
+        c += (bin["input"] - _ev_driving(v; collapse=collapse))
     end
     return c
 end
@@ -431,7 +430,13 @@ function __dataline_yearly(s::Snapshot, modifier::Function, nodeswith::Vector{Sy
                         total += bout[portname] / factor
                     else
                         bin = balance(comp, :input, modifier, collapse=true, aggregate=false)
-                        total += haskey(bin, portname) ? bin[portname] / factor : 0.
+                        if haskey(bin, portname)
+                            total += bin[portname] / factor
+                        elseif portname == "driving" && Nosy.hasport(comp, "departure")
+                            total += _ev_driving(comp; collapse=true) / factor
+                        else
+                            total += 0.
+                        end
                     end
                 end
                 push!(v, total)

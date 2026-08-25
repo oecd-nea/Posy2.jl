@@ -19,15 +19,23 @@
 </style>
 <rect x="350" y="26" width="300" height="210" rx="10" fill="#f8f9fa" stroke="#37474f" stroke-width="1.5"/>
 <text class="name" x="500.0" y="52">EV, Smart Charging And V2G</text>
-<line x1="170" y1="131.0" x2="342" y2="131.0" stroke="#2a9d8f" stroke-width="2" stroke-dasharray="none" marker-end="url(#head-free)"/>
-<circle cx="350" cy="131.0" r="4.5" fill="#2a9d8f"/>
-<text class="port" x="260.0" y="121.0" fill="#2a9d8f">input</text>
-<text class="note" x="260.0" y="145.0">fleet charging power</text>
-<text class="note" x="260.0" y="157.0">x charging availability</text>
-<rect x="20" y="108.0" width="150" height="46.0" rx="6" fill="#fdf6cd" stroke="#c9a227" stroke-width="1" stroke-dasharray="none"/>
-<text class="box" x="95.0" y="129.0">electricity node</text>
-<text class="boxsub" x="95.0" y="142.0">elec</text>
-<text class="chip" x="95.0" y="166.0">(same node)</text>
+<line x1="170" y1="92.0" x2="342" y2="92.0" stroke="#2a9d8f" stroke-width="2" stroke-dasharray="none" marker-end="url(#head-free)"/>
+<circle cx="350" cy="92.0" r="4.5" fill="#2a9d8f"/>
+<text class="port" x="260.0" y="82.0" fill="#2a9d8f">input</text>
+<text class="note" x="260.0" y="106.0">fleet charging power</text>
+<text class="note" x="260.0" y="118.0">x charging availability</text>
+<line x1="170" y1="170.0" x2="342" y2="170.0" stroke="#264653" stroke-width="2" stroke-dasharray="7 4" marker-end="url(#head-fixed)"/>
+<circle cx="350" cy="170.0" r="4.5" fill="#264653"/>
+<text class="port" x="260.0" y="160.0" fill="#264653">arrival</text>
+<text class="note" x="260.0" y="184.0">returning battery energy</text>
+<text class="note" x="260.0" y="196.0">MWh/EV x fleet size</text>
+<rect x="20" y="69.0" width="150" height="46.0" rx="6" fill="#fdf6cd" stroke="#c9a227" stroke-width="1" stroke-dasharray="none"/>
+<text class="box" x="95.0" y="90.0">electricity node</text>
+<text class="boxsub" x="95.0" y="103.0">elec</text>
+<text class="chip" x="95.0" y="127.0">(same node)</text>
+<rect x="20" y="147.0" width="150" height="46.0" rx="6" fill="#ffffff" stroke="#78909c" stroke-width="1" stroke-dasharray="5 3"/>
+<text class="box" x="95.0" y="168.0">not connected</text>
+<text class="boxsub" x="95.0" y="181.0">own carrier</text>
 <line x1="650" y1="92.0" x2="822" y2="92.0" stroke="#2a9d8f" stroke-width="2" stroke-dasharray="none" marker-end="url(#head-free)"/>
 <circle cx="650" cy="92.0" r="4.5" fill="#2a9d8f"/>
 <text class="port" x="740.0" y="82.0" fill="#2a9d8f">output</text>
@@ -36,9 +44,9 @@
 <text class="note" x="740.0" y="130.0">compensation cost</text>
 <line x1="650" y1="170.0" x2="822" y2="170.0" stroke="#264653" stroke-width="2" stroke-dasharray="7 4" marker-end="url(#head-fixed)"/>
 <circle cx="650" cy="170.0" r="4.5" fill="#264653"/>
-<text class="port" x="740.0" y="160.0" fill="#264653">driving</text>
-<text class="note" x="740.0" y="184.0">driving profile x yearly</text>
-<text class="note" x="740.0" y="196.0">leaves the fleet battery</text>
+<text class="port" x="740.0" y="160.0" fill="#264653">departure</text>
+<text class="note" x="740.0" y="184.0">leaving battery energy</text>
+<text class="note" x="740.0" y="196.0">MWh/EV x fleet size</text>
 <rect x="830" y="69.0" width="150" height="46.0" rx="6" fill="#fdf6cd" stroke="#c9a227" stroke-width="1" stroke-dasharray="none"/>
 <text class="box" x="905.0" y="90.0">electricity node</text>
 <text class="boxsub" x="905.0" y="103.0">elec</text>
@@ -52,9 +60,8 @@
 <line x1="416.0" y1="198" x2="416.0" y2="152.16" stroke="#2a9d8f" stroke-width="2" marker-end="url(#head-free)"/>
 <text class="note" x="416.0" y="215">0</text>
 <text class="port" x="416.0" y="95" fill="#c44536">level</text>
-<text class="noteleft" x="478" y="147.0">fleet battery capacity</text>
+<text class="noteleft" x="478" y="147.0">connected fleet battery</text>
 <text class="noteleft" x="478" y="159.0">x charging availability</text>
-<text class="noteleft" x="478" y="171.0">min level at 7am</text>
 <line x1="20" y1="288" x2="44" y2="288" stroke="#2a9d8f" stroke-width="2.5" stroke-dasharray="none"/>
 <text class="legend" x="51" y="292">optimized flow</text>
 <line x1="175" y1="288" x2="199" y2="288" stroke="#264653" stroke-width="2.5" stroke-dasharray="7 4"/>
