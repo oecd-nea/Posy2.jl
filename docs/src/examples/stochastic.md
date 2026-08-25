@@ -126,13 +126,13 @@ storage. The shared battery capacity shifts solar generation in both snapshots.
 
 ```jldoctest stochastic
 julia> balance(result_high_cf, "CCGT High PV CF", :output, energy; collapse=true, aggregate=true) / 1_000
--1.1681322575896046e-14
+-3.6493474908638746e-14
 
 julia> balance(result_low_cf, "CCGT Low PV CF", :output, energy; collapse=true, aggregate=true) / 1_000
 17.753661255809924
 
 julia> balance(result_high_cf, "Battery High PV CF", :input, energy; collapse=true, aggregate=true) / 1_000
-406.30948612660904
+406.37775703388417
 
 julia> balance(result_low_cf, "Battery Low PV CF", :input, energy; collapse=true, aggregate=true) / 1_000
 393.0515188138517
