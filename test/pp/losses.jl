@@ -166,12 +166,14 @@ using DataFrames
     let
         snap, elec, co2 = argument_snapshot()
         makeEV(
-            "EV", 200_000.0, elec, snap;
+            "EV", elec, snap;
+            number_ev=100_000.0,
             fixed_profile=false, smart_charging=true,
             charging_eff=0.9, self_discharge=0.001,
-            driving_profile=1.0, charging_availability=1.0,
+            departure_per_ev=repeat([zeros(7); 0.03; zeros(16)], 365),
+            arrival_per_ev=0.0,
+            charging_availability=1.0,
             battery_capacity_per_ev=0.05, max_charging_power_per_ev=0.01,
-            yearly_consumption_per_ev=2.0, min_level_morning=0.2,
         )
         makedispatchable("Supply", "unused", elec, co2, snap; cap=300.0, fuel_cost=1.0)
         Nosy.optimize!(snap, cost(snap))
@@ -181,7 +183,10 @@ using DataFrames
         @test sort(df.category) == [:selfdischarge, :storage]
         @test all(df.source .== "EV ZONE1") || all(df.source .== "EV grid")
         input = Nosy.balance(s, only(unique(df.source)), :input, energy, collapse=true, aggregate=false)["input"]
-        driving = Nosy.balance(s, only(unique(df.source)), :output, energy, collapse=true, aggregate=false)["driving"]
+        driving = (
+            Nosy.balance(s, only(unique(df.source)), :output, energy, collapse=true, aggregate=false)["departure"]
+            - Nosy.balance(s, only(unique(df.source)), :input, energy, collapse=true, aggregate=false)["arrival"]
+        )
         sdloss = only(df.losses[df.category .== :selfdischarge])
         @test sdloss > 0
         # charging conversion loss
