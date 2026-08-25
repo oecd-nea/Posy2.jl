@@ -1,6 +1,7 @@
 # Posy2.jl
 
-[![Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://oecd-nea.github.io/Posy2.jl/dev/)
+[![Stable documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://oecd-nea.github.io/Posy2.jl/stable/)
+[![Development documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://oecd-nea.github.io/Posy2.jl/dev/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 [![CI](https://github.com/oecd-nea/Posy2.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/oecd-nea/Posy2.jl/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/oecd-nea/Posy2.jl/graph/badge.svg)](https://codecov.io/gh/oecd-nea/Posy2.jl)
@@ -16,59 +17,54 @@ flows.
 Posy2 is used at the OECD-NEA for country-specific system cost studies,
 including: [A Least-cost Capacity Mix to Satisfy Growing Electricity Demand without Carbon Emissions in Sweden](https://www.oecd-nea.org/jcms/pl_116142/a-least-cost-capacity-mix-to-satisfy-growing-electricity-demand-without-carbon-emissions-in-sweden)
 
-## Documentation
-
-The [Posy2 manual](https://oecd-nea.github.io/Posy2.jl/dev/) covers setup, input, component
-builders, optimisation, querying, export, performance, and complete examples.
-Posy2 builds on the modelling concepts in the
-[Nosy user guide](https://oecd-nea.github.io/Nosy.jl/dev/).
-
-API documentation
-is also available from the Julia REPL; for example, enter `?makedispatchable`.
-
-## Requirements
-
-Posy2 supports Julia 1.11 and 1.12.
-Posy2 also requires an LP or MILP solver compatible with
-[JuMP](https://jump.dev/JuMP.jl/stable/). The example below uses
-[HiGHS](https://highs.dev/), an open-source solver. Other
-[JuMP-compatible solvers](https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers)
-can be used when creating the Nosy `Sim`.
-
 ## Installation
 
-Posy2 is not yet in the Julia General registry, so install it from its
-repository. Nosy is added explicitly: a Posy2 study calls it directly, so it
-has to be a dependency of your project and not only of Posy2.
+Posy2 supports Julia 1.11 and 1.12. Install it from the Julia General registry:
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/oecd-nea/Posy2.jl")
-Pkg.add(["Nosy", "HiGHS"])  # HiGHS, or another JuMP-compatible solver
+Pkg.add("Posy2")
 ```
 
-Check the installation with:
+Posy2 studies use Nosy types and an LP or MILP solver. To run the
+example below, also add [Nosy](https://github.com/oecd-nea/Nosy.jl) and the
+open-source [HiGHS](https://highs.dev/) solver:
 
 ```julia
-using Posy2, Nosy, HiGHS
+Pkg.add(["Nosy", "HiGHS"])
 ```
+
+HiGHS can be replaced with another
+[JuMP-compatible solver](https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers).
+
+## Documentation
+
+The [Posy2 manual](https://oecd-nea.github.io/Posy2.jl/stable/) covers input,
+component builders, optimisation, querying, export, performance, and complete
+examples. Documentation for the latest development version is available
+[separately](https://oecd-nea.github.io/Posy2.jl/dev/). Posy2 builds on the
+modelling concepts in the [Nosy user guide](https://oecd-nea.github.io/Nosy.jl/dev/).
+
+API documentation is also available from the Julia REPL; for example, enter
+`?makedispatchable`.
 
 ## Core Ideas
 
 Posy2 adds a power system modelling layer on top of Nosy:
 
-- High-level constructors(`make*`) assemble and connect common technologies, including
-  demand, dispatchable and intermittent generation, nuclear power, hydro,
-  batteries, demand response, electrolysers, hydrogen storage, and
+- High-level constructors (`make*`) assemble and connect common technologies,
+  including demand, dispatchable and intermittent generation, nuclear power,
+  hydro, batteries, demand response, electrolysers, hydrogen storage, and
   interconnections.
 - Technology assumptions and hourly profiles can be read from input data,
   while keyword arguments allow individual values to be overridden.
-- Investment and decommissioning costs are annualised before being attached 
+- Investment and decommissioning costs are annualised before being attached
   as Nosy fixed costs.
 - Solved snapshots can be inspected in Julia or exported to a workbook
   with `printsnapshot`.
 
-Carriers, nodes, behaviours, optimisation, and generic metrics remain provided by Nosy.
+Carriers, nodes, behaviours, optimisation, and generic metrics are provided
+by Nosy.
 
 ## Basic Example
 
@@ -97,8 +93,9 @@ carbon = CO2Carrier("CO2", s)
 grid = Node("grid", power; rule=:curtailed, tags=[:electricity])
 atmosphere = Node("CO2", carbon; rule=:curtailed, tags=[:co2])
 
-# Add a demand with sin shape centered around 100 MW
-makedemand("Load", "grid", grid, snapshot; profile=100.0 .+ 30 * sin.(h*2pi/24 for h in 1:8760))
+# Add a sinusoidal demand centred on 100 MW.
+demand_profile = 100.0 .+ 30 .* sin.(2π .* (1:8760) ./ 24)
+makedemand("Load", "grid", grid, snapshot; profile=demand_profile)
 
 # Add a dispatchable generator with optimisable capacity.
 makedispatchable(
