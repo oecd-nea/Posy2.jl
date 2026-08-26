@@ -394,7 +394,7 @@ const SPECS = [
             (name="output", kind=:free, note=["only if vehicle_to_grid", "fleet dispatch power x avail.", "compensation cost"], endpoint=ELEC_BOTH),
             (name="departure", kind=:fixed, note=["leaving battery energy", "MWh/EV x fleet size"], endpoint=DRIVING),
         ],
-        level=(name="level", note=["connected fleet battery", "x charging availability"]),
+        level=(name="level", note=["fleet battery capacity", "x charging availability"]),
     ),
 ]
 
