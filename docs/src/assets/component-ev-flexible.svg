@@ -60,8 +60,8 @@
 <line x1="416.0" y1="198" x2="416.0" y2="152.16" stroke="#2a9d8f" stroke-width="2" marker-end="url(#head-free)"/>
 <text class="note" x="416.0" y="215">0</text>
 <text class="port" x="416.0" y="95" fill="#c44536">level</text>
-<text class="noteleft" x="478" y="147.0">connected fleet battery</text>
-<text class="noteleft" x="478" y="159.0">x charging availability</text>
+<text class="noteleft" x="478" y="153.0">fleet battery capacity</text>
+<text class="noteleft" x="478" y="165.0">x charging availability</text>
 <line x1="20" y1="288" x2="44" y2="288" stroke="#2a9d8f" stroke-width="2.5" stroke-dasharray="none"/>
 <text class="legend" x="51" y="292">optimized flow</text>
 <line x1="175" y1="288" x2="199" y2="288" stroke="#264653" stroke-width="2.5" stroke-dasharray="7 4"/>
