@@ -39,7 +39,7 @@ HiGHS can be replaced with another
 
 ## Documentation
 
-The [Posy2 manual](https://oecd-nea.github.io/Posy2.jl/stable/) covers input,
+The [Posy2 manual](https://oecd-nea.github.io/Posy2.jl/main/) covers input,
 component builders, optimisation, querying, export, performance, and complete
 examples. Documentation for the latest development version is available
 [separately](https://oecd-nea.github.io/Posy2.jl/dev/). Posy2 builds on the
