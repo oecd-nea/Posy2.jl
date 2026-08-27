@@ -323,6 +323,9 @@ using HiGHS
             cap=nothing, mincap=5.0, maxcap=11.0, unit_size=4.0,
             uc=true, integeruc=true,
             construction_profile=1.0, decommissioning_profile=1.0,
+            min_power=0.3, min_uptime=1, min_downtime=1,
+            startup_duration=1, shutdown_duration=1,
+            no_load_cost=0.0, startup_cost=0.0, ramp_up=0.0, ramp_down=0.0,
         )
         capacity_behavior = only(Nosy.getbehaviors(c, Nosy.VariableCapacityBehavior))
         @test capacity_behavior.data.lb == 8.0
