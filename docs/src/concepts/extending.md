@@ -164,7 +164,7 @@ Use these when you need extra ports or a proportional link to another carrier.
 - `FreeJointFlow` — adds a flexible port (LazyStorage charge/discharge, IC
   reverse direction).
 - `FixedJointFlow` — adds a port driven by a fixed series (hydro intake, EV
-  driving).
+  mobility).
 
 `LazyStorage` starts with `level`; charge, discharge, and side flows are
 usually added this way before capacity or cost goes on those ports.

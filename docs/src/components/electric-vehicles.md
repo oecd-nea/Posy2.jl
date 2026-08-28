@@ -45,29 +45,52 @@ makeEV(
 
 ## Smart Charging And Vehicle To Grid
 
-The flexible modes represent the connected vehicle fleet as storage. Both use
-these time-series columns for `zone`:
+The flexible modes represent the connected fleet as storage. `number_ev` sets
+fleet size and scales per-vehicle power and battery limits.
+`initial_connected_share` is the share of the fleet connected immediately before
+the first model timestep.
 
-- `EV_charging_availability` controls the available charging power and storage
-  level;
-- `EV_departure` is hourly departure energy per vehicle (MWh/EV);
-- `EV_arrival` is hourly arrival energy per vehicle (MWh/EV).
+Mobility is defined each hour by:
 
-Per-vehicle values come from the technology column named by `techkey` in the
-`storage` sheet:
-`charging_eff`, `self_discharge`, `max_charging_power`,
-`max_dispatch_power`, and `battery_capacity`. Each has a
-corresponding keyword override. The fleet size is `number_ev`, and the
-per-vehicle limits and departure/arrival series are scaled by that size.
-`max_dispatch_power` is resolved only in vehicle-to-grid mode; smart charging
-does not require it.
+- `departures` and `arrivals`: nonnegative vehicle counts;
+- `departure_soc` and `arrival_soc`: mean state of charge in `[0, 1]`.
+
+Departing and arriving battery energy use
+
+```math
+\begin{aligned}
+D_t &= \mathrm{departures}_t \times \mathrm{departure\_soc}_t \times \mathrm{battery\_capacity\_per\_ev} \\
+A_t &= \mathrm{arrivals}_t \times \mathrm{arrival\_soc}_t \times \mathrm{battery\_capacity\_per\_ev}
+\end{aligned}
+```
+
+The connected count at the start of hour `t` and charging availability follow
+
+```math
+\begin{aligned}
+n_1 &= \mathrm{initial\_connected\_share} \times \mathrm{number\_ev} \\
+n_{t+1} &= n_t - \mathrm{departures}_t + \mathrm{arrivals}_t \\
+a_t &= n_t / \mathrm{number\_ev}
+\end{aligned}
+```
+
+On a circular mesh, annual departure and arrival counts must balance (`sum(departures) = sum(arrivals)`).
+Charging availability `a_t` applies as a capacity multiplier on `input`, `level`, and (in vehicle-to-grid mode)
+`output`.
+
+Per-vehicle technology parameters come from the column named by `techkey` in
+the `storage` sheet: `charging_eff`, `self_discharge`, `max_charging_power`,
+`max_dispatch_power`, and `battery_capacity`. Each has a corresponding keyword
+override. `max_dispatch_power` is resolved only in vehicle-to-grid mode; smart
+charging does not require it.
 
 In `tech_mode=:arguments`, charging efficiency defaults to one and
-self-discharge to zero. Maximum charging power and
-battery capacity remain structural and must be supplied; V2G additionally
-requires maximum dispatch power. In
-`timeseries_mode=:arguments`, omitted charging availability defaults to one,
-while departure and arrival remain required.
+self-discharge to zero. Maximum charging power and battery capacity remain
+structural and must be supplied; vehicle-to-grid additionally requires maximum
+dispatch power. In `timeseries_mode=:arguments`, `departures`, `arrivals`,
+`departure_soc`, and `arrival_soc` must also be supplied explicitly. In
+`timeseries_mode=:excel`, omitted mobility series are read for `zone` from
+`EV_departure`, `EV_arrival`, `EV_departure_soc`, and `EV_arrival_soc`.
 
 Smart charging exposes a flexible `input`, a `level`, a fixed unconnected
 `departure` output, and a fixed unconnected `arrival` input. Vehicle-to-grid

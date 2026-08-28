@@ -123,9 +123,10 @@ number, expanded to all hours, or a vector with exactly
 | [`makeintermittentsource`](@ref) | `profile` | `<techkey>_<node>` in `profiles_<year>` |
 | [`makehydroror`](@ref) | `intake_profile` | `<zone>` in `hydro_ror_<year>` |
 | [`makehydroreservoir`](@ref) | `intake_profile` | `<zone>` in `reservoir_inflow_<year>` |
-| [`makeEV`](@ref) | `charging_availability` | `<zone>` in `EV_charging_availability` |
-| [`makeEV`](@ref) | `departure_per_ev` | `<zone>` in `EV_departure` |
-| [`makeEV`](@ref) | `arrival_per_ev` | `<zone>` in `EV_arrival` |
+| [`makeEV`](@ref) | `departures` | `<zone>` in `EV_departure` |
+| [`makeEV`](@ref) | `arrivals` | `<zone>` in `EV_arrival` |
+| [`makeEV`](@ref) | `departure_soc` | `<zone>` in `EV_departure_soc` |
+| [`makeEV`](@ref) | `arrival_soc` | `<zone>` in `EV_arrival_soc` |
 | [`makepriceinterco`](@ref) | `spot_price` | `<foreign-zone>` in `spot_price` |
 | [`makepriceinterco`](@ref) | `import_availability` | `zone>local` in `transfer_capacities` |
 | [`makepriceinterco`](@ref) | `export_availability` | `local>zone` in `transfer_capacities` |
@@ -344,9 +345,10 @@ directly.
 | `profiles_<year>` | `<techkey>_<node-name>` | [`makeintermittentsource`](@ref) |
 | `hydro_ror_<year>` | `<zone>` | [`makehydroror`](@ref) |
 | `reservoir_inflow_<year>` | `<zone>` | [`makehydroreservoir`](@ref) when intake is enabled (`intake != 0`) |
-| `EV_charging_availability` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
 | `EV_departure` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
 | `EV_arrival` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
+| `EV_departure_soc` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
+| `EV_arrival_soc` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
 | `spot_price` | `<foreign-zone>` | [`makepriceinterco`](@ref) |
 | `transfer_capacities` | `From>To` | [`makepriceinterco`](@ref), always |
 | `transfer_capacities_AC` | `From>To` | [`makenodeinterco`](@ref) with `dc=false`, when that direction's capacity is finite |
@@ -370,8 +372,12 @@ The principal series semantics are:
   `intake=0` disables natural intake without reading a
   profile; otherwise workbook lookup requires an explicit `weatheryear` when
   `intake_profile` is omitted.
-- EV charging availability is a capacity multiplier. `EV_departure` and
-  `EV_arrival` are hourly per-vehicle energy (MWh/EV), scaled by `number_ev`.
+- `EV_departure` and `EV_arrival` hold hourly vehicle counts (nonnegative).
+  `EV_departure_soc` and `EV_arrival_soc` hold mean state-of-charge values in
+  `[0, 1]`. The builder converts these inputs to fixed `departure` and `arrival`
+  energy flows using `battery_capacity_per_ev`, tracks the connected fleet, and
+  applies `n_t / number_ev` as the charging availability multiplier. Annual
+  departure and arrival counts must balance on a circular mesh.
 - The three `transfer_capacities*` sheets all hold hourly availability
   multipliers per direction (`From>To`), and differ only in which builder reads
   them. Each interconnection kind owns one sheet, so an AC and a DC link on the
@@ -389,10 +395,11 @@ The principal series semantics are:
 
 Physical domains are enforced when a series is resolved, whether it comes from
 the workbook or from a keyword. Availability and capacity multipliers
-(`profiles_<year>`, the `transfer_capacities*` sheets, `EV_charging_availability`) must lie
+(`profiles_<year>`, the `transfer_capacities*` sheets) must lie
 in `[0, 1]`; intake shapes (`hydro_ror_<year>`, `reservoir_inflow_<year>`) must
 be nonnegative and sum to a strictly positive value; `EV_departure` and
-`EV_arrival` must be nonnegative. `demand` and `spot_price` are unrestricted
+`EV_arrival` must be nonnegative; `EV_departure_soc` and `EV_arrival_soc` must
+lie in `[0, 1]`. `demand` and `spot_price` are unrestricted
 beyond being numeric and finite.
 
 ## Full-year Hourly Assumption

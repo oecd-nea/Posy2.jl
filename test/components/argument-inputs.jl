@@ -201,8 +201,10 @@ using HiGHS
             ev = makeEV(
                 "Neutral EV", electricity, s;
                 number_ev=1_000.0,
+                initial_connected_share=1.0,
                 fixed_profile=false, smart_charging=true,
-                departure_per_ev=collect(1.0:24.0), arrival_per_ev=0.0,
+                departures=collect(1.0:24.0), arrivals=collect(1.0:24.0),
+                departure_soc=0.8, arrival_soc=0.56,
                 max_charging_power_per_ev=0.01,
                 battery_capacity_per_ev=0.06,
             )
@@ -210,16 +212,18 @@ using HiGHS
             @test_throws ArgumentError makeEV(
                 "Missing departure", electricity, s;
                 number_ev=1_000.0,
+                initial_connected_share=1.0,
                 fixed_profile=false, smart_charging=true,
-                arrival_per_ev=0.0,
+                arrivals=0.0, arrival_soc=0.56, departure_soc=0.8,
                 max_charging_power_per_ev=0.01,
                 battery_capacity_per_ev=0.06,
             )
             @test_throws ArgumentError makeEV(
                 "Missing arrival", electricity, s;
                 number_ev=1_000.0,
+                initial_connected_share=1.0,
                 fixed_profile=false, smart_charging=true,
-                departure_per_ev=1.0,
+                departures=1.0, departure_soc=0.8, arrival_soc=0.56,
                 max_charging_power_per_ev=0.01,
                 battery_capacity_per_ev=0.06,
             )
@@ -284,8 +288,10 @@ using HiGHS
         @test !isnothing(makeEV(
             "EV", electricity, s;
             number_ev=1_000.0,
+            initial_connected_share=0.75,
             fixed_profile=false, smart_charging=true,
-            charging_availability=fill(0.75, 24), departure_per_ev=collect(1.0:24.0), arrival_per_ev=0.0,
+            departures=collect(1.0:24.0), arrivals=collect(1.0:24.0),
+            departure_soc=0.8, arrival_soc=0.56,
             charging_eff=0.9, self_discharge=0.0,
             max_charging_power_per_ev=0.01,
             battery_capacity_per_ev=0.06,

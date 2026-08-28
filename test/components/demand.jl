@@ -75,13 +75,20 @@ using HiGHS
         )
     end
 
-    # EV smart-charging should fail when number_ev is missing.
+    # EV smart-charging should fail when number_ev or initial_connected_share is missing.
     let
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makeEV(
             "EV", elec, s;
             fixed_profile=false, smart_charging=true,
-            charging_availability=1.0, departure_per_ev=1.0, arrival_per_ev=0.0,
+            departures=0.0, arrivals=0.0, departure_soc=0.8, arrival_soc=0.56,
+            max_charging_power_per_ev=0.01, battery_capacity_per_ev=0.06,
+        )
+        @test_throws ArgumentError makeEV(
+            "EV", elec, s;
+            number_ev=1_000.0,
+            fixed_profile=false, smart_charging=true,
+            departures=0.0, arrivals=0.0, departure_soc=0.8, arrival_soc=0.56,
             max_charging_power_per_ev=0.01, battery_capacity_per_ev=0.06,
         )
     end
@@ -145,8 +152,9 @@ using HiGHS
         c = makeEV(
             "EV", elec, s;
             number_ev=500.0,
+            initial_connected_share=1.0,
             fixed_profile=false, smart_charging=false, vehicle_to_grid=true,
-            charging_availability=1.0, departure_per_ev=1.0, arrival_per_ev=0.0,
+            departures=0.0, arrivals=0.0, departure_soc=0.8, arrival_soc=0.56,
             charging_eff=0.8, self_discharge=0.0,
             max_charging_power_per_ev=0.01, max_dispatch_power_per_ev=0.01,
             battery_capacity_per_ev=0.06,
@@ -161,30 +169,120 @@ using HiGHS
         @test !Nosy.hasport(c, "driving")
     end
 
-    # A negative departure value would add free energy to the EV battery; a
-    # charging availability above one would raise the fleet's power and level
-    # limits above the modeled fleet.
+    # Flexible EV rejects negative departure counts, invalid initial_connected_share, and unbalanced departures/arrivals.
     let
         flexible = (
             number_ev=1000.0,
+            initial_connected_share=1.0,
             fixed_profile=false, smart_charging=true,
             charging_eff=0.9, self_discharge=0.0,
             max_charging_power_per_ev=0.01, battery_capacity_per_ev=0.06,
+            departure_soc=0.8, arrival_soc=0.56,
         )
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makeEV(
             "EV", elec, s;
-            charging_availability=1.0,
-            departure_per_ev=vcat(-1.0, fill(2.0, 8759)), arrival_per_ev=0.0, flexible...,
+            departures=vcat(-1.0, fill(0.0, 8759)), arrivals=0.0, flexible...,
         )
         @test_throws ArgumentError makeEV(
             "EV", elec, s;
-            charging_availability=1.5, departure_per_ev=1.0, arrival_per_ev=0.0, flexible...,
+            flexible...,
+            initial_connected_share=1.5, departures=0.0, arrivals=0.0,
         )
-        @test !isnothing(makeEV(
+        @test_throws ArgumentError makeEV(
             "EV", elec, s;
-            charging_availability=1.0, departure_per_ev=1.0, arrival_per_ev=0.0, flexible...,
-        ))
+            departures=1.0, arrivals=0.0, flexible...,
+        )
+    end
+
+    # After optimization, ten vehicles arriving at hour 2 raise fleet `level` (`level[3] > level[2]`).
+    # The same mobility with a lower hour 2 `arrival_soc` leaves less stored energy at hour 3.
+    let
+        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, 24)))
+        set_silent(sim.model)
+        s = Snapshot(sim, Dict(:posy => Posy2Options(tech_mode=:arguments, timeseries_mode=:arguments)))
+        elec = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        co2 = Node("CO2", CO2Carrier("CO2", sim); rule=:curtailed, tags=[:co2])
+        makeEV(
+            "EV", elec, s;
+            number_ev=100.0,
+            initial_connected_share=0.75,
+            fixed_profile=false, smart_charging=true,
+            departures=vcat(zeros(2), 10.0, zeros(18), 10.0, zeros(2)),
+            arrivals=vcat(zeros(1), 10.0, zeros(18), 10.0, zeros(3)),
+            departure_soc=0.5,
+            arrival_soc=vcat(zeros(1), 1.0, zeros(22)),
+            charging_eff=1.0, self_discharge=0.0,
+            max_charging_power_per_ev=0.01,
+            battery_capacity_per_ev=0.06,
+        )
+        makedispatchable(
+            "Supply", "CCGT", elec, co2, s;
+            cap=100.0, fuel_cost=1_000.0, overnight_cost=0.0, co2_emission=0.0,
+        )
+        Nosy.optimize!(s, cost(s))
+        @test is_solved_and_feasible(s.sim.model)
+        result = extract(s)
+        ev = Nosy.getcomponent(result, "EV ZONE1")
+        high_arrival = balance(ev, :level, energy; collapse=false, aggregate=true)
+
+        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, 24)))
+        set_silent(sim.model)
+        s = Snapshot(sim, Dict(:posy => Posy2Options(tech_mode=:arguments, timeseries_mode=:arguments)))
+        elec = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        co2 = Node("CO2", CO2Carrier("CO2", sim); rule=:curtailed, tags=[:co2])
+        makeEV(
+            "EV", elec, s;
+            number_ev=100.0,
+            initial_connected_share=0.75,
+            fixed_profile=false, smart_charging=true,
+            departures=vcat(zeros(2), 10.0, zeros(18), 10.0, zeros(2)),
+            arrivals=vcat(zeros(1), 10.0, zeros(18), 10.0, zeros(3)),
+            departure_soc=0.5,
+            arrival_soc=vcat(zeros(1), 0.5, zeros(22)),
+            charging_eff=1.0, self_discharge=0.0,
+            max_charging_power_per_ev=0.01,
+            battery_capacity_per_ev=0.06,
+        )
+        makedispatchable(
+            "Supply", "CCGT", elec, co2, s;
+            cap=100.0, fuel_cost=1_000.0, overnight_cost=0.0, co2_emission=0.0,
+        )
+        Nosy.optimize!(s, cost(s))
+        @test is_solved_and_feasible(s.sim.model)
+        result = extract(s)
+        ev = Nosy.getcomponent(result, "EV ZONE1")
+        low_arrival = balance(ev, :level, energy; collapse=false, aggregate=true)
+
+        @test high_arrival[3] > high_arrival[2]
+        @test high_arrival[3] > low_arrival[3]
+    end
+
+    # Charging availability at hour t uses the connected fleet at the start of that hour.
+    let
+        s, elec, _ = makesnapshot()
+        nh = Nosy.nhours(sim(s))
+        dep = vcat(80.0, 20.0, zeros(nh - 2))
+        arr = vcat(20.0, 80.0, zeros(nh - 2))
+        c = makeEV(
+            "EV", elec, s;
+            number_ev=100.0,
+            initial_connected_share=1.0,
+            fixed_profile=false, smart_charging=true,
+            departures=dep, arrivals=arr,
+            departure_soc=1.0, arrival_soc=1.0,
+            charging_eff=0.9, self_discharge=0.0,
+            max_charging_power_per_ev=0.01,
+            battery_capacity_per_ev=0.06,
+        )
+        mults = Dict(
+            b.data.pname => b.val.data
+            for b in Nosy.getbehaviors(c, Nosy.CapacityMultiplierBehavior)
+        )
+        @test mults["input"][1] == 1.0
+        @test mults["input"][2] == 0.4
+        @test mults["level"][1] == 1.0
+        @test mults["level"][2] == 0.4
     end
 
     # A valid demand response input should create and register the component.

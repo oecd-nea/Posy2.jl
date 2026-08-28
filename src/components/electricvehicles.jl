@@ -8,9 +8,11 @@ using ArgCheck: @argcheck
     makeEV(cname::String, elec::Node, s::Snapshot;
         fixed_profile::Bool=true, smart_charging::Bool=false, vehicle_to_grid::Bool=false,
         yearly=nothing, offhours1=nothing, offhours2=nothing, minratio=nothing, days_threshold::Integer=104,
-        number_ev=nothing, zone::Union{Nothing,String}=nothing, techkey::String="EV",
+        number_ev=nothing, initial_connected_share=nothing,
+        zone::Union{Nothing,String}=nothing, techkey::String="EV",
         compensation::Real=0., gridlosses=0.,
-        charging_availability=nothing, departure_per_ev=nothing, arrival_per_ev=nothing,
+        departures=nothing, arrivals=nothing,
+        departure_soc=nothing, arrival_soc=nothing,
         charging_eff::Union{Nothing,Real}=nothing, self_discharge::Union{Nothing,Real}=nothing,
         max_charging_power_per_ev::Union{Nothing,Real}=nothing, max_dispatch_power_per_ev::Union{Nothing,Real}=nothing,
         battery_capacity_per_ev::Union{Nothing,Real}=nothing,
@@ -38,17 +40,20 @@ Arguments:
   * `days_threshold`: Number of first winter days before summer segment in fixed-profile assembly (`0 <= days_threshold <= 183`, used only when `fixed_profile=true`).
 
   * `number_ev`: Number of vehicles in the fleet (`> 0`). Scales per-vehicle
-    power, battery, and departure/arrival series.
+    power and battery limits.
+  * `initial_connected_share`: Share of the fleet connected immediately
+    before the first model timestep (`0 <= initial_connected_share <= 1`).
   * `zone`: Zone key used to read omitted EV time series in `:excel` mode.
-  * `charging_availability`: Hourly charging-station availability vector or
-    scalar, each value in `[0, 1]`. When omitted, read it from the workbook in
-    `:excel` mode and use one in `:arguments` mode.
-  * `departure_per_ev`: Hourly connected-fleet departure energy per vehicle (MWh/EV),
+  * `departures`: Hourly number of vehicles departing the connected fleet,
     scalar or vector, nonnegative. If `nothing`, read it from the configured
-    time-series workbook.
-  * `arrival_per_ev`: Hourly connected-fleet arrival energy per vehicle (MWh/EV),
+    time-series workbook (`EV_departure`).
+  * `arrivals`: Hourly number of vehicles arriving to the connected fleet,
     scalar or vector, nonnegative. If `nothing`, read it from the configured
-    time-series workbook.
+    time-series workbook (`EV_arrival`).
+  * `departure_soc`: Mean SOC of departing vehicles in `[0, 1]`, scalar or vector.
+    If `nothing`, read it from `EV_departure_soc` in `:excel` mode.
+  * `arrival_soc`: Mean SOC of arriving vehicles in `[0, 1]`, scalar or vector.
+    If `nothing`, read it from `EV_arrival_soc` in `:excel` mode.
   * `techkey`: Technology column name in the `storage` tech data sheet for EV parameters (used in flexible/V2G modes).
   * `compensation`: V2G compensation in USD/MWh applied to EV discharge output in V2G mode (ignored in non-V2G modes).
   * `gridlosses`: Optional proportional grid-loss linked flow on EV input in fixed_profile mode (`0 <= gridlosses < 1`).
@@ -65,8 +70,9 @@ function makeEV(cname::String, elec::Node, s::Snapshot; fixed_profile::Bool=true
     # fixed-profile inputs
     yearly::Union{Nothing,Real}=nothing, offhours1=nothing, offhours2=nothing, minratio::Union{Nothing,Real}=nothing, days_threshold::Integer=104,
     # flexible / V2G inputs
-    number_ev::Union{Nothing,Real}=nothing, zone::Union{Nothing,String}=nothing, techkey::String="EV", compensation::Real=0., gridlosses::Real=0.,
-    charging_availability=nothing, departure_per_ev=nothing, arrival_per_ev=nothing,
+    number_ev::Union{Nothing,Real}=nothing, initial_connected_share::Union{Nothing,Real}=nothing,
+    zone::Union{Nothing,String}=nothing, techkey::String="EV", compensation::Real=0., gridlosses::Real=0.,
+    departures=nothing, arrivals=nothing, departure_soc=nothing, arrival_soc=nothing,
     charging_eff::Union{Nothing,Real}=nothing, self_discharge::Union{Nothing,Real}=nothing,
     max_charging_power_per_ev::Union{Nothing,Real}=nothing, max_dispatch_power_per_ev::Union{Nothing,Real}=nothing,
     battery_capacity_per_ev::Union{Nothing,Real}=nothing,)
@@ -76,6 +82,7 @@ function makeEV(cname::String, elec::Node, s::Snapshot; fixed_profile::Bool=true
     if fixed_profile
         @argcheck !isnothing(yearly) "`yearly` is required when fixed_profile=true."
         @argcheck isnothing(number_ev) "`number_ev` is only used in smart-charging and V2G modes."
+        @argcheck isnothing(initial_connected_share) "`initial_connected_share` is only used in smart-charging and V2G modes."
         @argcheck !isnothing(offhours1) "offhours1 is required when fixed_profile=true."
         @argcheck !isnothing(offhours2) "offhours2 is required when fixed_profile=true."
         @argcheck !isnothing(minratio) "minratio is required when fixed_profile=true."
@@ -125,11 +132,13 @@ function makeEV(cname::String, elec::Node, s::Snapshot; fixed_profile::Bool=true
         return c
     else
         @argcheck !isnothing(number_ev) "`number_ev` is required in smart-charging and V2G modes."
+        @argcheck !isnothing(initial_connected_share) "`initial_connected_share` is required in smart-charging and V2G modes."
         @argcheck isnothing(yearly) "`yearly` is only used in fixed_profile mode."
-        @argcheck number_ev > 0 "`number_ev` must be > 0."
 
-        needs_profile_zone = timeseries_mode(s) === :excel &&
-            (isnothing(charging_availability) || isnothing(departure_per_ev) || isnothing(arrival_per_ev))
+        needs_profile_zone = timeseries_mode(s) === :excel && (
+            isnothing(departures) || isnothing(arrivals) ||
+            isnothing(departure_soc) || isnothing(arrival_soc)
+        )
         @argcheck !needs_profile_zone || !isnothing(zone) "zone is required when an EV profile is read from the workbook."
         @argcheck isnothing(zone) || zone isa String "zone must be a String."
         profile_zone = isnothing(zone) ? elec.name : zone
@@ -169,6 +178,7 @@ function makeEV(cname::String, elec::Node, s::Snapshot; fixed_profile::Bool=true
             battery_capacity_per_ev
         end
         inputs = demand_input(
+            number_ev=number_ev, initial_connected_share=initial_connected_share,
             compensation=compensation, charging_eff=eff, self_discharge=sd,
             max_charging_power=max_charging_per_ev,
             max_dispatch_power=max_dispatch_per_ev, battery_capacity=battery_cap_per_ev,
@@ -176,37 +186,43 @@ function makeEV(cname::String, elec::Node, s::Snapshot; fixed_profile::Bool=true
         validate_demand_input(inputs)
         _number_ev = Float64(number_ev)
         _compensation = Float64(compensation)
+        _initial_connected_share = Float64(initial_connected_share)
+        _battery_capacity_per_ev = Float64(battery_cap_per_ev)
         max_charging_power = _number_ev * max_charging_per_ev
         max_dispatch_power = vehicle_to_grid ? _number_ev * max_dispatch_per_ev : 0.0
-        max_battery_capacity = _number_ev * battery_cap_per_ev
+        max_battery_capacity = _number_ev * _battery_capacity_per_ev
 
-        # profile for being connected to charging station
-        charging_profile_input = isnothing(charging_availability) && timeseries_mode(s) === :arguments ?
-            1.0 : charging_availability
-        chargingstationprofile = _resolve_timeseries(
-            s, charging_profile_input, profile_zone, "EV_charging_availability";
-            keyword="charging_availability", lower=0.0, upper=1.0,
+        n_dep = _resolve_timeseries(
+            s, departures, profile_zone, "EV_departure";
+            keyword="departures", lower=0.0,
+        )
+        n_arr = _resolve_timeseries(
+            s, arrivals, profile_zone, "EV_arrival";
+            keyword="arrivals", lower=0.0,
+        )
+        soc_dep = _resolve_timeseries(
+            s, departure_soc, profile_zone, "EV_departure_soc";
+            keyword="departure_soc", lower=0.0, upper=1.0,
+        )
+        soc_arr = _resolve_timeseries(
+            s, arrival_soc, profile_zone, "EV_arrival_soc";
+            keyword="arrival_soc", lower=0.0, upper=1.0,
         )
 
-        # scale per-EV departure / arrival series by fleet size
-        if isnothing(departure_per_ev) && timeseries_mode(s) === :arguments
-            throw(ArgumentError(
-                "`departure_per_ev` must be supplied in flexible EV modes when timeseries_mode=:arguments",
-            ))
+        # on a circular mesh, annual `departures` and `arrivals` must balance
+        @argcheck isapprox(sum(n_dep), sum(n_arr); rtol=0, atol=1e-6) "EV `departures` and `arrivals` must balance over the circular time mesh."
+        # connected fleet at the start of each hour
+        n_conn = Vector{Float64}(undef, length(n_dep))
+        n_conn[1] = _initial_connected_share * _number_ev
+        for t in 1:length(n_conn) - 1
+            n_conn[t + 1] = n_conn[t] - n_dep[t] + n_arr[t]
+            @argcheck 0 <= n_conn[t + 1] <= _number_ev "connected vehicle count at hour $(t + 1) must be in [0, $_number_ev], got $(n_conn[t + 1])."
         end
-        if isnothing(arrival_per_ev) && timeseries_mode(s) === :arguments
-            throw(ArgumentError(
-                "`arrival_per_ev` must be supplied in flexible EV modes when timeseries_mode=:arguments",
-            ))
-        end
-        departing = _number_ev .* _resolve_timeseries(
-            s, departure_per_ev, profile_zone, "EV_departure";
-            keyword="departure_per_ev", lower=0.0,
-        )
-        arriving = _number_ev .* _resolve_timeseries(
-            s, arrival_per_ev, profile_zone, "EV_arrival";
-            keyword="arrival_per_ev", lower=0.0,
-        )
+
+        # availability at hour t uses the connected fleet at the start of that hour
+        chargingstationprofile = n_conn ./ _number_ev
+        departing = n_dep .* soc_dep .* _battery_capacity_per_ev
+        arriving = n_arr .* soc_arr .* _battery_capacity_per_ev
 
         m = LazyStorage(elec.carrier, eff=Dict("input" => eff, "output" => 1., "departure" => 1., "arrival" => 1.), self_discharge=sd, simplified=true)
         vb = []

@@ -160,6 +160,7 @@ function solve_ev(vehicle_to_grid)
     makeEV(
         "EV", electricity, snapshot;
         number_ev=10_000.0,
+        initial_connected_share=1.0,
         fixed_profile=false,
         smart_charging=!vehicle_to_grid,
         vehicle_to_grid=vehicle_to_grid,

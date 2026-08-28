@@ -168,11 +168,12 @@ using DataFrames
         makeEV(
             "EV", elec, snap;
             number_ev=100_000.0,
+            initial_connected_share=1.0,
             fixed_profile=false, smart_charging=true,
             charging_eff=0.9, self_discharge=0.001,
-            departure_per_ev=repeat([zeros(7); 0.03; zeros(16)], 365),
-            arrival_per_ev=0.0,
-            charging_availability=1.0,
+            departures=repeat([zeros(7); 75_000.0; zeros(16)], 365),
+            arrivals=repeat([zeros(7); 75_000.0; zeros(16)], 365),
+            departure_soc=0.8, arrival_soc=0.0,
             battery_capacity_per_ev=0.05, max_charging_power_per_ev=0.01,
         )
         makedispatchable("Supply", "unused", elec, co2, snap; cap=300.0, fuel_cost=1.0)

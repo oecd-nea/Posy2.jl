@@ -466,10 +466,12 @@ using DataFrames
         snap, elec, co2 = argument_snapshot(hours=24)
         common = (
             number_ev=10.0,
+            initial_connected_share=1.0,
             fixed_profile=false,
-            charging_availability=1.0,
-            departure_per_ev=1.0,
-            arrival_per_ev=0.0,
+            departures=1.0,
+            arrivals=1.0,
+            departure_soc=1.0,
+            arrival_soc=0.0,
             charging_eff=0.8,
             self_discharge=0.0,
             max_charging_power_per_ev=2.0,
@@ -753,8 +755,9 @@ using DataFrames
         makeEV(
             "EV V2G", elec, snap;
             number_ev=10.0,
+            initial_connected_share=1.0,
             fixed_profile=false, smart_charging=false, vehicle_to_grid=true,
-            charging_availability=1.0, departure_per_ev=1.0, arrival_per_ev=0.0,
+            departures=1.0, arrivals=1.0, departure_soc=1.0, arrival_soc=0.0,
             charging_eff=0.8, self_discharge=0.0,
             max_charging_power_per_ev=2.0, max_dispatch_power_per_ev=2.0,
             battery_capacity_per_ev=10.0,

@@ -20,8 +20,8 @@ The setup is:
 - a fleet of 10 000 vehicles
 - OCGT backup that covers residual load
 
-Net driving follows the workbook per-vehicle departure and arrival series,
-scaled by `number_ev`.
+Annual net driving (departure − arrival) is fixed by the workbook mobility
+series and is identical in both runs.
 With smart charging the optimiser only chooses when to fill the battery.
 With V2G it also chooses when to sell power back to the node.
 
@@ -30,8 +30,8 @@ With V2G it also chooses when to sell power back to the node.
 Cars take power from the grid and give it up only as driving. Charge hours are
 free, so the optimiser charges when the dual is low to cover later driving.
 With no grid discharge, annual grid charge exceeds annual net driving only by the
-charging losses: at 90% efficiency, 60 829.28 MWh of charge supports the
-54 746 MWh of net driving.
+charging losses: at 90% efficiency, 36 470.80 MWh of charge supports the
+32 824 MWh of net driving.
 
 ```jldoctest electric_vehicles_smart; output = false
 using Posy2
@@ -79,6 +79,7 @@ makeintermittentsource(
 makeEV(
     "EV", electricity, snapshot;
     number_ev=10000.0,                 # vehicles
+    initial_connected_share=1.0,
     fixed_profile=false,
     smart_charging=true,
     zone="country1",
@@ -112,25 +113,25 @@ Snapshot with 5 component(s) and 1 node(s)
 
 ```
 
-Annual net driving is 54 746 MWh. Charge is higher because of
+Annual net driving is 32 824 MWh. Charge is higher because of
 the 90% charging efficiency, and nothing is sold to the node. OCGT still
 covers residual demand:
 
 ```jldoctest electric_vehicles_smart
 julia> departure = balance(result, "EV country1", :output, energy; collapse=true, aggregate=false)["departure"]
-182500.0
+109412.39999999487
 
 julia> arrival = balance(result, "EV country1", :input, energy; collapse=true, aggregate=false)["arrival"]
-127753.64999999835
+76588.67999999733
 
 julia> driving = departure - arrival
-54746.35000000165
+32823.71999999754
 
 julia> charge = balance(result, "EV country1", :input, energy; collapse=true, aggregate=false)["input"]
-60829.27777777795
+36470.79999999986
 
 julia> balance(result, "OCGT country1", :output, energy; collapse=true, aggregate=true)
-5.107728931377961e6
+5.098481783239689e6
 ```
 
 The figure uses 25–26 June, when the additional demand peaks, PV, and OCGT
@@ -193,6 +194,7 @@ makeintermittentsource(
 makeEV(
     "EV", electricity, snapshot;
     number_ev=10000.0,                 # same fleet as smart charging
+    initial_connected_share=1.0,
     fixed_profile=false,
     vehicle_to_grid=true,
     zone="country1",
@@ -228,28 +230,28 @@ Snapshot with 5 component(s) and 1 node(s)
 
 ```
 
-Driving stays at 54 746 MWh. With V2G the fleet can also sell power back, so
+Driving stays at 32 824 MWh. With V2G the fleet can also sell power back, so
 it cycles like a battery: annual charge rises well above driving, grid
 discharge appears, and OCGT generation reduces:
 
 ```jldoctest electric_vehicles_v2g
 julia> departure = balance(result, "EV country1", :output, energy; collapse=true, aggregate=false)["departure"]
-182500.0
+109412.39999999487
 
 julia> arrival = balance(result, "EV country1", :input, energy; collapse=true, aggregate=false)["arrival"]
-127753.64999999835
+76588.67999999733
 
 julia> driving = departure - arrival
-54746.35000000165
+32823.71999999754
 
 julia> discharge = balance(result, "EV country1", :output, energy; collapse=true, aggregate=false)["output"]
-55282.653137529705
+57748.54945157862
 
 julia> charge = balance(result, "EV country1", :input, energy; collapse=true, aggregate=false)["input"]
-122254.4479305884
+100635.85494619841
 
 julia> balance(result, "OCGT country1", :output, energy; collapse=true, aggregate=true)
-5.070611367132223e6
+5.056856913300684e6
 
 julia> price = dualprice(result.nodes["country1"]);
 
@@ -282,6 +284,6 @@ can cover residual load.
 | | Smart | V2G |
 |:---|---:|---:|
 | `:output` / `:input` ports | `departure` / `arrival` | `departure` / `arrival` + `output` |
-| Grid discharge (MWh/year) | 0 | 55283 |
-| OCGT generation (MWh/year) | 5.108e6 | 5.071e6 |
-| Driving energy (MWh/year) | 54746 | 54746 |
+| Grid discharge (MWh/year) | 0 | 57749 |
+| OCGT generation (MWh/year) | 5.098e6 | 5.057e6 |
+| Driving energy (MWh/year) | 32824 | 32824 |

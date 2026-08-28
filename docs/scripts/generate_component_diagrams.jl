@@ -388,11 +388,11 @@ const SPECS = [
         component="EV, Smart Charging And V2G",
         inputs=[
             (name="input", kind=:free, note=["fleet charging power", "x charging availability"], endpoint=ELEC_BOTH),
-            (name="arrival", kind=:fixed, note=["returning battery energy", "MWh/EV x fleet size"], endpoint=DRIVING),
+            (name="arrival", kind=:fixed, note=["returning battery energy", "count x SOC x battery_capacity"], endpoint=DRIVING),
         ],
         outputs=[
             (name="output", kind=:free, note=["only if vehicle_to_grid", "fleet dispatch power x avail.", "compensation cost"], endpoint=ELEC_BOTH),
-            (name="departure", kind=:fixed, note=["leaving battery energy", "MWh/EV x fleet size"], endpoint=DRIVING),
+            (name="departure", kind=:fixed, note=["leaving battery energy", "count x SOC x battery_capacity"], endpoint=DRIVING),
         ],
         level=(name="level", note=["fleet battery capacity", "x charging availability"]),
     ),
