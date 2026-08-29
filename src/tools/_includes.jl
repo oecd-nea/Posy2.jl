@@ -1,4 +1,6 @@
 include("annualization.jl")
 include("susceptance.jl")
+include("dcopf.jl")
 include("cycles.jl")
+include("ptdf.jl")
 include("options.jl")

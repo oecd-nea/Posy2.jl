@@ -93,8 +93,8 @@ self-versus-foreign reports.
 
 Here `dc` classifies the interconnector for Kirchhoff voltage-law constraints;
 it does not make the link unidirectional. `dc=false` creates an AC-classified
-link, while `dc=true` excludes it from the cycle constraints added by
-[`applydcopf!`](@ref).
+link, while `dc=true` excludes it from the network constraints added by
+[`applydcopf!`](@ref), under either formalism.
 
 When DC power flow is enabled in [`Posy2Options`](@ref), every AC node
 interconnection must supply a negative series `susceptance`

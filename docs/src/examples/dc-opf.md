@@ -5,21 +5,26 @@ Four electricity zones A–B–C–D sit on an AC ring of
 on A supplies flat 1 MW demand in every zone. Left alone, the mesh is a
 transport model: a network flow problem that enforces nodal balance (and
 capacity limits) but not Kirchhoff's voltage law. Calling
-[`applydcopf!`](@ref) adds KVL on every independent AC cycle, so the
-study becomes a DC optimal power-flow approximation of the AC mesh: corridor
-flows follow the split implied by the line susceptances.
+[`applydcopf!`](@ref) adds the AC network equations, so the study becomes a DC
+optimal power-flow approximation of the AC mesh: corridor flows follow the
+split implied by the line susceptances. Those equations can be written on the
+independent AC cycles (the default) or as power transfer distribution factors,
+selected with the `method` keyword.
 
 Use transport when nodal balance and transfer limits are enough for the study.
 Turn on DC OPF when corridor flows must reflect AC network physics—how
 exchanges split across parallel paths under KVL and the line susceptances. See
 [DC Power Flow](../concepts/optimizing.md#DC-Power-Flow) for the signed-flow
-definition and the cycle constraints used by [`applydcopf!`](@ref).
+definition and both constraint formalisms used by [`applydcopf!`](@ref).
 
 This page keeps the same plants and demand and changes only the network:
 
 1. transport (no [`applydcopf!`](@ref), all AC, including an AC diagonal);
 2. DC OPF on the same AC mesh ([`applydcopf!`](@ref) after the network is built);
-3. DC OPF again, but with the diagonal built as controllable HVDC (`dc=true`).
+3. the same DC OPF written with the PTDF formalism (`method=:ptdf`);
+4. DC OPF again, but with the diagonal built as controllable HVDC (`dc=true`).
+
+![Four-node network with five lines labelled by their susceptance B](../assets/dc-opf-network.svg)
 
 After each solve, [`printsnapshot`](@ref) writes the standard Posy2 workbook
 report under `results/`—one workbook per scenario. In `Annual values (all)`,
@@ -182,6 +187,88 @@ That writes `results/dc-opf.xlsx`. The Interconnection volume table in
 Compared with the transport workbook: plants and demand are the same; what
 changes is the network model, and the corridor volumes shift once KVL and the
 line susceptances constrain the path through the mesh.
+
+## Choosing the formalism
+
+[`applydcopf!`](@ref) writes those constraints one of two ways, chosen with
+`method`. The default `:cycles` puts one equation on each independent AC cycle.
+`:ptdf` instead puts one equation on each AC line, tying its flow to the net
+nodal injections through the network's power transfer distribution factors.
+
+The two are algebraically equivalent: same network, same feasible flows, same
+solution. Only the number and the shape of the rows handed to the solver
+differ—`:cycles` writes one row per cycle, `:ptdf` one row per line. Pick
+`:ptdf` when the study is easier to reason about in injection terms, `:cycles`
+for the smaller model.
+
+The run below repeats the DC OPF study above and changes the single call.
+
+```jldoctest dc_opf_ptdf; output = false
+using Posy2
+using Nosy
+using HiGHS
+import JuMP: set_silent
+
+# Simulation and Posy2 input configuration
+sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+set_silent(model(sim))
+example_data_dir = joinpath(pkgdir(Posy2), "data")
+snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
+    data_dir=example_data_dir,
+    techdata_file="tech_data.xlsx",
+    timeseries_file="time_series.xlsx",
+    tech_mode=:excel,
+    timeseries_mode=:arguments,
+)))
+
+# Electricity zones and CO2 sink
+a = Node("A", EnergyCarrier("electricity A", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+b = Node("B", EnergyCarrier("electricity B", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+c = Node("C", EnergyCarrier("electricity C", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+d = Node("D", EnergyCarrier("electricity D", sim), rule=:curtailed, evalprice=true, tags=[:electricity])
+co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
+
+# Flat 1 MW demand in each zone
+makedemand("Demand", "A", a, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+makedemand("Demand", "B", b, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+makedemand("Demand", "C", c, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+makedemand("Demand", "D", d, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+
+# 10 MW CCGT on A; costs from the technology workbook
+makedispatchable("CCGT", "CCGT", a, co2, snapshot; cap=10.0, unit_size=0.0)
+
+# Same AC mesh as above
+makenodeinterco("IC", a, b, Inf, Inf, snapshot; susceptance=-1.0)
+makenodeinterco("IC", b, c, Inf, Inf, snapshot; susceptance=-2.0)
+makenodeinterco("IC", c, d, Inf, Inf, snapshot; susceptance=-1.5)
+makenodeinterco("IC", d, a, Inf, Inf, snapshot; susceptance=-2.5)
+makenodeinterco("IC", a, c, Inf, Inf, snapshot; susceptance=-3.0)
+
+# Same physics, written as PTDF equations
+applydcopf!(snapshot; method=:ptdf)
+optimize!(snapshot, cost(snapshot))
+result_ptdf = extract(snapshot)
+
+# output
+
+Snapshot with 10 component(s) and 5 node(s)
+
+```
+
+```jldoctest dc_opf_ptdf
+julia> printsnapshot(result_ptdf, "dc-opf-ptdf.xlsx")
+```
+
+That writes `results/dc-opf-ptdf.xlsx`. Its Interconnection volume table
+reproduces the one from the `:cycles` solve above (TWh/y):
+
+| From \\ To | A | B | C | D | Total |
+| --- | --- | --- | --- | --- | --- |
+| A |  | 0.006 | 0.012 | 0.009 | 0.026 |
+| B | 0 |  | 0 |  | 0 |
+| C | 0 | 0.003 |  | 0 | 0.003 |
+| D | 0 |  | 0 |  | 0 |
+| Total | 0 | 0.009 | 0.012 | 0.009 | 0.03 |
 
 ## Controllable DC lines
 

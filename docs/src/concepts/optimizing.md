@@ -56,6 +56,9 @@ applydcopf!(snapshot)
 Nosy.optimize!(snapshot, cost(snapshot))
 ```
 
+The `method` keyword picks the formalism used to write them, `:cycles`
+(default) or `:ptdf`; see [Choosing A Formalism](#Choosing-A-Formalism) below.
+
 Calling it a second time, or adding a node interconnection afterwards, raises
 an `ArgumentError`: the constraints already in the model were built from the
 earlier topology and cannot be refreshed in place.
@@ -67,11 +70,12 @@ Kirchhoff voltage law (KVL) constraints that restrict AC flows.
 Set each AC link’s series susceptance in [`makenodeinterco`](@ref)
 (negative for inductive lines, ``B\approx-1/X``). Use one equivalent
 susceptance if parallel AC circuits were aggregated beforehand.
-Controllable DC links (`dc=true`) are excluded from the cycle basis.
+Controllable DC links (`dc=true`) are excluded from the AC network.
 
-For each independent AC cycle ``C`` and each time step ``t``, and for a
-directed edge ``(i,j)`` oriented consistently with the traversal of ``C``, KVL
-uses the signed net midpoint flow
+### Signed Line Flows
+
+Both formalisms below constrain the same quantity. For a directed AC line
+``(i,j)`` and each time step ``t``, they use the signed net midpoint flow
 
 ```math
 f_{ij,t} =
@@ -92,18 +96,136 @@ This reduces to forward minus reverse transfer when `lossfactor=0`.
 ``B_{ij}`` is the series susceptance of that AC link. For the inductive lines
 used here, ``B_{ij}\approx-1/X_{ij}<0``. With the usual lossless DC flow
 ``f_{ij}=(1/X_{ij})(\theta_i-\theta_j)``, that sign choice makes the angle drop
-``\theta_i-\theta_j=-f_{ij}/B_{ij}``, so the cycle constraint
+``\theta_i-\theta_j=-f_{ij}/B_{ij}``. Posy2 therefore requires a strictly
+negative `susceptance` on every AC link of the network.
+
+### Choosing A Formalism
+
+The `method` keyword selects how those angles are eliminated. The two
+formalisms are algebraically equivalent—they define the same feasible flows
+and give the same solution—so the choice is one of formulation, not of
+physics.
+
+```julia
+applydcopf!(snapshot; method=:cycles)  # default
+applydcopf!(snapshot; method=:ptdf)
+```
+
+`:cycles` writes one constraint per independent AC cycle ``C``, taken from a
+cycle basis of the AC graph, with the edges of ``C`` oriented consistently with
+its traversal:
 
 ```math
 \sum_{(i,j) \in C} \frac{f_{ij,t}}{B_{ij}} = 0
 \qquad \forall\, C,\, t.
 ```
 
-is Kirchhoff's voltage law on those angles. Posy2 therefore requires a strictly
-negative `susceptance` on every AC link that enters the cycle basis.
+This is Kirchhoff's voltage law on the nodal angles: the voltage drops around a
+loop cancel. It is the smaller formulation, with one constraint per cycle,
+that is ``L-N+1`` constraints per time step on a connected AC network of ``L``
+lines and ``N`` nodes.
+
+`:ptdf` writes one constraint per AC line ``l``, tying its flow to the net
+nodal injections ``p_{n,t}``:
+
+```math
+f_{l,t} = \sum_n \mathrm{PTDF}_{l,n}\, p_{n,t}
+\qquad \forall\, l,\, t.
+```
+
+``\mathrm{PTDF}`` is the power transfer distribution factor matrix
+``\mathrm{PTDF} = B_d A \left(A^\top B_d A\right)^{+}``, where ``A`` is the
+line-node incidence matrix of the AC graph and ``B_d`` the diagonal matrix of
+line susceptances ``-B_{ij}``. Row ``l`` gives the share of an injection at
+each node that flows through line ``l``. The pseudo-inverse spreads the slack
+over all nodes, so the rows sum to zero and disconnected AC islands need no
+separate treatment. The injection ``p_{n,t}`` is the AC flow leaving node
+``n``, which the nodal balance ties to the generation, demand and DC transfers
+there. This formulation is the more explicit one—it exposes how each nodal
+injection loads every line—at the price of ``L`` constraints per time step
+instead of ``L-N+1``.
 
 Leave the call out for a transport study. Call it once for a given snapshot; it
 is a model-construction step, not part of the solver call.
+
+### Inspecting The Network
+
+Each formalism exposes the object it builds its constraints from:
+[`cyclebasis`](@ref) for `:cycles` and [`ptdfmatrix`](@ref) for `:ptdf`. Both
+read the topology only, so they can be called before or after
+[`applydcopf!`](@ref), whichever `method` was used, and on an extracted result.
+
+```jldoctest network_inspection
+julia> using Posy2, Nosy, HiGHS
+
+julia> import JuMP: Model, set_silent
+
+julia> sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1//1, 24)));
+
+julia> set_silent(model(sim))
+
+julia> snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
+           data_dir=joinpath(pkgdir(Posy2), "data"),
+           tech_mode=:arguments,
+           timeseries_mode=:arguments,
+       )));
+
+julia> zones = [Node("Z$i", EnergyCarrier("electricity Z$i", sim),
+                     rule=:curtailed, tags=[:electricity]) for i in 1:4];
+
+julia> makenodeinterco("IC", zones[1], zones[2], Inf, Inf, snapshot; susceptance=-1.0);
+
+julia> makenodeinterco("IC", zones[2], zones[3], Inf, Inf, snapshot; susceptance=-2.0);
+
+julia> makenodeinterco("IC", zones[3], zones[1], Inf, Inf, snapshot; susceptance=-3.0);
+
+julia> makenodeinterco("HVDC", zones[2], zones[4], Inf, Inf, snapshot; dc=true);
+
+julia> cyclebasis(snapshot)
+1-element Vector{Vector{String}}:
+ ["Z1", "Z3", "Z2"]
+
+julia> p = ptdfmatrix(snapshot);
+
+julia> p.nodes
+4-element Vector{String}:
+ "Z1"
+ "Z2"
+ "Z3"
+ "Z4"
+
+julia> p.lines
+3-element Vector{Tuple{String, String}}:
+ ("Z1", "Z2")
+ ("Z2", "Z3")
+ ("Z3", "Z1")
+
+julia> round.(p.matrix, digits=4)
+3×4 Matrix{Float64}:
+  0.2121  -0.2424   0.0303  0.0
+ -0.1212   0.4242  -0.303   0.0
+ -0.4545   0.0909   0.3636  0.0
+```
+
+`Z4` hangs off the HVDC link, which is outside the AC network, so it takes no
+share of any AC line and its column is zero. The single AC loop `Z1-Z3-Z2`
+closes back onto its first node, so its lines are `Z1-Z3`, `Z3-Z2` and `Z2-Z1`.
+
+The PTDF rows sum to zero: the slack is spread over the nodes, so a factor
+means something relative to the others in its row, not on its own. Subtract
+column `k` to read the matrix against a single slack node `k` instead. Column
+`n` then answers: inject one unit at `n`, withdraw it at the slack. With `Z1`
+as slack, column `Z2` on the `Z1 -> Z2` line reads
+
+```jldoctest network_inspection
+julia> round((p.matrix .- p.matrix[:, 1])[1, 2], digits=4)
+-0.4545
+```
+
+Negative because that transfer runs from `Z2` to `Z1`, against the stored
+orientation of the row: `0.4545` of it flows `Z2 -> Z1` on the direct line. That
+is `1/2.2`, the direct line (``B=-1``) against the `Z1-Z3-Z2` path
+(series ``B=-1.2``); the remaining `1.2/2.2` takes the two-line path.
 
 ## LP And MILP Models
 

@@ -27,7 +27,7 @@ export makedemandresponse
 export makepriceinterco, makenodeinterco
 export makeelectrolyser, makehydrogenstorage
 
-export applydcopf!
+export applydcopf!, cyclebasis, ptdfmatrix
 
 export eac
 export selfcost

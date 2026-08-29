@@ -77,6 +77,8 @@ makenodeinterco
 ```@docs
 eac
 applydcopf!
+cyclebasis
+ptdfmatrix
 ```
 
 ## Post-processing And Export

@@ -195,7 +195,8 @@ For a DC power flow study:
    inductive lines).
 3. Build any controllable DC links with `dc=true`.
 4. Call `applydcopf!(snapshot)` once, after all interconnections have been
-   added and before optimisation.
+   added and before optimisation. Pass `method=:ptdf` to write the same
+   physics as power transfer distribution factors instead of cycle equations.
 
 This order is enforced. `applydcopf!` builds the constraints from the topology
 present at the call, so a second call and any later [`makenodeinterco`](@ref)
@@ -220,14 +221,18 @@ applydcopf!(snapshot)
 Nosy.optimize!(snapshot, cost(snapshot))
 ```
 
-Posy2 constructs an undirected graph from AC node interconnections and adds
-one KVL relation for each independent cycle. A tree has no cycle constraint.
-Interconnections tagged as DC are excluded because their flow is controllable
-and does not obey the AC cycle equations.
+Posy2 constructs an undirected graph from AC node interconnections and adds,
+with the default `method=:cycles`, one KVL relation for each independent cycle.
+With `method=:ptdf` it adds instead one relation per AC line, tying its flow to
+the net nodal injections through the network's power transfer distribution
+factors. The two formalisms are equivalent and give the same flows; see
+[Optimising A Snapshot](optimizing.md#DC-Power-Flow). A tree has no constraint
+under either. Interconnections tagged as DC are excluded because their flow is
+controllable and does not obey the AC network equations.
 
 The susceptance registry is stored in `snapshot.options[:ic_susceptance]`.
 This entry is managed by [`makenodeinterco`](@ref).
 
 Omitting the `applydcopf!` call is what makes a study a transport model: the
 directional capacities still bound each link, but nothing ties the flows to the
-cycle equations.
+network equations.

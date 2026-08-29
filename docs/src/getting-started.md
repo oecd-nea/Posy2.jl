@@ -16,16 +16,14 @@ can be used the same way. Please note: some solvers require a separate installat
 
 ## Installation
 
-Posy2 is not yet in the Julia General registry, so install it from its
-repository. Nosy is added explicitly: a study calls Nosy directly for `Sim`,
-carriers, nodes, and the query functions, so it has to be a dependency of your
-project and not only of Posy2. Nosy itself is registered, so it is added by
-name.
+Install Posy2 from the Julia General registry. Nosy is added explicitly because
+a study calls it directly for `Sim`, carriers, nodes, and query functions, so
+it has to be a dependency of your project and not only of Posy2. The examples
+use HiGHS; it can be replaced with another JuMP-compatible solver.
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/oecd-nea/Posy2.jl")
-Pkg.add(["Nosy", "HiGHS"])  # HiGHS, or another JuMP-compatible solver
+Pkg.add(["Posy2", "Nosy", "HiGHS"])
 ```
 
 Check the installation with:
