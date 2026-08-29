@@ -1,7 +1,7 @@
 # DC OPF
 
 Four electricity zones A–B–C–D sit on an AC ring of
-[`makenodeinterco`](@ref) lines, with one extra diagonal A–C. A single CCGT
+[`maketransmissionlink`](@ref) lines, with one extra diagonal A–C. A single CCGT
 on A supplies flat 1 MW demand in every zone. Left alone, the mesh is a
 transport model: a network flow problem that enforces nodal balance (and
 capacity limits) but not Kirchhoff's voltage law. Calling
@@ -66,13 +66,13 @@ makedemand("Demand", "D", d, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
 # 10 MW CCGT on A; costs from the technology workbook
 makedispatchable("CCGT", "CCGT", a, co2, snapshot; cap=10.0, unit_size=0.0)
 
-# AC ring with Inf capacity
-makenodeinterco("IC", a, b, Inf, Inf, snapshot)
-makenodeinterco("IC", b, c, Inf, Inf, snapshot)
-makenodeinterco("IC", c, d, Inf, Inf, snapshot)
-makenodeinterco("IC", d, a, Inf, Inf, snapshot)
+# AC ring with a nonbinding 10 MW capacity
+maketransmissionlink("IC", a, b, snapshot; cap=10.0)
+maketransmissionlink("IC", b, c, snapshot; cap=10.0)
+maketransmissionlink("IC", c, d, snapshot; cap=10.0)
+maketransmissionlink("IC", d, a, snapshot; cap=10.0)
 # AC diagonal A–C
-makenodeinterco("IC", a, c, Inf, Inf, snapshot)
+maketransmissionlink("IC", a, c, snapshot; cap=10.0)
 
 # Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))
@@ -146,12 +146,12 @@ makedemand("Demand", "D", d, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
 makedispatchable("CCGT", "CCGT", a, co2, snapshot; cap=10.0, unit_size=0.0)
 
 # AC ring with susceptances
-makenodeinterco("IC", a, b, Inf, Inf, snapshot; susceptance=-1.0)
-makenodeinterco("IC", b, c, Inf, Inf, snapshot; susceptance=-2.0)
-makenodeinterco("IC", c, d, Inf, Inf, snapshot; susceptance=-1.5)
-makenodeinterco("IC", d, a, Inf, Inf, snapshot; susceptance=-2.5)
+maketransmissionlink("IC", a, b, snapshot; cap=10.0, susceptance=-1.0)
+maketransmissionlink("IC", b, c, snapshot; cap=10.0, susceptance=-2.0)
+maketransmissionlink("IC", c, d, snapshot; cap=10.0, susceptance=-1.5)
+maketransmissionlink("IC", d, a, snapshot; cap=10.0, susceptance=-2.5)
 # AC diagonal A–C with susceptance
-makenodeinterco("IC", a, c, Inf, Inf, snapshot; susceptance=-3.0)
+maketransmissionlink("IC", a, c, snapshot; cap=10.0, susceptance=-3.0)
 
 # Apply KVL, then optimise
 applydcopf!(snapshot)
@@ -185,7 +185,7 @@ line susceptances constrain the path through the mesh.
 
 ## Controllable DC lines
 
-[`makenodeinterco`](@ref) tags each line as AC (`dc=false`, the default) or DC
+[`maketransmissionlink`](@ref) tags each line as AC (`dc=false`, the default) or DC
 (`dc=true`). Only AC lines enter the susceptance matrix and the cycle basis
 used by [`applydcopf!`](@ref).
 
@@ -235,12 +235,12 @@ makedemand("Demand", "D", d, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
 makedispatchable("CCGT", "CCGT", a, co2, snapshot; cap=10.0, unit_size=0.0)
 
 # AC ring with susceptances
-makenodeinterco("IC", a, b, Inf, Inf, snapshot; susceptance=-1.0)
-makenodeinterco("IC", b, c, Inf, Inf, snapshot; susceptance=-2.0)
-makenodeinterco("IC", c, d, Inf, Inf, snapshot; susceptance=-1.5)
-makenodeinterco("IC", d, a, Inf, Inf, snapshot; susceptance=-2.5)
+maketransmissionlink("IC", a, b, snapshot; cap=10.0, susceptance=-1.0)
+maketransmissionlink("IC", b, c, snapshot; cap=10.0, susceptance=-2.0)
+maketransmissionlink("IC", c, d, snapshot; cap=10.0, susceptance=-1.5)
+maketransmissionlink("IC", d, a, snapshot; cap=10.0, susceptance=-2.5)
 # HVDC diagonal A–C (outside KVL)
-makenodeinterco("HVDC", a, c, Inf, Inf, snapshot; dc=true)
+maketransmissionlink("HVDC", a, c, snapshot; cap=10.0, dc=true)
 
 # Apply KVL, then optimise
 applydcopf!(snapshot)

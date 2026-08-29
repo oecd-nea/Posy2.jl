@@ -26,11 +26,11 @@ using HiGHS
         return n1, n2
     end
 
-    # makenodeinterco registers B and ic_susceptance reads it back.
+    # maketransmissionlink registers B and ic_susceptance reads it back.
     let
         snap = makesnapshot()
         n1, n2 = twonodes(snap)
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-3.5)
+        maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=-3.5)
         @test Posy2.ic_susceptance(snap, "ZONE1", "ZONE2") == -3.5
     end
 
@@ -38,7 +38,7 @@ using HiGHS
     let
         snap = makesnapshot()
         n1, n2 = twonodes(snap)
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-2.0)
+        maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=-2.0)
         @test Posy2.ic_susceptance(snap, "ZONE2", "ZONE1") == -2.0
     end
 
@@ -52,8 +52,8 @@ using HiGHS
     let
         snap = makesnapshot()
         n1, n2 = twonodes(snap)
-        @test_throws ArgumentError makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=0.0)
-        @test_throws ArgumentError makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=1.0)
+        @test_throws ArgumentError maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=0.0)
+        @test_throws ArgumentError maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=1.0)
     end
 
     # Wrong :ic_susceptance type raises ArgumentError.

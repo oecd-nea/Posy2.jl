@@ -84,7 +84,7 @@ using DataFrames
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -100,7 +100,7 @@ using DataFrames
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; transactioncost=1.)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -111,16 +111,20 @@ using DataFrames
         @test isapprox(v, expected_mwh / 1e6; rtol=1e-12)
     end
 
-    # IC capacity matrix: asymmetric forward/reverse caps (2000/3000 MW) are reported in GW (2.0/3.0).
+    # The shared 3 GW installed capacity is reported in both directions; ATC
+    # asymmetry belongs to the directional multipliers.
     let
         snap, elec1, elec2, _ = makesnapshot()
-        makenodeinterco("IC", elec1, elec2, 2_000.0, 3_000.0, snap)
+        maketransmissionlink(
+            "IC", elec1, elec2, snap;
+            cap=3_000.0, atob_availability=2 / 3, btoa_availability=1.0,
+        )
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
         line = Posy2._dataline_ic_cap(s)
         @test line.unit == "GW"
-        @test isapprox(line.d[line.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], 2.0; rtol=1e-12)
+        @test isapprox(line.d[line.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1], 3.0; rtol=1e-12)
         @test isapprox(line.d[line.d[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1], 3.0; rtol=1e-12)
     end
 
@@ -130,8 +134,8 @@ using DataFrames
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("AC", elec1, elec2, 2_000.0, 2_000.0, snap; dc=false)
-        makenodeinterco("DC", elec1, elec2, 500.0, 500.0, snap; dc=true)
+        maketransmissionlink("AC", elec1, elec2, snap; cap=2_000.0, dc=false)
+        maketransmissionlink("DC", elec1, elec2, snap; cap=500.0, dc=true)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -170,7 +174,7 @@ using DataFrames
     # IC exists but no injection: corridor cell is 0.0 (flow is zero), not missing.
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
         line = Posy2._dataline_ic_vol_detailed(s)
@@ -185,8 +189,11 @@ using DataFrames
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec3, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC12", elec1, elec2, 10_000.0, 10_000.0, snap)
-        makenodeinterco("IC23", elec2, elec3, Inf, Inf, snap)
+        maketransmissionlink("IC12", elec1, elec2, snap; cap=10_000.0)
+        maketransmissionlink(
+            "IC23", elec2, elec3, snap;
+            cap=10_000.0, atob_availability=1.0, btoa_availability=1.0,
+        )
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -201,7 +208,7 @@ using DataFrames
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -221,7 +228,7 @@ using DataFrames
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; transactioncost=1.)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -234,18 +241,18 @@ using DataFrames
         @test isapprox(v_export, 0.0; rtol=1e-12)
     end
 
-    # Inf IC has no capacity behavior: NTC hours are missing, not zero.
+    # An idle finite corridor has zero binding hours in both directions.
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makenodeinterco("IC", elec1, elec2, Inf, Inf, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
         line = Posy2._dataline_ic_hours_at_ntc(s)
         df = line.d
         v12 = df[df[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
         v21 = df[df[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
-        @test ismissing(v12)
-        @test ismissing(v21)
+        @test v12 == 0.0
+        @test v21 == 0.0
     end
 
     # AC + DC on one corridor: AC/DC tables are separate; (AC or DC) is the hourly union.
@@ -254,8 +261,8 @@ using DataFrames
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("AC", elec1, elec2, 2_000.0, 2_000.0, snap; dc=false)
-        makenodeinterco("DC", elec1, elec2, 500.0, 500.0, snap; dc=true)
+        maketransmissionlink("AC", elec1, elec2, snap; cap=2_000.0, dc=false)
+        maketransmissionlink("DC", elec1, elec2, snap; cap=500.0, dc=true)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -364,7 +371,7 @@ using DataFrames
             connection_cost=0.0, om_var_cost=1.0,
         )
         makedemandresponse("DR", elec1, 100.0, 50.0, snap)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; transactioncost=1.)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -413,7 +420,7 @@ using DataFrames
             connection_cost=0.0, om_var_cost=1.0,
         )
         makedemandresponse("DR", elec1, 100.0, 50.0, snap)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -535,7 +542,7 @@ using DataFrames
             connection_cost=0.0, om_var_cost=1.0,
         )
         makedemandresponse("DR", elec1, 100.0, 50.0, snap)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -580,7 +587,7 @@ using DataFrames
             connection_cost=0.0, om_var_cost=1.0,
         )
         makedemandresponse("DR", elec1, 100.0, 50.0, snap)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -624,7 +631,7 @@ using DataFrames
             connection_cost=0.0, om_var_cost=1.0,
         )
         makedemandresponse("DR", elec1, 100.0, 50.0, snap)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -661,7 +668,7 @@ using DataFrames
             connection_cost=0.0, om_var_cost=1.0,
         )
         makedemandresponse("DR", elec1, 100.0, 50.0, snap)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -687,7 +694,7 @@ using DataFrames
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -724,7 +731,7 @@ using DataFrames
             connection_cost=0.0, om_var_cost=1.0,
         )
         makedemandresponse("DR", elec1, 100.0, 50.0, snap)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -831,7 +838,7 @@ using DataFrames
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; transactioncost=1.)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 

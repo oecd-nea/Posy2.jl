@@ -4,7 +4,7 @@ This example compares a domestic CCGT with imports from an external market via
 [`makepriceinterco`](@ref). The model imports when the external `spot_price`
 plus `transactioncost` is below the CCGT `fuel_cost`.
 
-Unlike [`makenodeinterco`](@ref), that market is not an explicit node;
+Unlike [`maketransmissionlink`](@ref), that market is not an explicit node;
 `country2` is used to look up the spot-price time series. Import capacity is
 set large on purpose (`mcap=10_000`) and export is off (`xcap=0`), so the
 import/CCGT choice depends on price, not on transfer limits.

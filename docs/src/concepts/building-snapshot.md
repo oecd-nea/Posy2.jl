@@ -239,10 +239,11 @@ spot prices and directional transfer-capacity profiles. Imports are priced as
 positive system costs and exports as negative costs. It is useful when the
 neighbour itself is outside the model.
 
-[`makenodeinterco`](@ref) connects two explicit Nosy nodes with directional
-flows. It can apply directional capacities, time-varying transfer-capacity
-multipliers, losses, transaction costs, and an optional SOS1 one direction at a time
-relation on the sending ports `input` and `input2`.
+[`maketransmissionlink`](@ref) connects two explicit Nosy nodes with directional
+flows. It applies one shared installed capacity, directional time-varying
+transfer-capacity multipliers, losses, transaction costs, fixed capacity costs,
+and an optional SOS1 one direction at a time relation on the sending ports
+`input` and `input2`.
 
 A node interconnection crosses the boundary used for self-system reporting
 exactly when one of its endpoints is a node tagged `:foreign`; there is no
@@ -251,14 +252,14 @@ participating in the optional DC power flow formulation uses `dc=false` and a
 negative `susceptance`. Exactly one AC and one DC may share the same unordered
 node pair (either, both, or neither is fine). A second AC or a second DC on
 that pair raises an error. Aggregate equivalent parallel circuits before
-calling [`makenodeinterco`](@ref).
+calling [`maketransmissionlink`](@ref).
 
-Finite directional capacities on node interconnections use the corresponding
-`From>To` columns of a time-series sheet as multipliers: `transfer_capacities_AC`
-for an AC link and `transfer_capacities_DC` for a DC one, so both links of a
-pair carrying each can hold their own series. `transfer_capacities` belongs to
-[`makepriceinterco`](@ref). Passing `Inf` removes that directional capacity and
-its profile lookup.
+The shared capacity uses the common `cap`/`mincap`/`maxcap` contract. Its two
+directional limits use the corresponding `From>To` columns of a time-series
+sheet as multipliers: `transfer_capacities_AC` for an AC link and
+`transfer_capacities_DC` for a DC one. `transfer_capacities` belongs to
+[`makepriceinterco`](@ref). A numeric zero capacity skips both profile lookups;
+a zero directional multiplier disables only that direction.
 
 After all components and interconnections have been created, continue with
 [Optimising A Snapshot](optimizing.md).

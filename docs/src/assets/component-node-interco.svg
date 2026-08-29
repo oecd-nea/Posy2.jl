@@ -22,12 +22,12 @@
 <line x1="170" y1="121.0" x2="342" y2="121.0" stroke="#2a9d8f" stroke-width="2" stroke-dasharray="none" marker-end="url(#head-free)"/>
 <circle cx="350" cy="121.0" r="4.5" fill="#2a9d8f"/>
 <text class="port" x="260.0" y="111.0" fill="#2a9d8f">input</text>
-<text class="note" x="260.0" y="135.0">a to b, capacity atob</text>
+<text class="note" x="260.0" y="135.0">a to b, shared cap</text>
 <text class="note" x="260.0" y="147.0">x atob_availability</text>
 <line x1="170" y1="199.0" x2="342" y2="199.0" stroke="#2a9d8f" stroke-width="2" stroke-dasharray="none" marker-end="url(#head-free)"/>
 <circle cx="350" cy="199.0" r="4.5" fill="#2a9d8f"/>
 <text class="port" x="260.0" y="189.0" fill="#2a9d8f">input2</text>
-<text class="note" x="260.0" y="213.0">b to a, capacity btoa</text>
+<text class="note" x="260.0" y="213.0">b to a, shared cap</text>
 <text class="note" x="260.0" y="225.0">x btoa_availability</text>
 <rect x="20" y="98.0" width="150" height="46.0" rx="6" fill="#fdf6cd" stroke="#c9a227" stroke-width="1" stroke-dasharray="none"/>
 <text class="box" x="95.0" y="119.0">node a</text>

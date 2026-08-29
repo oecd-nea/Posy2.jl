@@ -69,7 +69,7 @@ makeelectrolyser
 
 ```@docs
 makepriceinterco
-makenodeinterco
+maketransmissionlink
 ```
 
 ## Economics And Optimisation

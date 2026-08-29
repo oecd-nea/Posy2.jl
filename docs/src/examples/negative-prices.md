@@ -40,9 +40,9 @@ makedispatchable("Nuclear", "Nuclear", a, co2, snapshot; cap=100.0, fuel_cost=7.
 makedispatchable("OCGT", "OCGT", c, co2, snapshot; cap=100.0, fuel_cost=68.24)
 
 # AC triangle: B–C is the tight corridor
-makenodeinterco("IC", a, b, 30.0, 30.0, snapshot; dc=false, susceptance=-1.0)
-makenodeinterco("IC", b, c, 5.0, 5.0, snapshot; dc=false, susceptance=-1.0)
-makenodeinterco("IC", c, a, 30.0, 30.0, snapshot; dc=false, susceptance=-1.0)
+maketransmissionlink("IC", a, b, snapshot; cap=30.0, dc=false, susceptance=-1.0)
+maketransmissionlink("IC", b, c, snapshot; cap=5.0, dc=false, susceptance=-1.0)
+maketransmissionlink("IC", c, a, snapshot; cap=30.0, dc=false, susceptance=-1.0)
 
 # Add KVL on the AC cycle, then minimise operating cost
 applydcopf!(snapshot)

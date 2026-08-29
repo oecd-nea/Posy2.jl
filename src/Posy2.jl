@@ -24,7 +24,7 @@ export makeintermittentsource
 export makehydroror, makehydroreservoir
 export makebatterystorage
 export makedemandresponse
-export makepriceinterco, makenodeinterco
+export makepriceinterco, maketransmissionlink
 export makeelectrolyser, makehydrogenstorage
 
 export applydcopf!

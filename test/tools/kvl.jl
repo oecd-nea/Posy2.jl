@@ -31,7 +31,7 @@ using HiGHS
         dmd = Component("dmd", Demand(n2.carrier, fill(1.0, 24)), [])
         connect!(snap, dmd, n2)
 
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-1.0)
+        maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=-1.0)
 
         _, _, node_map = Posy2.getic_susceptancematrix(snap)
         @test length(node_map) == 1
@@ -58,7 +58,7 @@ using HiGHS
         dmd = Component("dmd", Demand(n2.carrier, fill(1.0, 24)), [])
         connect!(snap, dmd, n2)
 
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=true)
+        maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=true)
 
         mat, _, node_map = Posy2.getic_susceptancematrix(snap)
         @test isempty(node_map)
@@ -93,9 +93,9 @@ using HiGHS
         connect!(snap, d3, n3)
 
         b12, b23, b31 = -1.5, -0.7, -2.0
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=b12)
-        makenodeinterco("IC", n2, n3, Inf, Inf, snap; dc=false, susceptance=b23)
-        makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=false, susceptance=b31)
+        maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=b12)
+        maketransmissionlink("IC", n2, n3, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=b23)
+        maketransmissionlink("IC", n3, n1, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=b31)
 
         Posy2.applydcopf!(snap)
         Nosy.optimize!(snap, cost(snap))
@@ -137,9 +137,9 @@ using HiGHS
 
         b12, b23, b31 = -1.5, -0.7, -2.0
         loss12, loss23, loss31 = 0.10, 0.20, 0.30
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; susceptance=b12, lossfactor=loss12)
-        makenodeinterco("IC", n2, n3, Inf, Inf, snap; susceptance=b23, lossfactor=loss23)
-        makenodeinterco("IC", n3, n1, Inf, Inf, snap; susceptance=b31, lossfactor=loss31)
+        maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, susceptance=b12, lossfactor=loss12)
+        maketransmissionlink("IC", n2, n3, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, susceptance=b23, lossfactor=loss23)
+        maketransmissionlink("IC", n3, n1, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, susceptance=b31, lossfactor=loss31)
 
         Posy2.applydcopf!(snap)
         Nosy.optimize!(snap, cost(snap))
@@ -178,10 +178,10 @@ using HiGHS
         connect!(snap, d4, n4)
 
         b12, b23, b31 = -1.5, -0.7, -2.0
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=b12)
-        makenodeinterco("IC", n2, n3, Inf, Inf, snap; dc=false, susceptance=b23)
-        makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=false, susceptance=b31)
-        makenodeinterco("IC", n2, n4, Inf, Inf, snap; dc=true)
+        maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=b12)
+        maketransmissionlink("IC", n2, n3, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=b23)
+        maketransmissionlink("IC", n3, n1, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=b31)
+        maketransmissionlink("IC", n2, n4, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=true)
 
         _, _, node_map = Posy2.getic_susceptancematrix(snap)
         @test length(node_map) == 3
@@ -211,9 +211,9 @@ using HiGHS
         n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         n3 = Node("ZONE3", EnergyCarrier("electricity ZONE3", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-1.5)
-        makenodeinterco("IC", n2, n3, Inf, Inf, snap; dc=false, susceptance=-0.7)
-        makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=false, susceptance=-2.0)
+        maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=-1.5)
+        maketransmissionlink("IC", n2, n3, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=-0.7)
+        maketransmissionlink("IC", n3, n1, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=-2.0)
 
         @test !haskey(snap.options, :kvl_applied)
         @test num_constraints(sim.model; count_variable_in_set_constraints=false) == ncons
@@ -225,9 +225,9 @@ using HiGHS
         n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         n3 = Node("ZONE3", EnergyCarrier("electricity ZONE3", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-1.5)
-        makenodeinterco("IC", n2, n3, Inf, Inf, snap; dc=false, susceptance=-0.7)
-        makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=false, susceptance=-2.0)
+        maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=-1.5)
+        maketransmissionlink("IC", n2, n3, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=-0.7)
+        maketransmissionlink("IC", n3, n1, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=-2.0)
 
         Posy2.applydcopf!(snap)
         ncons = num_constraints(sim.model; count_variable_in_set_constraints=false)
@@ -241,12 +241,12 @@ using HiGHS
         n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         n3 = Node("ZONE3", EnergyCarrier("electricity ZONE3", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false, susceptance=-1.5)
-        makenodeinterco("IC", n2, n3, Inf, Inf, snap; dc=false, susceptance=-0.7)
+        maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=-1.5)
+        maketransmissionlink("IC", n2, n3, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=-0.7)
 
         @test_logs (:warn, r"No AC loops were found") Posy2.applydcopf!(snap)
-        @test_throws ArgumentError makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=false, susceptance=-2.0)
-        @test_throws ArgumentError makenodeinterco("IC", n3, n1, Inf, Inf, snap; dc=true)
+        @test_throws ArgumentError maketransmissionlink("IC", n3, n1, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=-2.0)
+        @test_throws ArgumentError maketransmissionlink("IC", n3, n1, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=true)
         @test !Nosy.hascomponent(snap, "IC_ZONE3_ZONE1")
     end
 
@@ -255,7 +255,7 @@ using HiGHS
         snap, sim = makesnapshot()
         n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
-        makenodeinterco("IC", n1, n2, Inf, Inf, snap; dc=false)
+        maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false)
         @test_throws ArgumentError Posy2.applydcopf!(snap)
     end
 end

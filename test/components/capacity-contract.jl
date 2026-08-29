@@ -26,6 +26,11 @@ using HiGHS
         Nosy.getbehaviors(c, Nosy.FixedCapacityBehavior),
     )).data.val
 
+    function second_electricity(s)
+        return Node("E2", EnergyCarrier("electricity E2", sim(s));
+            rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+    end
+
     # A solved snapshot passed as a capacity freezes the fleet, for every builder.
     let
         s, elec, h2, co2 = contract_snapshot()
@@ -225,5 +230,55 @@ using HiGHS
             cap_discharging=10.0, cap_charging=0.0, intake=0.0, maxcap_reservoir=100.0, eff=1.0)
         @test !isnothing(makehydroreservoir("Unlimited above min", "Hydro", "Z1", elec, s;
             cap_discharging=10.0, cap_charging=0.0, intake=0.0, mincap_reservoir=100.0, eff=1.0))
+    end
+
+    # Node interconnections expose the same capacity contract on one capacity
+    # shared by both directional ports.
+    let
+        s, elec, _, _ = contract_snapshot()
+        other = second_electricity(s)
+        maketransmissionlink("Line", elec, other, s; cap=nothing, maxcap=40.0)
+        Nosy.optimize!(s, cost(s))
+        ini = extract(s)
+
+        t, telec, _, _ = contract_snapshot()
+        tother = second_electricity(t)
+        inherited = maketransmissionlink("Line", telec, tother, t; cap=ini)
+        source = Nosy.getcomponent(ini, "Line_E1_E2")
+        @test fixedcap(inherited, "input") ≈ capacity(source, "input")
+        @test fixedcap(inherited, "input2") ≈ capacity(source, "input")
+    end
+
+    let
+        s, elec, _, _ = contract_snapshot()
+        other = second_electricity(s)
+        disabled = maketransmissionlink("Disabled", elec, other, s; cap=0.0)
+        @test fixedcap(disabled, "input") == 0.0
+        @test fixedcap(disabled, "input2") == 0.0
+    end
+
+    let
+        s, elec, _, _ = contract_snapshot()
+        other = second_electricity(s)
+        @test_throws ArgumentError maketransmissionlink(
+            "Below", elec, other, s; cap=5.0, mincap=10.0,
+        )
+    end
+
+    let
+        s, elec, _, _ = contract_snapshot()
+        other = second_electricity(s)
+        @test_throws ArgumentError maketransmissionlink(
+            "Above", elec, other, s; cap=50.0, maxcap=10.0,
+        )
+    end
+
+    let
+        s, elec, _, _ = contract_snapshot()
+        other = second_electricity(s)
+        empty_ini = extracted_without_components()
+        @test_throws "no component named \"Line_E1_E2\" to inherit port \"input\"" maketransmissionlink(
+            "Line", elec, other, s; cap=empty_ini,
+        )
     end
 end

@@ -79,8 +79,8 @@ the relevant port is an error.
 A fixed capacity of zero builds the component and its port at zero capacity.
 A builder may nevertheless skip input lookup for an inactive branch: zero
 intermittent capacity does not require a production profile, zero hydro intake
-does not require an intake profile, and a zero interconnector direction does
-not require an availability series. Two arguments use `Inf` as an
+does not require an intake profile, and a zero node-interconnector capacity
+does not require either directional availability series. Two arguments use `Inf` as an
 unlimited-capacity sentinel:
 
 - `cap_reservoir=Inf` in [`makehydroreservoir`](@ref), its default, leaves the
@@ -90,9 +90,10 @@ unlimited-capacity sentinel:
   `Inf` when unlimited capacity was intended.
 
 A symbolic capacity is treated as structurally active because its optimized
-value is not known while the component is built, so symbolic interconnector
-directions resolve their availability and price inputs even if the expression
-later evaluates to zero.
+value is not known while the component is built. A symbolic node-interconnector
+capacity therefore resolves both directional availabilities even if the
+expression later evaluates to zero. Price interconnections apply the same rule
+to each separate directional capacity and also resolve their price input.
 
 `unit_size`, `integercap`, and `integeruc` control discrete formulations where
 the relevant builder supports them. Their applicability and combined behavior

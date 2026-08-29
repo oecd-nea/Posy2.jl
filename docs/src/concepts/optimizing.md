@@ -64,7 +64,7 @@ Nodal carrier balances and interconnection capacity bounds are already
 enforced by the underlying Nosy model; [`applydcopf!`](@ref) only adds the
 Kirchhoff voltage law (KVL) constraints that restrict AC flows.
 
-Set each AC link’s series susceptance in [`makenodeinterco`](@ref)
+Set each AC link’s series susceptance in [`maketransmissionlink`](@ref)
 (negative for inductive lines, ``B\approx-1/X``). Use one equivalent
 susceptance if parallel AC circuits were aggregated beforehand.
 Controllable DC links (`dc=true`) are excluded from the cycle basis.

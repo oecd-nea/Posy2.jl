@@ -252,7 +252,7 @@ using HiGHS
                 "country2", EnergyCarrier("electricity country2", sim(s));
                 rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity],
             )
-            @test !isnothing(makenodeinterco("Inactive", electricity, other, 0.0, 0.0, s))
+            @test !isnothing(maketransmissionlink("Inactive", electricity, other, s; cap=0.0))
         end
 
         let
@@ -261,7 +261,9 @@ using HiGHS
                 "country2", EnergyCarrier("electricity country2", sim(s));
                 rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity],
             )
-            @test !isnothing(makenodeinterco("Active", electricity, other, 10.0, 0.0, s))
+            @test !isnothing(maketransmissionlink(
+                "Active", electricity, other, s; cap=10.0, btoa_availability=0.0,
+            ))
         end
     end
 
@@ -309,8 +311,8 @@ using HiGHS
             spot_price=collect(51.0:74.0),
             import_availability=0.9, export_availability=fill(0.85, 24),
         ))
-        @test !isnothing(makenodeinterco(
-            "Line", electricity, other, 70.0, 60.0, s;
+        @test !isnothing(maketransmissionlink(
+            "Line", electricity, other, s; cap=70.0,
             atob_availability=0.95, btoa_availability=fill(0.8, 24),
         ))
     end

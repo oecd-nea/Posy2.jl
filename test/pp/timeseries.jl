@@ -40,7 +40,7 @@ using HiGHS
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -59,7 +59,7 @@ using HiGHS
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -75,7 +75,7 @@ using HiGHS
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -141,7 +141,7 @@ using HiGHS
             connection_cost=0.0, om_var_cost=1.0,
         )
         makedemandresponse("DR", elec1, 100.0, 50.0, snap)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -209,7 +209,7 @@ using HiGHS
             connection_cost=0.0, om_var_cost=1.0,
         )
         makedemandresponse("DR", elec1, 100.0, 50.0, snap)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -232,8 +232,8 @@ using HiGHS
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("AC", elec1, elec2, 2_000.0, 2_000.0, snap; dc=false)
-        makenodeinterco("DC", elec1, elec2, 500.0, 500.0, snap; dc=true)
+        maketransmissionlink("AC", elec1, elec2, snap; cap=2_000.0, dc=false)
+        maketransmissionlink("DC", elec1, elec2, snap; cap=500.0, dc=true)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -259,7 +259,10 @@ using HiGHS
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 5_000.0, snap; atob_availability=0.8, btoa_availability=0.5)
+        maketransmissionlink(
+            "IC", elec1, elec2, snap;
+            cap=10_000.0, atob_availability=0.8, btoa_availability=0.5,
+        )
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -268,7 +271,7 @@ using HiGHS
         @test "ATC ZONE1 > ZONE2" in names(df)
         @test "ATC ZONE2 > ZONE1" in names(df)
         @test all(isapprox.(df[!, "ATC ZONE1 > ZONE2"], 8.0; rtol=1e-12))
-        @test all(isapprox.(df[!, "ATC ZONE2 > ZONE1"], 2.5; rtol=1e-12))
+        @test all(isapprox.(df[!, "ATC ZONE2 > ZONE1"], 5.0; rtol=1e-12))
         @test "ZONE1 > ZONE2" in names(df)
         @test "ZONE2 > ZONE1" in names(df)
         # ZONE2 is the foreign endpoint: net interconnection is imports from it minus exports to it

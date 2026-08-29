@@ -9,7 +9,7 @@ using JuMP: @constraint
 # Build B-matrix (susceptance matrix) from AC node interconnections only.
 # DC interconnections are excluded because KVL does not apply to DC circuits.
 # Susceptance values come from `Snapshot.options[:ic_susceptance]` (registered by
-# `makenodeinterco`), not from component tags or name parsing.
+# `maketransmissionlink`), not from component tags or name parsing.
 function getic_susceptancematrix(s::Snapshot)
     nodelist = sort(collect(keys(getnodes(s, with=[:electricity]))))
     nodeindex = Dict(n => i for (i, n) in enumerate(nodelist))
@@ -72,7 +72,7 @@ end
 Add KVL (DC power flow) constraints at snapshot level, so that cycles in the AC
 network are enforced globally. For each independent cycle, constrain
 `sum(flow_ij / B_ij) = 0`, where `flow_ij` is the net midpoint flow and `B_ij`
-the susceptance registered by [`makenodeinterco`](@ref). DC interconnections are
+the susceptance registered by [`maketransmissionlink`](@ref). DC interconnections are
 excluded. Warns when there is no AC loop to constrain.
 
 Call it before `Nosy.optimize!` in the studies that need DC power flow, and

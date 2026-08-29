@@ -140,7 +140,6 @@ function _selfcongestionrent_node(s::Snapshot, cname::String, snode::Node, nnode
     (isnothing(ps) || isnothing(pn)) && return missing
     pricediff = ps - pn
 
-    # can't use capacity because it can be asymmetric
     # bidirectional flow
     vol = balance(snode, :output, energy, collapse=false, aggregate=false)[cname] + balance(nnode, :output, energy, collapse=false, aggregate=false)[cname]
 

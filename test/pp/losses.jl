@@ -114,7 +114,7 @@ using DataFrames
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; lossfactor=0.05)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, lossfactor=0.05)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -251,7 +251,7 @@ using DataFrames
         snap, elec1, elec2, co2 = makesnapshot(nodelosses=0.02)
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0, gridlosses=0.05)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; lossfactor=0.05)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, lossfactor=0.05)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -288,7 +288,7 @@ using DataFrames
         snap, elec1, elec2, co2 = makesnapshot(nodelosses=0.02)
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0, gridlosses=0.05)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; lossfactor=0.05)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, lossfactor=0.05)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -317,7 +317,7 @@ using DataFrames
             construction_profile=1.0, decommissioning_profile=1.0, connection_cost=0.0, om_var_cost=0.0,
         )
         # ZONE1 peak needs more than its CCGT plus the corridor, so the battery must cycle
-        makenodeinterco("IC", elec1, elec2, 10.0, 10.0, snap; lossfactor=0.05)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10.0, lossfactor=0.05)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -342,7 +342,7 @@ using DataFrames
         snap, elec1, elec2, co2 = makesnapshot(nodelosses=0.02)
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0, gridlosses=0.05)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; lossfactor=0.05)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, lossfactor=0.05)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 

@@ -344,9 +344,9 @@ const SPECS = [
         file="component-node-interco.svg",
         component="Node Interconnection",
         inputs=[
-            (name="input", kind=:free, note=["a to b, capacity atob", "x atob_availability"],
+            (name="input", kind=:free, note=["a to b, shared cap", "x atob_availability"],
                 endpoint=(label=["node a", "a"], kind=:node, carrier=:electricity)),
-            (name="input2", kind=:free, note=["b to a, capacity btoa", "x btoa_availability"],
+            (name="input2", kind=:free, note=["b to a, shared cap", "x btoa_availability"],
                 endpoint=(label=["node b", "b"], kind=:node, carrier=:electricity)),
         ],
         outputs=[

@@ -25,13 +25,18 @@ using HiGHS
         return snap, elec1, elec2
     end
 
-    # With atob/btoa set to Inf, node interconnection should be creatable without transfer capacity series.
+    # The default creates one optimized capacity shared by both directions.
     let
         s, elec1, elec2 = makesnapshot()
-        c = makenodeinterco("IC", elec1, elec2, Inf, Inf, s)
+        c = maketransmissionlink("IC", elec1, elec2, s; maxcap=100.0)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "IC_ZONE1_ZONE2") === c
         @test Nosy.hastag(c, :function, "nodeinterconnection")
+        capacities = Nosy.getbehaviors(c, Nosy.VariableCapacityBehavior)
+        @test length(capacities) == 2
+        byport = Dict(capacity.data.pname => capacity for capacity in capacities)
+        @test byport["input"].val === byport["input2"].val
+        @test byport["input"].data.expr === byport["input2"].data.expr
         zone1_ics = Nosy.getcomponents(s, "ZONE1"; with=[:function => "interconnection", :function => "nodeinterconnection"])
         @test length(zone1_ics) == 1
         @test haskey(zone1_ics, "IC_ZONE1_ZONE2")
@@ -39,7 +44,7 @@ using HiGHS
 
     let
         s, elec1, elec2 = makesnapshot()
-        c = makenodeinterco("IC", elec1, elec2, Inf, Inf, s; dc=false, susceptance=-2.5)
+        c = maketransmissionlink("IC", elec1, elec2, s; cap=100.0, dc=false, susceptance=-2.5)
         @test Posy2.ic_susceptance(s, "ZONE1", "ZONE2") == -2.5
         @test !haskey(c.tags, :susceptance)
         mat, nodelist, node_map = Posy2.getic_susceptancematrix(s)
@@ -52,21 +57,21 @@ using HiGHS
     # A second DC is rejected too; mixed AC+DC on the same pair is allowed.
     let
         s, elec1, elec2 = makesnapshot()
-        makenodeinterco("IC", elec1, elec2, Inf, Inf, s; dc=false)
-        @test_throws ArgumentError makenodeinterco("IC2", elec1, elec2, Inf, Inf, s; dc=false)
-        @test_throws ArgumentError makenodeinterco("IC2", elec2, elec1, Inf, Inf, s; dc=false)
-        c_dc = makenodeinterco("HVDC", elec1, elec2, Inf, Inf, s; dc=true)
+        maketransmissionlink("IC", elec1, elec2, s; cap=100.0, dc=false)
+        @test_throws ArgumentError maketransmissionlink("IC2", elec1, elec2, s; cap=100.0, dc=false)
+        @test_throws ArgumentError maketransmissionlink("IC2", elec2, elec1, s; cap=100.0, dc=false)
+        c_dc = maketransmissionlink("HVDC", elec1, elec2, s; cap=100.0, dc=true)
         @test Nosy.hastag(c_dc, :function, "DC")
-        @test_throws ArgumentError makenodeinterco("HVDC2", elec1, elec2, Inf, Inf, s; dc=true)
-        @test_throws ArgumentError makenodeinterco("HVDC2", elec2, elec1, Inf, Inf, s; dc=true)
+        @test_throws ArgumentError maketransmissionlink("HVDC2", elec1, elec2, s; cap=100.0, dc=true)
+        @test_throws ArgumentError maketransmissionlink("HVDC2", elec2, elec1, s; cap=100.0, dc=true)
     end
 
     # Parallel DC alone is rejected; mixed AC+DC on the same pair is allowed either order.
     let
         s, elec1, elec2 = makesnapshot()
-        makenodeinterco("HVDC", elec1, elec2, Inf, Inf, s; dc=true)
-        @test_throws ArgumentError makenodeinterco("HVDC2", elec1, elec2, Inf, Inf, s; dc=true)
-        c_ac = makenodeinterco("AC", elec1, elec2, Inf, Inf, s; dc=false)
+        maketransmissionlink("HVDC", elec1, elec2, s; cap=100.0, dc=true)
+        @test_throws ArgumentError maketransmissionlink("HVDC2", elec1, elec2, s; cap=100.0, dc=true)
+        c_ac = maketransmissionlink("AC", elec1, elec2, s; cap=100.0, dc=false)
         @test Nosy.hastag(c_ac, :function, "AC")
     end
 
@@ -85,33 +90,33 @@ using HiGHS
 
         before = model_size()
         for lossfactor in (-0.1, 1.0, Inf, NaN)
-            @test_throws ArgumentError makenodeinterco(
-                "Invalid loss", elec1, elec2, Inf, Inf, s;
-                dir=true, lossfactor=lossfactor,
+            @test_throws ArgumentError maketransmissionlink(
+                "Invalid loss", elec1, elec2, s;
+                cap=100.0, dir=true, lossfactor=lossfactor,
             )
             @test model_size() == before
         end
 
-        @test_throws ArgumentError makenodeinterco(
-            "Self", elec1, elec1, Inf, Inf, s; dir=true,
+        @test_throws ArgumentError maketransmissionlink(
+            "Self", elec1, elec1, s; cap=100.0, dir=true,
         )
         @test model_size() == before
 
-        @test_throws ArgumentError makenodeinterco(
-            "Invalid B", elec1, elec2, Inf, Inf, s;
-            dir=true, susceptance=1.0,
+        @test_throws ArgumentError maketransmissionlink(
+            "Invalid B", elec1, elec2, s;
+            cap=100.0, dir=true, susceptance=1.0,
         )
         @test model_size() == before
 
-        makenodeinterco("IC", elec1, elec2, Inf, Inf, s; dc=false)
+        maketransmissionlink("IC", elec1, elec2, s; cap=100.0, dc=false)
         before_duplicate = model_size()
-        @test_throws ArgumentError makenodeinterco(
-            "Parallel", elec1, elec2, Inf, Inf, s; dc=false, dir=true,
+        @test_throws ArgumentError maketransmissionlink(
+            "Parallel", elec1, elec2, s; cap=100.0, dc=false, dir=true,
         )
         @test model_size() == before_duplicate
 
-        @test_throws ArgumentError makenodeinterco(
-            "IC", elec1, elec2, Inf, Inf, s; dc=true, dir=true,
+        @test_throws ArgumentError maketransmissionlink(
+            "IC", elec1, elec2, s; cap=100.0, dc=true, dir=true,
         )
         @test model_size() == before_duplicate
     end
@@ -119,7 +124,7 @@ using HiGHS
     # Directional SOS construction keeps the second node argument intact.
     let
         s, elec1, elec2 = makesnapshot()
-        c = makenodeinterco("Directional", elec1, elec2, Inf, Inf, s; dir=true)
+        c = maketransmissionlink("Directional", elec1, elec2, s; cap=100.0, dir=true)
         @test Nosy.getcomponent(s, "Directional_ZONE1_ZONE2") === c
     end
 
@@ -157,11 +162,11 @@ using HiGHS
     # both interconnection kinds hold them within [0, 1]. Spot prices are free.
     let
         s, elec1, elec2 = makesnapshot()
-        @test_throws ArgumentError makenodeinterco(
-            "Above one", elec1, elec2, 100.0, 100.0, s; atob_availability=1.5, btoa_availability=1.0,
+        @test_throws ArgumentError maketransmissionlink(
+            "Above one", elec1, elec2, s; cap=100.0, atob_availability=1.5, btoa_availability=1.0,
         )
-        @test_throws ArgumentError makenodeinterco(
-            "Negative", elec1, elec2, 100.0, 100.0, s; atob_availability=1.0, btoa_availability=-0.1,
+        @test_throws ArgumentError maketransmissionlink(
+            "Negative", elec1, elec2, s; cap=100.0, atob_availability=1.0, btoa_availability=-0.1,
         )
         @test_throws ArgumentError makepriceinterco(
             "ZONE2", elec1, 100.0, 100.0, s; import_availability=1.5,
@@ -185,8 +190,8 @@ using HiGHS
             )
         end
 
-        c_ac = makenodeinterco("AC", elec1, elec2, 100.0, 100.0, s; dc=false)
-        c_dc = makenodeinterco("DC", elec1, elec2, 100.0, 100.0, s; dc=true)
+        c_ac = maketransmissionlink("AC", elec1, elec2, s; cap=100.0, dc=false)
+        c_dc = maketransmissionlink("DC", elec1, elec2, s; cap=100.0, dc=true)
 
         ac = multipliers(c_ac)
         @test ac["input"] == gettimeseries(s, "ZONE1>ZONE2", "transfer_capacities_AC", digits=2)
@@ -212,11 +217,29 @@ using HiGHS
         s, elec1, _ = makesnapshot()
         elec3 = Node("ZONE3", EnergyCarrier("electricity ZONE3", sim(s)), rule=:curtailed, losses=0.0, tags=[:electricity])
         err = try
-            makenodeinterco("AC", elec1, elec3, 100.0, 100.0, s; dc=false)
+            maketransmissionlink("AC", elec1, elec3, s; cap=100.0, dc=false)
         catch e
             e
         end
         @test err isa ArgumentError
         @test occursin("transfer_capacities_AC", err.msg)
+    end
+
+    # Investment and fixed O&M are charged once against the shared capacity.
+    let
+        s, elec1, elec2 = makesnapshot()
+        c = maketransmissionlink(
+            "Costed", elec1, elec2, s;
+            cap=100.0,
+            atob_availability=1.0,
+            btoa_availability=0.5,
+            overnight_cost=2.0,
+            om_fixed_cost=3.0,
+            lifetime=20,
+            construction_profile=1.0,
+        )
+        @test fixedcost(c, :investment).constant ≈ 100.0 * eac(2_000.0, 0.05, 20, 1.0)
+        @test fixedcost(c, :fom).constant ≈ 100.0 * 3_000.0
+        @test all(b.data.pname == "input" for b in Nosy.getbehaviors(c, Nosy.FixedCostBehavior))
     end
 end

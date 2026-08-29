@@ -1,10 +1,10 @@
 # Two Countries
 
-Two electricity regions trade across a [`makenodeinterco`](@ref) link:
+Two electricity regions trade across a [`maketransmissionlink`](@ref) link:
 
 - Country 1: demand and a large cheap CCGT
 - Country 2: demand, PV, battery, and an expensive gas peaker
-- Interconnection: node link compared without a limit and with a 500 MW limit
+- Interconnection: node link compared with nonbinding 10 GW and binding 500 MW capacities
 
 The interconnection moves energy from country 1 to country 2 most of the year;
 daytime PV on country 2 can reverse a slice of that flow.
@@ -68,8 +68,13 @@ makedispatchable(
     fuel_cost=90.0,
 )
 
-# Unlimited bidirectional interconnections
-makenodeinterco("IC", country1, country2, Inf, Inf, snapshot)
+# Nonbinding 10 GW bidirectional interconnection
+maketransmissionlink(
+    "IC", country1, country2, snapshot;
+    cap=10_000.0,
+    atob_availability=1.0,
+    btoa_availability=1.0,
+)
 
 # Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))
@@ -186,8 +191,9 @@ makedispatchable(
 )
 
 # Limit transfers to 500 MW in each direction at full availability
-makenodeinterco(
-    "IC", country1, country2, 500.0, 500.0, snapshot;
+maketransmissionlink(
+    "IC", country1, country2, snapshot;
+    cap=500.0,
     atob_availability=1.0,
     btoa_availability=1.0,
 )

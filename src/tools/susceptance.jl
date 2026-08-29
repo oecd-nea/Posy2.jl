@@ -2,7 +2,7 @@
 Node interconnection susceptance (B) registry for DC power flow (KVL).
 
 Values are stored in `Snapshot.options[:ic_susceptance]` and registered by
-`makenodeinterco` (not as a separate public registration API).
+`maketransmissionlink` (not as a separate public registration API).
 """
 
 function _ic_susceptance_registry(s::Snapshot)
@@ -15,7 +15,7 @@ function _ic_susceptance_registry(s::Snapshot)
     return reg
 end
 
-# Internal: only called from `makenodeinterco`.
+# Internal: only called from `maketransmissionlink`.
 function _register_ic_susceptance!(s::Snapshot, from::String, to::String, bij::Real)
     @argcheck bij < 0 "susceptance must be negative"
     _ic_susceptance_registry(s)[(from, to)] = Float64(bij)

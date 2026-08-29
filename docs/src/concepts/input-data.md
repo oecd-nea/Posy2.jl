@@ -130,8 +130,8 @@ number, expanded to all hours, or a vector with exactly
 | [`makepriceinterco`](@ref) | `spot_price` | `<foreign-zone>` in `spot_price` |
 | [`makepriceinterco`](@ref) | `import_availability` | `zone>local` in `transfer_capacities` |
 | [`makepriceinterco`](@ref) | `export_availability` | `local>zone` in `transfer_capacities` |
-| [`makenodeinterco`](@ref) | `atob_availability` | `a>b` in `transfer_capacities_AC` (`dc=false`) or `transfer_capacities_DC` (`dc=true`) |
-| [`makenodeinterco`](@ref) | `btoa_availability` | `b>a` in `transfer_capacities_AC` (`dc=false`) or `transfer_capacities_DC` (`dc=true`) |
+| [`maketransmissionlink`](@ref) | `atob_availability` | `a>b` in `transfer_capacities_AC` (`dc=false`) or `transfer_capacities_DC` (`dc=true`) |
+| [`maketransmissionlink`](@ref) | `btoa_availability` | `b>a` in `transfer_capacities_AC` (`dc=false`) or `transfer_capacities_DC` (`dc=true`) |
 
 For example, this demand never reads `time_series.xlsx`:
 
@@ -351,8 +351,8 @@ directly.
 | `EV_arrival_soc` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
 | `spot_price` | `<foreign-zone>` | [`makepriceinterco`](@ref) |
 | `transfer_capacities` | `From>To` | [`makepriceinterco`](@ref), always |
-| `transfer_capacities_AC` | `From>To` | [`makenodeinterco`](@ref) with `dc=false`, when that direction's capacity is finite |
-| `transfer_capacities_DC` | `From>To` | [`makenodeinterco`](@ref) with `dc=true`, when that direction's capacity is finite |
+| `transfer_capacities_AC` | `From>To` | [`maketransmissionlink`](@ref) with `dc=false`, when shared `cap` is not a fixed zero |
+| `transfer_capacities_DC` | `From>To` | [`maketransmissionlink`](@ref) with `dc=true`, when shared `cap` is not a fixed zero |
 
 For example, technology `Onwind` connected to electricity node `country1` in
 weather year 2019 requests column `Onwind_country1` from sheet `profiles_2019`.
@@ -384,11 +384,11 @@ The principal series semantics are:
   same node pair, or a priced corridor sharing a zone name with a modelled node,
   keep separate series:
   - `transfer_capacities` for [`makepriceinterco`](@ref);
-  - `transfer_capacities_AC` for [`makenodeinterco`](@ref) with `dc=false`;
-  - `transfer_capacities_DC` for [`makenodeinterco`](@ref) with `dc=true`.
-- For [`makenodeinterco`](@ref), a finite `atob` reads column `a>b` and a finite
-  `btoa` reads `b>a`, both from that link's own sheet. An `Inf` direction has no
-  capacity limit, so that column is not read.
+  - `transfer_capacities_AC` for [`maketransmissionlink`](@ref) with `dc=false`;
+  - `transfer_capacities_DC` for [`maketransmissionlink`](@ref) with `dc=true`.
+- For [`maketransmissionlink`](@ref), the shared `cap` is multiplied by column `a>b`
+  for forward ATC and by `b>a` for reverse ATC. A fixed zero `cap` reads neither
+  column.
 - [`makepriceinterco`](@ref) uses both directional transfer series and the
   foreign-zone spot price. Each can be supplied explicitly or read from its
   workbook fallback.

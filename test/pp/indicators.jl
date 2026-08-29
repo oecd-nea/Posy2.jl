@@ -54,7 +54,7 @@ using HiGHS
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -76,7 +76,7 @@ using HiGHS
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -99,7 +99,7 @@ using HiGHS
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -120,7 +120,7 @@ using HiGHS
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -146,7 +146,7 @@ using HiGHS
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; transactioncost=1.)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -168,9 +168,9 @@ using HiGHS
             makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
             makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
             if reversed
-                makenodeinterco("IC", elec2, elec1, 10_000.0, 10_000.0, snap; transactioncost=1.)
+                maketransmissionlink("IC", elec2, elec1, snap; cap=10_000.0, transactioncost=1.)
             else
-                makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap; transactioncost=1.)
+                maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, transactioncost=1.)
             end
             Nosy.optimize!(snap, cost(snap))
             return extract(snap)
@@ -229,7 +229,7 @@ using HiGHS
             decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
             connection_cost=0.0, om_var_cost=1.0,
         )
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -260,7 +260,7 @@ using HiGHS
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 10_000.0, snap)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -365,7 +365,10 @@ using HiGHS
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, 10_000.0, 5_000.0, snap; atob_availability=0.8, btoa_availability=0.5)
+        maketransmissionlink(
+            "IC", elec1, elec2, snap;
+            cap=10_000.0, atob_availability=0.8, btoa_availability=0.5,
+        )
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -374,10 +377,11 @@ using HiGHS
         @test haskey(atc, "ATC ZONE2 > ZONE1")
         @test length(atc["ATC ZONE1 > ZONE2"]) == Nosy.nhours(sim(s))
         @test all(isapprox.(atc["ATC ZONE1 > ZONE2"], 10_000.0 * 0.8; rtol=1e-12))
-        @test all(isapprox.(atc["ATC ZONE2 > ZONE1"], 5_000.0 * 0.5; rtol=1e-12))
+        @test all(isapprox.(atc["ATC ZONE2 > ZONE1"], 10_000.0 * 0.5; rtol=1e-12))
     end
 
-    # Foreign node IC edge directions: unlimited (Inf) direction reports no ATC; zero fixed capacity exports hourly zeros.
+    # A zero directional multiplier disables that direction while retaining the
+    # shared installed-capacity series in both directions.
     let
         _sim = tsim()
         snap = Snapshot(_sim, posyopts())
@@ -387,19 +391,23 @@ using HiGHS
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("IC", elec1, elec2, Inf, 0.0, snap)
+        maketransmissionlink(
+            "IC", elec1, elec2, snap;
+            cap=10_000.0, atob_availability=1.0, btoa_availability=0.0,
+        )
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
         atc = Posy2.availabletransfercapacities(s)
-        @test !haskey(atc, "ATC ZONE1 > ZONE2")
+        @test haskey(atc, "ATC ZONE1 > ZONE2")
         @test haskey(atc, "ATC ZONE2 > ZONE1")
+        @test all(==(10_000.0), atc["ATC ZONE1 > ZONE2"])
         @test length(atc["ATC ZONE2 > ZONE1"]) == Nosy.nhours(sim(s))
         @test all(iszero, atc["ATC ZONE2 > ZONE1"])
 
         df = Posy2.gentimeseries(s)
+        @test "ATC ZONE1 > ZONE2" in names(df)
         @test "ATC ZONE2 > ZONE1" in names(df)
-        @test !("ATC ZONE1 > ZONE2" in names(df))
     end
 
     # Foreign AC + DC on one corridor: ATC sums per directed pair, matching corridor volume columns.
@@ -412,8 +420,14 @@ using HiGHS
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makenodeinterco("AC", elec1, elec2, 2_000.0, 1_000.0, snap; atob_availability=1.0, btoa_availability=1.0)
-        makenodeinterco("DC", elec1, elec2, 500.0, 250.0, snap; dc=true, atob_availability=1.0, btoa_availability=1.0)
+        maketransmissionlink(
+            "AC", elec1, elec2, snap;
+            cap=2_000.0, atob_availability=1.0, btoa_availability=0.5,
+        )
+        maketransmissionlink(
+            "DC", elec1, elec2, snap;
+            cap=500.0, dc=true, atob_availability=1.0, btoa_availability=0.5,
+        )
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 

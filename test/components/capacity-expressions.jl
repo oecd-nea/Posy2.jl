@@ -95,8 +95,9 @@ using HiGHS
         price_interconnection = makepriceinterco(
             "external", elec1, shared, affine, s; spot_price=1.0,
         )
-        node_interconnection = makenodeinterco(
-            "Linked IC", elec1, elec2, shared, affine, s,
+        node_interconnection = maketransmissionlink(
+            "Linked IC", elec1, elec2, s;
+            cap=shared, mincap=1.0, maxcap=100.0,
         )
 
         variable_cases = (
@@ -107,7 +108,6 @@ using HiGHS
             (reservoir, "output"),
             (reservoir, "level"),
             (price_interconnection, "output"),
-            (node_interconnection, "input"),
         )
         for (component, pname) in variable_cases
             @test expression_capacity(component, pname).expr === shared
@@ -120,26 +120,34 @@ using HiGHS
             (reservoir, "input"),
             (response, "output"),
             (price_interconnection, "input"),
-            (node_interconnection, "input2"),
         )
         for (component, pname) in affine_cases
             @test expression_capacity(component, pname).expr == affine
         end
+
+        node_capacities = Dict(
+            behavior.data.pname => behavior
+            for behavior in Nosy.getbehaviors(node_interconnection, Nosy.VariableCapacityBehavior)
+        )
+        @test node_capacities["input"].data.expr === node_capacities["input2"].data.expr
+        @test node_capacities["input"].val === node_capacities["input2"].val
+        @test coefficient(node_capacities["input"].data.expr, shared) == 1.0
+        @test node_capacities["input"].data.expr.constant == 0.0
 
         @test Nosy.hasport(reservoir, "input")
         @test expression_capacity(dispatchable, "output").lb == 1.0
         @test expression_capacity(dispatchable, "output").ub == 100.0
     end
 
-    # Positive infinity is the unlimited sentinel; negative infinity is invalid.
+    # Negative infinity is invalid for every capacity.
     let
         s, elec1, elec2, _, _ = expression_snapshot()
         @test_throws ArgumentError makehydroreservoir(
             "Negative infinite reservoir", "unused", "unused", elec1, s;
             cap_discharging=1.0, cap_charging=0.0, intake=0.0, cap_reservoir=-Inf,
         )
-        @test_throws ArgumentError makenodeinterco(
-            "Negative infinite IC", elec1, elec2, -Inf, Inf, s,
+        @test_throws ArgumentError maketransmissionlink(
+            "Negative infinite IC", elec1, elec2, s; cap=-Inf,
         )
     end
 
