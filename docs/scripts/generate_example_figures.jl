@@ -28,9 +28,8 @@ function nice_upper(value)
 end
 
 function tick_label(value)
-    if value >= 1000
-        @sprintf("%.0f", value)
-    elseif value >= 10
+    a = abs(value)
+    if a >= 10 || iszero(value)
         @sprintf("%.0f", value)
     else
         @sprintf("%.1f", value)
@@ -159,7 +158,9 @@ function solve_ev(vehicle_to_grid)
         weatheryear=2019,
     )
     makeEV(
-        "EV", 50000.0, electricity, snapshot;
+        "EV", electricity, snapshot;
+        number_ev=10_000.0,
+        initial_connected_share=1.0,
         fixed_profile=false,
         smart_charging=!vehicle_to_grid,
         vehicle_to_grid=vehicle_to_grid,
@@ -168,7 +169,6 @@ function solve_ev(vehicle_to_grid)
         max_charging_power_per_ev=0.01,
         max_dispatch_power_per_ev=vehicle_to_grid ? 0.01 : nothing,
         battery_capacity_per_ev=0.06,
-        yearly_consumption_per_ev=0.02,
         compensation=vehicle_to_grid ? 20.0 : 0.0,
     )
     makedispatchable(
@@ -216,8 +216,9 @@ end
 function write_ev_figure(result, vehicle_to_grid, first_hour)
     hours = 48
     window = first_hour:first_hour + hours - 1
-    charge = values(balance(result, "EV country1", :input, energy; collapse=false, aggregate=true))[window]
+    inputs = balance(result, "EV country1", :input, energy; collapse=false, aggregate=false)
     outputs = balance(result, "EV country1", :output, energy; collapse=false, aggregate=false)
+    charge = values(inputs["input"])[window]
     driving = values(outputs["driving"])[window]
     level = values(balance(result, "EV country1", :level, energy; collapse=false, aggregate=true))[window]
     price = values(dualprice(result.nodes["country1"]))[window]
@@ -228,13 +229,14 @@ function write_ev_figure(result, vehicle_to_grid, first_hour)
     end
     stored = [(label="Battery level", values=level, color="#e76f51", dashed=false)]
     prices = [(label="Dual price", values=price, color="#264653", dashed=false)]
-    driving_series = [(label="Driving", values=driving, color="#7b68a6", dashed=false)]
+    driving_series = [(label="Net driving", values=driving, color="#7b68a6", dashed=false)]
     filename = vehicle_to_grid ? "electric-vehicles-v2g.svg" : "electric-vehicles-smart.svg"
     level_span = maximum(level) - minimum(level)
     level_scale = 10.0^floor(log10(max(level_span, 1.0)))
     level_min = floor(minimum(level) / level_scale) * level_scale
     level_max = ceil(maximum(level) / level_scale) * level_scale
     level_max == level_min && (level_max += level_scale)
+    driving_lim = nice_upper(maximum(abs, driving))
 
     svg_document(joinpath(assets_dir, filename), 1000, 720) do io
         draw_panel(io, flows; top=38.0, height=110.0, title="EV grid exchange", ylabel="Power (MW)", hours=hours)
@@ -243,8 +245,8 @@ function write_ev_figure(result, vehicle_to_grid, first_hour)
         draw_legend(io, stored; x=835, y=179)
         draw_panel(io, prices; top=352.0, height=110.0, title="Electricity price", ylabel="Dual price", hours=hours)
         draw_legend(io, prices; x=845, y=336)
-        draw_panel(io, driving_series; top=509.0, height=110.0, title="Driving demand", ylabel="Power (MW)", hours=hours, show_hours=true)
-        draw_legend(io, driving_series; x=860, y=493)
+        draw_panel(io, driving_series; top=509.0, height=110.0, title="Net driving (departure − arrival)", ylabel="Power (MW)", hours=hours, ymin=-driving_lim, ymax=driving_lim, show_hours=true)
+        draw_legend(io, driving_series; x=830, y=493)
     end
 end
 

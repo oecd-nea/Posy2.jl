@@ -68,7 +68,7 @@ groups:
 | Sink | `ProfileSink` | Capacity * consumption profile (mandatory capacity on `input`) |
 | Sink | `BasicSink` | Flexible consumption; mirrors `DispatchableSource` |
 | Storage | `BasicStorage` | Charge / discharge / level on one machine (battery, H2 store, ...) |
-| Storage | `LazyStorage` | Level plus joint flows for extra ports (hydro intake, EV driving, ...) |
+| Storage | `LazyStorage` | Level plus joint flows for extra ports (hydro intake, EV departure / arrival, ...) |
 | Converter | `BasicConverter` | One-to-one conversion (electrolyser, node interconnection, ...) |
 
 Posy2 builders already wrap most of these. `Demand`, `DispatchableSource`,
@@ -164,7 +164,7 @@ Use these when you need extra ports or a proportional link to another carrier.
 - `FreeJointFlow` — adds a flexible port (LazyStorage charge/discharge, IC
   reverse direction).
 - `FixedJointFlow` — adds a port driven by a fixed series (hydro intake, EV
-  driving).
+  mobility).
 
 `LazyStorage` starts with `level`; charge, discharge, and side flows are
 usually added this way before capacity or cost goes on those ports.

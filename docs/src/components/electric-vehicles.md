@@ -32,7 +32,8 @@ workbook lookup. It can add the same proportional `grid losses` port as
 
 ```julia
 makeEV(
-    "EV", 50_000.0, electricity, snapshot;
+    "EV", electricity, snapshot;
+    yearly=50_000.0,
     fixed_profile=true,
     smart_charging=false,
     vehicle_to_grid=false,
@@ -44,34 +45,58 @@ makeEV(
 
 ## Smart Charging And Vehicle To Grid
 
-The flexible modes represent the connected vehicle fleet as storage. Both use
-these time-series columns for `zone`:
+The flexible modes represent the connected fleet as storage. `number_ev` sets
+fleet size and scales per-vehicle power and battery limits.
+`initial_connected_share` is the share of the fleet connected immediately before
+the first model timestep.
 
-- `EV_charging_availability` controls the available charging power and storage
-  level;
-- `EV_driving_profile` allocates annual driving consumption across the year.
+Mobility is defined each hour by:
 
-Per-vehicle values come from the technology column named by `techkey` in the
-`storage` sheet:
-`charging_eff`, `self_discharge`, `min_level_morning`, `max_charging_power`,
-`max_dispatch_power`, `battery_capacity`, and `yearly_consumption`. Each has a
-corresponding keyword override. The fleet size is `yearly` divided by annual
-consumption per vehicle, and the per-vehicle limits are scaled by that size.
-`max_dispatch_power` is resolved only in vehicle-to-grid mode; smart charging
-does not require it.
+- `departures` and `arrivals`: nonnegative vehicle counts;
+- `departure_soc` and `arrival_soc`: mean state of charge in `[0, 1]`.
 
-In `tech_mode=:arguments`, charging efficiency defaults to one,
-self-discharge and the morning minimum to zero. Maximum charging power,
-battery capacity, and yearly consumption per vehicle remain structural and
-must be supplied; V2G additionally requires maximum dispatch power. In
-`timeseries_mode=:arguments`, omitted charging availability defaults to one,
-while the driving profile remains required.
+Departing and arriving battery energy use
 
-Smart charging exposes a flexible `input`, a `level`, and a fixed unconnected
-`driving` output. Vehicle-to-grid mode also exposes `output`, limited by
-available dispatch power, and applies `compensation` as a variable output cost.
-The morning level constraint requires the connected fleet to hold at least
-`min_level_morning` of available battery capacity at 7 am each day.
+```math
+\begin{aligned}
+D_t &= \mathrm{departures}_t \times \mathrm{departure\_soc}_t \times \mathrm{battery\_capacity\_per\_ev} \\
+A_t &= \mathrm{arrivals}_t \times \mathrm{arrival\_soc}_t \times \mathrm{battery\_capacity\_per\_ev}
+\end{aligned}
+```
+
+The connected count at the start of hour `t` and charging availability follow
+
+```math
+\begin{aligned}
+n_1 &= \mathrm{initial\_connected\_share} \times \mathrm{number\_ev} \\
+n_{t+1} &= n_t - \mathrm{departures}_t + \mathrm{arrivals}_t \\
+a_t &= n_t / \mathrm{number\_ev}
+\end{aligned}
+```
+
+On a circular mesh, annual departure and arrival counts must balance (`sum(departures) = sum(arrivals)`).
+Charging availability `a_t` applies as a capacity multiplier on `input`, `level`, and (in vehicle-to-grid mode)
+`output`.
+
+Per-vehicle technology parameters come from the column named by `techkey` in
+the `storage` sheet: `charging_eff`, `self_discharge`, `max_charging_power`,
+`max_dispatch_power`, and `battery_capacity`. Each has a corresponding keyword
+override. `max_dispatch_power` is resolved only in vehicle-to-grid mode; smart
+charging does not require it.
+
+In `tech_mode=:arguments`, charging efficiency defaults to one and
+self-discharge to zero. Maximum charging power and battery capacity remain
+structural and must be supplied; vehicle-to-grid additionally requires maximum
+dispatch power. In `timeseries_mode=:arguments`, `departures`, `arrivals`,
+`departure_soc`, and `arrival_soc` must also be supplied explicitly. In
+`timeseries_mode=:excel`, omitted mobility series are read for `zone` from
+`EV_departure`, `EV_arrival`, `EV_departure_soc`, and `EV_arrival_soc`.
+
+Smart charging exposes a flexible `input`, a `level`, fixed unconnected
+`departure` and `arrival` ports, and a reporting only `driving` output
+(`departure - arrival`). Vehicle-to-grid mode also
+exposes `output`, limited by available dispatch power, and applies
+`compensation` as a variable output cost.
 
 ![Ports of an EV component in smart-charging and vehicle-to-grid modes](../assets/component-ev-flexible.svg)
 
@@ -80,8 +105,8 @@ tags `electricity`, `demand`, and `ev`. Vehicle-to-grid mode also receives the
 function tag `generation`, so its discharge appears in production reporting.
 
 !!! note
-    EV profiles and level constraints currently use a 365-day, 8,760-hour
-    convention. Use a full non-leap-year hourly mesh for these modes.
+    EV profiles currently use a 365-day, 8,760-hour convention. Use a full
+    non-leap-year hourly mesh for these modes.
 
 See the [Electric Vehicles example](../examples/electric-vehicles.md) for smart
 charging and vehicle-to-grid models using this builder.

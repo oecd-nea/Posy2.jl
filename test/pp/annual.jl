@@ -431,7 +431,8 @@ using DataFrames
     let
         snap, elec, co2 = argument_snapshot()
         makeEV(
-            "EV fixed", 1_000.0, elec, snap;
+            "EV fixed", elec, snap;
+            yearly=1_000.0,
             fixed_profile=true, smart_charging=false, vehicle_to_grid=false,
             offhours1=collect(0:6), offhours2=collect(0:6), minratio=0.2,
             gridlosses=0.1,
@@ -464,22 +465,24 @@ using DataFrames
     let
         snap, elec, co2 = argument_snapshot(hours=24)
         common = (
+            number_ev=10.0,
+            initial_connected_share=1.0,
             fixed_profile=false,
-            charging_availability=1.0,
-            driving_profile=1.0,
+            departures=1.0,
+            arrivals=1.0,
+            departure_soc=1.0,
+            arrival_soc=0.0,
             charging_eff=0.8,
             self_discharge=0.0,
-            min_level_morning=0.0,
             max_charging_power_per_ev=2.0,
             battery_capacity_per_ev=10.0,
-            yearly_consumption_per_ev=24.0,
         )
         makeEV(
-            "EV smart", 240.0, elec, snap;
+            "EV smart", elec, snap;
             smart_charging=true, vehicle_to_grid=false, common...,
         )
         makeEV(
-            "EV V2G", 240.0, elec, snap;
+            "EV V2G", elec, snap;
             smart_charging=false, vehicle_to_grid=true,
             max_dispatch_power_per_ev=2.0, compensation=100.0, common...,
         )
@@ -750,12 +753,14 @@ using DataFrames
         )
         makeflathydrogendemand("H2 demand", h2, 8760.0 * 5, snap)
         makeEV(
-            "EV V2G", 240.0, elec, snap;
+            "EV V2G", elec, snap;
+            number_ev=10.0,
+            initial_connected_share=1.0,
             fixed_profile=false, smart_charging=false, vehicle_to_grid=true,
-            charging_availability=1.0, driving_profile=1.0,
-            charging_eff=0.8, self_discharge=0.0, min_level_morning=0.0,
+            departures=1.0, arrivals=1.0, departure_soc=1.0, arrival_soc=0.0,
+            charging_eff=0.8, self_discharge=0.0,
             max_charging_power_per_ev=2.0, max_dispatch_power_per_ev=2.0,
-            battery_capacity_per_ev=10.0, yearly_consumption_per_ev=24.0,
+            battery_capacity_per_ev=10.0,
             compensation=100.0,
         )
         Nosy.optimize!(snap, cost(snap))

@@ -199,14 +199,34 @@ using HiGHS
         let
             s, electricity, _ = argument_snapshot()
             ev = makeEV(
-                "Neutral EV", 2_400.0, electricity, s;
+                "Neutral EV", electricity, s;
+                number_ev=1_000.0,
+                initial_connected_share=1.0,
                 fixed_profile=false, smart_charging=true,
-                driving_profile=collect(1.0:24.0),
+                departures=collect(1.0:24.0), arrivals=collect(1.0:24.0),
+                departure_soc=0.8, arrival_soc=0.56,
                 max_charging_power_per_ev=0.01,
                 battery_capacity_per_ev=0.06,
-                yearly_consumption_per_ev=2.4,
             )
             @test !isnothing(ev)
+            @test_throws ArgumentError makeEV(
+                "Missing departure", electricity, s;
+                number_ev=1_000.0,
+                initial_connected_share=1.0,
+                fixed_profile=false, smart_charging=true,
+                arrivals=0.0, arrival_soc=0.56, departure_soc=0.8,
+                max_charging_power_per_ev=0.01,
+                battery_capacity_per_ev=0.06,
+            )
+            @test_throws ArgumentError makeEV(
+                "Missing arrival", electricity, s;
+                number_ev=1_000.0,
+                initial_connected_share=1.0,
+                fixed_profile=false, smart_charging=true,
+                departures=1.0, departure_soc=0.8, arrival_soc=0.56,
+                max_charging_power_per_ev=0.01,
+                battery_capacity_per_ev=0.06,
+            )
         end
 
         let
@@ -266,12 +286,15 @@ using HiGHS
             intake_profile=collect(1.0:24.0), eff=0.88, hydro_costs...,
         ))
         @test !isnothing(makeEV(
-            "EV", 2_400.0, electricity, s;
+            "EV", electricity, s;
+            number_ev=1_000.0,
+            initial_connected_share=0.75,
             fixed_profile=false, smart_charging=true,
-            charging_availability=fill(0.75, 24), driving_profile=collect(1.0:24.0),
-            charging_eff=0.9, self_discharge=0.0, min_level_morning=0.2,
+            departures=collect(1.0:24.0), arrivals=collect(1.0:24.0),
+            departure_soc=0.8, arrival_soc=0.56,
+            charging_eff=0.9, self_discharge=0.0,
             max_charging_power_per_ev=0.01,
-            battery_capacity_per_ev=0.06, yearly_consumption_per_ev=2.4,
+            battery_capacity_per_ev=0.06,
         ))
     end
 

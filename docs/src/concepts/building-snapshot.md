@@ -85,9 +85,10 @@ Nosy before the snapshot is finalised.
 
 For fixed-profile EV demand, the off-hour sets and minimum off-hour charging
 ratio define the annual charging shape. Smart charging and vehicle-to-grid
-models use charging-availability and driving profiles from the time-series
-workbook. Vehicle-to-grid additionally exposes an output flow and can apply a
-discharge compensation cost.
+models take hourly mobility (vehicle departures/arrivals and SOC), plus `number_ev` 
+and `initial_connected_share`. Charging availability follows
+from the connected fleet. Vehicle-to-grid additionally exposes an output flow
+and can apply a discharge compensation cost.
 
 ### Hydrogen
 
