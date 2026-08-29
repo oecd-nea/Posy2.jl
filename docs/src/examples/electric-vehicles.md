@@ -118,13 +118,7 @@ the 90% charging efficiency, and nothing is sold to the node. OCGT still
 covers residual demand:
 
 ```jldoctest electric_vehicles_smart
-julia> departure = balance(result, "EV country1", :output, energy; collapse=true, aggregate=false)["departure"]
-109412.39999999487
-
-julia> arrival = balance(result, "EV country1", :input, energy; collapse=true, aggregate=false)["arrival"]
-76588.67999999733
-
-julia> driving = departure - arrival
+julia> driving = balance(result, "EV country1", :output, energy; collapse=true, aggregate=false)["driving"]
 32823.71999999754
 
 julia> charge = balance(result, "EV country1", :input, energy; collapse=true, aggregate=false)["input"]
@@ -235,13 +229,7 @@ it cycles like a battery: annual charge rises well above driving, grid
 discharge appears, and OCGT generation reduces:
 
 ```jldoctest electric_vehicles_v2g
-julia> departure = balance(result, "EV country1", :output, energy; collapse=true, aggregate=false)["departure"]
-109412.39999999487
-
-julia> arrival = balance(result, "EV country1", :input, energy; collapse=true, aggregate=false)["arrival"]
-76588.67999999733
-
-julia> driving = departure - arrival
+julia> driving = balance(result, "EV country1", :output, energy; collapse=true, aggregate=false)["driving"]
 32823.71999999754
 
 julia> discharge = balance(result, "EV country1", :output, energy; collapse=true, aggregate=false)["output"]
@@ -277,13 +265,13 @@ balance visible when discharge and charging differ within the plotted window.
 Both runs keep the same country1 demand, 1500 MW of PV, OCGT backup, and
 10 000 vehicles. Only the EV mode flag flips from
 `smart_charging=true` to `vehicle_to_grid=true`. Smart charging exposes
-`departure` and `arrival`. V2G adds a grid `output` (discharge). Driving energy
-matches in both cases. OCGT generation reduces under V2G because that discharge
-can cover residual load.
+`departure`, `arrival`, and reporting `driving`. V2G adds a grid `output`
+(discharge). Driving energy matches in both cases. OCGT generation reduces
+under V2G because that discharge can cover residual load.
 
 | | Smart | V2G |
 |:---|---:|---:|
-| `:output` / `:input` ports | `departure` / `arrival` | `departure` / `arrival` + `output` |
+| `:output` / `:input` ports | `departure`, `driving` / `arrival` | `departure`, `driving`, `output` / `arrival` |
 | Grid discharge (MWh/year) | 0 | 57749 |
 | OCGT generation (MWh/year) | 5.098e6 | 5.057e6 |
 | Driving energy (MWh/year) | 32824 | 32824 |

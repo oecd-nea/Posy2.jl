@@ -219,7 +219,7 @@ function write_ev_figure(result, vehicle_to_grid, first_hour)
     inputs = balance(result, "EV country1", :input, energy; collapse=false, aggregate=false)
     outputs = balance(result, "EV country1", :output, energy; collapse=false, aggregate=false)
     charge = values(inputs["input"])[window]
-    driving = values(outputs["departure"])[window] .- values(inputs["arrival"])[window]
+    driving = values(outputs["driving"])[window]
     level = values(balance(result, "EV country1", :level, energy; collapse=false, aggregate=true))[window]
     price = values(dualprice(result.nodes["country1"]))[window]
 

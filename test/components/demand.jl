@@ -166,7 +166,6 @@ using HiGHS
         @test c.model.data.eff["arrival"] == 1.0
         @test Nosy.hasport(c, "departure")
         @test Nosy.hasport(c, "arrival")
-        @test !Nosy.hasport(c, "driving")
     end
 
     # Flexible EV rejects negative departure counts, invalid initial_connected_share, and unbalanced departures/arrivals.

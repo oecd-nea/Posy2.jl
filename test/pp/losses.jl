@@ -184,10 +184,7 @@ using DataFrames
         @test sort(df.category) == [:selfdischarge, :storage]
         @test all(df.source .== "EV ZONE1") || all(df.source .== "EV grid")
         input = Nosy.balance(s, only(unique(df.source)), :input, energy, collapse=true, aggregate=false)["input"]
-        driving = (
-            Nosy.balance(s, only(unique(df.source)), :output, energy, collapse=true, aggregate=false)["departure"]
-            - Nosy.balance(s, only(unique(df.source)), :input, energy, collapse=true, aggregate=false)["arrival"]
-        )
+        driving = Nosy.balance(s, only(unique(df.source)), :output, energy, collapse=true, aggregate=false)["driving"]
         sdloss = only(df.losses[df.category .== :selfdischarge])
         @test sdloss > 0
         # charging conversion loss

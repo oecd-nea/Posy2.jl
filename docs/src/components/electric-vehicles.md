@@ -92,9 +92,10 @@ dispatch power. In `timeseries_mode=:arguments`, `departures`, `arrivals`,
 `timeseries_mode=:excel`, omitted mobility series are read for `zone` from
 `EV_departure`, `EV_arrival`, `EV_departure_soc`, and `EV_arrival_soc`.
 
-Smart charging exposes a flexible `input`, a `level`, a fixed unconnected
-`departure` output, and a fixed unconnected `arrival` input. Vehicle-to-grid
-mode also exposes `output`, limited by available dispatch power, and applies
+Smart charging exposes a flexible `input`, a `level`, fixed unconnected
+`departure` and `arrival` ports, and a reporting only `driving` output
+(`departure - arrival`). Vehicle-to-grid mode also
+exposes `output`, limited by available dispatch power, and applies
 `compensation` as a variable output cost.
 
 ![Ports of an EV component in smart-charging and vehicle-to-grid modes](../assets/component-ev-flexible.svg)

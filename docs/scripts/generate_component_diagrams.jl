@@ -393,6 +393,7 @@ const SPECS = [
         outputs=[
             (name="output", kind=:free, note=["only if vehicle_to_grid", "fleet dispatch power x avail.", "compensation cost"], endpoint=ELEC_BOTH),
             (name="departure", kind=:fixed, note=["leaving battery energy", "count x SOC x battery_capacity"], endpoint=DRIVING),
+            (name="driving", kind=:fixed, note=["net driving", "departure - arrival", "reporting only"], endpoint=DRIVING),
         ],
         level=(name="level", note=["fleet battery capacity", "x charging availability"]),
     ),

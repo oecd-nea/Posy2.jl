@@ -224,7 +224,7 @@ function makeEV(cname::String, elec::Node, s::Snapshot; fixed_profile::Bool=true
         departing = n_dep .* soc_dep .* _battery_capacity_per_ev
         arriving = n_arr .* soc_arr .* _battery_capacity_per_ev
 
-        m = LazyStorage(elec.carrier, eff=Dict("input" => eff, "output" => 1., "departure" => 1., "arrival" => 1.), self_discharge=sd, simplified=true)
+        m = LazyStorage(elec.carrier, eff=Dict("input" => eff, "output" => 1., "departure" => 1., "arrival" => 1., "driving" => 0.), self_discharge=sd, simplified=true)
         vb = []
 
         # input: flexible charging, with availability multiplier
@@ -249,6 +249,8 @@ function makeEV(cname::String, elec::Node, s::Snapshot; fixed_profile::Bool=true
         # departure / arrival: fixed series, no capacity
         push!(vb, FixedJointFlow("departure", EnergyCarrier(cname, sim(elec)), :output, departing, mustconnect=false)) # this port does not need connection
         push!(vb, FixedJointFlow("arrival", EnergyCarrier(cname, sim(elec)), :input, arriving, mustconnect=false)) # this port does not need connection
+        # output - driving: net driving (departure - arrival), reporting only (eff=0)
+        push!(vb, FixedJointFlow("driving", EnergyCarrier(cname, sim(elec)), :output, departing .- arriving, mustconnect=false))
 
         c = Component(cname * " " * elec.name, m, vb)
         tag!(c, :tech, cname)
