@@ -128,17 +128,17 @@ require consistent refuel duration, frequency, and mask inputs. Set
 
 ### Storage And Conversion
 
-- [`makebatterystorage`](@ref) builds battery storage with charging-power capacity 
-  and duration, with round-trip efficiency, and optional grid losses.
+- [`makebatterystorage`](@ref) builds battery storage with a `power_cap` power
+  capacity and duration, with round-trip efficiency, and optional grid losses.
 - [`makehydroreservoir`](@ref) represents reservoir intake, pumping,
-  generation, and an optional reservoir level capacity. A finite
-  `cap_reservoir` fixes it, `nothing` optimises it, and the default `Inf` leaves
-  the stored-energy level unlimited.
-- [`makehydrogenstorage`](@ref) builds simplified hydrogen storage whose level
-  capacity can be fixed or optimised.
+  generation, and an optional reservoir level capacity. Its capacities are
+  exogenous: a finite `energy_cap` fixes the level, and the default `Inf`
+  leaves it unlimited.
+- [`makehydrogenstorage`](@ref) builds simplified hydrogen storage whose
+  `energy_cap` level capacity can be fixed or optimised.
 - [`makeelectrolyser`](@ref) converts electricity into hydrogen.
 
-Battery investment is attached to the charging-power capacity. Its duration
+Battery investment is attached to the power capacity. Its duration
 behaviour links that power capacity to the storage level. Hydrogen storage
 instead attaches investment to the level capacity and deliberately uses
 Nosy's simplified storage formulation.

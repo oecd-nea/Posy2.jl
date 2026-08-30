@@ -33,8 +33,8 @@ using HiGHS
         total_intake = 1_000.0
         makehydroreservoir(
             "Normalized intake reservoir", "ZONE1", elec, s; tech_column="Battery",
-            cap_discharging=500.0, cap_charging=0.0, intake=total_intake,
-            cap_reservoir=2_000.0,
+            discharge_cap=500.0, charge_cap=0.0, intake=total_intake,
+            energy_cap=2_000.0,
             intake_profile=profile,
             gridlosses=0.0, eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
@@ -55,8 +55,8 @@ using HiGHS
         s, elec, _ = makesnapshot(hours=24)
         @test_throws ArgumentError makehydroreservoir(
             "Negative intake reservoir", "ZONE1", elec, s; tech_column="Battery",
-            cap_discharging=500.0, cap_charging=0.0, intake=1_000.0,
-            cap_reservoir=2_000.0,
+            discharge_cap=500.0, charge_cap=0.0, intake=1_000.0,
+            energy_cap=2_000.0,
             intake_profile=vcat(-1.0, fill(2.0, 23)),
             gridlosses=0.0, eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
@@ -77,8 +77,8 @@ using HiGHS
     # Storage capacity inputs reject non-real numeric values at the API boundary.
     let
         s, elec, h2 = makesnapshot()
-        @test_throws TypeError makebatterystorage("Battery", elec, s; tech_column="Battery", cap=1 + im)
-        @test_throws TypeError makehydrogenstorage("H2 Storage", h2, s; tech_column="Hydrogen storage", cap=1 + im)
+        @test_throws TypeError makebatterystorage("Battery", elec, s; tech_column="Battery", power_cap=1 + im)
+        @test_throws TypeError makehydrogenstorage("H2 Storage", h2, s; tech_column="Hydrogen storage", energy_cap=1 + im)
     end
 
     # A valid battery input should create and register the component.
@@ -86,7 +86,7 @@ using HiGHS
         s, elec, _ = makesnapshot()
         c = makebatterystorage(
             "Battery", elec, s; tech_column="Battery",
-            cap=100.0,
+            power_cap=100.0,
             eff=0.9, duration=4.0,
             overnight_cost=1000.0, om_fixed_cost=10.0,
             decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
@@ -107,8 +107,8 @@ using HiGHS
         s, elec, _ = makesnapshot()
         c = makehydroreservoir(
             "Hydro reservoir", "ZONE1", elec, s; tech_column="Battery",
-            cap_discharging=100.0, cap_charging=50.0, intake=0.0,
-            cap_reservoir=500.0,
+            discharge_cap=100.0, charge_cap=50.0, intake=0.0,
+            energy_cap=500.0,
             gridlosses=0.0, eff=0.9,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=1.0,
             decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,
@@ -117,14 +117,14 @@ using HiGHS
         @test Nosy.getcomponent(s, "Hydro reservoir ZONE1") === c
     end
 
-    # Optimized pumping capacity creates its input flow before attaching the
-    # variable capacity and optional grid-loss behaviors.
+    # Pumping capacity creates its input flow before attaching the capacity and
+    # optional grid-loss behaviors.
     for gridlosses in (0.0, 0.05)
         s, elec, _ = makesnapshot()
         c = makehydroreservoir(
-            "Variable pumping reservoir", "ZONE1", elec, s; tech_column="Battery",
-            cap_discharging=100.0, cap_charging=nothing, intake=0.0,
-            cap_reservoir=500.0,
+            "Pumping reservoir", "ZONE1", elec, s; tech_column="Battery",
+            discharge_cap=100.0, charge_cap=75.0, intake=0.0,
+            energy_cap=500.0,
             gridlosses=gridlosses, eff=0.9,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
@@ -132,14 +132,14 @@ using HiGHS
         @test Nosy.hasport(c, "input")
         input_capacities = filter(
             b -> b.data.pname == "input",
-            Nosy.getbehaviors(c, Nosy.VariableCapacityBehavior),
+            Nosy.getbehaviors(c, Nosy.FixedCapacityBehavior),
         )
         @test length(input_capacities) == 1
         @test Nosy.hasport(c, "grid losses") == !iszero(gridlosses)
     end
 
-    # Reservoir level capacity follows the shared capacity API: finite is
-    # fixed, `nothing` is optimized, and the default `Inf` is unlimited.
+    # Reservoir level capacity is exogenous: a finite value is fixed and the
+    # default `Inf` is unlimited.
     let
         s, elec, _ = makesnapshot()
         common = (
@@ -149,25 +149,16 @@ using HiGHS
         )
         fixed = makehydroreservoir(
             "Fixed reservoir", "ZONE1", elec, s; tech_column="Battery",
-            cap_discharging=100.0, cap_charging=0.0, intake=8760.0,
-            cap_reservoir=500.0, common...,
-        )
-        variable = makehydroreservoir(
-            "Variable reservoir", "ZONE1", elec, s; tech_column="Battery",
-            cap_discharging=100.0, cap_charging=0.0, intake=8760.0,
-            cap_reservoir=nothing, common...,
+            discharge_cap=100.0, charge_cap=0.0, intake=8760.0,
+            energy_cap=500.0, common...,
         )
         unlimited = makehydroreservoir(
             "Unlimited reservoir", "ZONE1", elec, s; tech_column="Battery",
-            cap_discharging=100.0, cap_charging=0.0, intake=8760.0, common...,
+            discharge_cap=100.0, charge_cap=0.0, intake=8760.0, common...,
         )
         fixed_level_capacities = filter(
             b -> b.data.pname == "level",
             Nosy.getbehaviors(fixed, Nosy.FixedCapacityBehavior),
-        )
-        variable_level_capacities = filter(
-            b -> b.data.pname == "level",
-            Nosy.getbehaviors(variable, Nosy.VariableCapacityBehavior),
         )
         unlimited_fixed_capacities = filter(
             b -> b.data.pname == "level",
@@ -179,7 +170,6 @@ using HiGHS
         )
 
         @test length(fixed_level_capacities) == 1
-        @test length(variable_level_capacities) == 1
         @test isempty(unlimited_fixed_capacities)
         @test isempty(unlimited_variable_capacities)
     end
@@ -200,7 +190,7 @@ using HiGHS
         s, elec, _ = makesnapshot(hours=hours)
         makehydroreservoir(
             "Overflowing reservoir", "ZONE1", elec, s; tech_column="Battery",
-            cap_discharging=turbine, cap_charging=0.0, intake=total_intake, common...,
+            discharge_cap=turbine, charge_cap=0.0, intake=total_intake, common...,
         )
         Nosy.optimize!(s, cost(s))
         @test !is_solved_and_feasible(s.sim.model)
@@ -211,7 +201,7 @@ using HiGHS
         makedemand("Other consumption", "ZONE1", elec, s; profile=turbine)
         c = makehydroreservoir(
             "Overflowing reservoir", "ZONE1", elec, s; tech_column="Battery",
-            cap_discharging=turbine, cap_charging=0.0, intake=total_intake,
+            discharge_cap=turbine, charge_cap=0.0, intake=total_intake,
             spillage=true, common...,
         )
         @test Nosy.hasport(c, "spill")
@@ -233,7 +223,7 @@ using HiGHS
         s, elec, _ = makesnapshot(hours=24)
         c = makehydroreservoir(
             "Default reservoir", "ZONE1", elec, s; tech_column="Battery",
-            cap_discharging=100.0, cap_charging=0.0, intake=100.0,
+            discharge_cap=100.0, charge_cap=0.0, intake=100.0,
             intake_profile=1.0, gridlosses=0.0, eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
@@ -247,8 +237,8 @@ using HiGHS
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makehydroreservoir(
             "Zero intake reservoir", "ZONE1", elec, s; tech_column="Battery",
-            cap_discharging=100.0, cap_charging=0.0, intake=1_000.0,
-            cap_reservoir=500.0,
+            discharge_cap=100.0, charge_cap=0.0, intake=1_000.0,
+            energy_cap=500.0,
             intake_profile=0.0,
             gridlosses=0.0, eff=0.9,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=1.0,
@@ -263,8 +253,8 @@ using HiGHS
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makehydroreservoir(
             "Missing weather year", "ZONE1", elec, s; tech_column="Battery",
-            cap_discharging=100.0, cap_charging=0.0, intake=1_000.0,
-            cap_reservoir=500.0, gridlosses=0.0, eff=0.9,
+            discharge_cap=100.0, charge_cap=0.0, intake=1_000.0,
+            energy_cap=500.0, gridlosses=0.0, eff=0.9,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
         )

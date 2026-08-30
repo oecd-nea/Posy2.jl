@@ -80,16 +80,11 @@ using HiGHS
         )
         battery = makebatterystorage(
             "Linked battery", elec1, s; tech_column="unused",
-            cap=affine, mincap=1.0, maxcap=100.0, duration=4.0,
+            power_cap=affine, power_mincap=1.0, power_maxcap=100.0, duration=4.0,
         )
         hydrogen_storage = makehydrogenstorage(
             "Linked hydrogen storage", hydrogen, s; tech_column="unused",
-            cap=shared, mincap=1.0, maxcap=100.0,
-        )
-        reservoir = makehydroreservoir(
-            "Linked reservoir", "unused", elec1, s; tech_column="unused",
-            cap_discharging=shared, cap_charging=affine, intake=0.0,
-            cap_reservoir=shared,
+            energy_cap=shared, energy_mincap=1.0, energy_maxcap=100.0,
         )
         response = makedemandresponse("Linked DR", elec1, affine, 1.0, s)
         price_interconnection = makepricelink(
@@ -106,8 +101,6 @@ using HiGHS
             (intermittent, "output"),
             (electrolyser, "input"),
             (hydrogen_storage, "level"),
-            (reservoir, "output"),
-            (reservoir, "level"),
             (price_interconnection, "output"),
         )
         for (component, pname) in variable_cases
@@ -118,7 +111,6 @@ using HiGHS
             (nuclear, "output"),
             (ror, "output"),
             (battery, "input"),
-            (reservoir, "input"),
             (response, "output"),
             (price_interconnection, "input"),
         )
@@ -135,7 +127,6 @@ using HiGHS
         @test coefficient(node_capacities["input"].data.expr, shared) == 1.0
         @test node_capacities["input"].data.expr.constant == 0.0
 
-        @test Nosy.hasport(reservoir, "input")
         @test expression_capacity(dispatchable, "output").lb == 1.0
         @test expression_capacity(dispatchable, "output").ub == 100.0
     end
@@ -145,7 +136,7 @@ using HiGHS
         s, elec1, elec2, _, _ = expression_snapshot()
         @test_throws ArgumentError makehydroreservoir(
             "Negative infinite reservoir", "unused", elec1, s; tech_column="unused",
-            cap_discharging=1.0, cap_charging=0.0, intake=0.0, cap_reservoir=-Inf,
+            discharge_cap=1.0, charge_cap=0.0, intake=0.0, energy_cap=-Inf,
         )
         @test_throws ArgumentError maketransmissionlink(
             "Negative infinite IC", elec1, elec2, s; cap=-Inf,

@@ -63,10 +63,11 @@ makeelectrolyser
 
 [`makehydrogenstorage`](@ref) creates a simplified storage component on a
 hydrogen node. Capacity is attached to `level`, not to charge or discharge
-power. A numeric `cap` fixes level capacity; a JuMP variable or affine
-expression reuses an external decision; `nothing` creates a new decision; and
-an extracted snapshot inherits the matching component's level capacity.
-`mincap` and `maxcap` bound either variable form.
+power, which are left unlimited. A numeric `energy_cap` fixes stored-energy
+capacity; a JuMP variable or affine expression reuses an external decision;
+`nothing` creates a new decision; and an extracted snapshot inherits the
+matching component's level capacity. `energy_mincap` and `energy_maxcap` bound
+either variable form.
 
 ![Ports of a hydrogen storage component](../assets/component-hydrogen-storage.svg)
 

@@ -28,19 +28,21 @@ In a `balance` query, `:input` selects all input-sense ports. Thus
 losses` when configured. To distinguish natural intake from grid charging, use
 `aggregate=false` and read the `"natural"` or `"input"` entry.
 
-Each of `cap_discharging`, `cap_charging`, and `cap_reservoir` accepts a JuMP
-variable or affine expression as externally defined capacity, an extracted snapshot
-to inherit the matching component's capacity on that port, a number to fix it,
-or `nothing` to create a new decision. Each has its own `mincap_*`/`maxcap_*`
-bounds. The grid-charging branch always exists: numeric zero charging gives it
-a zero capacity, so a turbine-only reservoir still reports a charging flow of
-zero. A finite numeric `cap_reservoir` fixes `level` capacity, `nothing`
-creates a level decision, and `Inf` (the default) leaves the stored-energy
-level unlimited by adding no level capacity behaviour.
+The reservoir does not model endogenous capacity expansion, so it is the one
+builder that departs from the [capacity contract](../components.md#Capacity-Semantics):
+`discharge_cap`, `charge_cap`, and `energy_cap` accept only a number to fix the
+capacity or an extracted snapshot to inherit it, and take no `mincap`/`maxcap`
+bounds. Neither `nothing` nor a JuMP expression is accepted, because a
+model-sized reservoir would be built free of charge: CAPEX and fixed O&M are
+applied to discharging capacity alone. Costs still apply to the fixed
+capacities, so an existing fleet reports its annualized cost. If you need an
+expandable reservoir, write a dedicated component builder for it.
 
-For example, use `cap_reservoir=12_000.0` for a fixed 12 GWh reservoir,
-`cap_reservoir=nothing` to let the model choose its energy capacity, or omit the
-keyword (equivalently, pass `Inf`) for an unlimited level.
+The grid-charging branch always exists: numeric zero charging gives it a zero
+capacity, so a turbine-only reservoir still reports a charging flow of zero.
+For the level, use `energy_cap=12_000.0` for a fixed 12 GWh reservoir, or omit
+the keyword (equivalently, pass `Inf`) to leave the stored-energy level
+unlimited by adding no level capacity behaviour.
 
 Storage is periodic, so without a spill flow every unit of natural intake must
 eventually be turbined. That can force uneconomic generation, or make the
@@ -76,10 +78,12 @@ makehydroreservoir
 ## Batteries
 
 [`makebatterystorage`](@ref) creates electricity storage with `input`, `output`, and
-`level` ports. `cap` is charging power: a number fixes it, a JuMP variable or
-affine expression reuses an external decision, `nothing` creates a new
-decision, and an extracted snapshot fixes charging power to the matching
-component's capacity. `mincap` and `maxcap` bound either variable form.
+`level` ports. `power_cap` is the power capacity: a number fixes it, a JuMP
+variable or affine expression reuses an external decision, `nothing` creates a
+new decision, and an extracted snapshot fixes it to the matching component's
+capacity. `power_mincap` and `power_maxcap` bound either variable form. The
+`duration` behaviour applies `power_cap` to charging and to discharging alike,
+and bounds the level at `power_cap * duration`.
 
 ![Ports of a battery storage component](../assets/component-battery.svg)
 

@@ -52,16 +52,16 @@ using HiGHS
         ),
         makehydroreservoir(
             "Named reservoir", "unused", electricity, snapshot; tech_column="unused",
-            tech=reporting_tech, cap_discharging=1.0, cap_charging=0.0,
-            cap_reservoir=1.0, intake=0.0,
+            tech=reporting_tech, discharge_cap=1.0, charge_cap=0.0,
+            energy_cap=1.0, intake=0.0,
         ),
         makebatterystorage(
             "Named battery", electricity, snapshot; tech_column="unused",
-            tech=reporting_tech, cap=1.0, duration=1.0,
+            tech=reporting_tech, power_cap=1.0, duration=1.0,
         ),
         makehydrogenstorage(
             "Named H2 storage", hydrogen, snapshot; tech_column="unused",
-            tech=reporting_tech, cap=1.0,
+            tech=reporting_tech, energy_cap=1.0,
         ),
         makeelectrolyser(
             "Named electrolyser", electricity, hydrogen, snapshot; tech_column="unused",

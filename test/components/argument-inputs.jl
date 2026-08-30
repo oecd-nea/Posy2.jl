@@ -284,8 +284,8 @@ using HiGHS
         ))
         @test !isnothing(makehydroreservoir(
             "Reservoir", "unused", electricity, s;
-            cap_discharging=55.0, cap_charging=20.0, intake=240.0,
-            cap_reservoir=200.0,
+            discharge_cap=55.0, charge_cap=20.0, intake=240.0,
+            energy_cap=200.0,
             intake_profile=collect(1.0:24.0), eff=0.88, hydro_costs...,
         ))
         @test !isnothing(makeEV(

@@ -223,7 +223,7 @@ using HiGHS
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makebatterystorage(
             "Battery", elec1, snap; tech_column="Battery",
-            cap=100.0,
+            power_cap=100.0,
             eff=0.9, duration=4.0,
             overnight_cost=1000.0, om_fixed_cost=10.0,
             decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
@@ -282,8 +282,8 @@ using HiGHS
         profile = gettimeseries(snap, "ZONE1", "reservoir_inflow_2019")
         makehydroreservoir(
             "Hydro reservoir", "ZONE1", elec, snap; tech_column="Battery",
-            cap_discharging=5000.0, cap_charging=100.0, intake=sum(profile),
-            cap_reservoir=50_000_000.0, weatheryear=2019,
+            discharge_cap=5000.0, charge_cap=100.0, intake=sum(profile),
+            energy_cap=50_000_000.0, weatheryear=2019,
             gridlosses=0.0, eff=0.9,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=1.0,
             decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,
@@ -316,7 +316,7 @@ using HiGHS
         makedispatchable("CCGT", elec, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makehydroreservoir(
             "Hydro reservoir", "ZONE1", elec, snap; tech_column="Battery",
-            cap_discharging=turbine, cap_charging=0.0, intake=total_intake,
+            discharge_cap=turbine, charge_cap=0.0, intake=total_intake,
             spillage=true, intake_profile=1.0, gridlosses=0.0, eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0, decommissioning=0.0,
         )

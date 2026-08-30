@@ -38,10 +38,10 @@ makeintermittentsource(
     om_var_cost=15.0,
 )
 
-# Fixed battery: 50 MW charge rating, 85% round-trip, 4 h energy duration
+# Fixed battery: 50 MW power rating, 85% round-trip, 4 h energy duration
 makebatterystorage(
     "Battery", electricity, snapshot; tech_column="Battery",
-    cap=50.0,
+    power_cap=50.0,
     eff=0.85,
     duration=4.0,
 )

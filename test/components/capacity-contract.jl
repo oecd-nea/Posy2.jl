@@ -37,13 +37,13 @@ using HiGHS
         makedispatchable("CCGT", elec, co2, s; tech_column="CCGT", cap=nothing, maxcap=40.0, om_var_cost=1.0)
         makeintermittentsource("PV", elec, co2, s; tech_column="PV", cap=nothing, maxcap=30.0, profile=1.0)
         makehydroror("ROR", "Z1", elec, s; cap=nothing, maxcap=20.0, intake=10.0, intake_profile=1.0)
-        makebatterystorage("Battery", elec, s; tech_column="Li", cap=nothing, maxcap=10.0, eff=1.0, duration=4.0)
+        makebatterystorage("Battery", elec, s; tech_column="Li", power_cap=nothing, power_maxcap=10.0, eff=1.0, duration=4.0)
         makeelectrolyser("Electrolyser", elec, h2, s; tech_column="PEM", cap=nothing, maxcap=5.0, eff=1.0)
-        makehydrogenstorage("H2 storage", h2, s; tech_column="Cavern", cap=nothing, maxcap=50.0, eff=1.0)
+        makehydrogenstorage("H2 storage", h2, s; tech_column="Cavern", energy_cap=nothing, energy_maxcap=50.0, eff=1.0)
+        # reservoir capacities are exogenous, so the source fleet is fixed
         makehydroreservoir("Reservoir", "Z1", elec, s; tech_column="Hydro",
-            cap_discharging=nothing, maxcap_discharging=15.0,
-            cap_charging=nothing, maxcap_charging=8.0, intake=0.0,
-            cap_reservoir=nothing, maxcap_reservoir=60.0, eff=1.0)
+            discharge_cap=15.0, charge_cap=8.0, intake=0.0,
+            energy_cap=60.0, eff=1.0)
         makedemand("Load", "Z1", elec, s; coeff=0.0, yearlyconstant=100.0)
         Nosy.optimize!(s, cost(s))
         ini = extract(s)
@@ -52,11 +52,11 @@ using HiGHS
         gas = makedispatchable("CCGT", telec, tco2, t; tech_column="CCGT", cap=ini, om_var_cost=1.0)
         pv = makeintermittentsource("PV", telec, tco2, t; tech_column="PV", cap=ini, profile=1.0)
         ror = makehydroror("ROR", "Z1", telec, t; cap=ini, intake=10.0, intake_profile=1.0)
-        bat = makebatterystorage("Battery", telec, t; tech_column="Li", cap=ini, eff=1.0, duration=4.0)
+        bat = makebatterystorage("Battery", telec, t; tech_column="Li", power_cap=ini, eff=1.0, duration=4.0)
         elyser = makeelectrolyser("Electrolyser", telec, th2, t; tech_column="PEM", cap=ini, eff=1.0)
-        h2store = makehydrogenstorage("H2 storage", th2, t; tech_column="Cavern", cap=ini, eff=1.0)
+        h2store = makehydrogenstorage("H2 storage", th2, t; tech_column="Cavern", energy_cap=ini, eff=1.0)
         res = makehydroreservoir("Reservoir", "Z1", telec, t; tech_column="Hydro",
-            cap_discharging=ini, cap_charging=ini, intake=0.0, cap_reservoir=ini, eff=1.0)
+            discharge_cap=ini, charge_cap=ini, intake=0.0, energy_cap=ini, eff=1.0)
 
         @test fixedcap(gas, "output") ≈ capacity(ini, "CCGT E1")
         @test fixedcap(pv, "output") ≈ capacity(ini, "PV E1")
@@ -93,14 +93,14 @@ using HiGHS
         @test_throws "no component named \"PV E1\" to inherit port \"output\"" makeintermittentsource(
             "PV", elec, co2, s; tech_column="PV", cap=empty_ini, profile=1.0)
         @test_throws "no component named \"Battery E1\" to inherit port \"input\"" makebatterystorage(
-            "Battery", elec, s; tech_column="Li", cap=empty_ini, eff=1.0, duration=4.0)
+            "Battery", elec, s; tech_column="Li", power_cap=empty_ini, eff=1.0, duration=4.0)
         @test_throws "no component named \"Electrolyser E1\" to inherit port \"input\"" makeelectrolyser(
             "Electrolyser", elec, h2, s; tech_column="PEM", cap=empty_ini, eff=1.0)
         @test_throws "no component named \"H2 storage H2\" to inherit port \"level\"" makehydrogenstorage(
-            "H2 storage", h2, s; tech_column="Cavern", cap=empty_ini, eff=1.0)
-        @test_throws "`cap_discharging` was given a snapshot with no component named \"Reservoir E1\" to inherit port \"output\" from" makehydroreservoir(
+            "H2 storage", h2, s; tech_column="Cavern", energy_cap=empty_ini, eff=1.0)
+        @test_throws "`discharge_cap` was given a snapshot with no component named \"Reservoir E1\" to inherit port \"output\" from" makehydroreservoir(
             "Reservoir", "Z1", elec, s; tech_column="Hydro",
-            cap_discharging=empty_ini, cap_charging=0.0, intake=0.0, eff=1.0)
+            discharge_cap=empty_ini, charge_cap=0.0, intake=0.0, eff=1.0)
     end
 
     # Inheriting reads solved values, so an unextracted source is rejected.
@@ -132,7 +132,7 @@ using HiGHS
         t, telec, _, _ = contract_snapshot()
         # "Twin E1" exists but is a generator: it has no "input" port to inherit
         @test_throws "component \"Twin E1\" has no port named \"input\"" makebatterystorage(
-            "Twin", telec, t; tech_column="Li", cap=ini, eff=1.0, duration=4.0)
+            "Twin", telec, t; tech_column="Li", power_cap=ini, eff=1.0, duration=4.0)
     end
 
     # A commitment schedule can be replayed, but only against a fixed capacity.
@@ -204,7 +204,7 @@ using HiGHS
         gas = makedispatchable("CCGT", elec, co2, s; tech_column="CCGT", cap=0.0)
         ror = makehydroror("ROR", "Z1", elec, s; cap=0.0, intake=0.0)
         res = makehydroreservoir("Reservoir", "Z1", elec, s; tech_column="Hydro",
-            cap_discharging=10.0, cap_charging=0.0, intake=0.0, eff=1.0)
+            discharge_cap=10.0, charge_cap=0.0, intake=0.0, eff=1.0)
         @test !isnothing(gas)
         @test Nosy.getcomponent(s, "CCGT E1") === gas
         @test fixedcap(gas, "output") == 0.0
@@ -223,13 +223,6 @@ using HiGHS
             cap=5.0, mincap=10.0)
         @test_throws ArgumentError makedispatchable("Above", elec, co2, s; tech_column="CCGT",
             cap=500.0, maxcap=100.0)
-        @test_throws ArgumentError makehydroreservoir("Reservoir", "Z1", elec, s; tech_column="Hydro",
-            cap_discharging=10.0, cap_charging=50.0, maxcap_charging=20.0, intake=0.0, eff=1.0)
-        # the default unlimited level adds no capacity behavior, but still asserts
-        @test_throws ArgumentError makehydroreservoir("Bounded unlimited", "Z1", elec, s; tech_column="Hydro",
-            cap_discharging=10.0, cap_charging=0.0, intake=0.0, maxcap_reservoir=100.0, eff=1.0)
-        @test !isnothing(makehydroreservoir("Unlimited above min", "Z1", elec, s; tech_column="Hydro",
-            cap_discharging=10.0, cap_charging=0.0, intake=0.0, mincap_reservoir=100.0, eff=1.0))
     end
 
     # Node interconnections expose the same capacity contract on one capacity

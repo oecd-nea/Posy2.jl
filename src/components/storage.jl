@@ -5,11 +5,7 @@ Generate storage components.
 """
     makehydroreservoir(name::String, zone::String, elec::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
-        cap_discharging, cap_charging, intake,
-        mincap_discharging=nothing, maxcap_discharging=nothing,
-        mincap_charging=nothing, maxcap_charging=nothing,
-        mincap_reservoir=nothing, maxcap_reservoir=nothing,
-        cap_reservoir=Inf, spillage=false,
+        discharge_cap, charge_cap, intake, energy_cap=Inf, spillage=false,
         weatheryear=nothing, gridlosses=0., simplified=false,
         intake_profile=nothing,
         eff::Union{Nothing,Real}=nothing,
@@ -20,6 +16,18 @@ Generate storage components.
 
 Build, connect and return a hydro reservoir component.
 
+This builder does not cover endogenous capacity expansion of the reservoir.
+`discharge_cap`, `charge_cap` and `energy_cap` are exogenous: unlike the other
+builders they accept neither `nothing` nor a JuMP expression, and so are never
+capacity decisions. A model-sized reservoir would be built free of charge,
+because CAPEX and fixed O&M are applied to discharging capacity alone. Costs
+still apply to the fixed capacities, so an existing fleet reports its
+annualized cost.
+
+If you need an expandable reservoir, please write a dedicated component builder
+for it. It needs a cost basis for each expanded dimension, which the shared
+`storage` technology sheet does not carry.
+
 Arguments:
   * `name`: component name prefix.
   * `tech`: technology label used for reporting and component queries; defaults to `name`.
@@ -28,24 +36,18 @@ Arguments:
   * `zone`: Zone used for reservoir intake time series lookup.
   * `elec`: electricity node to connect the component to.
   * `s`: snapshot to register the component in.
-  * `cap_discharging`: Discharging capacity in MW. A number fixes capacity, a
-    JuMP `VariableRef` or `AffExpr` reuses that expression, `nothing` creates a
-    capacity decision, and an extracted `Snapshot` inherits the capacity of
-    `"<name> <node name>"` in it.
-  * `cap_charging`: Charging capacity in MW with the same choices. The `input`
+  * `discharge_cap`: Discharging capacity in MW. A number fixes it, and an
+    extracted `Snapshot` inherits the capacity of `"<name> <node name>"` in it.
+  * `charge_cap`: Charging capacity in MW with the same choices. The `input`
     port is always created; numeric `0` gives it a zero capacity, so a
     turbine-only reservoir still reports a charging flow of zero.
   * `intake`: Total natural intake in MWh over the modeled profile (normally one
     year). `0` disables natural intake.
 
-  * `mincap_discharging`, `maxcap_discharging`, `mincap_charging`,
-    `maxcap_charging`: Power-capacity bounds in MW.
-  * `mincap_reservoir`, `maxcap_reservoir`: Reservoir-energy bounds in MWh.
-    Bounds are checked as assertions against fixed or inherited capacities.
-
-  * `cap_reservoir`: Storage level capacity in MWh, with the same choices as
-    `cap_discharging`, plus `Inf` (the default) which leaves the level
+  * `energy_cap`: Storage level capacity in MWh, with the same choices as
+    `discharge_cap`, plus `Inf` (the default) which leaves the level
     unlimited by adding no level capacity behavior.
+
   * `spillage`: Add an unconnected, unlimited `spill` output that lets the
     reservoir release stored energy without generating. It defaults to `false`,
     which forces all natural intake to eventually become generation.
@@ -79,15 +81,13 @@ decommissioning is nonzero.
 function makehydroreservoir(name::String, zone::String, elec::Node, s::Snapshot;
     tech::String=name, tech_column::String=tech,
     # capacities
-    cap_discharging::Union{Nothing,Real,VariableRef,AffExpr,Snapshot},
-    cap_charging::Union{Nothing,Real,VariableRef,AffExpr,Snapshot},
+    discharge_cap::Union{Real,Snapshot},
+    charge_cap::Union{Real,Snapshot},
     intake::Real,
-    mincap_discharging::Union{Nothing,Real}=nothing, maxcap_discharging::Union{Nothing,Real}=nothing,
-    mincap_charging::Union{Nothing,Real}=nothing, maxcap_charging::Union{Nothing,Real}=nothing,
-    mincap_reservoir::Union{Nothing,Real}=nothing, maxcap_reservoir::Union{Nothing,Real}=nothing,
+    energy_cap::Union{Real,Snapshot}=Inf,
 
     # storage operation controls
-    cap_reservoir::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=Inf, spillage::Bool=false,
+    spillage::Bool=false,
     weatheryear::Union{Nothing,Integer}=nothing, gridlosses::Real=0.,
     simplified::Bool=false,
     intake_profile=nothing,
@@ -194,21 +194,16 @@ function makehydroreservoir(name::String, zone::String, elec::Node, s::Snapshot;
         push!(vb, FixedJointFlow("natural", elec.carrier, :input, intake_series, mustconnect=false))
     end
     
-    push!(vb, gencapacity(cap_discharging, "output", s, name * " " * elec.name;
-        mincap=mincap_discharging, maxcap=maxcap_discharging, argname="cap_discharging"))
+    push!(vb, gencapacity(discharge_cap, "output", s, name * " " * elec.name; argname="discharge_cap"))
 
     # the charging branch always exists, at zero capacity when charging is disabled
     push!(vb, FreeJointFlow("input", elec.carrier, :input))
-    push!(vb, gencapacity(cap_charging, "input", s, name * " " * elec.name;
-        mincap=mincap_charging, maxcap=maxcap_charging, argname="cap_charging"))
+    push!(vb, gencapacity(charge_cap, "input", s, name * " " * elec.name; argname="charge_cap"))
     !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _gridlosses))
 
-    if cap_reservoir isa Real && cap_reservoir == Inf
-        # unlimited level: no capacity behavior, but the bounds still assert on it
-        _checkcapacitybounds(cap_reservoir, mincap_reservoir, maxcap_reservoir, "cap_reservoir")
-    else
-        push!(vb, gencapacity(cap_reservoir, "level", s, name * " " * elec.name;
-            mincap=mincap_reservoir, maxcap=maxcap_reservoir, argname="cap_reservoir"))
+    # `Inf` leaves the level unlimited by adding no level capacity behavior
+    if !(energy_cap isa Real && energy_cap == Inf)
+        push!(vb, gencapacity(energy_cap, "level", s, name * " " * elec.name; argname="energy_cap"))
     end
 
     c = Component(name * " " * elec.name, m, vb)
@@ -230,8 +225,8 @@ end
 """
     makebatterystorage(name::String, elec::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
-        cap=nothing, mincap=nothing, maxcap=nothing, simplified=false,
-        gridlosses=0.,
+        power_cap=nothing, power_mincap=nothing, power_maxcap=nothing,
+        simplified=false, gridlosses=0.,
         eff::Union{Nothing,Real}=nothing, duration::Union{Nothing,Real}=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
@@ -248,13 +243,14 @@ Arguments:
   * `elec`: electricity node to connect the component to.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Charging/input capacity in MW. A number fixes capacity, a JuMP
-    `VariableRef` or `AffExpr` reuses that expression, `nothing` creates a
-    capacity decision, and an extracted `Snapshot` inherits the capacity of
-    `"<name> <node name>"` in it.
-  * `mincap`: Lower capacity bound in MW;
+  * `power_cap`: Power capacity in MW. It bounds charging and discharging
+    alike, and the stored level at `power_cap * duration`. A number fixes
+    capacity, a JuMP `VariableRef` or `AffExpr` reuses that expression,
+    `nothing` creates a capacity decision, and an extracted `Snapshot` inherits
+    the capacity of `"<name> <node name>"` in it.
+  * `power_mincap`: Lower power-capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
-  * `maxcap`: Upper capacity bound in MW;
+  * `power_maxcap`: Upper power-capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
   * `simplified`: Passed to `BasicStorage(..., simplified=...)`.
 
@@ -281,7 +277,8 @@ decommissioning is nonzero.
 function makebatterystorage(name::String, elec::Node, s::Snapshot;
     tech::String=name, tech_column::String=tech,
     # capacity / expansion
-    cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    power_cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing,
+    power_mincap::Union{Nothing,Real}=nothing, power_maxcap::Union{Nothing,Real}=nothing,
     simplified::Bool=false, gridlosses::Real=0.,
 
     # technical overrides
@@ -359,7 +356,8 @@ function makebatterystorage(name::String, elec::Node, s::Snapshot;
     vb = []
     
     push!(vb, Duration(_dur))
-    push!(vb, gencapacity(cap, "input", s, name * " " * elec.name; mincap=mincap, maxcap=maxcap))
+    push!(vb, gencapacity(power_cap, "input", s, name * " " * elec.name;
+        mincap=power_mincap, maxcap=power_maxcap, argname="power_cap"))
     push!(vb, FixedCost(:investment, "input", energy, _inv))
     push!(vb, FixedCost(:connection, "input", energy, _inv * _conn))
     push!(vb, FixedCost(:fom, "input", energy, _fom * 1000.))
@@ -385,7 +383,7 @@ end
 """
     makehydrogenstorage(name::String, h2::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
-        cap=nothing, mincap=nothing, maxcap=nothing,
+        energy_cap=nothing, energy_mincap=nothing, energy_maxcap=nothing,
         eff::Union{Nothing,Real}=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
@@ -401,12 +399,13 @@ Arguments:
   * `h2`: hydrogen node to connect the component to.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Storage level capacity in MWh. A number fixes capacity, a JuMP `VariableRef`
-    or `AffExpr` reuses that expression, `nothing` creates a capacity decision,
-    and an extracted `Snapshot` inherits the capacity of `"<name> <node name>"` in it.
-  * `mincap`: Lower capacity bound in MWh;
+  * `energy_cap`: Stored-energy capacity in MWh. Charging and discharging power
+    are left unlimited. A number fixes capacity, a JuMP `VariableRef` or
+    `AffExpr` reuses that expression, `nothing` creates a capacity decision, and
+    an extracted `Snapshot` inherits the capacity of `"<name> <node name>"` in it.
+  * `energy_mincap`: Lower energy-capacity bound in MWh;
     checked as an assertion against a fixed or inherited one.
-  * `maxcap`: Upper capacity bound in MWh;
+  * `energy_maxcap`: Upper energy-capacity bound in MWh;
     checked as an assertion against a fixed or inherited one.
 
   * `eff`: Dimensionless round-trip storage efficiency. If `nothing`, read it
@@ -427,7 +426,8 @@ decommissioning is nonzero.
 function makehydrogenstorage(name::String, h2::Node, s::Snapshot;
     tech::String=name, tech_column::String=tech,
     # capacity / expansion
-    cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
+    energy_cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing,
+    energy_mincap::Union{Nothing,Real}=nothing, energy_maxcap::Union{Nothing,Real}=nothing,
 
     # technical overrides
     eff::Union{Nothing,Real}=nothing,
@@ -497,7 +497,8 @@ function makehydrogenstorage(name::String, h2::Node, s::Snapshot;
     push!(vb, FixedCost(:fom, "level", energy, _fom * 1000.))
     push!(vb, FixedCost(:decommissioning, "level", energy, _decom_cost))
 
-    push!(vb, gencapacity(cap, "level", s, name * " " * h2.name; mincap=mincap, maxcap=maxcap))
+    push!(vb, gencapacity(energy_cap, "level", s, name * " " * h2.name;
+        mincap=energy_mincap, maxcap=energy_maxcap, argname="energy_cap"))
     # push!(vb, Duration(4)) # TYNDP methodology 9.6.4: fill in 4 hours # removed for large storage (no meaning, no impact except negative on performance)
     c = Component(name * " " * h2.name, m, vb)
     tag!(c, :tech, tech)

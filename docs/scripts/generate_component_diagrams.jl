@@ -290,15 +290,15 @@ const SPECS = [
         inputs=[
             (name="natural", kind=:fixed, note=["intake profile x intake", "not connected; omitted if intake = 0"],
                 endpoint=(label=["intake series", "reservoir_inflow_<weatheryear>", "column: zone"], kind=:series)),
-            (name="input", kind=:free, note=["grid charging, cap_charging", "eff = roundtrip_eff"], endpoint=ELEC_BOTH),
+            (name="input", kind=:free, note=["grid charging, charge_cap", "eff = roundtrip_eff"], endpoint=ELEC_BOTH),
             (name="grid losses", kind=:linked, note=["gridlosses x input", "eff 0, energy discarded"], endpoint=ELEC_BOTH),
         ],
         outputs=[
-            (name="output", kind=:free, note=["generation, cap_discharging", "eff 1, all costs attach here"], endpoint=ELEC_BOTH),
+            (name="output", kind=:free, note=["generation, discharge_cap", "eff 1, all costs attach here"], endpoint=ELEC_BOTH),
             (name="spill", kind=:free, note=["only if spillage = true", "unlimited and uncosted"],
                 endpoint=(label=["not connected", "released outside the system"], kind=:unconnected)),
         ],
-        level=(name="level", note=["cap_reservoir", "Inf (default): unlimited", "periodic: wraps last hour", "into first hour"]),
+        level=(name="level", note=["energy_cap", "Inf (default): unlimited", "periodic: wraps last hour", "into first hour"]),
     ),
     (
         file="component-battery.svg",

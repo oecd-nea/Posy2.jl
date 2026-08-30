@@ -122,7 +122,7 @@ function solve_hydrogen()
     makeelectrolyser("Electrolyser", electricity, hydrogen, snapshot; tech_column="PEM", maxcap=300.0)
     makehydrogenstorage(
         "H2 storage", hydrogen, snapshot; tech_column="Hydrogen storage",
-        cap=28.0 * 168,
+        energy_cap=28.0 * 168,
     )
 
     optimize!(snapshot, cost(snapshot))

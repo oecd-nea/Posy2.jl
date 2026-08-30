@@ -134,7 +134,7 @@ using HiGHS
         )
         makebatterystorage(
             "Battery", elec1, snap; tech_column="Battery",
-            cap=100.0,
+            power_cap=100.0,
             eff=0.9, duration=4.0,
             overnight_cost=1000.0, om_fixed_cost=10.0,
             decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
@@ -168,7 +168,7 @@ using HiGHS
         makedemand("Other consumption", "ZONE1", elec1, snap; profile=turbine)
         makehydroreservoir(
             "Reservoir", "ZONE1", elec1, snap; tech_column="Battery",
-            cap_discharging=turbine, cap_charging=0.0, intake=total_intake,
+            discharge_cap=turbine, charge_cap=0.0, intake=total_intake,
             spillage=true, intake_profile=1.0, gridlosses=0.0, eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0, decommissioning=0.0,
         )
@@ -202,7 +202,7 @@ using HiGHS
         )
         makebatterystorage(
             "Battery", elec1, snap; tech_column="Battery",
-            cap=100.0,
+            power_cap=100.0,
             eff=0.9, duration=4.0,
             overnight_cost=1000.0, om_fixed_cost=10.0,
             decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,

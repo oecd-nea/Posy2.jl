@@ -48,7 +48,7 @@ makeelectrolyser("Electrolyser", electricity, hydrogen, snapshot; tech_column="P
 # Fixed hydrogen storage
 makehydrogenstorage(
     "H2 storage", hydrogen, snapshot; tech_column="Hydrogen storage",
-    cap=28.0 * 168,   # about one week of the mean hydrogen demand
+    energy_cap=28.0 * 168,   # about one week of the mean hydrogen demand
 )
 
 # Minimise total system cost and extract solved values

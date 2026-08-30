@@ -57,7 +57,9 @@ and unit conversions are in [Input Workbooks](concepts/input-data.md).
 ## Capacity Semantics
 
 Every user-supplied `cap` or similar capacity argument normally follows this
-contract:
+contract. [`makehydroreservoir`](@ref) is the one exception: its capacities are
+exogenous, accepting only a number or an extracted snapshot, and it takes no
+bounds.
 
 | Value | Capacity used by the builder | Effect of `mincap` and `maxcap` |
 |:------|:-----------------------------|:--------------------------------|
@@ -86,7 +88,7 @@ does not require an intake profile, and a zero node-interconnector capacity
 does not require either directional availability series. Two arguments use `Inf` as an
 unlimited-capacity sentinel:
 
-- `cap_reservoir=Inf` in [`makehydroreservoir`](@ref), its default, leaves the
+- `energy_cap=Inf` in [`makehydroreservoir`](@ref), its default, leaves the
   stored-energy level unlimited by adding no level capacity behavior.
 - `cap=Inf` in [`makedemandresponse`](@ref) leaves response output unlimited.
   `cap=nothing` creates a capacity decision and emits a warning suggesting
