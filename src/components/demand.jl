@@ -5,27 +5,32 @@ Generate demand-side components.
 using ArgCheck: @argcheck
 
 """
-    makedemand(cname::String, zone::String, n::Node, s::Snapshot;
-        profile=nothing, coeff=1.0, shift::Int=0,
+    makedemand(name::String, zone::String, n::Node, s::Snapshot;
+        tech::String=name, profile=nothing, coeff=1.0, shift::Int=0,
         yearlyconstant::Real=0., gridlosses=0.,
     )
 
 Build, connect and return a component based on the Demand template.
 
 Arguments:
-  * `cname`: component name prefix.
+  * `name`: component name prefix.
+  * `tech`: technology label used for reporting; defaults to `name`.
   * `zone`: time series name in the time series workbook (`demand` sheet).
   * `n`: demand node to connect the component to.
   * `s`: snapshot to register the component in.
-  * `profile`: Hourly demand vector, or a scalar expanded across the simulation
+  * `profile`: Hourly demand in MW, or a scalar expanded across the simulation
     mesh. If `nothing`, read `zone` from the `demand` sheet.
-  * `coeff`: multiplicative factor applied to the profile part of demand.
-  * `shift`: circular shift of demand profile (e.g. align first day to Monday).
-  * `yearlyconstant`: flat yearly demand term distributed over 8760 hours (`yearlyconstant >= 0`).
-  * `gridlosses`: optional proportional grid loss joint flow on demand input (`0 <= gridlosses < 1`).
+  * `coeff`: Dimensionless multiplier applied to the profile demand. `0`
+    disables it and skips the `zone`, `profile`, and `shift` inputs.
+  * `shift`: Circular profile shift in time steps (e.g. align the first day to
+    Monday).
+  * `yearlyconstant`: Flat demand in MWh/year, distributed over 8760 hours
+    (`yearlyconstant >= 0`).
+  * `gridlosses`: Proportional grid-loss fraction on demand input
+    (`0 <= gridlosses < 1`).
 """
-function makedemand(cname::String, zone::String, n::Node, s::Snapshot;
-                    profile=nothing, coeff::Real=1.0, shift::Int=0,
+function makedemand(name::String, zone::String, n::Node, s::Snapshot;
+                    tech::String=name, profile=nothing, coeff::Real=1.0, shift::Int=0,
                     yearlyconstant::Real=0., gridlosses::Real=0.)
     inputs = demand_input(coeff=coeff, yearlyconstant=yearlyconstant, gridlosses=gridlosses)
     validate_demand_input(inputs)
@@ -40,8 +45,8 @@ function makedemand(cname::String, zone::String, n::Node, s::Snapshot;
     m = Demand(n.carrier, (var .+ yearlyconstant / 8760))
     vb = []
     !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", n.carrier, :input, "input", x->x[1] * _gridlosses))
-    c = Component(cname * " " * n.name, m, vb)
-    tag!(c, :tech, cname)
+    c = Component(name * " " * n.name, m, vb)
+    tag!(c, :tech, tech)
     tag!(c, :zone, n.name)
     for t in ("electricity", "demand")
         tag!(c, :function, t)
@@ -51,23 +56,27 @@ function makedemand(cname::String, zone::String, n::Node, s::Snapshot;
 end
 
 """
-    makeflathydrogendemand(cname::String, n::Node, val::Real, s::Snapshot)
+    makeflathydrogendemand(name::String, n::Node, val::Real, s::Snapshot;
+        tech::String=name)
 
 Build, connect and return a flat hydrogen demand component.
 
 Arguments:
-  * `cname`: component name prefix.
+  * `name`: component name prefix.
+  * `tech`: technology label used for reporting; defaults to `name`.
   * `n`: hydrogen demand node to connect the component to.
-  * `val`: total yearly hydrogen demand. Must satisfy `val >= 0`.
+  * `val`: Total hydrogen demand in MWh/year. Must satisfy `val >= 0`.
   * `s`: snapshot to register the component in.
 """
-function makeflathydrogendemand(cname::String, n::Node, val::Real, s::Snapshot)
+function makeflathydrogendemand(name::String, n::Node, val::Real, s::Snapshot;
+    tech::String=name,
+)
     inputs = demand_input(val=val)
     validate_demand_input(inputs)
     m = Demand(n.carrier, val / 8760)
     vb = []
-    c = Component(cname * " " * n.name, m, vb)
-    tag!(c, :tech, cname)
+    c = Component(name * " " * n.name, m, vb)
+    tag!(c, :tech, tech)
     tag!(c, :zone, n.name)
     for t in ("hydrogen", "demand")
         tag!(c, :function, t)
@@ -77,24 +86,29 @@ function makeflathydrogendemand(cname::String, n::Node, val::Real, s::Snapshot)
 end
 
 """
-    makeflexhydrogendemand(cname::String, n::Node, val::Real, s::Snapshot)
+    makeflexhydrogendemand(name::String, n::Node, val::Real, s::Snapshot;
+        tech::String=name)
 
 Build, connect and return a flexible hydrogen demand component.
 
 Arguments:
-  * `cname`: component name prefix.
+  * `name`: component name prefix.
+  * `tech`: technology label used for reporting; defaults to `name`.
   * `n`: hydrogen demand node to connect the component to.
-  * `val`: total yearly hydrogen demand enforced through `YearlySum("input", val, :equal)`. Must satisfy `val >= 0`.
+  * `val`: Total hydrogen demand in MWh/year, enforced through
+    `YearlySum("input", val, :equal)`. Must satisfy `val >= 0`.
   * `s`: snapshot to register the component in.
 """
-function makeflexhydrogendemand(cname::String, n::Node, val::Real, s::Snapshot)
+function makeflexhydrogendemand(name::String, n::Node, val::Real, s::Snapshot;
+    tech::String=name,
+)
     inputs = demand_input(val=val)
     validate_demand_input(inputs)
     m = BasicSink(n.carrier)
     vb = []
     push!(vb, YearlySum("input", val, :equal))
-    c = Component(cname * " " * n.name, m, vb)
-    tag!(c, :tech, cname)
+    c = Component(name * " " * n.name, m, vb)
+    tag!(c, :tech, tech)
     tag!(c, :zone, n.name)
     for t in ("hydrogen", "demand")
         tag!(c, :function, t)
@@ -104,7 +118,8 @@ function makeflexhydrogendemand(cname::String, n::Node, val::Real, s::Snapshot)
 end
 
 """
-    makedemandresponse(cname::String, elec::Node, cap, cost::Real, s::Snapshot; type::Symbol=:volDR)
+    makedemandresponse(name::String, elec::Node, cap, cost::Real, s::Snapshot;
+        tech::String=name, type::Symbol=:volDR)
 
 Build, connect and return a demand response component represented as negative
 consumption.
@@ -116,17 +131,20 @@ cost, and reporting. The connected `negative consumption` input is
 side without modifying existing demand components.
 
 Arguments:
-  * `cname`: component name prefix.
+  * `name`: component name prefix.
+  * `tech`: technology label used for reporting; defaults to `name`.
   * `elec`: electricity node to connect the component to.
-  * `cap`: Response capacity. A number fixes capacity, a JuMP `VariableRef` or
-    `AffExpr` reuses that expression, `nothing` creates a capacity decision,
-    and `Inf` leaves output unlimited. `nothing` emits a warning to distinguish
-    it from unlimited capacity.
-  * `cost`: demand response activation cost coefficient.
+  * `cap`: Response capacity in MW. A number fixes capacity, a JuMP
+    `VariableRef` or `AffExpr` reuses that expression, `nothing` creates a
+    capacity decision, and `Inf` leaves output unlimited. `nothing` emits a
+    warning to distinguish it from unlimited capacity.
+  * `cost`: Activation cost in currency/MWh.
   * `s`: snapshot to register the component in.
   * `type`: variable cost label used for reporting (default `:volDR`).
 """
-function makedemandresponse(cname::String, elec::Node, cap::Union{Nothing,Real,VariableRef,AffExpr}, cost::Real, s::Snapshot; type::Symbol=:volDR)
+function makedemandresponse(name::String, elec::Node, cap::Union{Nothing,Real,VariableRef,AffExpr}, cost::Real, s::Snapshot;
+    tech::String=name, type::Symbol=:volDR,
+)
     # Demand provides a zero-valued input that anchors this demand-side
     # component. `output` remains positive for capacity, cost, and reporting,
     # but is not connected to the electricity node. Only its negative linked
@@ -140,12 +158,12 @@ function makedemandresponse(cname::String, elec::Node, cap::Union{Nothing,Real,V
         @warn "`cap=nothing` defines a variable demand response capacity. Use `cap=Inf` for unlimited capacity."
     end
     if !(cap isa Real && cap == Inf)
-        push!(vb, gencapacity(cap, "output", s, cname * " " * elec.name))
+        push!(vb, gencapacity(cap, "output", s, name * " " * elec.name))
     end
     push!(vb, VariableCost(type, "output", energy, cost))
 
-    c = Component(cname * " " * elec.name, m, vb)
-    tag!(c, :tech, cname)
+    c = Component(name * " " * elec.name, m, vb)
+    tag!(c, :tech, tech)
     tag!(c, :zone, elec.name)
     for t in ("virtual", "demandresponse")
         tag!(c, :function, t)

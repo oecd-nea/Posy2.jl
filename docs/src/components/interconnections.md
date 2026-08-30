@@ -49,7 +49,7 @@ hour. This may require solver support beyond a plain continuous LP.
 ## Node Interconnections
 
 [`maketransmissionlink`](@ref) names the component
-`"$(cname)_$(a.name)_$(b.name)"`. Its first direction is `a -> b`:
+`"$(name)_$(a.name)_$(b.name)"`. Its first direction is `a -> b`:
 
 - `input` withdraws from node `a` and carries the shared `cap` multiplied by
   `atob_availability`;

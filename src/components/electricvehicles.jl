@@ -5,7 +5,8 @@ Generate electric vehicle components.
 using ArgCheck: @argcheck
 
 """
-    makeEV(cname::String, elec::Node, s::Snapshot;
+    makeEV(name::String, elec::Node, s::Snapshot;
+        tech::String=name,
         fixed_profile::Bool=true, smart_charging::Bool=false, vehicle_to_grid::Bool=false,
         yearly=nothing, offhours1=nothing, offhours2=nothing, minratio=nothing, days_threshold::Integer=104,
         number_ev=nothing, initial_connected_share=nothing,
@@ -21,7 +22,8 @@ using ArgCheck: @argcheck
 Build, connect and return an EV component.
 
 Arguments:
-  * `cname`: Component name prefix.
+  * `name`: Component name prefix.
+  * `tech`: Technology label used for reporting; defaults to `name`.
   * `elec`: Electricity node to connect EV charging/discharging flows.
   * `s`: Target snapshot where the EV component and behaviors are registered.
 
@@ -30,14 +32,19 @@ Arguments:
   * `vehicle_to_grid`: Enable flexible charging + grid discharge (V2G) mode.
     Exactly one of `fixed_profile`, `smart_charging`, `vehicle_to_grid` must be `true`.
 
-  * `yearly`: Yearly EV electricity consumption (MWh/year). Must be non-negative.
+  * `yearly`: Yearly EV electricity consumption in fixed-profile mode
+    (MWh/year). Must be non-negative and is rejected in flexible modes.
   * `offhours1`: Winter off-hour indices (0-23, no duplicates). Required when `fixed_profile=true`; ignored otherwise.
   * `offhours2`: Summer off-hour indices (0-23, no duplicates). Required when `fixed_profile=true`; ignored otherwise.
-  * `minratio`: Relative charging level during off-hours (`0 <= minratio <= 1`). Required when `fixed_profile=true`; ignored otherwise.
+  * `minratio`: Dimensionless charging level during off-hours
+    (`0 <= minratio <= 1`). Required when `fixed_profile=true`; ignored otherwise.
     The hourly profile is normalized so that it sums to `yearly`; a schedule
     that leaves no charging hour at all (every hour an off-hour with
     `minratio=0`) is rejected.
   * `days_threshold`: Number of first winter days before summer segment in fixed-profile assembly (`0 <= days_threshold <= 183`, used only when `fixed_profile=true`).
+
+The fleet, mobility-profile, charging-efficiency, and battery-limit arguments
+below are used only in flexible/V2G modes unless stated otherwise.
 
   * `number_ev`: Number of vehicles in the fleet (`> 0`). Scales per-vehicle
     power and battery limits.
@@ -55,18 +62,23 @@ Arguments:
   * `arrival_soc`: Mean SOC of arriving vehicles in `[0, 1]`, scalar or vector.
     If `nothing`, read it from `EV_arrival_soc` in `:excel` mode.
   * `techkey`: Technology column name in the `storage` tech data sheet for EV parameters (used in flexible/V2G modes).
-  * `compensation`: V2G compensation in USD/MWh applied to EV discharge output in V2G mode (ignored in non-V2G modes).
-  * `gridlosses`: Optional proportional grid-loss linked flow on EV input in fixed_profile mode (`0 <= gridlosses < 1`).
-  * `charging_eff`: Charging efficiency in flexible/V2G modes (`0 < charging_eff <= 1`); defaults to one in `:arguments` mode.
-  * `self_discharge`: Hourly self-discharge in flexible/V2G modes (`0 <= self_discharge < 1`); defaults to zero in `:arguments` mode.
-  * `max_charging_power_per_ev`: Maximum charging power per vehicle (`> 0`),
+  * `compensation`: V2G compensation in currency/MWh of grid discharge
+    (ignored in non-V2G modes).
+  * `gridlosses`: Proportional grid-loss fraction on EV input in fixed-profile
+    mode (`0 <= gridlosses < 1`).
+  * `charging_eff`: Dimensionless charging efficiency in flexible/V2G modes
+    (`0 < charging_eff <= 1`); defaults to one in `:arguments` mode.
+  * `self_discharge`: Self-discharge fraction per hour in flexible/V2G modes
+    (`0 <= self_discharge < 1`); defaults to zero in `:arguments` mode.
+  * `max_charging_power_per_ev`: Maximum charging power in MW/vehicle (`> 0`),
     required explicitly in `:arguments` mode.
-  * `max_dispatch_power_per_ev`: Maximum dispatch power per vehicle (`>= 0`),
+  * `max_dispatch_power_per_ev`: Maximum V2G power in MW/vehicle (`>= 0`),
     required explicitly for V2G in `:arguments` mode and ignored otherwise.
-  * `battery_capacity_per_ev`: Battery capacity per vehicle (`> 0`), required
+  * `battery_capacity_per_ev`: Battery capacity in MWh/vehicle (`> 0`), required
     explicitly in `:arguments` mode.
 """
-function makeEV(cname::String, elec::Node, s::Snapshot; fixed_profile::Bool=true, smart_charging::Bool=false, vehicle_to_grid::Bool=false,
+function makeEV(name::String, elec::Node, s::Snapshot; tech::String=name,
+    fixed_profile::Bool=true, smart_charging::Bool=false, vehicle_to_grid::Bool=false,
     # fixed-profile inputs
     yearly::Union{Nothing,Real}=nothing, offhours1=nothing, offhours2=nothing, minratio::Union{Nothing,Real}=nothing, days_threshold::Integer=104,
     # flexible / V2G inputs
@@ -115,15 +127,15 @@ function makeEV(cname::String, elec::Node, s::Snapshot; fixed_profile::Bool=true
         vb = Any[
             FixedJointFlow(
                 "driving",
-                EnergyCarrier(cname, sim(elec)),
+                EnergyCarrier(name, sim(elec)),
                 :output,
                 series;
                 mustconnect=false,
             ),
         ]
         !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x -> x[1] * _gridlosses))
-        c = Component(cname * " " * elec.name, m, vb)
-        tag!(c, :tech, cname)
+        c = Component(name * " " * elec.name, m, vb)
+        tag!(c, :tech, tech)
         tag!(c, :zone, elec.name)
         for t in ("electricity", "demand", "ev")
             tag!(c, :function, t)
@@ -247,13 +259,13 @@ function makeEV(cname::String, elec::Node, s::Snapshot; fixed_profile::Bool=true
         push!(vb, CapacityMultiplier("level", chargingstationprofile))
 
         # departure / arrival: fixed series, no capacity
-        push!(vb, FixedJointFlow("departure", EnergyCarrier(cname, sim(elec)), :output, departing, mustconnect=false)) # this port does not need connection
-        push!(vb, FixedJointFlow("arrival", EnergyCarrier(cname, sim(elec)), :input, arriving, mustconnect=false)) # this port does not need connection
+        push!(vb, FixedJointFlow("departure", EnergyCarrier(name, sim(elec)), :output, departing, mustconnect=false)) # this port does not need connection
+        push!(vb, FixedJointFlow("arrival", EnergyCarrier(name, sim(elec)), :input, arriving, mustconnect=false)) # this port does not need connection
         # output - driving: net driving (departure - arrival), reporting only (eff=0)
-        push!(vb, FixedJointFlow("driving", EnergyCarrier(cname, sim(elec)), :output, departing .- arriving, mustconnect=false))
+        push!(vb, FixedJointFlow("driving", EnergyCarrier(name, sim(elec)), :output, departing .- arriving, mustconnect=false))
 
-        c = Component(cname * " " * elec.name, m, vb)
-        tag!(c, :tech, cname)
+        c = Component(name * " " * elec.name, m, vb)
+        tag!(c, :tech, tech)
         tag!(c, :zone, elec.name)
 
         for t in ("electricity", "demand", "ev")

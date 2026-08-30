@@ -10,7 +10,7 @@ call [`printsnapshot`](@ref).
 | Kind | Examples | Role |
 |:-----|:---------|:-----|
 | Component `:function` | `"generation"`, `"storage"`, `"demand"` | Which post-processing family includes the component |
-| Component `:tech` | `cname` (e.g. `"Gas"`) | Column label when annual tables aggregate by technology |
+| Component `:tech` | `tech` (e.g. `"Gas"`) | Column label when annual tables aggregate by technology |
 | Component `:zone` | principal node name | Regional selection in queries and reports |
 | Node tags | `:electricity`, `:hydrogen`, `:foreign`, `:co2` | Which nodes belong to electricity / hydrogen / self-system views |
 
@@ -78,20 +78,20 @@ and naming; this table is the reporting map.
 
 | Builder | `:function` values | Other tags |
 |:--------|:-------------------|:-----------|
-| [`makedemand`](@ref) | `electricity`, `demand` | `:tech => cname`, `:zone => n.name` |
-| [`makeflathydrogendemand`](@ref) | `hydrogen`, `demand` | `:tech => cname`, `:zone => n.name` |
-| [`makeflexhydrogendemand`](@ref) | `hydrogen`, `demand` | `:tech => cname`, `:zone => n.name` |
-| [`makeflathydrogenpurchase`](@ref) | `hydrogen`, `purchase` | `:tech => cname`, `:zone => n.name` |
-| [`makeEV`](@ref) | `electricity`, `demand`, `ev`; also `generation` when `vehicle_to_grid=true` | `:tech => cname`, `:zone => elec.name` |
-| [`makedemandresponse`](@ref) | `virtual`, `demandresponse` | `:tech => cname`, `:zone => elec.name` |
-| [`makedispatchable`](@ref) | `generation`, `dispatchable` | `:tech => cname`, `:zone => elec.name` |
-| [`makenuclear`](@ref) | `generation`, `dispatchable` | `:tech => cname`, `:zone => elec.name` |
-| [`makeintermittentsource`](@ref) | `generation`, `intermittent`; also `carbonfree` when `co2_emission` is zero | `:tech => cname`, `:zone => elec.name` |
-| [`makehydroror`](@ref) | `generation`, `intermittent`, `carbonfree` | `:tech => cname`, `:zone => elec.name` |
-| [`makehydroreservoir`](@ref) | `generation`, `storage`, `carbonfree` | `:tech => cname`, `:zone => elec.name` |
-| [`makebatterystorage`](@ref) | `electricity`, `storage`, `generation` | `:tech => cname`, `:zone => elec.name` |
-| [`makehydrogenstorage`](@ref) | `hydrogen`, `storage` | `:tech => cname`, `:zone => h2.name` |
-| [`makeelectrolyser`](@ref) | `demand`, `electrolysis`, `hydrogen` | `:tech => cname`, `:zone => elec.name` |
+| [`makedemand`](@ref) | `electricity`, `demand` | `:tech => tech`, `:zone => n.name` |
+| [`makeflathydrogendemand`](@ref) | `hydrogen`, `demand` | `:tech => tech`, `:zone => n.name` |
+| [`makeflexhydrogendemand`](@ref) | `hydrogen`, `demand` | `:tech => tech`, `:zone => n.name` |
+| [`makeflathydrogenpurchase`](@ref) | `hydrogen`, `purchase` | `:tech => tech`, `:zone => n.name` |
+| [`makeEV`](@ref) | `electricity`, `demand`, `ev`; also `generation` when `vehicle_to_grid=true` | `:tech => tech`, `:zone => elec.name` |
+| [`makedemandresponse`](@ref) | `virtual`, `demandresponse` | `:tech => tech`, `:zone => elec.name` |
+| [`makedispatchable`](@ref) | `generation`, `dispatchable` | `:tech => tech`, `:zone => elec.name` |
+| [`makenuclear`](@ref) | `generation`, `dispatchable` | `:tech => tech`, `:zone => elec.name` |
+| [`makeintermittentsource`](@ref) | `generation`, `intermittent`; also `carbonfree` when `co2_emission` is zero | `:tech => tech`, `:zone => elec.name` |
+| [`makehydroror`](@ref) | `generation`, `intermittent`, `carbonfree` | `:tech => tech`, `:zone => elec.name` |
+| [`makehydroreservoir`](@ref) | `generation`, `storage`, `carbonfree` | `:tech => tech`, `:zone => elec.name` |
+| [`makebatterystorage`](@ref) | `electricity`, `storage`, `generation` | `:tech => tech`, `:zone => elec.name` |
+| [`makehydrogenstorage`](@ref) | `hydrogen`, `storage` | `:tech => tech`, `:zone => h2.name` |
+| [`makeelectrolyser`](@ref) | `demand`, `electrolysis`, `hydrogen` | `:tech => tech`, `:zone => elec.name` |
 | [`makepriceinterco`](@ref) | `interconnection`, `priceinterconnection`; also `foreign` when `foreign=true` | `:neighbor => zone`, `:zone => elec.name` |
 | [`maketransmissionlink`](@ref) | `interconnection`, `nodeinterconnection`, and `AC` or `DC` | `:zone => a.name`, `:zone => b.name` |
 
@@ -103,9 +103,9 @@ conventional port names) match the filters above. The usual fix is either:
 1. wrap it in a small Posy2 builder that calls `tag!` like the shipped ones, or
 2. tag the component by hand after construction.
 
-See [Extending Posy2](extending.md) for the wrapper pattern. Overriding default
-tags through builder keyword arguments is not a standard feature yet; until
-then, matching tags (or a dedicated builder) is the supported path.
+See [Extending Posy2](extending.md) for the wrapper pattern. Builders that set a
+`:tech` tag accept `tech` to override their reporting technology label; other
+tags are set by the builder's modelling role.
 
 ## Related Pages
 

@@ -20,9 +20,9 @@ objective.
 
 ![Ports of a flat hydrogen purchase component](../assets/component-flat-hydrogen-purchase.svg)
 
-The generated name is `"$cname $(n.name)"`.
+The generated name is `"$name $(n.name)"`.
 
-Tags: `:tech => cname`, `:zone => n.name`, and the function tags `hydrogen` and
+Tags: `:tech => tech`, `:zone => n.name`, and the function tags `hydrogen` and
 `purchase`.
 
 ```@docs; canonical=false
@@ -46,9 +46,9 @@ external decision; `nothing` creates a new decision; and an extracted snapshot
 fixes capacity from the matching component. `mincap` and `maxcap` bound either
 variable form. `gridlosses` adds a proportional electricity input flow.
 
-The generated name is `"$cname $(elec.name)"`.
+The generated name is `"$name $(elec.name)"`.
 
-Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `demand`,
+Tags: `:tech => tech`, `:zone => elec.name`, and the function tags `demand`,
 `electrolysis`, and `hydrogen`. These tags allow electrical consumption to
 appear in demand reporting.
 
@@ -77,9 +77,9 @@ decommissioning are attached to `level`. The builder intentionally adds
 neither a duration constraint nor a variable O&M cost, making it suitable for
 medium- or long-duration storage whose power is not sized separately.
 
-The component is named `"$cname $(h2.name)"`.
+The component is named `"$name $(h2.name)"`.
 
-Tags: `:tech => cname`, `:zone => h2.name`, and the function tags `hydrogen`
+Tags: `:tech => tech`, `:zone => h2.name`, and the function tags `hydrogen`
 and `storage`.
 
 See the [Hydrogen Production example](../examples/hydrogen-production.md) for a

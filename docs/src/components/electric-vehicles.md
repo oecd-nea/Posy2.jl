@@ -100,7 +100,7 @@ exposes `output`, limited by available dispatch power, and applies
 
 ![Ports of an EV component in smart-charging and vehicle-to-grid modes](../assets/component-ev-flexible.svg)
 
-Tags for all EV modes: `:tech => cname`, `:zone => elec.name`, and the function
+Tags for all EV modes: `:tech => tech`, `:zone => elec.name`, and the function
 tags `electricity`, `demand`, and `ev`. Vehicle-to-grid mode also receives the
 function tag `generation`, so its discharge appears in production reporting.
 

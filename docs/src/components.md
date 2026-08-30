@@ -26,8 +26,9 @@ The builders are grouped by modelling role:
 Most builders start with a component name, a technology-data key, one or more
 nodes, and a snapshot. These names have distinct purposes:
 
-- `cname` is the technology label used in the component name and its `:tech`
-  tag. Annual reports group components by this value.
+- `name` is the prefix used in the generated component name.
+- `tech` is the technology label stored in the component's `:tech` tag. Annual
+  reports group components by this value; it defaults to `name`.
 - `techkey` is an exact technology column in the relevant technology
   workbook sheet. Parameter names occupy rows in the column headed `tech`;
   `techkey` is not a row name.
@@ -38,7 +39,7 @@ nodes, and a snapshot. These names have distinct purposes:
 - The snapshot owns the component and supplies [`Posy2Options`](@ref).
 
 Except for interconnections, a builder normally names its component by joining
-`cname` and the principal node name with a space. For example,
+`name` and the principal node name with a space. For example,
 `makedispatchable("CCGT", ..., zone, ...)` creates `"CCGT $(zone.name)"`.
 Names must be unique within a snapshot. Interconnection names are described on
 the [Interconnections](components/interconnections.md) page.

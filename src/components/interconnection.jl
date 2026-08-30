@@ -15,19 +15,19 @@ If `dir` is true, apply a one direction at a time constraint at every timestep.
 Arguments:
   * `zone`: priced counterparty zone name for spot price and transfer capacity time series
   * `elec`: local electricity node to connect the interconnector to.
-  * `mcap`: Import capacity as a number, JuMP `VariableRef`, or `AffExpr`.
-  * `xcap`: Export capacity as a number, JuMP `VariableRef`, or `AffExpr`.
+  * `mcap`: Import capacity in MW as a number, JuMP `VariableRef`, or `AffExpr`.
+  * `xcap`: Export capacity in MW as a number, JuMP `VariableRef`, or `AffExpr`.
   * `s`: snapshot to register the component in.
 
   * `dir`: if `true`, apply SOS1 one direction at a time flow constraint.
   * `foreign`: if `true`, tag interconnector as `:foreign`.
 
-  * `transactioncost`: per unit transaction adder on both directions.
-  * `spot_price`: Hourly foreign spot-price vector or scalar.
-  * `import_availability`: Hourly multiplier for the foreign-to-local direction,
-    each value in `[0, 1]`.
-  * `export_availability`: Hourly multiplier for the local-to-foreign direction,
-    with the same `[0, 1]` domain.
+  * `transactioncost`: Transaction adder in currency/MWh on both directions.
+  * `spot_price`: Foreign spot price in currency/MWh, as an hourly vector or scalar.
+  * `import_availability`: Dimensionless hourly multiplier for the
+    foreign-to-local direction, each value in `[0, 1]`.
+  * `export_availability`: Dimensionless hourly multiplier for the
+    local-to-foreign direction, with the same `[0, 1]` domain.
     Availability is resolved for numeric nonzero and all symbolic directions. When omitted,
     it comes from the workbook in `:excel` mode and defaults to one in
     `:arguments` mode. `spot_price` is required whenever either direction has
@@ -118,7 +118,7 @@ function makepriceinterco(zone::String, elec::Node, mcap::Union{Real,VariableRef
 end
 
 """
-    maketransmissionlink(cname::String, a::Node, b::Node, s::Snapshot;
+    maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing,
         dir::Bool=false, dc::Bool=false,
         transactioncost::Real=0., lossfactor::Real=0.,
@@ -133,47 +133,48 @@ Whether the link crosses the self-system boundary is derived at reporting time
 from the connected nodes' `:foreign` tags; there is no component-level flag.
 
 Arguments:
-  * `cname`: interconnector name prefix.
+  * `name`: interconnector name prefix.
   * `a`: first node linked by the interconnector.
   * `b`: distinct second node linked by the interconnector; self-connections
     are rejected before model construction.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Installed capacity in model power units. A number fixes
+  * `cap`: Installed capacity in MW. A number fixes
     capacity, a JuMP `VariableRef` or `AffExpr` reuses that expression,
     `nothing` creates a capacity decision, and an extracted `Snapshot` inherits
-    the capacity of `"<cname>_<a.name>_<b.name>"` in it. Numeric `0` builds a
+    the capacity of `"<name>_<a.name>_<b.name>"` in it. Numeric `0` builds a
     zero-capacity component.
-  * `mincap`: Lower bound on an optimized or externally supplied capacity;
+  * `mincap`: Lower capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
-  * `maxcap`: Upper bound on an optimized or externally supplied capacity;
+  * `maxcap`: Upper capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
 
   * `dir`: apply an SOS1 one direction at a time flow constraint.
   * `dc`: if `true`, tag as `:DC`; otherwise tag as `:AC`.
 
-  * `transactioncost`: per unit transaction adder on each direction.
-  * `lossfactor`: proportional losses applied on conversion; must be finite and
+  * `transactioncost`: Transaction adder in currency/MWh on each direction.
+  * `lossfactor`: Dimensionless proportional loss; must be finite and
     satisfy `0 <= lossfactor < 1`.
-  * `susceptance`: AC susceptance for DC power flow (must be negative); stored in
-    `Snapshot.options[:ic_susceptance]` (required for KVL when
+  * `susceptance`: AC series susceptance in model power units/rad (MW/rad under
+    the standard convention; must be negative), used only when `dc=false`;
+    stored in `Snapshot.options[:ic_susceptance]` (required for KVL when
     [`applydcopf!`](@ref) is called).
-  * `atob_availability`: Hourly `a -> b` multiplier vector or scalar, each value
-    in `[0, 1]`.
-  * `btoa_availability`: Hourly `b -> a` multiplier vector or scalar, with the
-    same `[0, 1]` domain. These directional multipliers represent asymmetric
-    available transfer capacity against the shared installed capacity. A
-    nonzero fixed or optimized capacity reads both workbook columns in `:excel`
-    mode when omitted, and defaults both to one in `:arguments` mode. Numeric
-    zero does not resolve either availability series.
-  * `overnight_cost`: Overnight CAPEX in currency per kW of shared capacity.
+  * `atob_availability`: Dimensionless hourly `a -> b` multiplier vector or
+    scalar, each value in `[0, 1]`.
+  * `btoa_availability`: Dimensionless hourly `b -> a` multiplier vector or
+    scalar, with the same `[0, 1]` domain. These directional multipliers
+    represent asymmetric available transfer capacity against the shared
+    installed capacity. A nonzero fixed or optimized capacity reads both
+    workbook columns in `:excel` mode when omitted, and defaults both to one in
+    `:arguments` mode. Numeric zero does not resolve either availability series.
+  * `overnight_cost`: Overnight CAPEX in currency/kW of shared capacity.
     Defaults to zero.
-  * `om_fixed_cost`: Fixed O&M in currency per kW of shared capacity per year.
+  * `om_fixed_cost`: Fixed O&M in currency/kW/year of shared capacity.
     Defaults to zero.
-  * `lifetime`: Asset lifetime used to annualize nonzero overnight cost (`> 0`,
-    integer-valued).
-  * `construction_profile`: Construction cost share profile passed to `eac(...)`.
-    Required when `overnight_cost` is nonzero.
+  * `lifetime`: Asset lifetime in years, used to annualize nonzero overnight
+    cost (`> 0`, integer-valued).
+  * `construction_profile`: Dimensionless yearly construction-cost shares,
+    required when `overnight_cost` is nonzero.
 
 In `:excel` mode both directional multipliers are read from the sheet that
 matches the link type: `transfer_capacities_AC` when `dc=false`,
@@ -191,7 +192,7 @@ that pair raises an error. Component-name collisions are also rejected before
 model construction. Aggregate equivalent parallel circuits before calling
 this builder.
 """
-function maketransmissionlink(cname::String, a::Node, b::Node, s::Snapshot;
+function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
     # capacity / expansion
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing,
     mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
@@ -211,7 +212,7 @@ function maketransmissionlink(cname::String, a::Node, b::Node, s::Snapshot;
     construction_profile=nothing,
 )
     @argcheck 0 <= lossfactor < 1 "lossfactor must be in [0, 1)"
-    component_name = string(cname, "_", a.name, "_", b.name)
+    component_name = string(name, "_", a.name, "_", b.name)
     a.name == b.name && throw(ArgumentError("a node interconnection must connect two distinct nodes"))
     Nosy.hascomponent(s, component_name) && throw(ArgumentError("snapshot already has a component named $component_name"))
     Nosy.hasnode(s, component_name) && throw(ArgumentError("snapshot already has a node named $component_name"))

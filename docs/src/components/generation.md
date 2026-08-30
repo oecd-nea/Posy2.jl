@@ -14,7 +14,7 @@ Diagrams](../components.md#Reading-The-Port-Diagrams).
 ## Dispatchable Generation
 
 [`makedispatchable`](@ref) creates a source named
-`"$cname $(elec.name)"`. Its principal port is electricity `output`, and its
+`"$name $(elec.name)"`. Its principal port is electricity `output`, and its
 investment, connection, fixed O&M, decommissioning, variable O&M, and direct
 fuel costs are attached there.
 
@@ -46,7 +46,7 @@ up-time, down-time, start-up duration, and shut-down duration default to rows in
 the same workbook column. When `unit_size` is positive, non-zero `ramp_up` and
 `ramp_down` values add ramp limits after multiplication by the unit size.
 
-Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `generation`
+Tags: `:tech => tech`, `:zone => elec.name`, and the function tags `generation`
 and `dispatchable`.
 
 See the [Dispatchable Generation example](../examples/dispatchable-generation.md)
@@ -91,7 +91,7 @@ external variable a number-of-units variable; represent that explicitly as
 Refuelling constraints do not depend on `techkey`. They assume an 8,760-hour
 model horizon, so use them only for a full non-leap-year study.
 
-Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `generation`
+Tags: `:tech => tech`, `:zone => elec.name`, and the function tags `generation`
 and `dispatchable`. Direct emissions are controlled by `co2_emission`; the
 builder does not infer a `carbonfree` tag from the technology name.
 
@@ -123,7 +123,7 @@ remains structural whenever capacity is active.
 Non-zero emissions create the same linked CO2 flow as for dispatchable
 generation.
 
-Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `generation`
+Tags: `:tech => tech`, `:zone => elec.name`, and the function tags `generation`
 and `intermittent`. The component also receives the function tag `carbonfree`
 when `co2_emission` is zero.
 
@@ -153,7 +153,7 @@ capacity decision; and a JuMP variable or affine expression reuses an external
 decision. `mincap` and `maxcap` bound either variable form. The intake profile
 remains independent of capacity.
 
-Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `generation`,
+Tags: `:tech => tech`, `:zone => elec.name`, and the function tags `generation`,
 `intermittent`, and `carbonfree`.
 
 ```@docs; canonical=false

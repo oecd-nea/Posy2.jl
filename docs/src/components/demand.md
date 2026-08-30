@@ -14,7 +14,7 @@ Diagrams](../components.md#Reading-The-Port-Diagrams).
 ## Electricity Demand
 
 [`makedemand`](@ref) creates a fixed Nosy demand with the name
-`"$cname $(n.name)"`. Its `input` profile is
+`"$name $(n.name)"`. Its `input` profile is
 
 ```math
 d_t = c p_t + D / 8760,
@@ -30,7 +30,7 @@ proportional to demand. The value must lie in `[0, 1)`.
 
 ![Ports of an electricity demand component](../assets/component-demand.svg)
 
-Tags: `:tech => cname`, `:zone => n.name`, and the function tags `electricity`
+Tags: `:tech => tech`, `:zone => n.name`, and the function tags `electricity`
 and `demand`.
 
 The workbook series is read from sheet `demand`, column `<zone>`. With the
@@ -51,14 +51,14 @@ hydrogen node. [`makeflexhydrogendemand`](@ref) instead creates a flexible
 take an annual hydrogen-energy quantity, but only the flat builder fixes its
 hourly shape.
 
-The generated name is `"$cname $(n.name)"`. They do not read a workbook and do
+The generated name is `"$name $(n.name)"`. They do not read a workbook and do
 not add a cost or capacity behaviour.
 
 ![Ports of a flat hydrogen demand component](../assets/component-flat-hydrogen-demand.svg)
 
 ![Ports of a flexible hydrogen demand component](../assets/component-flex-hydrogen-demand.svg)
 
-Tags for both builders: `:tech => cname`, `:zone => n.name`, and the function
+Tags for both builders: `:tech => tech`, `:zone => n.name`, and the function
 tags `hydrogen` and `demand`.
 
 ```@docs; canonical=false
@@ -87,9 +87,9 @@ suggesting `cap=Inf` when unlimited capacity was intended.
 applied directly. `type` selects the variable-cost category used by reports
 and defaults to `:volDR`.
 
-The generated component is named `"$cname $(elec.name)"`.
+The generated component is named `"$name $(elec.name)"`.
 
-Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `virtual`
+Tags: `:tech => tech`, `:zone => elec.name`, and the function tags `virtual`
 and `demandresponse`.
 
 See the [Demand Response example](../examples/demand-response.md) for a complete

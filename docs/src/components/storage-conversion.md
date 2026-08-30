@@ -61,7 +61,7 @@ of sheet `storage`. It applies to grid charging; natural intake and discharge ha
 efficiency. `gridlosses` adds a proportional linked input flow. Cost defaults
 come from the same technology column and are attached to discharge capacity.
 
-Tags: `:tech => cname`, `:zone => elec.name`, and the function tags `generation`,
+Tags: `:tech => tech`, `:zone => elec.name`, and the function tags `generation`,
 `storage`, and `carbonfree`.
 
 See the [Hydro Reservoir example](../examples/hydro-reservoir.md) for a
@@ -92,7 +92,7 @@ decommissioning data are not resolved. Investment, connection, fixed O&M,
 decommissioning, and variable O&M costs are attached to `input` capacity or
 flow. `gridlosses` adds a linked charging loss.
 
-Tags: `:tech => cname`, `:zone => elec.name`, and the function tags
+Tags: `:tech => tech`, `:zone => elec.name`, and the function tags
 `electricity`, `storage`, and `generation`. These tags make charging and
 discharging enter the appropriate Posy2 reports.
 

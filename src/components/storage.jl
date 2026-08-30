@@ -3,8 +3,8 @@ Generate storage components.
 """
 
 """
-    makehydroreservoir(cname::String, techkey::String, zone::String, elec::Node, s::Snapshot;
-        cap_discharging, cap_charging, intake,
+    makehydroreservoir(name::String, techkey::String, zone::String, elec::Node, s::Snapshot;
+        tech::String=name, cap_discharging, cap_charging, intake,
         mincap_discharging=nothing, maxcap_discharging=nothing,
         mincap_charging=nothing, maxcap_charging=nothing,
         mincap_reservoir=nothing, maxcap_reservoir=nothing,
@@ -20,27 +20,28 @@ Generate storage components.
 Build, connect and return a hydro reservoir component.
 
 Arguments:
-  * `cname`: component name prefix.
+  * `name`: component name prefix.
+  * `tech`: technology label used for reporting; defaults to `name`.
   * `techkey`: technology column name in the `storage` tech data sheet.
   * `zone`: Zone used for reservoir intake time series lookup.
   * `elec`: electricity node to connect the component to.
   * `s`: snapshot to register the component in.
-  * `cap_discharging`: Output capacity. A number fixes capacity, a JuMP
-    `VariableRef` or `AffExpr` reuses that expression, `nothing` creates a
+  * `cap_discharging`: Discharging capacity in MW. A number fixes capacity, a
+    JuMP `VariableRef` or `AffExpr` reuses that expression, `nothing` creates a
     capacity decision, and an extracted `Snapshot` inherits the capacity of
-    `"<cname> <node name>"` in it.
-  * `cap_charging`: Input capacity with the same choices. The `input` port is
-    always created; numeric `0` gives it a zero capacity, so a turbine-only
-    reservoir still reports a charging flow of zero.
-  * `intake`: Total natural intake. `0` disables natural intake; a positive
-    value is distributed over the normalized intake profile.
+    `"<name> <node name>"` in it.
+  * `cap_charging`: Charging capacity in MW with the same choices. The `input`
+    port is always created; numeric `0` gives it a zero capacity, so a
+    turbine-only reservoir still reports a charging flow of zero.
+  * `intake`: Total natural intake in MWh over the modeled profile (normally one
+    year). `0` disables natural intake.
 
   * `mincap_discharging`, `maxcap_discharging`, `mincap_charging`,
-    `maxcap_charging`, `mincap_reservoir`, `maxcap_reservoir`: Bounds on the
-    corresponding optimized or externally supplied capacity, checked as
-    assertions against a fixed or inherited one.
+    `maxcap_charging`: Power-capacity bounds in MW.
+  * `mincap_reservoir`, `maxcap_reservoir`: Reservoir-energy bounds in MWh.
+    Bounds are checked as assertions against fixed or inherited capacities.
 
-  * `cap_reservoir`: Storage level capacity, with the same choices as
+  * `cap_reservoir`: Storage level capacity in MWh, with the same choices as
     `cap_discharging`, plus `Inf` (the default) which leaves the level
     unlimited by adding no level capacity behavior.
   * `spillage`: Add an unconnected, unlimited `spill` output that lets the
@@ -51,23 +52,30 @@ Arguments:
     `reservoir_inflow_<year>`. Required when `intake_profile` is read from the
     time-series workbook; unused when a profile is supplied explicitly or
     natural intake is disabled.
-  * `gridlosses`: Proportional losses linked to charging input flow (`0 <= gridlosses < 1`).
+  * `gridlosses`: Proportional charging-loss fraction (`0 <= gridlosses < 1`).
   * `simplified`: Passed to `LazyStorage(..., simplified=...)`.
-  * `intake_profile`: Hourly natural-intake shape or scalar, nonnegative with a
-    strictly positive sum. It is always normalized to sum to one before `intake`
-    is applied. If `nothing`, read `zone` from `reservoir_inflow_<weatheryear>`.
+  * `intake_profile`: Dimensionless hourly natural-intake shape or scalar,
+    nonnegative with a strictly positive sum. It is normalized to sum to one
+    before `intake` is applied. If `nothing`, read `zone` from
+    `reservoir_inflow_<weatheryear>`.
 
-  * `eff`: Roundtrip charging efficiency (input side conversion).
+  * `eff`: Dimensionless round-trip charging efficiency.
 
-  * `overnight_cost`: Cost/lifetime overrides for annualized fixed and variable cost terms. Workbook defaults are used when values are `nothing`.
-  * `om_fixed_cost`: Cost/lifetime overrides for annualized fixed and variable cost terms. Workbook defaults are used when values are `nothing`.
-  * `om_var_cost`: Cost/lifetime overrides for annualized fixed and variable cost terms. Workbook defaults are used when values are `nothing`.
-  * `decommissioning`: Cost/lifetime overrides for annualized fixed and variable cost terms. Workbook defaults are used when values are `nothing`.
-  * `lifetime`: Cost/lifetime overrides for annualized fixed and variable cost terms (`> 0`, integer-valued). Workbook defaults are used when values are `nothing`.
-  * `construction_profile`: Cost/lifetime overrides for annualized fixed and variable cost terms. Workbook defaults are used when values are `nothing`.
-  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Workbook defaults are used when values are `nothing`.
+  * `overnight_cost`: Overnight CAPEX in currency/kW of discharging capacity.
+  * `om_fixed_cost`: Fixed O&M in currency/kW/year of discharging capacity.
+  * `om_var_cost`: Variable O&M in currency/MWh discharged.
+  * `decommissioning`: Decommissioning cost as a fraction of overnight CAPEX.
+  * `lifetime`: Asset lifetime in years (`> 0`, integer-valued).
+  * `construction_profile`: Dimensionless yearly construction-cost shares.
+  * `decommissioning_profile`: Dimensionless yearly decommissioning-cost shares.
+
+With `nothing`, economic arguments use workbook values in `:excel` mode. In
+`:arguments` mode, costs default to zero; nonzero overnight cost requires
+`lifetime` and `construction_profile`, plus `decommissioning_profile` when
+decommissioning is nonzero.
 """
-function makehydroreservoir(cname::String, techkey::String, zone::String, elec::Node, s::Snapshot;
+function makehydroreservoir(name::String, techkey::String, zone::String, elec::Node, s::Snapshot;
+    tech::String=name,
     # capacities
     cap_discharging::Union{Nothing,Real,VariableRef,AffExpr,Snapshot},
     cap_charging::Union{Nothing,Real,VariableRef,AffExpr,Snapshot},
@@ -184,12 +192,12 @@ function makehydroreservoir(cname::String, techkey::String, zone::String, elec::
         push!(vb, FixedJointFlow("natural", elec.carrier, :input, intake_series, mustconnect=false))
     end
     
-    push!(vb, gencapacity(cap_discharging, "output", s, cname * " " * elec.name;
+    push!(vb, gencapacity(cap_discharging, "output", s, name * " " * elec.name;
         mincap=mincap_discharging, maxcap=maxcap_discharging, argname="cap_discharging"))
 
     # the charging branch always exists, at zero capacity when charging is disabled
     push!(vb, FreeJointFlow("input", elec.carrier, :input))
-    push!(vb, gencapacity(cap_charging, "input", s, cname * " " * elec.name;
+    push!(vb, gencapacity(cap_charging, "input", s, name * " " * elec.name;
         mincap=mincap_charging, maxcap=maxcap_charging, argname="cap_charging"))
     !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _gridlosses))
 
@@ -197,12 +205,12 @@ function makehydroreservoir(cname::String, techkey::String, zone::String, elec::
         # unlimited level: no capacity behavior, but the bounds still assert on it
         _checkcapacitybounds(cap_reservoir, mincap_reservoir, maxcap_reservoir, "cap_reservoir")
     else
-        push!(vb, gencapacity(cap_reservoir, "level", s, cname * " " * elec.name;
+        push!(vb, gencapacity(cap_reservoir, "level", s, name * " " * elec.name;
             mincap=mincap_reservoir, maxcap=maxcap_reservoir, argname="cap_reservoir"))
     end
 
-    c = Component(cname * " " * elec.name, m, vb)
-    tag!(c, :tech, cname)
+    c = Component(name * " " * elec.name, m, vb)
+    tag!(c, :tech, tech)
     tag!(c, :zone, elec.name)
     
     # exogenously force production
@@ -218,8 +226,8 @@ function makehydroreservoir(cname::String, techkey::String, zone::String, elec::
 end
 
 """
-    makebatterystorage(cname::String, techkey::String, elec::Node, s::Snapshot;
-        cap=nothing, mincap=nothing, maxcap=nothing, simplified=false,
+    makebatterystorage(name::String, techkey::String, elec::Node, s::Snapshot;
+        tech::String=name, cap=nothing, mincap=nothing, maxcap=nothing, simplified=false,
         gridlosses=0.,
         eff::Union{Nothing,Real}=nothing, duration::Union{Nothing,Real}=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -230,36 +238,44 @@ end
 Build, connect and return a battery storage component.
 
 Arguments:
-  * `cname`: component name prefix.
+  * `name`: component name prefix.
+  * `tech`: technology label used for reporting; defaults to `name`.
   * `techkey`: technology column name in the `storage` tech data sheet.
   * `elec`: electricity node to connect the component to.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Charging/input capacity. A number fixes capacity, a JuMP
+  * `cap`: Charging/input capacity in MW. A number fixes capacity, a JuMP
     `VariableRef` or `AffExpr` reuses that expression, `nothing` creates a
     capacity decision, and an extracted `Snapshot` inherits the capacity of
-    `"<cname> <node name>"` in it.
-  * `mincap`: Lower bound on an optimized or externally supplied capacity;
+    `"<name> <node name>"` in it.
+  * `mincap`: Lower capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
-  * `maxcap`: Upper bound on an optimized or externally supplied capacity;
+  * `maxcap`: Upper capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
   * `simplified`: Passed to `BasicStorage(..., simplified=...)`.
 
-  * `gridlosses`: Proportional losses linked to charging input flow (`0 <= gridlosses < 1`).
+  * `gridlosses`: Proportional charging-loss fraction (`0 <= gridlosses < 1`).
 
-  * `eff`: Roundtrip storage efficiency (`eff_i` in `BasicStorage`).
-  * `duration`: Storage duration parameter (`Duration(...)` behavior, `duration > 0`). workbook default when `nothing`.
+  * `eff`: Dimensionless round-trip storage efficiency.
+  * `duration`: Storage duration in hours (`duration > 0`); required in
+    `:arguments` mode and otherwise read from the workbook when `nothing`.
 
-  * `overnight_cost`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `om_fixed_cost`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `decommissioning`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `lifetime`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Workbook defaults are used when values are `nothing`.
-  * `construction_profile`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Workbook defaults are used when values are `nothing`.
-  * `connection_cost`: Ratio applied to annualized investment as connection fixed cost.
-  * `om_var_cost`: Variable O&M coefficient on charging/input energy flow.
+  * `overnight_cost`: Overnight CAPEX in currency/kW of charging capacity.
+  * `om_fixed_cost`: Fixed O&M in currency/kW/year of charging capacity.
+  * `decommissioning`: Decommissioning cost as a fraction of overnight CAPEX.
+  * `lifetime`: Asset lifetime in years (`> 0`, integer-valued).
+  * `construction_profile`: Dimensionless yearly construction-cost shares.
+  * `decommissioning_profile`: Dimensionless yearly decommissioning-cost shares.
+  * `connection_cost`: Connection cost as a fraction of annualized investment.
+  * `om_var_cost`: Variable O&M in currency/MWh charged.
+
+With `nothing`, economic arguments use workbook values in `:excel` mode. In
+`:arguments` mode, costs default to zero; nonzero overnight cost requires
+`lifetime` and `construction_profile`, plus `decommissioning_profile` when
+decommissioning is nonzero.
 """
-function makebatterystorage(cname::String, techkey::String, elec::Node, s::Snapshot;
+function makebatterystorage(name::String, techkey::String, elec::Node, s::Snapshot;
+    tech::String=name,
     # capacity / expansion
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     simplified::Bool=false, gridlosses::Real=0.,
@@ -339,7 +355,7 @@ function makebatterystorage(cname::String, techkey::String, elec::Node, s::Snaps
     vb = []
     
     push!(vb, Duration(_dur))
-    push!(vb, gencapacity(cap, "input", s, cname * " " * elec.name; mincap=mincap, maxcap=maxcap))
+    push!(vb, gencapacity(cap, "input", s, name * " " * elec.name; mincap=mincap, maxcap=maxcap))
     push!(vb, FixedCost(:investment, "input", energy, _inv))
     push!(vb, FixedCost(:connection, "input", energy, _inv * _conn))
     push!(vb, FixedCost(:fom, "input", energy, _fom * 1000.))
@@ -350,8 +366,8 @@ function makebatterystorage(cname::String, techkey::String, elec::Node, s::Snaps
         push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _gridlosses))
     end
 
-    c = Component(cname * " " * elec.name, m, vb)
-    tag!(c, :tech, cname)
+    c = Component(name * " " * elec.name, m, vb)
+    tag!(c, :tech, tech)
     tag!(c, :zone, elec.name)
 
     for t in ("electricity", "storage", "generation")
@@ -363,8 +379,8 @@ function makebatterystorage(cname::String, techkey::String, elec::Node, s::Snaps
 end
 
 """
-    makehydrogenstorage(cname::String, techkey::String, h2::Node, s::Snapshot;
-        cap=nothing, mincap=nothing, maxcap=nothing,
+    makehydrogenstorage(name::String, techkey::String, h2::Node, s::Snapshot;
+        tech::String=name, cap=nothing, mincap=nothing, maxcap=nothing,
         eff::Union{Nothing,Real}=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
@@ -373,29 +389,37 @@ end
 Build, connect and return a hydrogen storage component.
 
 Arguments:
-  * `cname`: component name prefix.
+  * `name`: component name prefix.
+  * `tech`: technology label used for reporting; defaults to `name`.
   * `techkey`: technology column name in the `storage` tech data sheet.
   * `h2`: hydrogen node to connect the component to.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Storage level capacity. A number fixes capacity, a JuMP `VariableRef`
+  * `cap`: Storage level capacity in MWh. A number fixes capacity, a JuMP `VariableRef`
     or `AffExpr` reuses that expression, `nothing` creates a capacity decision,
-    and an extracted `Snapshot` inherits the capacity of `"<cname> <node name>"` in it.
-  * `mincap`: Lower bound on an optimized or externally supplied capacity;
+    and an extracted `Snapshot` inherits the capacity of `"<name> <node name>"` in it.
+  * `mincap`: Lower capacity bound in MWh;
     checked as an assertion against a fixed or inherited one.
-  * `maxcap`: Upper bound on an optimized or externally supplied capacity;
+  * `maxcap`: Upper capacity bound in MWh;
     checked as an assertion against a fixed or inherited one.
 
-  * `eff`: Roundtrip storage efficiency (`eff_i` in `BasicStorage`). If `nothing`, read `roundtrip_eff` from the `storage` sheet.
+  * `eff`: Dimensionless round-trip storage efficiency. If `nothing`, read it
+    from the workbook in `:excel` mode and use one in `:arguments` mode.
 
-  * `overnight_cost`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `om_fixed_cost`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `decommissioning`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `lifetime`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Workbook defaults are used when values are `nothing`.
-  * `construction_profile`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Workbook defaults are used when values are `nothing`.
+  * `overnight_cost`: Overnight CAPEX in currency/kWh of storage capacity.
+  * `om_fixed_cost`: Fixed O&M in currency/kWh/year of storage capacity.
+  * `decommissioning`: Decommissioning cost as a fraction of overnight CAPEX.
+  * `lifetime`: Asset lifetime in years (`> 0`, integer-valued).
+  * `construction_profile`: Dimensionless yearly construction-cost shares.
+  * `decommissioning_profile`: Dimensionless yearly decommissioning-cost shares.
+
+With `nothing`, economic arguments use workbook values in `:excel` mode. In
+`:arguments` mode, costs default to zero; nonzero overnight cost requires
+`lifetime` and `construction_profile`, plus `decommissioning_profile` when
+decommissioning is nonzero.
 """
-function makehydrogenstorage(cname::String, techkey::String, h2::Node, s::Snapshot;
+function makehydrogenstorage(name::String, techkey::String, h2::Node, s::Snapshot;
+    tech::String=name,
     # capacity / expansion
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
 
@@ -467,10 +491,10 @@ function makehydrogenstorage(cname::String, techkey::String, h2::Node, s::Snapsh
     push!(vb, FixedCost(:fom, "level", energy, _fom * 1000.))
     push!(vb, FixedCost(:decommissioning, "level", energy, _decom_cost))
 
-    push!(vb, gencapacity(cap, "level", s, cname * " " * h2.name; mincap=mincap, maxcap=maxcap))
+    push!(vb, gencapacity(cap, "level", s, name * " " * h2.name; mincap=mincap, maxcap=maxcap))
     # push!(vb, Duration(4)) # TYNDP methodology 9.6.4: fill in 4 hours # removed for large storage (no meaning, no impact except negative on performance)
-    c = Component(cname * " " * h2.name, m, vb)
-    tag!(c, :tech, cname)
+    c = Component(name * " " * h2.name, m, vb)
+    tag!(c, :tech, tech)
     tag!(c, :zone, h2.name)
     for t in ("hydrogen", "storage")
         tag!(c, :function, t)

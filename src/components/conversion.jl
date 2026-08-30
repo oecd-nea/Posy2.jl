@@ -3,8 +3,8 @@ Generate conversion components.
 """
 
 """
-    makeelectrolyser(cname::String, techkey::String, elec::Node, h2::Node, s::Snapshot;
-        cap=nothing, mincap=nothing, maxcap=nothing,
+    makeelectrolyser(name::String, techkey::String, elec::Node, h2::Node, s::Snapshot;
+        tech::String=name, cap=nothing, mincap=nothing, maxcap=nothing,
         gridlosses=0.,
         eff::Union{Nothing,Real}=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -15,32 +15,42 @@ Generate conversion components.
 Build, connect and return an electrolyser component.
 
 Arguments:
-  * `cname`: component name prefix.
+  * `name`: component name prefix.
+  * `tech`: technology label used for reporting; defaults to `name`.
   * `techkey`: technology column name in the `electrolysis` tech data sheet.
   * `elec`: electricity node to connect the component to.
   * `h2`: hydrogen node to connect the component to.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Input capacity. A number fixes capacity, a JuMP `VariableRef` or
-    `AffExpr` reuses that expression, `nothing` creates a capacity decision, and
-    an extracted `Snapshot` inherits the capacity of `"<cname> <node name>"` in it.
-  * `mincap`: Lower bound on an optimized or externally supplied capacity;
+  * `cap`: Electricity input capacity in MW. A number fixes capacity, a JuMP
+    `VariableRef` or `AffExpr` reuses that expression, `nothing` creates a
+    capacity decision, and an extracted `Snapshot` inherits the capacity of
+    `"<name> <node name>"` in it.
+  * `mincap`: Lower capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
-  * `maxcap`: Upper bound on an optimized or externally supplied capacity;
+  * `maxcap`: Upper capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
 
-  * `gridlosses`: Proportional losses linked to electricity input flow (`0 <= gridlosses < 1`).
-  * `eff`: Electricity to hydrogen conversion ratio in `BasicConverter`. If `nothing`, read `efficiency` from the `electrolysis` sheet.
+  * `gridlosses`: Proportional electricity-loss fraction (`0 <= gridlosses < 1`).
+  * `eff`: Hydrogen output per unit of electricity input (dimensionless when
+    both carriers use MWh). If `nothing`, read it from the workbook in `:excel`
+    mode and use one in `:arguments` mode.
 
-  * `overnight_cost`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `om_fixed_cost`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `decommissioning`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `lifetime`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms (`> 0`, integer-valued). Workbook defaults are used when values are `nothing`.
-  * `construction_profile`: CAPEX/FOM/lifetime inputs for annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Workbook defaults are used when values are `nothing`.
-  * `om_var_cost`: Variable O&M coefficient on input energy flow.
+  * `overnight_cost`: Overnight CAPEX in currency/kW of electricity input capacity.
+  * `om_fixed_cost`: Fixed O&M in currency/kW/year of electricity input capacity.
+  * `decommissioning`: Decommissioning cost as a fraction of overnight CAPEX.
+  * `lifetime`: Asset lifetime in years (`> 0`, integer-valued).
+  * `construction_profile`: Dimensionless yearly construction-cost shares.
+  * `decommissioning_profile`: Dimensionless yearly decommissioning-cost shares.
+  * `om_var_cost`: Variable O&M in currency/MWh of electricity input.
+
+With `nothing`, economic arguments use workbook values in `:excel` mode. In
+`:arguments` mode, costs default to zero; nonzero overnight cost requires
+`lifetime` and `construction_profile`, plus `decommissioning_profile` when
+decommissioning is nonzero.
 """
-function makeelectrolyser(cname::String, techkey::String, elec::Node, h2::Node, s::Snapshot;
+function makeelectrolyser(name::String, techkey::String, elec::Node, h2::Node, s::Snapshot;
+    tech::String=name,
     # capacity / expansion
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     gridlosses::Real=0.,
@@ -116,13 +126,13 @@ function makeelectrolyser(cname::String, techkey::String, elec::Node, h2::Node, 
     push!(vb, FixedCost(:decommissioning, "input", energy, _decom_cost))
     push!(vb, FixedCost(:fom, "input", energy, _fom * 1000.))
     push!(vb, VariableCost(:vom, "input", energy, _vom))
-    push!(vb, gencapacity(cap, "input", s, cname * " " * elec.name; mincap=mincap, maxcap=maxcap))
+    push!(vb, gencapacity(cap, "input", s, name * " " * elec.name; mincap=mincap, maxcap=maxcap))
     if !iszero(_gridlosses)
         push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _gridlosses))
     end
 
-    c = Component(cname * " " * elec.name, m, vb)
-    tag!(c, :tech, cname)
+    c = Component(name * " " * elec.name, m, vb)
+    tag!(c, :tech, tech)
     tag!(c, :zone, elec.name)
     for t in ("demand", "electrolysis", "hydrogen")
         tag!(c, :function, t)

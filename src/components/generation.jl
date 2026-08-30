@@ -5,7 +5,8 @@ Generate generation-side components.
 using ArgCheck: @argcheck
 
 """
-    makedispatchable(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
+    makedispatchable(name::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
+        tech::String=name,
         cap=nothing, mincap=nothing, maxcap=nothing, capacitymultiplier=nothing,
         integeruc=false, uc=false, fuelnode=nothing,
         co2price=co2_price(s),
@@ -19,53 +20,63 @@ using ArgCheck: @argcheck
 Build, connect and return a dispatchable component.
 
 Arguments:
-  * `cname`: component name prefix.
+  * `name`: component name prefix.
+  * `tech`: technology label used for reporting; defaults to `name`.
   * `techkey`: technology column name in the `dispatchable` tech data sheet.
   * `elec`: Electricity node connected to component output flow.
   * `co2`: CO2 node connected only when `co2_emission != 0`.
   * `s`: Target snapshot where the component and behaviors are registered.
 
-  * `cap`: Output capacity in model power units. A number fixes capacity, a
+  * `cap`: Output capacity in MW. A number fixes capacity, a
     JuMP `VariableRef` or `AffExpr` reuses that expression, `nothing` creates a
     capacity decision, and an extracted `Snapshot` inherits the capacity of
-    `"<cname> <node name>"` in it. Numeric `0` builds a zero-capacity component.
-  * `mincap`: Lower bound on an optimized or externally supplied capacity;
+    `"<name> <node name>"` in it. Numeric `0` builds a zero-capacity component.
+  * `mincap`: Lower capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
-  * `maxcap`: Upper bound on an optimized or externally supplied capacity;
+  * `maxcap`: Upper capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
-  * `capacitymultiplier`: Time varying multiplier applied to output capacity (capacity basis, not energy basis).
+  * `capacitymultiplier`: Dimensionless time-varying multiplier on output capacity.
 
-  * `integeruc`: If `true`, UC commitment variables are integer (mixed integer UC).
+  * `integeruc`: If `true`, newly constructed UC commitment variables are
+    integer; used only when `uc=true`.
   * `uc`: Enables UC constraints and UC linked costs (`no_load_cost`, `startup_cost`).
     An extracted `Snapshot` instead replays the commitment schedule already
     solved for the matching component, and then requires a fixed `cap`.
   * `fuelnode`: If provided, fuel is modeled as an input flow linked by efficiency. If `nothing`, fuel is modeled as a variable cost on output energy (`fuel_cost`).
 
-  * `co2price`: CO2 cost coefficient used with emitted CO2 flow.
+  * `co2price`: Carbon price in currency/tCO2, used only when
+    `co2_emission != 0`.
 
-  * `overnight_cost`: Overnight CAPEX input used by `eac(...)`. Defaults to `0` in `:arguments` mode.
-  * `om_fixed_cost`: Fixed O&M cost on output capacity (`FixedCost(:fom, "output", ...)`). Defaults to `0` in `:arguments` mode.
-  * `decommissioning`: Decommissioning cost ratio used in `decom_cost(...)`. Defaults to `0` in `:arguments` mode.
-  * `lifetime`: Asset lifetime used by annualization/decommissioning calculations (`> 0`, integer-valued). Required when `overnight_cost != 0`.
-  * `construction_profile`: Construction cost share profile passed to `eac(...)`. Required when `overnight_cost != 0`.
-  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Required when both `overnight_cost` and `decommissioning` are non-zero.
-  * `connection_cost`: Connection cost ratio applied on annualized investment. Defaults to `0` in `:arguments` mode.
-  * `om_var_cost`: Variable O&M cost on output energy flow (`VariableCost(:vom, "output", ...)`). Defaults to `0` in `:arguments` mode.
-  * `fuel_cost`: Direct fuel variable cost on output energy. Used only when `fuelnode === nothing` and defaults to `0` in `:arguments` mode.
-  * `no_load_cost`: UC no load cost applied per committed output state and time step. Used only when `uc=true` and defaults to `0` in `:arguments` mode.
-  * `startup_cost`: UC startup cost applied to startup events. Used only when `uc=true` and defaults to `0` in `:arguments` mode.
-  * `co2_emission`: CO2 emission factor linked from output energy to CO2 flow (`output * co2_emission / 1000`). Defaults to `0` in `:arguments` mode.
-  * `efficiency`: Fuel to output conversion efficiency for linked fuel flow. Used only when `fuelnode` is provided and defaults to lossless `1` in `:arguments` mode.
-  * `unit_size`: Unit block size for discrete capacity representation. In `:arguments` mode, `nothing` disables unit sizing. Use `0` to override an Excel value with no unit sizing. A positive value is required when `uc=true`.
-  * `ramp_up`: Max ramp up as a fraction of unit capacity per hour. Passed to `Ramping(...)` as `ramp_up * unit_size`. Omitted or `nothing` adds no constraint in `:arguments` mode.
-  * `ramp_down`: Max ramp down as a fraction of unit capacity per hour. Same scaling as `ramp_up`. Omitted or `nothing` adds no constraint in `:arguments` mode.
-  * `min_power`: UC minimum generation fraction while committed. Used only when `uc=true` and defaults to `0` in `:arguments` mode.
-  * `min_uptime`: minimum consecutive online time in hours after a start. Used only when `uc=true` and defaults to `0` in `:arguments` mode.
-  * `min_downtime`: minimum consecutive offline time in hours after a shutdown. Used only when `uc=true` and defaults to `0` in `:arguments` mode.
-  * `startup_duration`: offline-to-online transition duration in hours. Used only when `uc=true` and defaults to `0` in `:arguments` mode.
-  * `shutdown_duration`: online-to-offline transition duration in hours. Used only when `uc=true` and defaults to `0` in `:arguments` mode.
+  * `overnight_cost`: Overnight CAPEX in currency/kW of output capacity.
+  * `om_fixed_cost`: Fixed O&M in currency/kW/year of output capacity.
+  * `decommissioning`: Decommissioning cost as a fraction of overnight CAPEX.
+  * `lifetime`: Asset lifetime in years (`> 0`, integer-valued).
+  * `construction_profile`: Dimensionless yearly construction-cost shares.
+  * `decommissioning_profile`: Dimensionless yearly decommissioning-cost shares.
+  * `connection_cost`: Connection cost as a fraction of annualized investment.
+  * `om_var_cost`: Variable O&M in currency/MWh of output.
+  * `fuel_cost`: Fuel cost in currency/MWh of output, used only without `fuelnode`.
+  * `no_load_cost`: No-load cost in currency/committed-unit/hour, used with UC.
+  * `startup_cost`: Startup cost in currency/unit-start, used with UC.
+  * `co2_emission`: Emission factor in kgCO2/MWh of output; converted to tCO2.
+  * `efficiency`: Output per unit of fuel input (dimensionless when both carriers
+    use MWh), used only with `fuelnode`.
+  * `unit_size`: Generating-unit size in MW. `0` disables unit sizing; a positive
+    value is required with UC.
+  * `ramp_up`, `ramp_down`: Maximum ramp fractions of unit capacity per hour;
+    nonzero values require a positive `unit_size`.
+  * `min_power`: Minimum committed output as a fraction of unit capacity, used
+    only when `uc=true`.
+  * `min_uptime`, `min_downtime`, `startup_duration`, `shutdown_duration`:
+    Durations in hours, used only when `uc=true`.
+
+With `nothing`, economic arguments use workbook values in `:excel` mode. In
+`:arguments` mode, costs default to zero; nonzero overnight cost requires
+`lifetime` and `construction_profile`, plus `decommissioning_profile` when
+decommissioning is nonzero.
 """
-function makedispatchable(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
+function makedispatchable(name::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
+    tech::String=name,
     # capacity / expansion
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     capacitymultiplier=nothing,
@@ -186,7 +197,7 @@ function makedispatchable(cname::String, techkey::String, elec::Node, co2::Node,
             _maxcap = floor(_maxcap / _usize) * _usize
         end
     end
-    push!(vb, gencapacity(cap, "output", s, cname * " " * elec.name;
+    push!(vb, gencapacity(cap, "output", s, name * " " * elec.name;
         mincap=_mincap, maxcap=_maxcap, unitsize=_usize))
 
     # fuel node management
@@ -202,7 +213,7 @@ function makedispatchable(cname::String, techkey::String, elec::Node, co2::Node,
             "`unit_size` must be supplied as a positive number when uc=true",
         ))
         if uc isa Snapshot
-            _pushinheriteduc!(vb, uc, cname * " " * elec.name, "output")
+            _pushinheriteduc!(vb, uc, name * " " * elec.name, "output")
         else
             _min_power = isnothing(min_power) ? (excel ? gettechparam(s, techkey, "min_power", "dispatchable") : 0.0) : min_power
             _min_uptime = isnothing(min_uptime) ? (excel ? gettechparam(s, techkey, "min_uptime", "dispatchable") : 0.0) : min_uptime
@@ -256,8 +267,8 @@ function makedispatchable(cname::String, techkey::String, elec::Node, co2::Node,
         end
     end
 
-    c = Component(cname * " " * elec.name, m, vb)
-    tag!(c, :tech, cname)
+    c = Component(name * " " * elec.name, m, vb)
+    tag!(c, :tech, tech)
     tag!(c, :zone, elec.name)
     for t in ("generation", "dispatchable")
         tag!(c, :function, t)
@@ -273,7 +284,8 @@ function makedispatchable(cname::String, techkey::String, elec::Node, co2::Node,
 end
 
 """
-    makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
+    makenuclear(name::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
+        tech::String=name,
         cap=nothing, mincap=nothing, maxcap=nothing, integercap=false, warmstart=nothing,
         uc=false, integeruc=false, startupmask=nothing, shutdownmask=nothing,
         refuel::Bool=true, refuel_duration::Union{Nothing,Real}=nothing,
@@ -292,61 +304,79 @@ end
 Build, connect and return a nuclear reactor component.
 
 Arguments:
-  * `cname`: component name prefix.
+  * `name`: component name prefix.
+  * `tech`: technology label used for reporting; defaults to `name`.
   * `techkey`: technology column name in the `dispatchable` tech data sheet.
   * `elec`: electricity node to connect the component to.
   * `co2`: CO2 node connected when `co2_emission` is non zero.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Output capacity. A number fixes capacity, a JuMP `VariableRef` or
+  * `cap`: Output capacity in MW. A number fixes capacity, a JuMP `VariableRef` or
     `AffExpr` reuses that expression, `nothing` creates a capacity decision, and
-    an extracted `Snapshot` inherits the capacity of `"<cname> <node name>"` in it.
-  * `mincap`: Lower bound on an optimized or externally supplied capacity;
+    an extracted `Snapshot` inherits the capacity of `"<name> <node name>"` in it.
+  * `mincap`: Lower capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
-  * `maxcap`: Upper bound on an optimized or externally supplied capacity;
+  * `maxcap`: Upper capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
-  * `integercap`: Integer flag for capacity expansion variable.
-  * `warmstart`: Warm start value passed to variable capacity behavior when used.
+  * `integercap`: Integer flag for variable capacity; ignored for fixed or
+    inherited capacity.
+  * `warmstart`: Variable-capacity warm start in MW; ignored for fixed or
+    inherited capacity.
 
   * `uc`: Enables UC constraints and UC linked costs. An extracted `Snapshot`
     instead replays the commitment schedule already solved for the matching
-    component, and then requires a fixed `cap`. Refuelling logic is only modeled when unit commitment is enabled; if `uc=false` and any refuelling argument is provided, a warning is emitted and refuelling is ignored.
-  * `integeruc`: Integer UC commitment variables.
-  * `startupmask`: Optional masks restricting UC startup/shutdown availability over time.
-  * `shutdownmask`: Optional masks restricting UC startup/shutdown availability over time.
+    component and requires a fixed `cap`. Fresh refuelling constraints are built
+    only when `uc=true`; with `uc=false` they are ignored, and a replayed schedule
+    retains its solved refuelling decisions.
+  * `integeruc`: Integer UC commitment variables, used only when `uc=true`.
+  * `startupmask`: Startup availability mask, used only when `uc=true`.
+  * `shutdownmask`: Shutdown availability mask, used only when `uc=true`.
 
   * `refuel`: Enables planned refuelling constraints. Set to `false` to disable refuelling regardless of the other refuelling arguments.
-  * `refuel_duration`: Duration of planned refuelling outage. If `nothing`, read from the technology workbook. Must be >= 0; refuelling constraints are enabled only when this value is > 0.
-  * `refuelmask`: Interval between allowed refuelling windows. Non-default parameter (not read from the technology workbook). When refuelling is enabled, it must be provided, strictly positive, and integer-valued.
-  * `refuel_fraction_per_year`: Minimum yearly refuelling requirement (fraction per unit per year). If `nothing`, read from the technology workbook. Must be >= 0; refuelling constraints are enabled only when this value is > 0.
+  * `refuel_duration`: Planned refuelling outage in hours. A positive value
+    enables refuelling constraints when `refuel_fraction_per_year > 0`. If
+    `nothing`, use the workbook value in `:excel` mode and zero in `:arguments`
+    mode.
+  * `refuelmask`: Positive integer interval in model time steps between allowed
+    refuelling windows; not read from the workbook.
+  * `refuel_fraction_per_year`: Minimum refuelling events per unit/year. If
+    `nothing`, use the workbook value in `:excel` mode and zero in `:arguments`
+    mode.
 
   * `fuelnode`: If provided, fuel is represented as linked input flow using `efficiency`. If `nothing`, `fuel_cost` is applied as output variable cost.
-  * `co2price`: CO2 price coefficient for emitted CO2 flow.
+  * `co2price`: Carbon price in currency/tCO2, used only when
+    `co2_emission != 0`.
 
-  * `overnight_cost`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Workbook defaults are used when values are `nothing`.
-  * `om_fixed_cost`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Workbook defaults are used when values are `nothing`.
-  * `decommissioning`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Workbook defaults are used when values are `nothing`.
-  * `lifetime`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms (`> 0`, integer-valued). Workbook defaults are used when values are `nothing`.
-  * `construction_profile`: Cost/lifetime inputs for annualized CAPEX, FOM, and decommissioning terms. Workbook defaults are used when values are `nothing`.
-  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Workbook defaults are used when values are `nothing`.
-  * `connection_cost`: Ratio applied to annualized investment for connection cost.
-  * `om_var_cost`: Variable cost coefficients on output energy (fuel cost used directly only when `fuelnode === nothing`).
-  * `fuel_cost`: Variable cost coefficients on output energy (fuel cost used directly only when `fuelnode === nothing`).
-  * `waste_cost`: Variable cost coefficients on output energy (fuel cost used directly only when `fuelnode === nothing`).
-  * `no_load_cost`: UC specific costs added only when `uc=true`.
-  * `startup_cost`: UC specific costs added only when `uc=true`.
-  * `co2_emission`: Emission factor linking output energy to CO2 output flow.
-  * `efficiency`: Fuel to output efficiency for linked fuel input mode.
-  * `unit_size`: Unit block size for discrete capacity representation.
-  * `ramp_up`: Max ramp up as a fraction of unit capacity per hour. Passed to `Ramping(...)` as `ramp_up * unit_size`. Omitted or `nothing` adds no constraint in `:arguments` mode.
-  * `ramp_down`: Max ramp down as a fraction of unit capacity per hour. Same scaling as `ramp_up`. Omitted or `nothing` adds no constraint in `:arguments` mode.
-  * `min_power`: UC minimum generation fraction while committed. Used only when `uc=true`.
-  * `min_uptime`: minimum consecutive online time in hours after a start. Used only when `uc=true`.
-  * `min_downtime`: minimum consecutive offline time in hours after a shutdown. Used only when `uc=true`.
-  * `startup_duration`: offline-to-online transition duration in hours. Used only when `uc=true`.
-  * `shutdown_duration`: online-to-offline transition duration in hours. Used only when `uc=true`.
+  * `overnight_cost`: Overnight CAPEX in currency/kW of output capacity.
+  * `om_fixed_cost`: Fixed O&M in currency/kW/year of output capacity.
+  * `decommissioning`: Decommissioning cost as a fraction of overnight CAPEX.
+  * `lifetime`: Asset lifetime in years (`> 0`, integer-valued).
+  * `construction_profile`: Dimensionless yearly construction-cost shares.
+  * `decommissioning_profile`: Dimensionless yearly decommissioning-cost shares.
+  * `connection_cost`: Connection cost as a fraction of annualized investment.
+  * `om_var_cost`, `fuel_cost`, `waste_cost`: Costs in currency/MWh of output;
+    `fuel_cost` is used directly only without `fuelnode`.
+  * `no_load_cost`: No-load cost in currency/committed-unit/hour, used with UC.
+  * `startup_cost`: Startup cost in currency/unit-start, used with UC.
+  * `co2_emission`: Emission factor in kgCO2/MWh of output; converted to tCO2.
+  * `efficiency`: Output per unit of fuel input (dimensionless when both carriers
+    use MWh), used only with `fuelnode`.
+  * `unit_size`: Reactor-unit size in MW. `0` disables unit sizing; a positive
+    value is required with UC.
+  * `ramp_up`, `ramp_down`: Maximum ramp fractions of unit capacity per hour;
+    nonzero values require a positive `unit_size`.
+  * `min_power`: Minimum committed output as a fraction of unit capacity, used
+    only when `uc=true`.
+  * `min_uptime`, `min_downtime`, `startup_duration`, `shutdown_duration`:
+    Durations in hours, used only when `uc=true`.
+
+With `nothing`, economic arguments use workbook values in `:excel` mode. In
+`:arguments` mode, costs default to zero; nonzero overnight cost requires
+`lifetime` and `construction_profile`, plus `decommissioning_profile` when
+decommissioning is nonzero.
 """
-function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
+function makenuclear(name::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
+    tech::String=name,
     # capacity / expansion
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     integercap=false, warmstart::Union{Nothing,Real}=nothing,
@@ -462,7 +492,7 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
     if (_ucenabled(uc) || (integercap && isnothing(cap))) && isnothing(_usize)
         throw(ArgumentError("`unit_size` must be positive when unit commitment or integer capacity expansion is enabled"))
     end
-    push!(vb, gencapacity(cap, "output", s, cname * " " * elec.name;
+    push!(vb, gencapacity(cap, "output", s, name * " " * elec.name;
         mincap=mincap, maxcap=maxcap, unitsize=_usize, integer=integercap, warmstart=warmstart))
 
     # fuel node management
@@ -477,10 +507,10 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
     # special case: cycling constraints for nuclear
     _refuel = false
     if refuel && !_ucenabled(uc) && (!isnothing(refuel_duration) || !isnothing(refuelmask) || !isnothing(refuel_fraction_per_year))
-        @warn "Because uc=false for nuclear component, refuelling is not modeled." component=cname techkey=techkey
+        @warn "Because uc=false for nuclear component, refuelling is not modeled." component=name techkey=techkey
     end
     if refuel && uc isa Snapshot && (!isnothing(refuel_duration) || !isnothing(refuelmask) || !isnothing(refuel_fraction_per_year))
-        @warn "Because uc replays a solved schedule for nuclear component, refuelling follows that schedule and refuelling arguments are ignored." component=cname techkey=techkey
+        @warn "Because uc replays a solved schedule for nuclear component, refuelling follows that schedule and refuelling arguments are ignored." component=name techkey=techkey
     end
     # refuelling constraints are built from fresh arguments, never over a replayed schedule
     if refuel && uc === true
@@ -518,7 +548,7 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
         push!(vb, NoLoadCost(:noload, "output", _noload))
         push!(vb, StartupCost(:startup, "output", _startup))
         if uc isa Snapshot
-            _pushinheriteduc!(vb, uc, cname * " " * elec.name, "output")
+            _pushinheriteduc!(vb, uc, name * " " * elec.name, "output")
         else
             _min_power = isnothing(min_power) ? (excel ? gettechparam(s, techkey, "min_power", "dispatchable") : 0.0) : min_power
             _min_uptime = isnothing(min_uptime) ? (excel ? gettechparam(s, techkey, "min_uptime", "dispatchable") : 0.0) : min_uptime
@@ -581,8 +611,8 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
         end
     end
     
-    c = Component(cname * " " * elec.name, m, vb)
-    tag!(c, :tech, cname)
+    c = Component(name * " " * elec.name, m, vb)
+    tag!(c, :tech, tech)
     tag!(c, :zone, elec.name)
     if _refuel
         _ucb = first(Nosy.getbehaviors(c, Nosy.AbstractFleetUnitCommitmentBehavior))
@@ -635,7 +665,8 @@ function makenuclear(cname::String, techkey::String, elec::Node, co2::Node, s::S
 end
 
 """
-    makeintermittentsource(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
+    makeintermittentsource(name::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
+        tech::String=name,
         cap=nothing, mincap=nothing, maxcap=nothing,
         weatheryear=nothing, profile=nothing,
         co2price=co2_price(s),
@@ -648,38 +679,47 @@ end
 Build, connect and return an intermittent source component.
 
 Arguments:
-  * `cname`: component name prefix.
+  * `name`: component name prefix.
+  * `tech`: technology label used for reporting; defaults to `name`.
   * `techkey`: technology column name in the `intermittent` tech data sheet.
   * `elec`: electricity node to connect the component to.
   * `co2`: CO2 node connected when `co2_emission` is non zero.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Output capacity. A number fixes capacity, a JuMP `VariableRef` or
+  * `cap`: Output capacity in MW. A number fixes capacity, a JuMP `VariableRef` or
     `AffExpr` reuses that expression, `nothing` creates a capacity decision, and
-    an extracted `Snapshot` inherits the capacity of `"<cname> <node name>"` in it.
-  * `mincap`: Lower bound on an optimized or externally supplied capacity;
+    an extracted `Snapshot` inherits the capacity of `"<name> <node name>"` in it.
+  * `mincap`: Lower capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
-  * `maxcap`: Upper bound on an optimized or externally supplied capacity;
+  * `maxcap`: Upper capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
   * `weatheryear`: Year suffix used to select profile series `profiles_<year>`.
     Required for workbook lookup; unused when `profile` is supplied explicitly.
-  * `profile`: Hourly capacity-factor vector or scalar, each value in `[0, 1]`.
-    If `nothing`, read the `<techkey>_<node>` workbook column.
+  * `profile`: Dimensionless hourly capacity-factor vector or scalar in `[0, 1]`.
+    If `nothing`, read the `<techkey>_<node>` workbook column. With numeric
+    `cap == 0`, an omitted profile is replaced by zero without a workbook or
+    weather-year lookup.
 
-  * `co2price`: CO2 cost coefficient applied to emitted CO2 flow.
+  * `co2price`: Carbon price in currency/tCO2, used only when
+    `co2_emission != 0`.
 
-  * `overnight_cost`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `om_fixed_cost`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `decommissioning`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `lifetime`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms (`> 0`, integer-valued). Workbook defaults are used when values are `nothing`.
-  * `construction_profile`: CAPEX/FOM/lifetime inputs used in annualized fixed cost terms. Workbook defaults are used when values are `nothing`.
-  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Workbook defaults are used when values are `nothing`.
-  * `connection_cost`: Ratio applied to annualized investment as connection fixed cost.
-  * `om_var_cost`: Variable O&M coefficient on output energy flow.
-  * `fuel_cost`: Fuel variable cost coefficient on output energy flow.
-  * `co2_emission`: Emission factor linking output energy to CO2 output flow.
+  * `overnight_cost`: Overnight CAPEX in currency/kW of output capacity.
+  * `om_fixed_cost`: Fixed O&M in currency/kW/year of output capacity.
+  * `decommissioning`: Decommissioning cost as a fraction of overnight CAPEX.
+  * `lifetime`: Asset lifetime in years (`> 0`, integer-valued).
+  * `construction_profile`: Dimensionless yearly construction-cost shares.
+  * `decommissioning_profile`: Dimensionless yearly decommissioning-cost shares.
+  * `connection_cost`: Connection cost as a fraction of annualized investment.
+  * `om_var_cost`, `fuel_cost`: Costs in currency/MWh of output.
+  * `co2_emission`: Emission factor in kgCO2/MWh of output; converted to tCO2.
+
+With `nothing`, economic arguments use workbook values in `:excel` mode. In
+`:arguments` mode, costs default to zero; nonzero overnight cost requires
+`lifetime` and `construction_profile`, plus `decommissioning_profile` when
+decommissioning is nonzero.
 """
-function makeintermittentsource(cname::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
+function makeintermittentsource(name::String, techkey::String, elec::Node, co2::Node, s::Snapshot;
+    tech::String=name,
     # capacity / profile
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     weatheryear::Union{Nothing,Integer}=nothing, profile=nothing,
@@ -773,9 +813,9 @@ function makeintermittentsource(cname::String, techkey::String, elec::Node, co2:
         push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
         push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2price))
     end
-    push!(vb, gencapacity(cap, "output", s, cname * " " * elec.name; mincap=mincap, maxcap=maxcap))
-    c = Component(cname * " " * elec.name, m, vb)
-    tag!(c, :tech, cname)
+    push!(vb, gencapacity(cap, "output", s, name * " " * elec.name; mincap=mincap, maxcap=maxcap))
+    c = Component(name * " " * elec.name, m, vb)
+    tag!(c, :tech, tech)
     tag!(c, :zone, elec.name)
     connect!(s, c, elec)
     if !iszero(_co2_em)
@@ -789,8 +829,8 @@ function makeintermittentsource(cname::String, techkey::String, elec::Node, co2:
 end
 
 """
-    makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
-        cap=nothing, mincap=nothing, maxcap=nothing,
+    makehydroror(name::String, zone::String, elec::Node, s::Snapshot;
+        tech::String=name, cap=nothing, mincap=nothing, maxcap=nothing,
         techkey::String="Hydro ror", weatheryear=nothing,
         intake, intake_profile=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing,
@@ -800,39 +840,47 @@ end
 Build, connect and return a run of river hydro component.
 
 Arguments:
-  * `cname`: component name prefix.
+  * `name`: component name prefix.
+  * `tech`: technology label used for reporting; defaults to `name`.
   * `zone`: Time series zone used to read the hydro intake profile.
   * `elec`: electricity node to connect the component to.
   * `s`: snapshot to register the component in.
 
-  * `cap`: Output capacity. A number fixes capacity, `nothing` creates a new
+  * `cap`: Output capacity in MW. A number fixes capacity, `nothing` creates a new
     capacity decision, a JuMP variable or affine expression reuses that external
     decision, and an extracted `Snapshot` inherits the capacity of
-    `"<cname> <node name>"` in it.
-  * `mincap`: Lower bound on an optimized or externally supplied capacity;
+    `"<name> <node name>"` in it.
+  * `mincap`: Lower capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
-  * `maxcap`: Upper bound on an optimized or externally supplied capacity;
+  * `maxcap`: Upper capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
   * `techkey`: technology column name in the `intermittent` tech data sheet.
   * `weatheryear`: Year suffix used to select intake series `hydro_ror_<year>`.
     Required for workbook lookup; unused when `intake_profile` is supplied
     explicitly.
-  * `intake_profile`: Hourly run-of-river intake shape or scalar, nonnegative
-    with a strictly positive sum. The profile is normalized to sum to one before
-    the total intake is applied. If `nothing`, read `zone` from the selected
-    workbook sheet.
+  * `intake_profile`: Dimensionless hourly run-of-river intake shape or scalar,
+    nonnegative with a strictly positive sum. The profile is normalized to sum
+    to one before the total intake is applied. If `nothing`, read `zone` from
+    the selected workbook sheet.
 
-  * `intake`: Total intake distributed over the normalized intake profile.
+  * `intake`: Total intake in MWh over the modeled profile (normally one year).
+    `0` disables intake and skips the zone, profile, and weather-year lookup.
 
-  * `overnight_cost`: Cost/lifetime overrides for fixed and variable hydro cost terms. Workbook defaults are used when values are `nothing`.
-  * `om_fixed_cost`: Cost/lifetime overrides for fixed and variable hydro cost terms. Workbook defaults are used when values are `nothing`.
-  * `om_var_cost`: Cost/lifetime overrides for fixed and variable hydro cost terms. Workbook defaults are used when values are `nothing`.
-  * `decommissioning`: Cost/lifetime overrides for fixed and variable hydro cost terms. Workbook defaults are used when values are `nothing`.
-  * `lifetime`: Cost/lifetime overrides for fixed and variable hydro cost terms (`> 0`, integer-valued). Workbook defaults are used when values are `nothing`.
-  * `construction_profile`: Cost/lifetime overrides for fixed and variable hydro cost terms. Workbook defaults are used when values are `nothing`.
-  * `decommissioning_profile`: Decommissioning cost share profile passed to `decom_cost(...)`. Workbook defaults are used when values are `nothing`.
+  * `overnight_cost`: Overnight CAPEX in currency/kW of output capacity.
+  * `om_fixed_cost`: Fixed O&M in currency/kW/year of output capacity.
+  * `om_var_cost`: Variable O&M in currency/MWh of output.
+  * `decommissioning`: Decommissioning cost as a fraction of overnight CAPEX.
+  * `lifetime`: Asset lifetime in years (`> 0`, integer-valued).
+  * `construction_profile`: Dimensionless yearly construction-cost shares.
+  * `decommissioning_profile`: Dimensionless yearly decommissioning-cost shares.
+
+With `nothing`, economic arguments use workbook values in `:excel` mode. In
+`:arguments` mode, costs default to zero; nonzero overnight cost requires
+`lifetime` and `construction_profile`, plus `decommissioning_profile` when
+decommissioning is nonzero.
 """
-function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
+function makehydroror(name::String, zone::String, elec::Node, s::Snapshot;
+    tech::String=name,
     # capacity / profile
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing,
     mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
@@ -865,7 +913,7 @@ function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     end
     m = DispatchableSource(elec.carrier)
     vb = []
-    push!(vb, gencapacity(cap, "output", s, cname * " " * elec.name; mincap=mincap, maxcap=maxcap))
+    push!(vb, gencapacity(cap, "output", s, name * " " * elec.name; mincap=mincap, maxcap=maxcap))
 
     # costs
     excel = tech_mode(s) === :excel
@@ -926,11 +974,11 @@ function makehydroror(cname::String, zone::String, elec::Node, s::Snapshot;
     push!(vb, FixedCost(:decommissioning, "output", energy, _decom_cost))
     push!(vb, VariableCost(:vom, "output", energy, _vom))
 
-    c = Component(cname * " " * elec.name, m, vb)
+    c = Component(name * " " * elec.name, m, vb)
     output = energy(Nosy.getport(c, "output"))
     intake_envelope = Nosy.Stepwise(intake_series, Nosy.mesh(c))
     @constraint(lowermodel(sim(c)), output.data .<= intake_envelope.data)
-    tag!(c, :tech, cname)
+    tag!(c, :tech, tech)
     tag!(c, :zone, elec.name)
     connect!(s, c, elec)
     for t in ("generation", "intermittent", "carbonfree")

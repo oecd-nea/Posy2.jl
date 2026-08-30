@@ -188,8 +188,8 @@ shifting via net load; a fixed `Demand` series itself does not move. Swap the
 archetype, behaviours, and tags for other technologies.
 
 ```julia
-function makeloadshifting(cname::String, elec::Node, s::Snapshot;
-    power_cap::Real, duration::Real, shift_cost::Real,
+function makeloadshifting(name::String, elec::Node, s::Snapshot;
+    tech::String=name, power_cap::Real, duration::Real, shift_cost::Real,
 )
     # 1. Physical model — BasicStorage: charge / discharge / level
     #    (same Nosy machine as a battery; eff_i=1 means no round-trip loss)
@@ -203,10 +203,10 @@ function makeloadshifting(cname::String, elec::Node, s::Snapshot;
     push!(vb, VariableCost(:vom, "input", energy, shift_cost))  # cost on the shifting flow
 
     # 3. Component with the Posy2 name convention
-    c = Component("$cname $(elec.name)", m, vb)
+    c = Component("$name $(elec.name)", m, vb)
 
     # 4. Tags that querying and post-processing rely on
-    tag!(c, :tech, cname)
+    tag!(c, :tech, tech)
     tag!(c, :zone, elec.name)
     tag!(c, :function, "demand")        # demand side role
     tag!(c, :function, "loadshifting")  # custom label for filters / reports
@@ -227,7 +227,7 @@ others, or must appear consistently in Posy2 reports.
 ### Component names
 
 Except for interconnections, builders normally name components
-`"$cname $(principal_node.name)"`. That string is what
+`"$name $(principal_node.name)"`. That string is what
 `capacity(result, ...)`, `balance(result, ...)`, and `cost(result, ...)` look up, and
 what capacity inheritance matches between scenarios. Names are unique inside a
 snapshot.
@@ -236,7 +236,7 @@ snapshot.
 
 | Tag | Set from | Role |
 |:----|:---------|:-----|
-| `:tech` | `cname` | Column label in annual tables; filter key for `getcomponents` |
+| `:tech` | `tech` (`name` by default) | Column label in annual tables; filter key for `getcomponents` |
 | `:zone` | principal node name | Regional selection |
 | `:function` | modelling role | Post-processing family (`generation`, `storage`, `demand`, `interconnection`, ...) |
 

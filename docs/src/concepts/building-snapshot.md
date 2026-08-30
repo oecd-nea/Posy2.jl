@@ -172,7 +172,7 @@ changing something else in a follow-on study:
 makeintermittentsource("PV", "PV", grid, co2, snapshot; cap=first_result)
 ```
 
-Posy2 looks up `cname * " " * node_name` in that snapshot, so use the same
+Posy2 looks up `name * " " * node_name` in that snapshot, so use the same
 component prefix and node name as before. The snapshot must be the result of
 `extract`: an optimized but unextracted one still holds JuMP expressions rather
 than numbers. A snapshot that is unextracted, has no matching component, or
@@ -200,7 +200,7 @@ lookup rules.
 
 ## Names And Tags
 
-Most builders name a component by joining `cname` and the principal node name
+Most builders name a component by joining `name` and the principal node name
 with a space:
 
 ```julia
@@ -209,11 +209,11 @@ makedispatchable("Gas", "CCGT", electricity, co2_node, snapshot)
 ```
 
 Price interconnections use `IC_<neighbour>_<local-node>`, while node
-interconnections use `<cname>_<first-node>_<second-node>`.
+interconnections use `<name>_<first-node>_<second-node>`.
 
 Builders normally add:
 
-- a `:tech` tag containing the component name prefix;
+- a `:tech` tag containing `tech`, which defaults to the component name prefix;
 - one or more `:zone` tags containing connected zone names;
 - `:function` tags such as `"generation"`, `"demand"`, `"storage"`,
   `"interconnection"`, `"hydrogen"`, or a more specific technology role.
