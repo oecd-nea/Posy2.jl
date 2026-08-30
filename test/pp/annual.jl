@@ -45,9 +45,8 @@ using DataFrames
         return snap, elec1, elec2, elec3, co2
     end
 
-    function argument_snapshot(; hours=nothing)
-        mesh = isnothing(hours) ? TimeMesh() : TimeMesh(fill(1 // 1, hours))
-        sim = Sim(Model(HiGHS.Optimizer); mesh=mesh)
+    function argument_snapshot()
+        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
         set_silent(sim.model)
         snap = Snapshot(sim, Dict(:posy => Posy2Options(
             tech_mode=:arguments,
@@ -470,7 +469,7 @@ using DataFrames
     # Smart and V2G EV input conversion losses belong to net charging, not
     # final consumption. The public loss helper must include EV-only tags.
     let
-        snap, elec, co2 = argument_snapshot(hours=24)
+        snap, elec, co2 = argument_snapshot()
         common = (
             number_ev=10.0,
             initial_connected_share=1.0,
@@ -503,16 +502,16 @@ using DataFrames
         @test "EV V2G" in names(line.d)
         @test !("EV smart_1" in names(line.d))
         @test !("EV V2G_1" in names(line.d))
-        @test isapprox(row["EV smart"], 240.0 / 1e6; rtol=1e-12)
-        @test isapprox(row["EV V2G"], 240.0 / 1e6; rtol=1e-12)
-        @test isapprox(row.Total, 480.0 / 1e6; rtol=1e-12)
+        @test isapprox(row["EV smart"], 87_600.0 / 1e6; rtol=1e-12)
+        @test isapprox(row["EV V2G"], 87_600.0 / 1e6; rtol=1e-12)
+        @test isapprox(row.Total, 175_200.0 / 1e6; rtol=1e-12)
 
         final_consumption = Posy2.demand(s, "grid"; aggregate=true, collapse=true)
         net_charging = Posy2.charging(s, "grid"; collapse=true)
         charging_loss = sum(Posy2.losses(s; categories=(:storage,)).losses)
-        @test isapprox(final_consumption, 480.0; rtol=1e-12)
-        @test isapprox(net_charging, 120.0; rtol=1e-12)
-        @test isapprox(charging_loss, 120.0; rtol=1e-12)
+        @test isapprox(final_consumption, 175_200.0; rtol=1e-12)
+        @test isapprox(net_charging, 43_800.0; rtol=1e-12)
+        @test isapprox(charging_loss, 43_800.0; rtol=1e-12)
         @test isapprox(
             Posy2.production(s, "grid"; collapse=true),
             final_consumption + net_charging;
@@ -748,7 +747,7 @@ using DataFrames
     # Detailed costs keeps demand-tagged components that bear costs (electrolysers, V2G EVs):
     # the displayed rows must still sum to the "all" row.
     let
-        snap, elec, co2 = argument_snapshot(hours=24)
+        snap, elec, co2 = argument_snapshot()
         h2 = Node("H2", EnergyCarrier("hydrogen", sim(snap)); rule=:curtailed, tags=[:hydrogen])
         makedemand("Other consumption", "grid", elec, snap; profile=10.0)
         makedispatchable("CCGT", elec, co2, snap; tech_column="unused", cap=100.0, fuel_cost=1.0)

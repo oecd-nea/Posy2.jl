@@ -72,8 +72,10 @@ active only when `refuel=true`, `uc=true`, `refuel_fraction_per_year` is
 positive, and `refuel_duration` is positive. Set `refuel=false` to disable it
 without reading or validating the other refuelling arguments. When active,
 `refuel_slot_spacing` must be supplied by the caller as a positive `Integer`. It
-spaces the grid of time steps at which an outage may start, so `8760` leaves a
-single allowed start and `730` leaves about twelve. In
+spaces, in hours, the grid at which an outage may start, so `8760` leaves a
+single allowed start and `730` leaves about twelve. The grid is mapped onto the
+time mesh, so a mesh coarser than the spacing opens fewer starts than the grid
+holds. In
 `:excel` mode, refuel fraction and duration default to the `dispatchable`
 technology column. In `:arguments` mode they default to zero, disabling
 refuelling outages; `refuel_slot_spacing` has no workbook default. Supplying refuelling
@@ -90,8 +92,9 @@ whereas an `AffExpr` is rejected. In particular, `unit_size` does not make an
 external variable a number-of-units variable; represent that explicitly as
 `unit_size * integer_units` when unit-block integrality is required.
 
-Refuelling constraints do not depend on `tech_column`. They assume an 8,760-hour
-model horizon, so use them only for a full non-leap-year study.
+Refuelling constraints do not depend on `tech_column`. Like every builder they
+require an 8,760-hour horizon, but they are built by walking the time mesh, so
+they hold on an aggregated or sub-hourly mesh as well as on the hourly one.
 
 Tags: `:tech => tech`, `:zone => elec.name`, and the function tags `generation`
 and `dispatchable`. Direct emissions are controlled by `co2_emission`; the

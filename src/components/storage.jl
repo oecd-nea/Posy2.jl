@@ -41,8 +41,8 @@ Arguments:
   * `charge_cap`: Charging capacity in MW with the same choices. The `input`
     port is always created; numeric `0` gives it a zero capacity, so a
     turbine-only reservoir still reports a charging flow of zero.
-  * `intake`: Total natural intake in MWh over the modeled profile (normally one
-    year). `0` disables natural intake.
+  * `intake`: Total yearly natural intake in MWh, spread over the normalized
+    profile. `0` disables natural intake.
 
   * `energy_cap`: Storage level capacity in MWh, with the same choices as
     `discharge_cap`, plus `Inf` (the default) which leaves the level
@@ -100,6 +100,7 @@ function makehydroreservoir(name::String, zone::String, elec::Node, s::Snapshot;
     om_var_cost::Union{Nothing,Real}=nothing, decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing,
     construction_profile=nothing, decommissioning_profile=nothing,
 )
+    checkhorizon(s)
     excel = tech_mode(s) === :excel
     if excel
         _eff = isnothing(roundtrip_eff) ? gettechparam(s, tech_column, "roundtrip_eff", "storage") : roundtrip_eff
@@ -186,8 +187,10 @@ function makehydroreservoir(name::String, zone::String, elec::Node, s::Snapshot;
             s, intake_profile, zone, profile_sheet;
             keyword="intake_profile", lower=0.0,
         )
-        profile_sum = sum(profile)
-        @argcheck profile_sum > 0 "reservoir intake profile must have a positive sum."
+        # the model integrates over steps, so normalize against that integral:
+        # it equals the hourly sum on an hourly mesh and not on a coarser one
+        profile_sum = sum(Nosy.Stepwise(Nosy.Hourly(profile, sim(s).mesh)))
+        @argcheck profile_sum > 0 "reservoir intake profile must have a positive sum on the time mesh."
         profile / profile_sum * intake
     end
     if !all(iszero, intake_series)
@@ -289,6 +292,7 @@ function makebatterystorage(name::String, elec::Node, s::Snapshot;
     decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
     connection_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing,
 )
+    checkhorizon(s)
     excel = tech_mode(s) === :excel
     if excel
         _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech_column, "overnight_cost", "storage") : overnight_cost
@@ -436,6 +440,7 @@ function makehydrogenstorage(name::String, h2::Node, s::Snapshot;
     overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
     decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
 )
+    checkhorizon(s)
     excel = tech_mode(s) === :excel
     if excel
         _eff = isnothing(roundtrip_eff) ? gettechparam(s, tech_column, "roundtrip_eff", "storage") : roundtrip_eff

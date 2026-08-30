@@ -212,8 +212,8 @@ of them.
 With the default `refuel=true`, `uc=true` on nuclear additionally reads
 `refuel_fraction_per_year`, and a positive refuel fraction causes
 `refuel_duration` to be read. Set `refuel=false` to skip these reads and disable
-refuelling. `refuel_slot_spacing` is an argument-only `Integer` spacing of allowed outage
-start steps and has no
+refuelling. `refuel_slot_spacing` is an argument-only `Integer` spacing, in hours, of
+allowed outage starts and has no
 workbook row. A replayed schedule already contains whatever refuelling outages
 it was solved with, so `uc=<extracted snapshot>` builds no refuelling constraints
 and warns if refuelling arguments are supplied.
@@ -403,19 +403,19 @@ be nonnegative and sum to a strictly positive value; `EV_departure` and
 lie in `[0, 1]`. `demand` and `spot_price` are unrestricted
 beyond being numeric and finite.
 
-## Full-year Hourly Assumption
+## Full-year Hourly Requirement
 
-Nosy supports custom and heterogeneous meshes, but several Posy2 builders and
-reports currently assume a non-leap year of 8,760 hourly values. Flat annual
-demands divide by 8,760, fixed-profile EVs construct 8,760 entries, nuclear
-refuelling logic iterates over 8,760 hours, and the standard report labels 8,760 time
-rows.
+Every builder requires a snapshot spanning a non-leap year of 8,760 hours and
+rejects any other horizon: flat annual demands divide by 8,760, fixed-profile
+EVs construct 8,760 entries, nuclear refuelling places its outage starts on an
+hour grid spanning the year, and the standard report labels 8,760 time rows.
 
-Use 8,760-value workbook columns with Nosy's default
-[`TimeMesh`](https://oecd-nea.github.io/Nosy.jl/dev/concepts/time/) for the
-documented full-year workflow. A different mesh may work for an individual
-builder that has no hard-coded annual logic, but it is not supported uniformly
-across Posy2.
+Workbook columns therefore carry 8,760 values, one per hour, matching Nosy's
+default [`TimeMesh`](https://oecd-nea.github.io/Nosy.jl/dev/concepts/time/).
+Only the number of hours is constrained, so a mesh that aggregates steps is
+still accepted, and a workbook column stays on the hour grid either way. Such a
+mesh samples the column rather than averaging it, which changes the annual total
+of every non-flat series.
 
 !!! note
     The workbooks in `data` are neutral documentation inputs, not calibrated

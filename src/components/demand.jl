@@ -32,6 +32,7 @@ Arguments:
 function makedemand(name::String, zone::String, n::Node, s::Snapshot;
                     tech::String=name, profile=nothing, profile_multiplier::Real=1.0, profile_shift::Int=0,
                     annual_flat_demand::Real=0., grid_losses::Real=0.)
+    checkhorizon(s)
     inputs = demand_input(profile_multiplier=profile_multiplier, annual_flat_demand=annual_flat_demand, grid_losses=grid_losses)
     validate_demand_input(inputs)
     _grid_losses = Float64(grid_losses)
@@ -42,7 +43,7 @@ function makedemand(name::String, zone::String, n::Node, s::Snapshot;
         var = circshift(var, profile_shift)
     end
 
-    m = Demand(n.carrier, (var .+ annual_flat_demand / 8760))
+    m = Demand(n.carrier, (var .+ annual_flat_demand / HOURS_PER_YEAR))
     vb = []
     !iszero(_grid_losses) && push!(vb, LinkedJointFlow("grid losses", n.carrier, :input, "input", x->x[1] * _grid_losses))
     c = Component(name * " " * n.name, m, vb)
@@ -71,9 +72,10 @@ Arguments:
 function makeflathydrogendemand(name::String, n::Node, annual_demand::Real, s::Snapshot;
     tech::String=name,
 )
+    checkhorizon(s)
     inputs = demand_input(annual_demand=annual_demand)
     validate_demand_input(inputs)
-    m = Demand(n.carrier, annual_demand / 8760)
+    m = Demand(n.carrier, annual_demand / HOURS_PER_YEAR)
     vb = []
     c = Component(name * " " * n.name, m, vb)
     tag!(c, :tech, tech)
@@ -102,6 +104,7 @@ Arguments:
 function makeflexhydrogendemand(name::String, n::Node, annual_demand::Real, s::Snapshot;
     tech::String=name,
 )
+    checkhorizon(s)
     inputs = demand_input(annual_demand=annual_demand)
     validate_demand_input(inputs)
     m = BasicSink(n.carrier)
@@ -145,6 +148,7 @@ Arguments:
 function makedemandresponse(name::String, elec::Node, cap::Union{Nothing,Real,VariableRef,AffExpr}, cost::Real, s::Snapshot;
     tech::String=name, type::Symbol=:volDR,
 )
+    checkhorizon(s)
     # Demand provides a zero-valued input that anchors this demand-side
     # component. `output` remains positive for capacity, cost, and reporting,
     # but is not connected to the electricity node. Only its negative linked

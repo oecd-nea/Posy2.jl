@@ -5,8 +5,8 @@ using JuMP
 using HiGHS
 
 @testset "Argument and workbook input modes" begin
-    function argument_snapshot(; hours=24, tech=:arguments, series=:arguments)
-        simulation = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, hours)))
+    function argument_snapshot(; tech=:arguments, series=:arguments)
+        simulation = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
         set_silent(simulation.model)
         snapshot = Snapshot(simulation, Dict(:posy => Posy2Options(
             data_dir=joinpath(@__DIR__, "does-not-exist"),
@@ -203,7 +203,7 @@ using HiGHS
                 number_ev=1_000.0,
                 initial_connected_share=1.0,
                 fixed_profile=false, smart_charging=true,
-                departures=collect(1.0:24.0), arrivals=collect(1.0:24.0),
+                departures=repeat(collect(1.0:24.0), 365), arrivals=repeat(collect(1.0:24.0), 365),
                 departure_soc=0.8, arrival_soc=0.56,
                 max_charging_power_per_ev=0.01,
                 battery_capacity_per_ev=0.06,
@@ -272,7 +272,7 @@ using HiGHS
     let
         s, electricity, carbon = argument_snapshot()
         @test !isnothing(makedemand(
-            "Demand", "unused", electricity, s; profile=collect(40.0:63.0),
+            "Demand", "unused", electricity, s; profile=repeat(collect(40.0:63.0), 365),
         ))
         @test !isnothing(makeintermittentsource(
             "Solar", electricity, carbon, s;
@@ -280,20 +280,20 @@ using HiGHS
         ))
         @test !isnothing(makehydroror(
             "Hydro ROR", "unused", electricity, s;
-            cap=70.0, intake=840.0, intake_profile=fill(35.0, 24), hydro_costs...,
+            cap=70.0, intake=840.0, intake_profile=fill(35.0, 8760), hydro_costs...,
         ))
         @test !isnothing(makehydroreservoir(
             "Reservoir", "unused", electricity, s;
             discharge_cap=55.0, charge_cap=20.0, intake=240.0,
             energy_cap=200.0,
-            intake_profile=collect(1.0:24.0), roundtrip_eff=0.88, hydro_costs...,
+            intake_profile=repeat(collect(1.0:24.0), 365), roundtrip_eff=0.88, hydro_costs...,
         ))
         @test !isnothing(makeEV(
             "EV", electricity, s;
             number_ev=1_000.0,
             initial_connected_share=0.75,
             fixed_profile=false, smart_charging=true,
-            departures=collect(1.0:24.0), arrivals=collect(1.0:24.0),
+            departures=repeat(collect(1.0:24.0), 365), arrivals=repeat(collect(1.0:24.0), 365),
             departure_soc=0.8, arrival_soc=0.56,
             charging_eff=0.9, self_discharge=0.0,
             max_charging_power_per_ev=0.01,
@@ -310,12 +310,12 @@ using HiGHS
         @test !isnothing(makepricelink(
             "country2", electricity, s;
             import_capacity=100.0, export_capacity=80.0,
-            spot_price=collect(51.0:74.0),
-            import_availability=0.9, export_availability=fill(0.85, 24),
+            spot_price=repeat(collect(51.0:74.0), 365),
+            import_availability=0.9, export_availability=fill(0.85, 8760),
         ))
         @test !isnothing(maketransmissionlink(
             "Line", electricity, other, s; cap=70.0,
-            atob_availability=0.95, btoa_availability=fill(0.8, 24),
+            atob_availability=0.95, btoa_availability=fill(0.8, 8760),
         ))
     end
 
@@ -381,47 +381,5 @@ using HiGHS
             "Mixed reverse", electricity, carbon, series_excel; tech_column="Onwind",
             cap=10.0, weather_year=2019, intermittent_costs...,
         ))
-    end
-
-    # Workbook profiles pass through the same horizon validator as explicit
-    # profiles, with complete workbook context in the error.
-    let
-        simulation = Sim(
-            Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, 24)),
-        )
-        set_silent(simulation.model)
-        data_dir = joinpath(dirname(@__DIR__), "data")
-        electricity = Node(
-            "ZONE1", EnergyCarrier("electricity ZONE1", simulation);
-            rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity],
-        )
-        carbon = Node(
-            "CO2", CO2Carrier("CO2", simulation); rule=:curtailed, tags=[:co2],
-        )
-        short_series_excel = Snapshot(simulation, Dict(:posy => Posy2Options(
-            data_dir=data_dir,
-            techdata_file="unused.xlsx",
-            timeseries_file="time_series_test.xlsx",
-            tech_mode=:arguments,
-            timeseries_mode=:excel,
-        )))
-
-        err = try
-            makeintermittentsource(
-                "Wrong workbook horizon", electricity, carbon,
-                short_series_excel; tech_column="Onwind",
-                cap=10.0, weather_year=2019, intermittent_costs...,
-            )
-            nothing
-        catch caught
-            caught
-        end
-        @test err isa ArgumentError
-        message = err isa Exception ? sprint(showerror, err) : ""
-        for fragment in (
-            "time_series_test.xlsx", "profiles_2019", "Onwind_ZONE1", "24", "8760",
-        )
-            @test occursin(fragment, message)
-        end
     end
 end

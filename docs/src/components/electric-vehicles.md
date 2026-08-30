@@ -105,8 +105,8 @@ tags `electricity`, `demand`, and `ev`. Vehicle-to-grid mode also receives the
 function tag `generation`, so its discharge appears in production reporting.
 
 !!! note
-    EV profiles currently use a 365-day, 8,760-hour convention. Use a full
-    non-leap-year hourly mesh for these modes.
+    EV profiles use a 365-day, 8,760-hour convention, which the full-year
+    horizon required of every builder guarantees.
 
 See the [Electric Vehicles example](../examples/electric-vehicles.md) for smart
 charging and vehicle-to-grid models using this builder.

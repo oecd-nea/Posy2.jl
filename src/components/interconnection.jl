@@ -85,6 +85,7 @@ function makepricelink(name::String, elec::Node, s::Snapshot;
     transaction_cost::Real=0.,
     spot_price=nothing, import_availability=nothing, export_availability=nothing,
 )
+    checkhorizon(s)
     component_name = string(name, "_", elec.name)
     # inheritance is resolved first, so that an inherited zero disables its
     # direction exactly like a numeric zero
@@ -259,6 +260,7 @@ function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
     lifetime::Union{Nothing,Real}=nothing,
     construction_profile=nothing,
 )
+    checkhorizon(s)
     @argcheck 0 <= loss_factor < 1 "loss_factor must be in [0, 1)"
     component_name = string(name, "_", a.name, "_", b.name)
     a.name == b.name && throw(ArgumentError("a node interconnection must connect two distinct nodes"))

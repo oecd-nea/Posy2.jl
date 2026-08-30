@@ -19,10 +19,11 @@ Arguments:
 function makeflathydrogenpurchase(name::String, n::Node, annual_supply::Real, s::Snapshot;
     tech::String=name,
 )
+    checkhorizon(s)
     annual_supply >= 0 || throw(ArgumentError("annual_supply must be >= 0"))
     m = ProfileSource(n.carrier, 1.)
     vb = []
-    push!(vb, FixedCapacity("output", energy, annual_supply/8760))
+    push!(vb, FixedCapacity("output", energy, annual_supply / HOURS_PER_YEAR))
     c = Component(name * " " * n.name, m, vb)
     tag!(c, :tech, tech)
     tag!(c, :zone, n.name)

@@ -110,15 +110,49 @@ to the result.
 
 ## Time Horizon
 
-Nosy supports custom and heterogeneous time meshes, but current Posy2 builders
-and standard post-processing contain several explicit 8760-hour assumptions.
-Use the default yearly hourly `TimeMesh()` for complete Posy2 studies unless
-every selected builder and report has been checked for a custom horizon.
+Posy2 builders require a full non-leap year of 8760 hours and reject any other
+horizon, so the model cannot be made smaller by shortening the year.
 
-Reducing the horizon solely for a quick structural prototype can still be
-useful when the chosen builders are mesh-compatible, but such a run is not an
-approximation of annual costs, storage cycles, unit commitment, or seasonal
-profiles.
+Only the number of hours is constrained, so a mesh that aggregates steps, such
+as `TimeMesh(fill(2 // 1, 4380))`, is accepted. It is not a free approximation.
+Nosy attaches a value to each step boundary instead of averaging it over the
+step, so an hourly series given to a coarser mesh is sampled at those
+boundaries and whatever happens between them is dropped. On a two-hour mesh the
+annual total of a series becomes twice the sum of its even-numbered hours:
+every second hour is counted twice and the hours between are dropped. The error
+is therefore set by the shape, not by the mesh. A flat series survives
+unchanged, which makes `annual_flat_demand` and the flat hydrogen quantities
+exact on any mesh; a one-hour peak on an odd hour disappears entirely, and the
+same peak an hour later doubles.
+
+For a demand profile, a capacity factor, an availability or a spot price this
+is ordinary resolution loss: the mesh represents the supplied data less finely,
+which is what a coarser mesh does. An annual total a builder is asked to reach
+is different in kind, because the shape is normalized to hit that total and the
+total should hold whatever the mesh. The hydro `intake` is normalized against
+the integral over the mesh and is delivered exactly at any resolution.
+
+[`makeEV`](@ref) is the exception still standing. It is the builder that writes
+its own shape, a square wave switching at the end of the `offhours` window, and
+it normalizes that shape against the hour grid. `offhours1=0:6` switches at hour
+7, which a two-hour mesh never samples, and loses 4.3% of `annual_consumption`;
+`offhours1=0:7` switches at hour 8 and is exact. Six-hour steps lose 21.7%.
+
+Aggregate steps only for profiles the coarser grid resolves, and compare the
+annual totals given to the builders against the solved result. The controls that
+count time are unaffected: Nosy accumulates the step weights, so `min_uptime`,
+`min_downtime`, `startup_duration`, `shutdown_duration` and `refuel_duration`
+cover the hours they name on any mesh, rounded up to the step that reaches them,
+and the ramp allowance is scaled by the step weight so the rate stays the same
+per hour.
+
+Nuclear refuelling is the one schedule Posy2 constrains itself rather than
+handing to Nosy. [`makenuclear`](@ref) walks the steps of the mesh and places
+the allowed outage starts on the hour grid `refuel_slot_spacing` defines, so
+`refuel_slot_spacing=730` opens about twelve starts whatever the step length. A
+mesh coarser than the spacing cannot resolve every start and opens fewer, which
+is resolution loss rather than a changed requirement: the number of outages
+`refuel_fraction_per_year` asks for is enforced on any mesh.
 
 ## Reporting
 

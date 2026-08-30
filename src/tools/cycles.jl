@@ -54,8 +54,8 @@ function _net_ic_flow(s::Snapshot, from::String, to::String, node_map::Dict{Stri
     for (cname, (ic_from, ic_to)) in node_map
         (ic_from, ic_to) == (from, to) || (ic_from, ic_to) == (to, from) || continue
         c = Nosy.getcomponent(s, cname)
-        inputs = balance(c, :input, energy, collapse=false, aggregate=false)
-        outputs = balance(c, :output, energy, collapse=false, aggregate=false)
+        inputs = Nosy._balance(c, :input, energy; collapse=false, aggregate=false)
+        outputs = Nosy._balance(c, :output, energy; collapse=false, aggregate=false)
         fwd = (inputs["input"] + outputs["output"]) / 2
         rev = (inputs["input2"] + outputs["output2"]) / 2
         # determine IC orientation to compute net flow correctly

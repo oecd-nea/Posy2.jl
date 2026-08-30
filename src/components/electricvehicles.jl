@@ -89,6 +89,7 @@ function makeEV(name::String, elec::Node, s::Snapshot; tech::String=name,
     charging_eff::Union{Nothing,Real}=nothing, self_discharge::Union{Nothing,Real}=nothing,
     max_charging_power_per_ev::Union{Nothing,Real}=nothing, max_dispatch_power_per_ev::Union{Nothing,Real}=nothing,
     battery_capacity_per_ev::Union{Nothing,Real}=nothing,)
+    checkhorizon(s)
     mode_count = Int(fixed_profile) + Int(smart_charging) + Int(vehicle_to_grid)
     @argcheck mode_count == 1 "Exactly one of fixed_profile, smart_charging, vehicle_to_grid must be true."
 

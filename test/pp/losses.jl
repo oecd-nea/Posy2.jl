@@ -36,9 +36,8 @@ using DataFrames
         return snap, elec1, elec2, co2
     end
 
-    function argument_snapshot(; hours=nothing)
-        mesh = isnothing(hours) ? TimeMesh() : TimeMesh(fill(1 // 1, hours))
-        sim = Sim(Model(HiGHS.Optimizer); mesh=mesh)
+    function argument_snapshot()
+        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
         set_silent(sim.model)
         snap = Snapshot(sim, Dict(:posy => Posy2Options(
             tech_mode=:arguments,
@@ -200,14 +199,14 @@ using DataFrames
     let
         sd = 0.1
         eff = 0.8
-        mesh = TimeMesh([2 // 1, 2 // 1]) # 4 hours over 2 steps
+        mesh = TimeMesh(fill(2 // 1, 4380)) # 8760 hours over 4380 two-hour steps
         _sim = Sim(Model(HiGHS.Optimizer); mesh=mesh)
         set_silent(_sim.model)
         snap = Snapshot(_sim, Dict(:posy => Posy2Options(tech_mode=:arguments, timeseries_mode=:arguments)))
         elec = Node("grid", EnergyCarrier("electricity grid", _sim); rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         co2 = Node("CO2", CO2Carrier("CO2", _sim); rule=:curtailed, tags=[:co2])
 
-        # hand-built: the EV builders assume a 24-hour-shaped horizon
+        # hand-built: a bare self-discharging storage, without the EV mobility flows
         c = Component(
             "Store grid",
             LazyStorage(elec.carrier, eff=Dict("input" => eff, "output" => 1.0), self_discharge=sd, simplified=true),
@@ -223,7 +222,7 @@ using DataFrames
         tag!(c, :zone, elec.name)
         tag!(c, :function, "storage")
         connect!(snap, c, elec)
-        makedemand("Load", "grid", elec, snap; profile=[10.0, 10.0, 60.0, 60.0])
+        makedemand("Load", "grid", elec, snap; profile=repeat([10.0, 10.0, 60.0, 60.0], 2190))
         makedispatchable("Supply", elec, co2, snap; tech_column="unused", cap=55.0, fuel_cost=1.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
@@ -237,7 +236,7 @@ using DataFrames
         # the hourly shape is on the hour grid and still sums to the same total
         hdf = Posy2.losses(s; collapse=false)
         hourly = only(hdf.losses[hdf.category .== :selfdischarge])
-        @test length(hourly) == Nosy.nhours(sim(s)) == 4
+        @test length(hourly) == Nosy.nhours(sim(s)) == 8760
         @test isapprox(sum(hourly), sdloss; rtol=1e-12)
         # component energy identity: what is charged and never discharged is lost
         input = Nosy.balance(s, "Store grid", :input, energy, collapse=true, aggregate=false)["input"]

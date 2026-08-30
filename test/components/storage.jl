@@ -5,8 +5,8 @@ using JuMP
 using HiGHS
 
 @testset "Storage components" begin
-    function makesnapshot(; hours=8760)
-        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, hours)))
+    function makesnapshot()
+        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
         set_silent(sim.model)
         opts = Dict(
             :posy => Posy2Options(
@@ -28,8 +28,8 @@ using HiGHS
     # Reservoir intake uses the same normalized-profile, scalar-intake, and
     # dimensionless-multiplier contract as run-of-river hydro.
     let
-        s, elec, _ = makesnapshot(hours=24)
-        profile = collect(1.0:24.0)
+        s, elec, _ = makesnapshot()
+        profile = repeat(collect(1.0:24.0), 365)
         total_intake = 1_000.0
         makehydroreservoir(
             "Normalized intake reservoir", "ZONE1", elec, s; tech_column="Battery",
@@ -52,12 +52,12 @@ using HiGHS
 
     # A natural inflow cannot run backwards, as for run-of-river hydro.
     let
-        s, elec, _ = makesnapshot(hours=24)
+        s, elec, _ = makesnapshot()
         @test_throws ArgumentError makehydroreservoir(
             "Negative intake reservoir", "ZONE1", elec, s; tech_column="Battery",
             discharge_cap=500.0, charge_cap=0.0, intake=1_000.0,
             energy_cap=2_000.0,
-            intake_profile=vcat(-1.0, fill(2.0, 23)),
+            intake_profile=vcat(-1.0, fill(2.0, 8759)),
             grid_losses=0.0, roundtrip_eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
@@ -178,16 +178,16 @@ using HiGHS
     # overflowing reservoir is infeasible unless spillage is enabled. With
     # `spillage=true` the turbine saturates and the excess intake is spilled.
     let
-        hours = 24
+        hours = 8760
         turbine = 10.0
-        total_intake = 1_000.0 # far above turbine * hours = 240
+        total_intake = 200_000.0 # far above turbine * hours = 87_600
         common = (
             intake_profile=1.0, grid_losses=0.0, roundtrip_eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
         )
 
-        s, elec, _ = makesnapshot(hours=hours)
+        s, elec, _ = makesnapshot()
         makehydroreservoir(
             "Overflowing reservoir", "ZONE1", elec, s; tech_column="Battery",
             discharge_cap=turbine, charge_cap=0.0, intake=total_intake, common...,
@@ -195,7 +195,7 @@ using HiGHS
         Nosy.optimize!(s, cost(s))
         @test !is_solved_and_feasible(s.sim.model)
 
-        s, elec, _ = makesnapshot(hours=hours)
+        s, elec, _ = makesnapshot()
         # Flat demand at turbine capacity: the reservoir is the only supply, so
         # its output is pinned to the turbine rating in every hour.
         makedemand("Other consumption", "ZONE1", elec, s; profile=turbine)
@@ -220,7 +220,7 @@ using HiGHS
 
     # Spillage is opt-in: no spill port is created by default.
     let
-        s, elec, _ = makesnapshot(hours=24)
+        s, elec, _ = makesnapshot()
         c = makehydroreservoir(
             "Default reservoir", "ZONE1", elec, s; tech_column="Battery",
             discharge_cap=100.0, charge_cap=0.0, intake=100.0,

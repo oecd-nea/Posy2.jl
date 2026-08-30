@@ -8,8 +8,8 @@ using HiGHS
 # number, a JuMP expression or a solved snapshot; a fixed zero keeps the
 # component and its port; mincap/maxcap assert against a fixed value.
 @testset "Capacity contract" begin
-    function contract_snapshot(; hours=2)
-        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, hours)))
+    function contract_snapshot()
+        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
         set_silent(sim.model)
         snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
             tech_mode=:arguments, timeseries_mode=:arguments,
@@ -137,38 +137,38 @@ using HiGHS
 
     # A commitment schedule can be replayed, but only against a fixed capacity.
     let
-        s, elec, _, co2 = contract_snapshot(hours=24)
+        s, elec, _, co2 = contract_snapshot()
         makedispatchable("CCGT", elec, co2, s; tech_column="CCGT",
             cap=100.0, uc=true, unit_size=50.0, min_power=0.5, om_var_cost=1.0)
         makedemand("Load", "Z1", elec, s; profile_multiplier=0.0, annual_flat_demand=8760.0 * 60.0)
         Nosy.optimize!(s, cost(s))
         ini = extract(s)
 
-        t, telec, _, tco2 = contract_snapshot(hours=24)
+        t, telec, _, tco2 = contract_snapshot()
         replayed = makedispatchable("CCGT", telec, tco2, t; tech_column="CCGT",
             cap=ini, uc=ini, unit_size=50.0, om_var_cost=1.0)
         @test !isempty(Nosy.getbehaviors(replayed, Nosy.FleetUnitCommitmentFromIniBehavior))
         @test fixedcap(replayed, "output") ≈ capacity(ini, "CCGT E1")
 
         # the same fleet with commitment re-optimized: a plain UC behavior
-        u, uelec, _, uco2 = contract_snapshot(hours=24)
+        u, uelec, _, uco2 = contract_snapshot()
         fresh = makedispatchable("CCGT", uelec, uco2, u; tech_column="CCGT",
             cap=ini, uc=true, unit_size=50.0, min_power=0.5, om_var_cost=1.0)
         @test isempty(Nosy.getbehaviors(fresh, Nosy.FleetUnitCommitmentFromIniBehavior))
         @test !isempty(Nosy.getbehaviors(fresh, Nosy.FleetUnitCommitmentBehavior))
 
         # a replayed schedule counts units of the source fleet
-        v, velec, _, vco2 = contract_snapshot(hours=24)
+        v, velec, _, vco2 = contract_snapshot()
         @test_throws "requires a fixed capacity" makedispatchable("CCGT", velec, vco2, v; tech_column="CCGT",
             cap=nothing, uc=ini, unit_size=50.0)
         # and the source component must carry one
-        w, welec, _, wco2 = contract_snapshot(hours=24)
+        w, welec, _, wco2 = contract_snapshot()
         noc = extracted_without_components()
         @test_throws "`uc` was given a snapshot with no component named \"CCGT E1\"" makedispatchable(
             "CCGT", welec, wco2, w; tech_column="CCGT", cap=10.0, uc=noc, unit_size=50.0)
         # a source component that exists but was solved without unit commitment
-        x, xelec, _, xco2 = contract_snapshot(hours=24)
-        y, yelec, _, yco2 = contract_snapshot(hours=24)
+        x, xelec, _, xco2 = contract_snapshot()
+        y, yelec, _, yco2 = contract_snapshot()
         makedispatchable("CCGT", yelec, yco2, y; tech_column="CCGT", cap=100.0, om_var_cost=1.0)
         makedemand("Load", "Z1", yelec, y; profile_multiplier=0.0, annual_flat_demand=8760.0)
         Nosy.optimize!(y, cost(y))
@@ -180,7 +180,7 @@ using HiGHS
     # Replaying a nuclear schedule never builds fresh refuelling constraints: the
     # source may have no refuelling selector to index into.
     let
-        s, elec, _, co2 = contract_snapshot(hours=24)
+        s, elec, _, co2 = contract_snapshot()
         makenuclear("EPR", elec, co2, s; tech_column="Nuclear",
             cap=100.0, uc=true, unit_size=50.0, min_power=0.5, om_var_cost=1.0)
         makedemand("Load", "Z1", elec, s; profile_multiplier=0.0, annual_flat_demand=8760.0 * 60.0)
@@ -191,7 +191,7 @@ using HiGHS
             Nosy.getcomponent(ini, "EPR E1"), Nosy.FleetUnitCommitmentBehavior,
         )).shutdownselector) == 1
 
-        t, telec, _, tco2 = contract_snapshot(hours=24)
+        t, telec, _, tco2 = contract_snapshot()
         replayed = @test_logs (:warn,) match_mode=:any makenuclear("EPR", telec, tco2, t; tech_column="Nuclear",
             cap=ini, uc=ini, unit_size=50.0, om_var_cost=1.0,
             refuel_fraction_per_year=1.0, refuel_duration=30.0, refuel_slot_spacing=24)

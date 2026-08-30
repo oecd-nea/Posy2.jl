@@ -26,10 +26,15 @@ snapshot = Snapshot(
 )
 ```
 
-The default `TimeMesh()` is a circular year with 8760 hourly steps. The current
-Posy2 data and post-processing conventions assume this yearly hourly horizon.
-Nosy supports more general meshes, but several Posy2 builders contain
-year-specific logic, so shorter or irregular meshes are not fully supported yet.
+The default `TimeMesh()` is a circular year with 8760 hourly steps. Every
+builder requires that horizon and rejects a snapshot that does not span 8760
+hours: annual quantities are divided by 8760, the fixed EV charging shape is
+365 days of 24 hours, and intake profiles are normalized over the hour grid.
+Only the number of hours is constrained, so a mesh of aggregated steps is
+accepted as long as its step weights sum to 8760: `TimeMesh(fill(2 // 1, 4380))`
+spans the year in two-hour steps. Such a mesh samples every hourly profile at
+its step boundaries and changes the annual totals of anything that is not flat;
+see [Time Horizon](../performance.md#Time-Horizon) before using one.
 
 ## Carriers And Nodes
 

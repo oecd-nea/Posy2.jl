@@ -5,8 +5,8 @@ using JuMP
 using HiGHS
 
 @testset "Generation components" begin
-    function makesnapshot(; hours=8760)
-        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, hours)))
+    function makesnapshot()
+        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
         set_silent(sim.model)
         opts = Dict(
             :posy => Posy2Options(
@@ -105,7 +105,7 @@ using HiGHS
 
     # The master switch skips refuelling parameters and builds ordinary UC.
     let
-        s, elec, co2 = makesnapshot(hours=24)
+        s, elec, co2 = makesnapshot()
         c = makenuclear(
             "Refuelling disabled", elec, co2, s; tech_column="CCGT",
             uc=true, cap=100.0, unit_size=100.0, refuel=false,
@@ -123,11 +123,11 @@ using HiGHS
 
     # Run of river can optimize output capacity within explicit bounds.
     let
-        s, elec, _ = makesnapshot(hours=24)
+        s, elec, _ = makesnapshot()
         c = makehydroror(
             "Hydro ROR variable", "ZONE1", elec, s;
             cap=nothing, mincap=10.0, maxcap=100.0,
-            intake=1_000.0, intake_profile=collect(1.0:24.0),
+            intake=1_000.0, intake_profile=repeat(collect(1.0:24.0), 365),
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
         )
@@ -139,7 +139,7 @@ using HiGHS
         linked = makehydroror(
             "Hydro ROR linked", "ZONE1", elec, s;
             cap=shared_capacity, mincap=5.0, maxcap=90.0,
-            intake=1_000.0, intake_profile=collect(24.0:-1.0:1.0),
+            intake=1_000.0, intake_profile=repeat(collect(24.0:-1.0:1.0), 365),
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
         )
@@ -150,7 +150,7 @@ using HiGHS
         affine = makehydroror(
             "Hydro ROR affine", "ZONE1", elec, s;
             cap=capacity_expression, mincap=5.0, maxcap=95.0,
-            intake=1_000.0, intake_profile=collect(1.0:24.0),
+            intake=1_000.0, intake_profile=repeat(collect(1.0:24.0), 365),
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
         )
@@ -161,8 +161,8 @@ using HiGHS
     # Run-of-river profiles describe only the intake shape. Scaling a profile
     # must not change the distributed total intake.
     let
-        s, elec, _ = makesnapshot(hours=24)
-        profile = collect(1.0:24.0)
+        s, elec, _ = makesnapshot()
+        profile = repeat(collect(1.0:24.0), 365)
         total_intake = 1_000.0
         c = makehydroror(
             "Hydro ROR normalized", "ZONE1", elec, s;
@@ -180,7 +180,7 @@ using HiGHS
         @test normalized ≈ profile / sum(profile) * total_intake
         @test sum(normalized) ≈ total_intake
 
-        s2, elec2, _ = makesnapshot(hours=24)
+        s2, elec2, _ = makesnapshot()
         c2 = makehydroror(
             "Hydro ROR rescaled", "ZONE1", elec2, s2;
             cap=500.0, intake=total_intake,
@@ -208,23 +208,23 @@ using HiGHS
 
     # An intake shape is a physical flow and cannot run backwards.
     let
-        s, elec, _ = makesnapshot(hours=24)
+        s, elec, _ = makesnapshot()
         @test_throws ArgumentError makehydroror(
             "Hydro ROR negative profile", "ZONE1", elec, s;
-            cap=100.0, intake=100.0, intake_profile=vcat(-1.0, fill(2.0, 23)),
+            cap=100.0, intake=100.0, intake_profile=vcat(-1.0, fill(2.0, 8759)),
         )
     end
 
     # An intermittent profile is a capacity factor, so it stays within [0, 1].
     let
-        s, elec, co2 = makesnapshot(hours=24)
+        s, elec, co2 = makesnapshot()
         @test_throws ArgumentError makeintermittentsource(
             "Onwind above one", elec, co2, s; tech_column="Onwind",
-            cap=100.0, profile=vcat(1.2, fill(0.3, 23)),
+            cap=100.0, profile=vcat(1.2, fill(0.3, 8759)),
         )
         @test_throws ArgumentError makeintermittentsource(
             "Onwind negative", elec, co2, s; tech_column="Onwind",
-            cap=100.0, profile=vcat(-0.1, fill(0.3, 23)),
+            cap=100.0, profile=vcat(-0.1, fill(0.3, 8759)),
         )
         @test !isnothing(makeintermittentsource(
             "Onwind valid", elec, co2, s; tech_column="Onwind",
@@ -234,7 +234,7 @@ using HiGHS
 
     # Zero intake does not require a profile or weather year.
     let
-        s, elec, _ = makesnapshot(hours=24)
+        s, elec, _ = makesnapshot()
         @test !isnothing(makehydroror(
             "Hydro ROR zero intake", "ZONE1", elec, s;
             cap=100.0, intake=0.0,
@@ -317,7 +317,7 @@ using HiGHS
 
     # With integer UC and optimized capacity, bounds are aligned to whole units.
     let
-        s, elec, co2 = makesnapshot(hours=24)
+        s, elec, co2 = makesnapshot()
         c = makedispatchable(
             "CCGT integer_uc bounds", elec, co2, s; tech_column="CCGT",
             cap=nothing, mincap=5.0, maxcap=11.0, unit_size=4.0,

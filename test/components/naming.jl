@@ -5,7 +5,7 @@ using JuMP
 using HiGHS
 
 @testset "Component names and technology labels" begin
-    simulation = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, 24)))
+    simulation = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
     set_silent(simulation.model)
     snapshot = Snapshot(simulation, Dict(:posy => Posy2Options()))
     electricity = Node(

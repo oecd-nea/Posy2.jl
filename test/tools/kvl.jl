@@ -5,8 +5,8 @@ using JuMP
 using HiGHS
 
 @testset "KVL" begin
-    function makesnapshot()
-        sim = Sim(Model(HiGHS.Optimizer), mesh=TimeMesh(fill(1//1, 24)))
+    function makesnapshot(; mesh=TimeMesh())
+        sim = Sim(Model(HiGHS.Optimizer), mesh=mesh)
         set_silent(sim.model)
         snap = Snapshot(sim, Dict(
             :posy => Posy2Options(
@@ -20,6 +20,24 @@ using HiGHS
         return snap, sim
     end
 
+    # KVL stays on the simulation mesh when hourly inputs are aggregated.
+    let
+        snap, sim = makesnapshot(mesh=TimeMesh(fill(2 // 1, 4380)))
+        n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), tags=[:electricity])
+        n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), tags=[:electricity])
+        n3 = Node("ZONE3", EnergyCarrier("electricity ZONE3", sim), tags=[:electricity])
+
+        maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, susceptance=-1.5)
+        maketransmissionlink("IC", n2, n3, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, susceptance=-0.7)
+        maketransmissionlink("IC", n3, n1, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, susceptance=-2.0)
+
+        _, _, node_map = Posy2.getic_susceptancematrix(snap)
+        flow = Posy2._net_ic_flow(snap, "ZONE1", "ZONE2", node_map)
+        @test length(flow.data) == 4380
+        Posy2.applydcopf!(snap)
+        @test snap.options[:kvl_applied]
+    end
+
     # Single AC link with no cycle: B-matrix has one edge, cycle basis is empty, and hourly source output matches demand.
     let
         snap, sim = makesnapshot()
@@ -28,7 +46,7 @@ using HiGHS
 
         src = Component("src", DispatchableSource(n1.carrier), [VariableCost(:fuel, "output", energy, 1.0)])
         connect!(snap, src, n1)
-        dmd = Component("dmd", Demand(n2.carrier, fill(1.0, 24)), [])
+        dmd = Component("dmd", Demand(n2.carrier, fill(1.0, 8760)), [])
         connect!(snap, dmd, n2)
 
         maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=false, susceptance=-1.0)
@@ -55,7 +73,7 @@ using HiGHS
 
         src = Component("src", DispatchableSource(n1.carrier), [VariableCost(:fuel, "output", energy, 1.0)])
         connect!(snap, src, n1)
-        dmd = Component("dmd", Demand(n2.carrier, fill(1.0, 24)), [])
+        dmd = Component("dmd", Demand(n2.carrier, fill(1.0, 8760)), [])
         connect!(snap, dmd, n2)
 
         maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, dc=true)
@@ -87,8 +105,8 @@ using HiGHS
             FixedCapacity("output", energy, 48.0),
         ])
         connect!(snap, src, n1)
-        d2 = Component("dmd2", Demand(n2.carrier, fill(1.0, 24)), [])
-        d3 = Component("dmd3", Demand(n3.carrier, fill(1.0, 24)), [])
+        d2 = Component("dmd2", Demand(n2.carrier, fill(1.0, 8760)), [])
+        d3 = Component("dmd3", Demand(n3.carrier, fill(1.0, 8760)), [])
         connect!(snap, d2, n2)
         connect!(snap, d3, n3)
 
@@ -132,8 +150,8 @@ using HiGHS
             FixedCapacity("output", energy, 100.0),
         ])
         connect!(snap, src, n1)
-        connect!(snap, Component("dmd2", Demand(n2.carrier, fill(1.0, 24)), []), n2)
-        connect!(snap, Component("dmd3", Demand(n3.carrier, fill(1.0, 24)), []), n3)
+        connect!(snap, Component("dmd2", Demand(n2.carrier, fill(1.0, 8760)), []), n2)
+        connect!(snap, Component("dmd3", Demand(n3.carrier, fill(1.0, 8760)), []), n3)
 
         b12, b23, b31 = -1.5, -0.7, -2.0
         loss12, loss23, loss31 = 0.10, 0.20, 0.30
@@ -172,8 +190,8 @@ using HiGHS
             FixedCapacity("output", energy, 100.0),
         ])
         connect!(snap, src, n1)
-        d3 = Component("dmd3", Demand(n3.carrier, fill(1.0, 24)), [])
-        d4 = Component("dmd4", Demand(n4.carrier, fill(1.0, 24)), [])
+        d3 = Component("dmd3", Demand(n3.carrier, fill(1.0, 8760)), [])
+        d4 = Component("dmd4", Demand(n4.carrier, fill(1.0, 8760)), [])
         connect!(snap, d3, n3)
         connect!(snap, d4, n4)
 

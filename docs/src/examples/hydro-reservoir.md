@@ -67,10 +67,10 @@ change how much water is used. It changes when that water is released.
 
 ```jldoctest hydro_reservoir
 julia> balance(result, "Reservoir hydro country1", :input, energy; collapse=true, aggregate=false)["natural"]
-350399.9999999993
+350399.9999999997
 
 julia> balance(result, "Reservoir hydro country1", :output, energy; collapse=true, aggregate=true)
-350399.9999999997
+350400.00000000035
 ```
 
 In the figure, intake and turbine output follow different paths. When intake is above

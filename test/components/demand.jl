@@ -197,7 +197,7 @@ using HiGHS
     # After optimization, ten vehicles arriving at hour 2 raise fleet `level` (`level[3] > level[2]`).
     # The same mobility with a lower hour 2 `arrival_soc` leaves less stored energy at hour 3.
     let
-        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, 24)))
+        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
         set_silent(sim.model)
         s = Snapshot(sim, Dict(:posy => Posy2Options(tech_mode=:arguments, timeseries_mode=:arguments)))
         elec = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
@@ -207,10 +207,10 @@ using HiGHS
             number_ev=100.0,
             initial_connected_share=0.75,
             fixed_profile=false, smart_charging=true,
-            departures=vcat(zeros(2), 10.0, zeros(18), 10.0, zeros(2)),
-            arrivals=vcat(zeros(1), 10.0, zeros(18), 10.0, zeros(3)),
+            departures=vcat(zeros(2), 10.0, zeros(18), 10.0, zeros(8738)),
+            arrivals=vcat(zeros(1), 10.0, zeros(18), 10.0, zeros(8739)),
             departure_soc=0.5,
-            arrival_soc=vcat(zeros(1), 1.0, zeros(22)),
+            arrival_soc=vcat(zeros(1), 1.0, zeros(8758)),
             charging_eff=1.0, self_discharge=0.0,
             max_charging_power_per_ev=0.01,
             battery_capacity_per_ev=0.06,
@@ -225,7 +225,7 @@ using HiGHS
         ev = Nosy.getcomponent(result, "EV ZONE1")
         high_arrival = balance(ev, :level, energy; collapse=false, aggregate=true)
 
-        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, 24)))
+        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
         set_silent(sim.model)
         s = Snapshot(sim, Dict(:posy => Posy2Options(tech_mode=:arguments, timeseries_mode=:arguments)))
         elec = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
@@ -235,10 +235,10 @@ using HiGHS
             number_ev=100.0,
             initial_connected_share=0.75,
             fixed_profile=false, smart_charging=true,
-            departures=vcat(zeros(2), 10.0, zeros(18), 10.0, zeros(2)),
-            arrivals=vcat(zeros(1), 10.0, zeros(18), 10.0, zeros(3)),
+            departures=vcat(zeros(2), 10.0, zeros(18), 10.0, zeros(8738)),
+            arrivals=vcat(zeros(1), 10.0, zeros(18), 10.0, zeros(8739)),
             departure_soc=0.5,
-            arrival_soc=vcat(zeros(1), 0.5, zeros(22)),
+            arrival_soc=vcat(zeros(1), 0.5, zeros(8758)),
             charging_eff=1.0, self_discharge=0.0,
             max_charging_power_per_ev=0.01,
             battery_capacity_per_ev=0.06,

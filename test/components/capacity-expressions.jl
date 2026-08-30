@@ -5,8 +5,8 @@ using JuMP
 using HiGHS
 
 @testset "Expression-backed component capacities" begin
-    function expression_snapshot(; hours=2)
-        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(1 // 1, hours)))
+    function expression_snapshot()
+        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
         set_silent(sim.model)
         snapshot = Snapshot(
             sim,

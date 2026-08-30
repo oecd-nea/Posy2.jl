@@ -100,6 +100,7 @@ function makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
     min_downtime::Union{Nothing,Real}=nothing,
     startup_duration::Union{Nothing,Real}=nothing, shutdown_duration::Union{Nothing,Real}=nothing,
 )
+    checkhorizon(s)
     _checkucsource(uc, cap)
     excel = tech_mode(s) === :excel
     if excel
@@ -285,6 +286,31 @@ function makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
 end
 
 """
+    _hourgridsteps(m, spacing)
+
+Return the set of steps of mesh `m` carrying the hour values `0`, `spacing`,
+`2 * spacing`, ... of the year. Two hours of the grid share a step on a mesh
+coarser than `spacing`, so the set is smaller than the grid there.
+"""
+function _hourgridsteps(m, spacing::Int)
+    @argcheck spacing > 0 "spacing must be > 0."
+    return Set(Nosy.step(m, h) for h in 0:spacing:(HOURS_PER_YEAR - 1))
+end
+
+"""
+    _fixzero!(e)
+
+Fix the variable behind the single-term affine expression `e` to zero. A masked
+step holds a zero expression instead and is left alone.
+"""
+function _fixzero!(e)
+    if (e isa GenericAffExpr) && !iszero(e)
+        fix(first(e.terms)[1], 0., force=true)
+    end
+    return nothing
+end
+
+"""
     makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
         cap=nothing, mincap=nothing, maxcap=nothing, integer_cap=false, warmstart=nothing,
@@ -339,10 +365,11 @@ Arguments:
     enables refuelling constraints when `refuel_fraction_per_year > 0`. If
     `nothing`, use the workbook value in `:excel` mode and zero in `:arguments`
     mode.
-  * `refuel_slot_spacing`: Spacing, in model time steps, of the grid of steps at
-    which a refuelling outage may start: `8760` leaves a single allowed start,
-    `730` leaves about twelve. Must be positive. Required when refuelling is
-    enabled, and not read from the workbook.
+  * `refuel_slot_spacing`: Spacing, in hours, of the grid at which a refuelling
+    outage may start: `8760` leaves a single allowed start, `730` leaves about
+    twelve. Must be positive. Required when refuelling is enabled, and not read
+    from the workbook. The grid is mapped onto the time mesh, so a mesh coarser
+    than the spacing opens fewer starts than the grid holds.
   * `refuel_fraction_per_year`: Minimum refuelling events per unit/year. If
     `nothing`, use the workbook value in `:excel` mode and zero in `:arguments`
     mode.
@@ -407,6 +434,7 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
     min_uptime::Union{Nothing,Real}=nothing, min_downtime::Union{Nothing,Real}=nothing,
     startup_duration::Union{Nothing,Real}=nothing, shutdown_duration::Union{Nothing,Real}=nothing,
 )
+    checkhorizon(s)
     _checkucsource(uc, cap)
     m = DispatchableSource(elec.carrier)
     vb = []
@@ -617,36 +645,28 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
     tag!(c, :zone, elec.name)
     if _refuel
         _ucb = first(Nosy.getbehaviors(c, Nosy.AbstractFleetUnitCommitmentBehavior))
-        # reduce capabilities of short shutdown
-        for h in 1:8760
-            if !iszero((h-1)%(12))
-                # reduce possibilities for startup
-                e = _ucb.startup[h]
-                if (e isa GenericAffExpr) && !iszero(e)
-                    v = first(e.terms)[1]
-                    fix(v, 0., force=true)
-                end
+        _mesh = Nosy.mesh(c)
 
+        # reduce capabilities of short shutdown: startups and ordinary shutdowns
+        # are allowed every 12 hours, which keeps the commitment schedule small
+        _switch_slots = _hourgridsteps(_mesh, 12)
+        for i in eachindex(_ucb.startup)
+            if !(i in _switch_slots)
+                # reduce possibilities for startup
+                _fixzero!(_ucb.startup[i])
                 # reduce possibilities for normal shutdown
-                e = _ucb.shutdownselector[1][h]
-                if (e isa GenericAffExpr) && !iszero(e)
-                    v = first(e.terms)[1]
-                    fix(v, 0., force=true)
-                end
+                _fixzero!(_ucb.shutdownselector[1][i])
             end
         end
 
         # refuelling
         sum_refuel = AffExpr(0.)
-        for h in 1:8760
-            if !iszero((h-1)%_refuel_spacing)
-                e = _ucb.shutdownselector[2][h]
-                if (e isa GenericAffExpr) && !iszero(e)
-                    v = first(e.terms)[1]
-                    fix(v, 0., force=true)
-                end
+        _refuel_slots = _hourgridsteps(_mesh, _refuel_spacing)
+        for i in eachindex(_ucb.shutdownselector[2])
+            if i in _refuel_slots
+                add_to_expression!(sum_refuel, _ucb.shutdownselector[2][i])
             else
-                add_to_expression!(sum_refuel, _ucb.shutdownselector[2][h])
+                _fixzero!(_ucb.shutdownselector[2][i])
             end
         end
         @constraint(s.sim.model, sum_refuel >= _refuel_fraction * nbunits(c))
@@ -734,6 +754,7 @@ function makeintermittentsource(name::String, elec::Node, co2::Node, s::Snapshot
     connection_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing,
     fuel_cost::Union{Nothing,Real}=nothing, co2_emission::Union{Nothing,Real}=nothing,
 )
+    checkhorizon(s)
     profile_value = cap isa Real && iszero(cap) && isnothing(profile) ? 0.0 : profile
     if isnothing(profile_value) && timeseries_mode(s) === :excel && isnothing(weather_year)
         throw(ArgumentError(
@@ -866,7 +887,7 @@ Arguments:
     to one before the total intake is applied. If `nothing`, read `zone` from
     the selected workbook sheet.
 
-  * `intake`: Total intake in MWh over the modeled profile (normally one year).
+  * `intake`: Total yearly intake in MWh, spread over the normalized profile.
     `0` disables intake and skips the zone, profile, and weather-year lookup.
 
   * `overnight_cost`: Overnight CAPEX in currency/kW of output capacity.
@@ -896,6 +917,7 @@ function makehydroror(name::String, zone::String, elec::Node, s::Snapshot;
     om_var_cost::Union{Nothing,Real}=nothing, decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing,
     construction_profile=nothing, decommissioning_profile=nothing,
 )
+    checkhorizon(s)
     @argcheck isfinite(intake) && intake >= 0 "makehydroror `intake` must be finite and non-negative."
     intake_series = if iszero(intake)
         zeros(Nosy.nhours(sim(s)))
@@ -910,8 +932,10 @@ function makehydroror(name::String, zone::String, elec::Node, s::Snapshot;
             s, intake_profile, zone, profile_sheet;
             keyword="intake_profile", lower=0.0,
         )
-        profile_sum = sum(profile)
-        @argcheck profile_sum > 0 "run-of-river intake profile must have a positive sum."
+        # the model integrates over steps, so normalize against that integral:
+        # it equals the hourly sum on an hourly mesh and not on a coarser one
+        profile_sum = sum(Nosy.Stepwise(Nosy.Hourly(profile, sim(s).mesh)))
+        @argcheck profile_sum > 0 "run-of-river intake profile must have a positive sum on the time mesh."
         profile / profile_sum * intake
     end
     m = DispatchableSource(elec.carrier)

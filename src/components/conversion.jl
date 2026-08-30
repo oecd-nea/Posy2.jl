@@ -65,6 +65,7 @@ function makeelectrolyser(name::String, elec::Node, h2::Node, s::Snapshot;
     decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
     om_var_cost::Union{Nothing,Real}=nothing,
 )
+    checkhorizon(s)
     excel = tech_mode(s) === :excel
     if excel
         _eff = isnothing(efficiency) ? gettechparam(s, tech_column, "efficiency", "electrolysis") : efficiency

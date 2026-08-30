@@ -4,6 +4,28 @@ Shared component builder input and argument validation.
 
 using ArgCheck: @argcheck
 
+# Builders convert annual quantities with a fixed 8760-hour divisor, assemble the
+# fixed EV charging shape as 365 days of 24 hours, and normalize intake profiles
+# with an unweighted hourly sum. All three are exact only over a full non-leap
+# year, so every builder requires one.
+const HOURS_PER_YEAR = 8760
+
+"""
+    checkhorizon(s::Snapshot)
+
+Throw an `ArgumentError` unless the snapshot spans a full non-leap year of
+8760 hours. Steps may be aggregated: only the number of hours is constrained.
+"""
+function checkhorizon(s::Snapshot)
+    nh = Nosy.nhours(sim(s))
+    nh == HOURS_PER_YEAR || throw(ArgumentError(
+        "Posy2 components require a time mesh spanning a full non-leap year of " *
+        "$HOURS_PER_YEAR hours, got $nh. Build the simulation with the default " *
+        "`TimeMesh()`, or with any mesh whose step weights sum to $HOURS_PER_YEAR.",
+    ))
+    return nothing
+end
+
 struct ComponentInputData
     overnight_cost::Union{Nothing,Real}
     lifetime::Union{Nothing,Real}
