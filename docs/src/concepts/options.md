@@ -69,7 +69,7 @@ snapshot = Snapshot(s, Dict(:posy => options))
 
 # With electricity / co2 nodes already on the snapshot:
 makeintermittentsource(
-    "Solar", "Solar PV", electricity, co2, snapshot;
+    "Solar", electricity, co2, snapshot; tech_column="Solar PV",
     cap=100.0,
     profile=repeat(
         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0,

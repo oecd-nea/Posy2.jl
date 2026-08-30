@@ -35,14 +35,14 @@ makedemand("Demand", "country1", electricity, snapshot; coeff=0.068)
 
 # Fixed 200 MW PV
 makeintermittentsource(
-    "Solar", "PV", electricity, co2, snapshot;
+    "Solar", electricity, co2, snapshot; tech_column="PV",
     cap=200.0,
     weatheryear=2019,
 )
 
 # Fixed 50 MW CCGT backup for hours storage cannot cover
 makedispatchable(
-    "CCGT", "CCGT", electricity, co2, snapshot;
+    "CCGT", electricity, co2, snapshot; tech_column="CCGT",
     cap=50.0,
     overnight_cost=955.0,
     decommissioning=0.05,
@@ -57,10 +57,9 @@ makedispatchable(
 # Fixed pumped storage: 50 MW turbine, 75 MW pumping, 80% round-trip, no natural intake
 makehydroreservoir(
     "Pumped hydro",
-    "Hydro res",
     "country1",
     electricity,
-    snapshot;
+    snapshot; tech_column="Hydro res",
     cap_discharging=50.0,  # turbine capacity
     cap_charging=75.0,     # pumping capacity
     intake=0.0,            # no natural intake

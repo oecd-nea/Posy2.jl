@@ -262,7 +262,7 @@ const SPECS = [
         component="Intermittent Generation",
         inputs=[
             (name="profile", kind=:fixed, port=false, note=["sets output, not a port", "values in [0, 1]"],
-                endpoint=(label=["profile series", "profiles_<weatheryear>", "column: <techkey>_<node>"], kind=:series)),
+                endpoint=(label=["profile series", "profiles_<weatheryear>", "column: <tech_column>_<node>"], kind=:series)),
         ],
         outputs=[
             (name="output", kind=:fixed, note=["cap x profile each hour", "curtailed at the node"], endpoint=ELEC),

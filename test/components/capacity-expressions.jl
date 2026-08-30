@@ -59,15 +59,15 @@ using HiGHS
         affine = 2.0 * shared + 1.0
 
         dispatchable = makedispatchable(
-            "Linked dispatchable", "unused", elec1, carbon, s;
+            "Linked dispatchable", elec1, carbon, s; tech_column="unused",
             cap=shared, mincap=1.0, maxcap=100.0,
         )
         nuclear = makenuclear(
-            "Linked nuclear", "unused", elec1, carbon, s;
+            "Linked nuclear", elec1, carbon, s; tech_column="unused",
             cap=affine, mincap=1.0, maxcap=100.0,
         )
         intermittent = makeintermittentsource(
-            "Linked intermittent", "unused", elec1, carbon, s;
+            "Linked intermittent", elec1, carbon, s; tech_column="unused",
             cap=shared, mincap=1.0, maxcap=100.0, profile=1.0,
         )
         ror = makehydroror(
@@ -75,19 +75,19 @@ using HiGHS
             cap=affine, mincap=1.0, maxcap=100.0, intake=0.0,
         )
         electrolyser = makeelectrolyser(
-            "Linked electrolyser", "unused", elec1, hydrogen, s;
+            "Linked electrolyser", elec1, hydrogen, s; tech_column="unused",
             cap=shared, mincap=1.0, maxcap=100.0,
         )
         battery = makebatterystorage(
-            "Linked battery", "unused", elec1, s;
+            "Linked battery", elec1, s; tech_column="unused",
             cap=affine, mincap=1.0, maxcap=100.0, duration=4.0,
         )
         hydrogen_storage = makehydrogenstorage(
-            "Linked hydrogen storage", "unused", hydrogen, s;
+            "Linked hydrogen storage", hydrogen, s; tech_column="unused",
             cap=shared, mincap=1.0, maxcap=100.0,
         )
         reservoir = makehydroreservoir(
-            "Linked reservoir", "unused", "unused", elec1, s;
+            "Linked reservoir", "unused", elec1, s; tech_column="unused",
             cap_discharging=shared, cap_charging=affine, intake=0.0,
             cap_reservoir=shared,
         )
@@ -143,7 +143,7 @@ using HiGHS
     let
         s, elec1, elec2, _, _ = expression_snapshot()
         @test_throws ArgumentError makehydroreservoir(
-            "Negative infinite reservoir", "unused", "unused", elec1, s;
+            "Negative infinite reservoir", "unused", elec1, s; tech_column="unused",
             cap_discharging=1.0, cap_charging=0.0, intake=0.0, cap_reservoir=-Inf,
         )
         @test_throws ArgumentError maketransmissionlink(
@@ -157,11 +157,11 @@ using HiGHS
         shared = @variable(Nosy.uppermodel(sim(s)), lower_bound=0.0)
         affine = 2.0 * shared
         @test_throws ArgumentError makenuclear(
-            "Warm linked nuclear", "unused", elec1, carbon, s;
+            "Warm linked nuclear", elec1, carbon, s; tech_column="unused",
             cap=shared, warmstart=10.0,
         )
         @test_throws ArgumentError makenuclear(
-            "Integer affine nuclear", "unused", elec1, carbon, s;
+            "Integer affine nuclear", elec1, carbon, s; tech_column="unused",
             cap=affine, integercap=true,
         )
     end
@@ -174,13 +174,13 @@ using HiGHS
         variables_before = num_variables(sim(s).model)
 
         @test_throws JuMP.VariableNotOwned makedispatchable(
-            "Foreign linked dispatchable", "unused", elec1, carbon, s;
+            "Foreign linked dispatchable", elec1, carbon, s; tech_column="unused",
             cap=foreign,
         )
         @test num_variables(sim(s).model) == variables_before
 
         @test_throws JuMP.VariableNotOwned makedispatchable(
-            "Foreign affine dispatchable", "unused", elec1, carbon, s;
+            "Foreign affine dispatchable", elec1, carbon, s; tech_column="unused",
             cap=2.0 * foreign + 1.0,
         )
         @test num_variables(sim(s).model) == variables_before

@@ -41,21 +41,21 @@ makedemand("Demand", "country2", country2, snapshot)
 
 # Country 1: 1.5 GW low cost CCGT
 makedispatchable(
-    "CCGT", "CCGT", country1, co2, snapshot;
+    "CCGT", country1, co2, snapshot;
     cap=1500.0,
     fuel_cost=47.06,
 )
 
 # Country 2: 1.2 GW PV
 makeintermittentsource(
-    "Solar", "PV", country2, co2, snapshot;
+    "Solar", country2, co2, snapshot; tech_column="PV",
     cap=1200.0,
     weatheryear=2019,
 )
 
 # Country 2: 400 MW, 4 hour duration battery
 makebatterystorage(
-    "Battery", "Battery", country2, snapshot;
+    "Battery", country2, snapshot;
     cap=400.0,
     eff=0.85,
     duration=4.0,
@@ -63,7 +63,7 @@ makebatterystorage(
 
 # Country 2: 1 GW Gas
 makedispatchable(
-    "Gas", "Gas", country2, co2, snapshot;
+    "Gas", country2, co2, snapshot; tech_column="Gas",
     cap=1000.0,
     fuel_cost=90.0,
 )
@@ -163,21 +163,21 @@ makedemand("Demand", "country2", country2, snapshot)
 
 # Country 1: 1.5 GW low cost CCGT
 makedispatchable(
-    "CCGT", "CCGT", country1, co2, snapshot;
+    "CCGT", country1, co2, snapshot; tech_column="CCGT",
     cap=1500.0,
     fuel_cost=47.06,
 )
 
 # Country 2: 1.2 GW PV
 makeintermittentsource(
-    "Solar", "PV", country2, co2, snapshot;
+    "Solar", country2, co2, snapshot; tech_column="PV",
     cap=1200.0,
     weatheryear=2019,
 )
 
 # Country 2: 400 MW, 4 hour duration battery
 makebatterystorage(
-    "Battery", "Battery", country2, snapshot;
+    "Battery", country2, snapshot; tech_column="Battery",
     cap=400.0,
     eff=0.85,
     duration=4.0,
@@ -185,7 +185,7 @@ makebatterystorage(
 
 # Country 2: 1 GW Gas
 makedispatchable(
-    "Gas", "Gas", country2, co2, snapshot;
+    "Gas", country2, co2, snapshot; tech_column="Gas",
     cap=1000.0,
     fuel_cost=90.0,
 )

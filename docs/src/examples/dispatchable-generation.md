@@ -32,7 +32,7 @@ makedemand("Demand", "country1", electricity, snapshot)
 
 # Optimised PV capacity
 makeintermittentsource(
-    "Solar", "PV", electricity, co2, snapshot;
+    "Solar", electricity, co2, snapshot; tech_column="PV",
     maxcap=5_000.0,
     weatheryear=2019,
     overnight_cost=500.0,
@@ -42,7 +42,7 @@ makeintermittentsource(
 
 # Optimised gas capacity for the residual load
 makedispatchable(
-    "Gas", "CCGT", electricity, co2, snapshot;
+    "Gas", electricity, co2, snapshot; tech_column="CCGT",
     maxcap=2_000.0,
     overnight_cost=955.0,
     lifetime=30,

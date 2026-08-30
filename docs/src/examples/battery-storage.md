@@ -32,7 +32,7 @@ makedemand("Demand", "country1", electricity, snapshot; coeff=0.0, yearlyconstan
 
 # Fixed 100 MW PV
 makeintermittentsource(
-    "Solar", "PV", electricity, co2, snapshot;
+    "Solar", electricity, co2, snapshot; tech_column="PV",
     cap=100.0,
     weatheryear=2019,
     om_var_cost=15.0,
@@ -40,7 +40,7 @@ makeintermittentsource(
 
 # Fixed battery: 50 MW charge rating, 85% round-trip, 4 h energy duration
 makebatterystorage(
-    "Battery", "Battery", electricity, snapshot;
+    "Battery", electricity, snapshot; tech_column="Battery",
     cap=50.0,
     eff=0.85,
     duration=4.0,
@@ -48,7 +48,7 @@ makebatterystorage(
 
 # Fixed 50 MW OCGT backup for hours storage cannot cover
 makedispatchable(
-    "OCGT", "OCGT", electricity, co2, snapshot;
+    "OCGT", electricity, co2, snapshot; tech_column="OCGT",
     cap=50.0,
     fuel_cost=68.24,
 )

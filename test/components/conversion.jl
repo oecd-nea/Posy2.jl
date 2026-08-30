@@ -29,20 +29,20 @@ using HiGHS
     # Electrolyser should fail when gridlosses is outside [0, 1).
     let
         s, elec, _, h2 = makesnapshot()
-        @test_throws ArgumentError makeelectrolyser("EL", "PEM", elec, h2, s; gridlosses=1.0)
+        @test_throws ArgumentError makeelectrolyser("EL", elec, h2, s; tech_column="PEM", gridlosses=1.0)
     end
 
     # Electrolyser capacity inputs reject non-real numeric values at the API boundary.
     let
         s, elec, _, h2 = makesnapshot()
-        @test_throws TypeError makeelectrolyser("EL", "PEM", elec, h2, s; cap=1 + im)
+        @test_throws TypeError makeelectrolyser("EL", elec, h2, s; tech_column="PEM", cap=1 + im)
     end
 
     # A valid electrolyser input should create and register the component.
     let
         s, elec, _, h2 = makesnapshot()
         c = makeelectrolyser(
-            "EL", "PEM", elec, h2, s;
+            "EL", elec, h2, s; tech_column="PEM",
             cap=100.0, gridlosses=0.0, eff=0.8,
             overnight_cost=1200.0, om_fixed_cost=5.0,
             decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,

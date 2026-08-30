@@ -169,7 +169,7 @@ value already chosen there—for example to keep an optimised PV fleet while
 changing something else in a follow-on study:
 
 ```julia
-makeintermittentsource("PV", "PV", grid, co2, snapshot; cap=first_result)
+makeintermittentsource("PV", grid, co2, snapshot; tech_column="PV", cap=first_result)
 ```
 
 Posy2 looks up `name * " " * node_name` in that snapshot, so use the same
@@ -204,7 +204,7 @@ Most builders name a component by joining `name` and the principal node name
 with a space:
 
 ```julia
-makedispatchable("Gas", "CCGT", electricity, co2_node, snapshot)
+makedispatchable("Gas", electricity, co2_node, snapshot; tech_column="CCGT")
 # Component name: "Gas zone"
 ```
 

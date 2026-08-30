@@ -47,16 +47,16 @@ using DataFrames
             fixed_profile=true, smart_charging=false, vehicle_to_grid=false,
             offhours1=[0, 1], offhours2=[2, 3], minratio=0.2,
         )
-        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makeelectrolyser(
-            "EL", "PEM", elec1, h2, snap;
+            "EL", elec1, h2, snap; tech_column="PEM",
             cap=10.0, gridlosses=0.0, eff=0.8,
             overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
         makebatterystorage(
-            "Battery", "Battery", elec1, snap;
+            "Battery", elec1, snap; tech_column="Battery",
             cap=100.0,
             eff=0.9, duration=4.0,
             overnight_cost=1000.0, om_fixed_cost=10.0,
@@ -119,16 +119,16 @@ using DataFrames
         snap, elec1, elec2, co2 = makesnapshot()
         h2 = Node("H2", EnergyCarrier("hydrogen", sim(snap)), rule=:curtailed, tags=[:hydrogen])
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makeelectrolyser(
-            "EL", "PEM", elec1, h2, snap;
+            "EL", elec1, h2, snap; tech_column="PEM",
             cap=10.0, gridlosses=0.0, eff=0.8,
             overnight_cost=1200.0, om_fixed_cost=5.0, decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0, om_var_cost=1.0,
         )
         makebatterystorage(
-            "Battery", "Battery", elec1, snap;
+            "Battery", elec1, snap; tech_column="Battery",
             cap=100.0,
             eff=0.9, duration=4.0,
             overnight_cost=1000.0, om_fixed_cost=10.0,
@@ -164,8 +164,8 @@ using DataFrames
         elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", _sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity, :foreign])
         co2 = Node("CO2", CO2Carrier("CO2", _sim), rule=:curtailed, tags=[:co2])
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
@@ -195,7 +195,7 @@ using DataFrames
     let
         snap, elec1, _, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makepriceinterco("ZONE2", elec1, 0.0, 0.0, snap)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
@@ -219,8 +219,8 @@ using DataFrames
     let
         snap, elec1, _, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makehydroreservoir("Reservoir", "Battery", "ZONE1", elec1, snap;
+        makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makehydroreservoir("Reservoir", "ZONE1", elec1, snap; tech_column="Battery",
             cap_discharging=50.0, cap_charging=0.0, intake=1_000.0,
             intake_profile=1.0, gridlosses=0.0, eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0, decommissioning=0.0,

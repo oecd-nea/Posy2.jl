@@ -39,14 +39,14 @@ cf_pv = [
 makedemand("Demand", "country1", electricity, snapshot; profile=load_profile)
 
 makeintermittentsource(
-    "Solar", "PV", electricity, co2, snapshot;
+    "Solar", electricity, co2, snapshot; tech_column="PV",
     cap=10000.0,
     profile=cf_pv,
 )
 
 # Gas capacity is optimised, but maximum capacity is too low
 makedispatchable(
-    "Gas", "CCGT", electricity, co2, snapshot;
+    "Gas", electricity, co2, snapshot; tech_column="CCGT",
     maxcap=3500.0,
     fuel_cost=50.0,
 )
@@ -128,14 +128,14 @@ cf_pv = [
 makedemand("Demand", "country1", electricity, snapshot; profile=load_profile)
 
 makeintermittentsource(
-    "Solar", "PV", electricity, co2, snapshot;
+    "Solar", electricity, co2, snapshot; tech_column="PV",
     cap=10000.0,
     profile=cf_pv,
 )
 
 # Higher gas capacity upper bound
 makedispatchable(
-    "Gas", "CCGT", electricity, co2, snapshot;
+    "Gas", electricity, co2, snapshot; tech_column="CCGT",
     maxcap=3509.0,
     fuel_cost=50.0,
 )

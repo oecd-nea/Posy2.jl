@@ -45,12 +45,12 @@ readtechdata(filename="tech_data.xlsx"; data_dir=joinpath(pwd(), "data")) = read
 end
 
 """
-    gettechparam(xl, techkey::String, param::String, sheetname::String, digits::Int)
-    gettechparam(s::Snapshot, techkey::String, param::String, sheetname::String;
+    gettechparam(xl, tech_column::String, param::String, sheetname::String, digits::Int)
+    gettechparam(s::Snapshot, tech_column::String, param::String, sheetname::String;
         digits=6)
 
 Read one technology parameter from `sheetname`. Technology sheets use a
-`tech` column for parameter names and one column per technology; `techkey`
+`tech` column for parameter names and one column per technology; `tech_column`
 selects the technology column and `param` selects the row.
 
 The snapshot method resolves the workbook through [`Posy2Options`](@ref) when
@@ -60,22 +60,22 @@ yearly cost shares as a semicolon-separated string and are returned as a
 `Vector{Float64}`; other strings are returned unchanged. Missing sheets,
 columns, rows, or values raise `ArgumentError` with workbook context.
 """
-function gettechparam(xl, techkey::String, param::String, sheetname::String, digits::Int)
+function gettechparam(xl, tech_column::String, param::String, sheetname::String, digits::Int)
     df = gettechdatasheet(xl, sheetname)
     tw = "technology workbook, sheet '$(sheetname)'"
     if !("tech" in names(df))
         throw(ArgumentError("$(tw): expected a parameter name column 'tech' (each row names one parameter). Found columns: $(join(string.(names(df)), ", "))"))
     end
-    if !(techkey in names(df))
-        throw(ArgumentError("$(tw): no technology column '$(techkey)'. Columns: $(join(string.(names(df)), ", "))"))
+    if !(tech_column in names(df))
+        throw(ArgumentError("$(tw): no technology column '$(tech_column)'. Columns: $(join(string.(names(df)), ", "))"))
     end
-    sub = df[df[!, "tech"] .== param, [techkey]]
+    sub = df[df[!, "tech"] .== param, [tech_column]]
     if nrow(sub) == 0
-        throw(ArgumentError("$(tw): no row with tech=='$(param)' for technology column '$(techkey)'"))
+        throw(ArgumentError("$(tw): no row with tech=='$(param)' for technology column '$(tech_column)'"))
     end
-    val = first(sub[!, techkey])
+    val = first(sub[!, tech_column])
     if ismissing(val) || (val isa AbstractFloat && isnan(val)) ||(val isa AbstractString && isempty(strip(val)))
-        throw(ArgumentError("$(tw): empty or missing value for parameter row tech=='$(param)', technology column '$(techkey)'"))
+        throw(ArgumentError("$(tw): empty or missing value for parameter row tech=='$(param)', technology column '$(tech_column)'"))
     end
     if val isa Real
         return round(val, digits=digits)
@@ -83,20 +83,20 @@ function gettechparam(xl, techkey::String, param::String, sheetname::String, dig
         # Workbooks store yearly cost shares as "0.3;0.4;0.3"; the model works with vectors.
         shares = tryparse.(Float64, split(val, ';'))
         if any(isnothing, shares)
-            throw(ArgumentError("$(tw): parameter row tech=='$(param)', technology column '$(techkey)': expected yearly shares separated by ';', got '$(val)'"))
+            throw(ArgumentError("$(tw): parameter row tech=='$(param)', technology column '$(tech_column)': expected yearly shares separated by ';', got '$(val)'"))
         end
         return Vector{Float64}(shares)
     else
         return val
     end
 end
-function gettechparam(s::Snapshot, techkey::String, param::String, sheetname::String; digits=6)
+function gettechparam(s::Snapshot, tech_column::String, param::String, sheetname::String; digits=6)
     opts = posy_options(s)
     opts.tech_mode === :excel || throw(ArgumentError(
-        "technology parameter '$param' for $sheetname/$techkey must be supplied explicitly " *
+        "technology parameter '$param' for $sheetname/$tech_column must be supplied explicitly " *
         "when tech_mode=:arguments"))
     xl = readtechdata(opts.techdata_file; data_dir=opts.data_dir)
-    return gettechparam(xl, techkey, param, sheetname, digits)
+    return gettechparam(xl, tech_column, param, sheetname, digits)
 end
 
 """

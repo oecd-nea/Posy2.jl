@@ -26,7 +26,7 @@
 <rect x="20" y="98.0" width="150" height="46.0" rx="6" fill="#ffffff" stroke="#78909c" stroke-width="1" stroke-dasharray="5 3"/>
 <text class="box" x="95.0" y="113.0">profile series</text>
 <text class="boxsub" x="95.0" y="126.0">profiles_&lt;weatheryear&gt;</text>
-<text class="boxsub" x="95.0" y="139.0">column: &lt;techkey&gt;_&lt;node&gt;</text>
+<text class="boxsub" x="95.0" y="139.0">column: &lt;tech_column&gt;_&lt;node&gt;</text>
 <line x1="650" y1="82.0" x2="822" y2="82.0" stroke="#264653" stroke-width="2" stroke-dasharray="7 4" marker-end="url(#head-fixed)"/>
 <circle cx="650" cy="82.0" r="4.5" fill="#264653"/>
 <text class="port" x="740.0" y="72.0" fill="#264653">output</text>

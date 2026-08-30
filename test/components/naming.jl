@@ -35,15 +35,15 @@ using HiGHS
             tech=reporting_tech,
         ),
         makedispatchable(
-            "Named dispatchable", "unused", electricity, carbon, snapshot;
+            "Named dispatchable", electricity, carbon, snapshot; tech_column="unused",
             tech=reporting_tech, cap=1.0,
         ),
         makenuclear(
-            "Named nuclear", "unused", electricity, carbon, snapshot;
+            "Named nuclear", electricity, carbon, snapshot; tech_column="unused",
             tech=reporting_tech, cap=1.0,
         ),
         makeintermittentsource(
-            "Named intermittent", "unused", electricity, carbon, snapshot;
+            "Named intermittent", electricity, carbon, snapshot; tech_column="unused",
             tech=reporting_tech, cap=1.0, profile=1.0,
         ),
         makehydroror(
@@ -51,20 +51,20 @@ using HiGHS
             tech=reporting_tech, cap=1.0, intake=0.0,
         ),
         makehydroreservoir(
-            "Named reservoir", "unused", "unused", electricity, snapshot;
+            "Named reservoir", "unused", electricity, snapshot; tech_column="unused",
             tech=reporting_tech, cap_discharging=1.0, cap_charging=0.0,
             cap_reservoir=1.0, intake=0.0,
         ),
         makebatterystorage(
-            "Named battery", "unused", electricity, snapshot;
+            "Named battery", electricity, snapshot; tech_column="unused",
             tech=reporting_tech, cap=1.0, duration=1.0,
         ),
         makehydrogenstorage(
-            "Named H2 storage", "unused", hydrogen, snapshot;
+            "Named H2 storage", hydrogen, snapshot; tech_column="unused",
             tech=reporting_tech, cap=1.0,
         ),
         makeelectrolyser(
-            "Named electrolyser", "unused", electricity, hydrogen, snapshot;
+            "Named electrolyser", electricity, hydrogen, snapshot; tech_column="unused",
             tech=reporting_tech, cap=1.0,
         ),
         makeflathydrogenpurchase(

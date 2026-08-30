@@ -38,10 +38,9 @@ makedemand("Demand", "country1", electricity, snapshot; coeff=0.0, yearlyconstan
 # Fixed reservoir: 100 MW turbine, no grid pumping, 40 MW average intake
 makehydroreservoir(
     "Reservoir hydro",
-    "Hydro res",
     "country1",
     electricity,
-    snapshot;
+    snapshot; tech_column="Hydro res",
     cap_discharging=100.0,      # turbine capacity (MW)
     cap_charging=0.0,           # no pumping from the electricity grid
     intake=40.0 * 8760,         # annual natural intake (MWh)
@@ -51,7 +50,7 @@ makehydroreservoir(
 )
 
 # Fixed 100 MW CCGT backup when hydro cannot cover demand
-makedispatchable("CCGT", "CCGT", electricity, co2, snapshot; cap=100.0, unit_size=0.0)
+makedispatchable("CCGT", electricity, co2, snapshot; tech_column="CCGT", cap=100.0, unit_size=0.0)
 
 # Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))

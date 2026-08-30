@@ -23,15 +23,16 @@ The builders are grouped by modelling role:
 
 ## Common Arguments
 
-Most builders start with a component name, a technology-data key, one or more
-nodes, and a snapshot. These names have distinct purposes:
+Most builders start with a component name, one or more nodes, and a snapshot.
+These names and the common technology keywords have distinct purposes:
 
 - `name` is the prefix used in the generated component name.
-- `tech` is the technology label stored in the component's `:tech` tag. Annual
-  reports group components by this value; it defaults to `name`.
-- `techkey` is an exact technology column in the relevant technology
+- `tech` is the technology label stored in the component's `:tech` tag. Reports
+  and component queries group or filter by this value; it defaults to `name`.
+- `tech_column` is an exact technology column in the relevant technology
   workbook sheet. Parameter names occupy rows in the column headed `tech`;
-  `techkey` is not a row name.
+  `tech_column` is not a row name. It defaults to `tech`, except for documented
+  domain-specific defaults.
 - A zone argument selects a column in a time-series sheet. It need not equal a
   node name unless the builder's documented column convention requires that.
 - Nodes determine the carriers and balances to which the component is
@@ -40,14 +41,15 @@ nodes, and a snapshot. These names have distinct purposes:
 
 Except for interconnections, a builder normally names its component by joining
 `name` and the principal node name with a space. For example,
-`makedispatchable("CCGT", ..., zone, ...)` creates `"CCGT $(zone.name)"`.
+`makedispatchable("CCGT", elec, co2, snapshot)` creates
+`"CCGT $(elec.name)"`.
 Names must be unique within a snapshot. Interconnection names are described on
 the [Interconnections](components/interconnections.md) page.
 
 ## Keyword Overrides
 
 When `tech_mode=:excel`, a technology keyword left as `nothing` is read from
-the `techkey` column. When `timeseries_mode=:excel`, a series keyword left as
+the `tech_column` column. When `timeseries_mode=:excel`, a series keyword left as
 `nothing` is read from the time-series workbook. An explicit value replaces
 that lookup for this call only; it does not edit the workbook. Sheet layout
 and unit conversions are in [Input Workbooks](concepts/input-data.md).

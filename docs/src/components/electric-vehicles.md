@@ -78,7 +78,7 @@ On a circular mesh, annual departure and arrival counts must balance (`sum(depar
 Charging availability `a_t` applies as a capacity multiplier on `input`, `level`, and (in vehicle-to-grid mode)
 `output`.
 
-Per-vehicle technology parameters come from the column named by `techkey` in
+Per-vehicle technology parameters come from the column named by `tech_column` in
 the `storage` sheet: `charging_eff`, `self_discharge`, `max_charging_power`,
 `max_dispatch_power`, and `battery_capacity`. Each has a corresponding keyword
 override. `max_dispatch_power` is resolved only in vehicle-to-grid mode; smart

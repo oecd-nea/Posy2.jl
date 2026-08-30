@@ -100,7 +100,6 @@ makedemand("Load", "grid", grid, snapshot; profile=demand_profile)
 # Add a dispatchable generator with optimisable capacity.
 makedispatchable(
     "CCGT",
-    "CCGT",
     grid,
     atmosphere,
     snapshot;

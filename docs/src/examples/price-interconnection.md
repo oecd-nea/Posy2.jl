@@ -40,7 +40,7 @@ makedemand("Demand", "country1", electricity, snapshot; coeff=0.0, yearlyconstan
 
 # Domestic 100 MW CCGT
 makedispatchable(
-    "CCGT", "CCGT", electricity, co2, snapshot;
+    "CCGT", electricity, co2, snapshot; tech_column="CCGT",
     cap=100.0,
     fuel_cost=47.06,
 )

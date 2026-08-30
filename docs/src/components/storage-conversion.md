@@ -56,7 +56,7 @@ provided explicitly. It defaults to `nothing` and is unused with an explicit
 profile or with `intake=0`. The profile is always normalized to sum to one,
 then scaled by the requested total `intake`.
 
-`eff` defaults to `roundtrip_eff` in the technology column named by `techkey`
+`eff` defaults to `roundtrip_eff` in the technology column named by `tech_column`
 of sheet `storage`. It applies to grid charging; natural intake and discharge have unit
 efficiency. `gridlosses` adds a proportional linked input flow. Cost defaults
 come from the same technology column and are attached to discharge capacity.

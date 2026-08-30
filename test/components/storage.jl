@@ -32,7 +32,7 @@ using HiGHS
         profile = collect(1.0:24.0)
         total_intake = 1_000.0
         makehydroreservoir(
-            "Normalized intake reservoir", "Battery", "ZONE1", elec, s;
+            "Normalized intake reservoir", "ZONE1", elec, s; tech_column="Battery",
             cap_discharging=500.0, cap_charging=0.0, intake=total_intake,
             cap_reservoir=2_000.0,
             intake_profile=profile,
@@ -54,7 +54,7 @@ using HiGHS
     let
         s, elec, _ = makesnapshot(hours=24)
         @test_throws ArgumentError makehydroreservoir(
-            "Negative intake reservoir", "Battery", "ZONE1", elec, s;
+            "Negative intake reservoir", "ZONE1", elec, s; tech_column="Battery",
             cap_discharging=500.0, cap_charging=0.0, intake=1_000.0,
             cap_reservoir=2_000.0,
             intake_profile=vcat(-1.0, fill(2.0, 23)),
@@ -68,7 +68,7 @@ using HiGHS
     let
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makebatterystorage(
-            "Battery", "Battery", elec, s;
+            "Battery", elec, s; tech_column="Battery",
             eff=0.9, duration=0.0,
             overnight_cost=1000.0, lifetime=20, construction_profile=1.0, decommissioning_profile=1.0,
         )
@@ -77,15 +77,15 @@ using HiGHS
     # Storage capacity inputs reject non-real numeric values at the API boundary.
     let
         s, elec, h2 = makesnapshot()
-        @test_throws TypeError makebatterystorage("Battery", "Battery", elec, s; cap=1 + im)
-        @test_throws TypeError makehydrogenstorage("H2 Storage", "Hydrogen storage", h2, s; cap=1 + im)
+        @test_throws TypeError makebatterystorage("Battery", elec, s; tech_column="Battery", cap=1 + im)
+        @test_throws TypeError makehydrogenstorage("H2 Storage", h2, s; tech_column="Hydrogen storage", cap=1 + im)
     end
 
     # A valid battery input should create and register the component.
     let
         s, elec, _ = makesnapshot()
         c = makebatterystorage(
-            "Battery", "Battery", elec, s;
+            "Battery", elec, s; tech_column="Battery",
             cap=100.0,
             eff=0.9, duration=4.0,
             overnight_cost=1000.0, om_fixed_cost=10.0,
@@ -99,14 +99,14 @@ using HiGHS
     # Hydrogen storage should fail when efficiency is outside (0, 1].
     let
         s, _, h2 = makesnapshot()
-        @test_throws ArgumentError makehydrogenstorage("H2 Storage", "Hydrogen storage", h2, s; eff=1.2)
+        @test_throws ArgumentError makehydrogenstorage("H2 Storage", h2, s; tech_column="Hydrogen storage", eff=1.2)
     end
 
     # A valid hydro reservoir input should create and register the component.
     let
         s, elec, _ = makesnapshot()
         c = makehydroreservoir(
-            "Hydro reservoir", "Battery", "ZONE1", elec, s;
+            "Hydro reservoir", "ZONE1", elec, s; tech_column="Battery",
             cap_discharging=100.0, cap_charging=50.0, intake=0.0,
             cap_reservoir=500.0,
             gridlosses=0.0, eff=0.9,
@@ -122,7 +122,7 @@ using HiGHS
     for gridlosses in (0.0, 0.05)
         s, elec, _ = makesnapshot()
         c = makehydroreservoir(
-            "Variable pumping reservoir", "Battery", "ZONE1", elec, s;
+            "Variable pumping reservoir", "ZONE1", elec, s; tech_column="Battery",
             cap_discharging=100.0, cap_charging=nothing, intake=0.0,
             cap_reservoir=500.0,
             gridlosses=gridlosses, eff=0.9,
@@ -148,17 +148,17 @@ using HiGHS
             decommissioning=0.0,
         )
         fixed = makehydroreservoir(
-            "Fixed reservoir", "Battery", "ZONE1", elec, s;
+            "Fixed reservoir", "ZONE1", elec, s; tech_column="Battery",
             cap_discharging=100.0, cap_charging=0.0, intake=8760.0,
             cap_reservoir=500.0, common...,
         )
         variable = makehydroreservoir(
-            "Variable reservoir", "Battery", "ZONE1", elec, s;
+            "Variable reservoir", "ZONE1", elec, s; tech_column="Battery",
             cap_discharging=100.0, cap_charging=0.0, intake=8760.0,
             cap_reservoir=nothing, common...,
         )
         unlimited = makehydroreservoir(
-            "Unlimited reservoir", "Battery", "ZONE1", elec, s;
+            "Unlimited reservoir", "ZONE1", elec, s; tech_column="Battery",
             cap_discharging=100.0, cap_charging=0.0, intake=8760.0, common...,
         )
         fixed_level_capacities = filter(
@@ -199,7 +199,7 @@ using HiGHS
 
         s, elec, _ = makesnapshot(hours=hours)
         makehydroreservoir(
-            "Overflowing reservoir", "Battery", "ZONE1", elec, s;
+            "Overflowing reservoir", "ZONE1", elec, s; tech_column="Battery",
             cap_discharging=turbine, cap_charging=0.0, intake=total_intake, common...,
         )
         Nosy.optimize!(s, cost(s))
@@ -210,7 +210,7 @@ using HiGHS
         # its output is pinned to the turbine rating in every hour.
         makedemand("Other consumption", "ZONE1", elec, s; profile=turbine)
         c = makehydroreservoir(
-            "Overflowing reservoir", "Battery", "ZONE1", elec, s;
+            "Overflowing reservoir", "ZONE1", elec, s; tech_column="Battery",
             cap_discharging=turbine, cap_charging=0.0, intake=total_intake,
             spillage=true, common...,
         )
@@ -232,7 +232,7 @@ using HiGHS
     let
         s, elec, _ = makesnapshot(hours=24)
         c = makehydroreservoir(
-            "Default reservoir", "Battery", "ZONE1", elec, s;
+            "Default reservoir", "ZONE1", elec, s; tech_column="Battery",
             cap_discharging=100.0, cap_charging=0.0, intake=100.0,
             intake_profile=1.0, gridlosses=0.0, eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
@@ -246,7 +246,7 @@ using HiGHS
     let
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makehydroreservoir(
-            "Zero intake reservoir", "Battery", "ZONE1", elec, s;
+            "Zero intake reservoir", "ZONE1", elec, s; tech_column="Battery",
             cap_discharging=100.0, cap_charging=0.0, intake=1_000.0,
             cap_reservoir=500.0,
             intake_profile=0.0,
@@ -262,7 +262,7 @@ using HiGHS
     let
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makehydroreservoir(
-            "Missing weather year", "Battery", "ZONE1", elec, s;
+            "Missing weather year", "ZONE1", elec, s; tech_column="Battery",
             cap_discharging=100.0, cap_charging=0.0, intake=1_000.0,
             cap_reservoir=500.0, gridlosses=0.0, eff=0.9,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,

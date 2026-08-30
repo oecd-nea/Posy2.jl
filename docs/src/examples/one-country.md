@@ -35,8 +35,8 @@ co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 makedemand("Demand", "country1", electricity, snapshot)
 
 # Fixed 800 MW wind and continuous CCGT expansion up to 2 GW
-makeintermittentsource("Onshore wind", "Onwind", electricity, co2, snapshot; cap=800.0, weatheryear=2019)
-makedispatchable("CCGT", "CCGT", electricity, co2, snapshot; maxcap=2_000.0, unit_size=0.0)
+makeintermittentsource("Onshore wind", electricity, co2, snapshot; tech_column="Onwind", cap=800.0, weatheryear=2019)
+makedispatchable("CCGT", electricity, co2, snapshot; maxcap=2_000.0, unit_size=0.0)
 
 # Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))

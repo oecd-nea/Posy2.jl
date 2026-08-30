@@ -43,14 +43,14 @@ makedemand("Demand", "country1", electricity, snapshot; profile=repeat(day, 365)
 # Fixed 4000 MW PV
 pvday = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.18, 0.38, 0.62, 0.82, 0.95, 1.0, 0.95, 0.78, 0.52, 0.12, 0.04, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 makeintermittentsource(
-    "Solar", "PV", electricity, co2, snapshot;
+    "Solar", electricity, co2, snapshot; tech_column="PV",
     cap=4000.0,
     profile=repeat(pvday, 365),
 )
 
 # Cheap CCGT fleet, free to change output by any amount each hour
 makedispatchable(
-    "CCGT", "CCGT", electricity, co2, snapshot;
+    "CCGT", electricity, co2, snapshot; tech_column="CCGT",
     cap=2229.0,
     fuel_cost=47.06,
     om_var_cost=6.99,
@@ -58,7 +58,7 @@ makedispatchable(
 
 # More expensive OCGT unit
 makedispatchable(
-    "OCGT", "OCGT", electricity, co2, snapshot;
+    "OCGT", electricity, co2, snapshot; tech_column="OCGT",
     cap=1000.0,
     fuel_cost=68.24,
     om_var_cost=10.47,
@@ -116,14 +116,14 @@ makedemand("Demand", "country1", electricity, snapshot; profile=repeat(day, 365)
 # Same fixed PV
 pvday = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.18, 0.38, 0.62, 0.82, 0.95, 1.0, 0.95, 0.78, 0.52, 0.12, 0.04, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 makeintermittentsource(
-    "Solar", "PV", electricity, co2, snapshot;
+    "Solar", electricity, co2, snapshot; tech_column="PV",
     cap=4000.0,
     profile=repeat(pvday, 365),
 )
 
 # Same CCGT fleet, limited to 1114.5 MW of additional or reduced output per hour
 makedispatchable(
-    "CCGT", "CCGT", electricity, co2, snapshot;
+    "CCGT", electricity, co2, snapshot; tech_column="CCGT",
     cap=2229.0,
     fuel_cost=47.06,
     om_var_cost=6.99,
@@ -134,7 +134,7 @@ makedispatchable(
 
 # Same OCGT unit, able to cross its full range within one hour
 makedispatchable(
-    "OCGT", "OCGT", electricity, co2, snapshot;
+    "OCGT", electricity, co2, snapshot; tech_column="OCGT",
     cap=1000.0,
     fuel_cost=68.24,
     om_var_cost=10.47,

@@ -51,7 +51,7 @@ for case in cases
 
     makedemand("Demand", case.name, elec, case.snapshot; profile=repeat(day, 365))
     makeintermittentsource(
-        "Solar", "PV", elec, co2, case.snapshot;
+        "Solar", elec, co2, case.snapshot; tech_column="PV",
         cap=pv_cap,
         profile=repeat(case.pv_profile, 365),
         overnight_cost=500.0,
@@ -59,12 +59,12 @@ for case in cases
         construction_profile=1.0,
     )
     makedispatchable(
-        "CCGT", "CCGT", elec, co2, case.snapshot;
+        "CCGT", elec, co2, case.snapshot; tech_column="CCGT",
         cap=100.0,
         fuel_cost=50.0,
     )
     makebatterystorage(
-        "Battery", "Battery", elec, case.snapshot;
+        "Battery", elec, case.snapshot; tech_column="Battery",
         cap=battery_cap,
         eff=0.85,
         duration=4.0,
@@ -96,7 +96,7 @@ JuMP `AffExpr`:
 
 ```julia
 makeintermittentsource(
-    "PV", "PV", elec2, co2_2, snap2;
+    "PV", elec2, co2_2, snap2; tech_column="PV",
     cap=capacity(snap1, "PV"),
     profile=pv2,
     overnight_cost=500.0,

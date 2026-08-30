@@ -38,8 +38,8 @@ using HiGHS
     let
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makedispatchable("CCGT", "CCGT", elec2, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
@@ -76,7 +76,7 @@ using HiGHS
     let
         snap, elec1, _, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makedispatchable("CCGT", "CCGT", elec1, co2, snap; cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makepriceinterco("ZONE2", elec1, 0.0, 0.0, snap)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)

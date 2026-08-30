@@ -19,7 +19,7 @@ investment, connection, fixed O&M, decommissioning, variable O&M, and direct
 fuel costs are attached there.
 
 In `tech_mode=:excel`, common technical and economic defaults come from the
-technology column named by `techkey` in sheet `dispatchable`. In
+technology column named by `tech_column` in sheet `dispatchable`. In
 `tech_mode=:arguments`, additive costs and emissions default to zero, linked
 fuel defaults to lossless efficiency, and unit sizing and ramping default to
 disabled. Capital lifetime and profiles are required only when their associated
@@ -88,7 +88,7 @@ whereas an `AffExpr` is rejected. In particular, `unit_size` does not make an
 external variable a number-of-units variable; represent that explicitly as
 `unit_size * integer_units` when unit-block integrality is required.
 
-Refuelling constraints do not depend on `techkey`. They assume an 8,760-hour
+Refuelling constraints do not depend on `tech_column`. They assume an 8,760-hour
 model horizon, so use them only for a full non-leap-year study.
 
 Tags: `:tech => tech`, `:zone => elec.name`, and the function tags `generation`
@@ -106,7 +106,7 @@ makenuclear
 
 [`makeintermittentsource`](@ref) creates a profile source. It reads availability
 from sheet `profiles_<weatheryear>`, column
-`<techkey>_<electricity-node-name>`. The profile multiplies the `output` capacity.
+`<tech_column>_<electricity-node-name>`. The profile multiplies the `output` capacity.
 Workbook lookup requires an explicit `weatheryear`; the keyword defaults to
 `nothing` and is unused when `profile` is supplied directly.
 
@@ -116,7 +116,7 @@ Numeric `cap` fixes capacity; a JuMP variable or affine expression reuses an
 external capacity decision; `nothing` creates a new decision; and a solved
 snapshot inherits the named component's capacity. `mincap` and `maxcap` bound
 either variable form. In `:excel` mode,
-technical and cost defaults come from the technology column named by `techkey`
+technical and cost defaults come from the technology column named by `tech_column`
 in sheet `intermittent`. In `:arguments` mode, costs and emissions default to
 zero and inactive capital data are not required. The production profile
 remains structural whenever capacity is active.
@@ -146,7 +146,7 @@ Workbook lookup requires an explicit `weatheryear`; the keyword defaults to
 ![Ports of a run-of-river hydro component](../assets/component-hydro-ror.svg)
 
 In `:excel` mode, cost defaults come from the technology column named by
-`techkey` in sheet `intermittent`; the default column name is `Hydro ror`. In
+`tech_column` in sheet `intermittent`; the default column name is `Hydro ror`. In
 `:arguments` mode costs default to zero and inactive capital data are not
 required. A numeric `cap` fixes output capacity; `cap=nothing` creates a new
 capacity decision; and a JuMP variable or affine expression reuses an external

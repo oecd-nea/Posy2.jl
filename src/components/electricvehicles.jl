@@ -10,7 +10,7 @@ using ArgCheck: @argcheck
         fixed_profile::Bool=true, smart_charging::Bool=false, vehicle_to_grid::Bool=false,
         yearly=nothing, offhours1=nothing, offhours2=nothing, minratio=nothing, days_threshold::Integer=104,
         number_ev=nothing, initial_connected_share=nothing,
-        zone::Union{Nothing,String}=nothing, techkey::String="EV",
+        zone::Union{Nothing,String}=nothing, tech_column::String="EV",
         compensation::Real=0., gridlosses=0.,
         departures=nothing, arrivals=nothing,
         departure_soc=nothing, arrival_soc=nothing,
@@ -23,7 +23,7 @@ Build, connect and return an EV component.
 
 Arguments:
   * `name`: Component name prefix.
-  * `tech`: Technology label used for reporting; defaults to `name`.
+  * `tech`: technology label used for reporting and component queries; defaults to `name`.
   * `elec`: Electricity node to connect EV charging/discharging flows.
   * `s`: Target snapshot where the EV component and behaviors are registered.
 
@@ -61,7 +61,8 @@ below are used only in flexible/V2G modes unless stated otherwise.
     If `nothing`, read it from `EV_departure_soc` in `:excel` mode.
   * `arrival_soc`: Mean SOC of arriving vehicles in `[0, 1]`, scalar or vector.
     If `nothing`, read it from `EV_arrival_soc` in `:excel` mode.
-  * `techkey`: Technology column name in the `storage` tech data sheet for EV parameters (used in flexible/V2G modes).
+  * `tech_column`: Technology column name in the `storage` tech data sheet for
+    EV parameters, used in flexible/V2G modes; defaults to `"EV"`.
   * `compensation`: V2G compensation in currency/MWh of grid discharge
     (ignored in non-V2G modes).
   * `gridlosses`: Proportional grid-loss fraction on EV input in fixed-profile
@@ -83,7 +84,7 @@ function makeEV(name::String, elec::Node, s::Snapshot; tech::String=name,
     yearly::Union{Nothing,Real}=nothing, offhours1=nothing, offhours2=nothing, minratio::Union{Nothing,Real}=nothing, days_threshold::Integer=104,
     # flexible / V2G inputs
     number_ev::Union{Nothing,Real}=nothing, initial_connected_share::Union{Nothing,Real}=nothing,
-    zone::Union{Nothing,String}=nothing, techkey::String="EV", compensation::Real=0., gridlosses::Real=0.,
+    zone::Union{Nothing,String}=nothing, tech_column::String="EV", compensation::Real=0., gridlosses::Real=0.,
     departures=nothing, arrivals=nothing, departure_soc=nothing, arrival_soc=nothing,
     charging_eff::Union{Nothing,Real}=nothing, self_discharge::Union{Nothing,Real}=nothing,
     max_charging_power_per_ev::Union{Nothing,Real}=nothing, max_dispatch_power_per_ev::Union{Nothing,Real}=nothing,
@@ -159,13 +160,13 @@ function makeEV(name::String, elec::Node, s::Snapshot; tech::String=name,
         # charging efficiency applies when electricity enters the battery;
         # V2G discharge, departure and arrival use the stored-energy basis directly
         eff = isnothing(charging_eff) ?
-            (excel ? gettechparam(s, techkey, "charging_eff", "storage") : 1.0) : charging_eff
+            (excel ? gettechparam(s, tech_column, "charging_eff", "storage") : 1.0) : charging_eff
         # hourly self-discharge
         sd = isnothing(self_discharge) ?
-            (excel ? gettechparam(s, techkey, "self_discharge", "storage") : 0.0) : self_discharge
+            (excel ? gettechparam(s, tech_column, "self_discharge", "storage") : 0.0) : self_discharge
         # assumptions about EV (per vehicle parameters from the technology workbook or overrides)
         max_charging_per_ev = if isnothing(max_charging_power_per_ev)
-            excel ? gettechparam(s, techkey, "max_charging_power", "storage") : throw(ArgumentError(
+            excel ? gettechparam(s, tech_column, "max_charging_power", "storage") : throw(ArgumentError(
                 "`max_charging_power_per_ev` must be supplied in flexible EV modes when tech_mode=:arguments",
             ))
         else
@@ -173,7 +174,7 @@ function makeEV(name::String, elec::Node, s::Snapshot; tech::String=name,
         end
         max_dispatch_per_ev = if vehicle_to_grid
             if isnothing(max_dispatch_power_per_ev)
-                excel ? gettechparam(s, techkey, "max_dispatch_power", "storage") : throw(ArgumentError(
+                excel ? gettechparam(s, tech_column, "max_dispatch_power", "storage") : throw(ArgumentError(
                     "`max_dispatch_power_per_ev` must be supplied when vehicle_to_grid=true and tech_mode=:arguments",
                 ))
             else
@@ -183,7 +184,7 @@ function makeEV(name::String, elec::Node, s::Snapshot; tech::String=name,
             0.0
         end
         battery_cap_per_ev = if isnothing(battery_capacity_per_ev)
-            excel ? gettechparam(s, techkey, "battery_capacity", "storage") : throw(ArgumentError(
+            excel ? gettechparam(s, tech_column, "battery_capacity", "storage") : throw(ArgumentError(
                 "`battery_capacity_per_ev` must be supplied in flexible EV modes when tech_mode=:arguments",
             ))
         else

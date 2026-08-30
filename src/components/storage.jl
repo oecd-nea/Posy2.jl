@@ -3,8 +3,9 @@ Generate storage components.
 """
 
 """
-    makehydroreservoir(name::String, techkey::String, zone::String, elec::Node, s::Snapshot;
-        tech::String=name, cap_discharging, cap_charging, intake,
+    makehydroreservoir(name::String, zone::String, elec::Node, s::Snapshot;
+        tech::String=name, tech_column::String=tech,
+        cap_discharging, cap_charging, intake,
         mincap_discharging=nothing, maxcap_discharging=nothing,
         mincap_charging=nothing, maxcap_charging=nothing,
         mincap_reservoir=nothing, maxcap_reservoir=nothing,
@@ -21,8 +22,9 @@ Build, connect and return a hydro reservoir component.
 
 Arguments:
   * `name`: component name prefix.
-  * `tech`: technology label used for reporting; defaults to `name`.
-  * `techkey`: technology column name in the `storage` tech data sheet.
+  * `tech`: technology label used for reporting and component queries; defaults to `name`.
+  * `tech_column`: technology column name in the `storage` tech data sheet;
+    defaults to `tech`.
   * `zone`: Zone used for reservoir intake time series lookup.
   * `elec`: electricity node to connect the component to.
   * `s`: snapshot to register the component in.
@@ -74,8 +76,8 @@ With `nothing`, economic arguments use workbook values in `:excel` mode. In
 `lifetime` and `construction_profile`, plus `decommissioning_profile` when
 decommissioning is nonzero.
 """
-function makehydroreservoir(name::String, techkey::String, zone::String, elec::Node, s::Snapshot;
-    tech::String=name,
+function makehydroreservoir(name::String, zone::String, elec::Node, s::Snapshot;
+    tech::String=name, tech_column::String=tech,
     # capacities
     cap_discharging::Union{Nothing,Real,VariableRef,AffExpr,Snapshot},
     cap_charging::Union{Nothing,Real,VariableRef,AffExpr,Snapshot},
@@ -100,11 +102,11 @@ function makehydroreservoir(name::String, techkey::String, zone::String, elec::N
 )
     excel = tech_mode(s) === :excel
     if excel
-        _eff = isnothing(eff) ? gettechparam(s, techkey, "roundtrip_eff", "storage") : eff
-        _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "storage") : overnight_cost
-        _fom = isnothing(om_fixed_cost) ? gettechparam(s, techkey, "om_fixed_cost", "storage") : om_fixed_cost
-        _decom = isnothing(decommissioning) ? gettechparam(s, techkey, "decommissioning", "storage") : decommissioning
-        _vom = isnothing(om_var_cost) ? gettechparam(s, techkey, "om_var_cost", "storage") : om_var_cost
+        _eff = isnothing(eff) ? gettechparam(s, tech_column, "roundtrip_eff", "storage") : eff
+        _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech_column, "overnight_cost", "storage") : overnight_cost
+        _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech_column, "om_fixed_cost", "storage") : om_fixed_cost
+        _decom = isnothing(decommissioning) ? gettechparam(s, tech_column, "decommissioning", "storage") : decommissioning
+        _vom = isnothing(om_var_cost) ? gettechparam(s, tech_column, "om_var_cost", "storage") : om_var_cost
     else
         _eff = something(eff, 1.0)
         _oc_raw = something(overnight_cost, 0.0)
@@ -117,12 +119,12 @@ function makehydroreservoir(name::String, techkey::String, zone::String, elec::N
     _cp = nothing
     if !iszero(_oc_raw)
         if isnothing(_lt_raw)
-            _lt_raw = excel ? gettechparam(s, techkey, "lifetime", "storage") : throw(ArgumentError(
+            _lt_raw = excel ? gettechparam(s, tech_column, "lifetime", "storage") : throw(ArgumentError(
                 "`lifetime` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
             ))
         end
         _cp = if isnothing(construction_profile)
-            excel ? gettechparam(s, techkey, "construction_profile", "storage") : throw(ArgumentError(
+            excel ? gettechparam(s, tech_column, "construction_profile", "storage") : throw(ArgumentError(
                 "`construction_profile` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
             ))
         else
@@ -133,7 +135,7 @@ function makehydroreservoir(name::String, techkey::String, zone::String, elec::N
     _dcp = nothing
     if !iszero(_oc_raw) && !iszero(_decom)
         _dcp = if isnothing(decommissioning_profile)
-            excel ? gettechparam(s, techkey, "decommissioning_profile", "storage") : throw(ArgumentError(
+            excel ? gettechparam(s, tech_column, "decommissioning_profile", "storage") : throw(ArgumentError(
                 "`decommissioning_profile` must be supplied when overnight_cost and decommissioning are non-zero and tech_mode=:arguments",
             ))
         else
@@ -226,8 +228,9 @@ function makehydroreservoir(name::String, techkey::String, zone::String, elec::N
 end
 
 """
-    makebatterystorage(name::String, techkey::String, elec::Node, s::Snapshot;
-        tech::String=name, cap=nothing, mincap=nothing, maxcap=nothing, simplified=false,
+    makebatterystorage(name::String, elec::Node, s::Snapshot;
+        tech::String=name, tech_column::String=tech,
+        cap=nothing, mincap=nothing, maxcap=nothing, simplified=false,
         gridlosses=0.,
         eff::Union{Nothing,Real}=nothing, duration::Union{Nothing,Real}=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -239,8 +242,9 @@ Build, connect and return a battery storage component.
 
 Arguments:
   * `name`: component name prefix.
-  * `tech`: technology label used for reporting; defaults to `name`.
-  * `techkey`: technology column name in the `storage` tech data sheet.
+  * `tech`: technology label used for reporting and component queries; defaults to `name`.
+  * `tech_column`: technology column name in the `storage` tech data sheet;
+    defaults to `tech`.
   * `elec`: electricity node to connect the component to.
   * `s`: snapshot to register the component in.
 
@@ -274,8 +278,8 @@ With `nothing`, economic arguments use workbook values in `:excel` mode. In
 `lifetime` and `construction_profile`, plus `decommissioning_profile` when
 decommissioning is nonzero.
 """
-function makebatterystorage(name::String, techkey::String, elec::Node, s::Snapshot;
-    tech::String=name,
+function makebatterystorage(name::String, elec::Node, s::Snapshot;
+    tech::String=name, tech_column::String=tech,
     # capacity / expansion
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     simplified::Bool=false, gridlosses::Real=0.,
@@ -290,13 +294,13 @@ function makebatterystorage(name::String, techkey::String, elec::Node, s::Snapsh
 )
     excel = tech_mode(s) === :excel
     if excel
-        _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "storage") : overnight_cost
-        _eff = isnothing(eff) ? gettechparam(s, techkey, "roundtrip_eff", "storage") : eff
-        _dur = isnothing(duration) ? gettechparam(s, techkey, "duration", "storage") : duration
-        _conn = isnothing(connection_cost) ? gettechparam(s, techkey, "connection_cost", "storage") : connection_cost
-        _fom = isnothing(om_fixed_cost) ? gettechparam(s, techkey, "om_fixed_cost", "storage") : om_fixed_cost
-        _decom = isnothing(decommissioning) ? gettechparam(s, techkey, "decommissioning", "storage") : decommissioning
-        _vom = isnothing(om_var_cost) ? gettechparam(s, techkey, "om_var_cost", "storage") : om_var_cost
+        _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech_column, "overnight_cost", "storage") : overnight_cost
+        _eff = isnothing(eff) ? gettechparam(s, tech_column, "roundtrip_eff", "storage") : eff
+        _dur = isnothing(duration) ? gettechparam(s, tech_column, "duration", "storage") : duration
+        _conn = isnothing(connection_cost) ? gettechparam(s, tech_column, "connection_cost", "storage") : connection_cost
+        _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech_column, "om_fixed_cost", "storage") : om_fixed_cost
+        _decom = isnothing(decommissioning) ? gettechparam(s, tech_column, "decommissioning", "storage") : decommissioning
+        _vom = isnothing(om_var_cost) ? gettechparam(s, tech_column, "om_var_cost", "storage") : om_var_cost
     else
         _oc_raw = something(overnight_cost, 0.0)
         _eff = something(eff, 1.0)
@@ -313,12 +317,12 @@ function makebatterystorage(name::String, techkey::String, elec::Node, s::Snapsh
     _cp = nothing
     if !iszero(_oc_raw)
         if isnothing(_lt_raw)
-            _lt_raw = excel ? gettechparam(s, techkey, "lifetime", "storage") : throw(ArgumentError(
+            _lt_raw = excel ? gettechparam(s, tech_column, "lifetime", "storage") : throw(ArgumentError(
                 "`lifetime` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
             ))
         end
         _cp = if isnothing(construction_profile)
-            excel ? gettechparam(s, techkey, "construction_profile", "storage") : throw(ArgumentError(
+            excel ? gettechparam(s, tech_column, "construction_profile", "storage") : throw(ArgumentError(
                 "`construction_profile` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
             ))
         else
@@ -329,7 +333,7 @@ function makebatterystorage(name::String, techkey::String, elec::Node, s::Snapsh
     _dcp = nothing
     if !iszero(_oc_raw) && !iszero(_decom)
         _dcp = if isnothing(decommissioning_profile)
-            excel ? gettechparam(s, techkey, "decommissioning_profile", "storage") : throw(ArgumentError(
+            excel ? gettechparam(s, tech_column, "decommissioning_profile", "storage") : throw(ArgumentError(
                 "`decommissioning_profile` must be supplied when overnight_cost and decommissioning are non-zero and tech_mode=:arguments",
             ))
         else
@@ -379,8 +383,9 @@ function makebatterystorage(name::String, techkey::String, elec::Node, s::Snapsh
 end
 
 """
-    makehydrogenstorage(name::String, techkey::String, h2::Node, s::Snapshot;
-        tech::String=name, cap=nothing, mincap=nothing, maxcap=nothing,
+    makehydrogenstorage(name::String, h2::Node, s::Snapshot;
+        tech::String=name, tech_column::String=tech,
+        cap=nothing, mincap=nothing, maxcap=nothing,
         eff::Union{Nothing,Real}=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
@@ -390,8 +395,9 @@ Build, connect and return a hydrogen storage component.
 
 Arguments:
   * `name`: component name prefix.
-  * `tech`: technology label used for reporting; defaults to `name`.
-  * `techkey`: technology column name in the `storage` tech data sheet.
+  * `tech`: technology label used for reporting and component queries; defaults to `name`.
+  * `tech_column`: technology column name in the `storage` tech data sheet;
+    defaults to `tech`.
   * `h2`: hydrogen node to connect the component to.
   * `s`: snapshot to register the component in.
 
@@ -418,8 +424,8 @@ With `nothing`, economic arguments use workbook values in `:excel` mode. In
 `lifetime` and `construction_profile`, plus `decommissioning_profile` when
 decommissioning is nonzero.
 """
-function makehydrogenstorage(name::String, techkey::String, h2::Node, s::Snapshot;
-    tech::String=name,
+function makehydrogenstorage(name::String, h2::Node, s::Snapshot;
+    tech::String=name, tech_column::String=tech,
     # capacity / expansion
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
 
@@ -432,10 +438,10 @@ function makehydrogenstorage(name::String, techkey::String, h2::Node, s::Snapsho
 )
     excel = tech_mode(s) === :excel
     if excel
-        _eff = isnothing(eff) ? gettechparam(s, techkey, "roundtrip_eff", "storage") : eff
-        _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "storage") : overnight_cost
-        _fom = isnothing(om_fixed_cost) ? gettechparam(s, techkey, "om_fixed_cost", "storage") : om_fixed_cost
-        _decom = isnothing(decommissioning) ? gettechparam(s, techkey, "decommissioning", "storage") : decommissioning
+        _eff = isnothing(eff) ? gettechparam(s, tech_column, "roundtrip_eff", "storage") : eff
+        _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech_column, "overnight_cost", "storage") : overnight_cost
+        _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech_column, "om_fixed_cost", "storage") : om_fixed_cost
+        _decom = isnothing(decommissioning) ? gettechparam(s, tech_column, "decommissioning", "storage") : decommissioning
     else
         _eff = something(eff, 1.0)
         _oc_raw = something(overnight_cost, 0.0)
@@ -447,12 +453,12 @@ function makehydrogenstorage(name::String, techkey::String, h2::Node, s::Snapsho
     _cp = nothing
     if !iszero(_oc_raw)
         if isnothing(_lt_raw)
-            _lt_raw = excel ? gettechparam(s, techkey, "lifetime", "storage") : throw(ArgumentError(
+            _lt_raw = excel ? gettechparam(s, tech_column, "lifetime", "storage") : throw(ArgumentError(
                 "`lifetime` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
             ))
         end
         _cp = if isnothing(construction_profile)
-            excel ? gettechparam(s, techkey, "construction_profile", "storage") : throw(ArgumentError(
+            excel ? gettechparam(s, tech_column, "construction_profile", "storage") : throw(ArgumentError(
                 "`construction_profile` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
             ))
         else
@@ -463,7 +469,7 @@ function makehydrogenstorage(name::String, techkey::String, h2::Node, s::Snapsho
     _dcp = nothing
     if !iszero(_oc_raw) && !iszero(_decom)
         _dcp = if isnothing(decommissioning_profile)
-            excel ? gettechparam(s, techkey, "decommissioning_profile", "storage") : throw(ArgumentError(
+            excel ? gettechparam(s, tech_column, "decommissioning_profile", "storage") : throw(ArgumentError(
                 "`decommissioning_profile` must be supplied when overnight_cost and decommissioning are non-zero and tech_mode=:arguments",
             ))
         else

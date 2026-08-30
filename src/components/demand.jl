@@ -14,7 +14,7 @@ Build, connect and return a component based on the Demand template.
 
 Arguments:
   * `name`: component name prefix.
-  * `tech`: technology label used for reporting; defaults to `name`.
+  * `tech`: technology label used for reporting and component queries; defaults to `name`.
   * `zone`: time series name in the time series workbook (`demand` sheet).
   * `n`: demand node to connect the component to.
   * `s`: snapshot to register the component in.
@@ -63,7 +63,7 @@ Build, connect and return a flat hydrogen demand component.
 
 Arguments:
   * `name`: component name prefix.
-  * `tech`: technology label used for reporting; defaults to `name`.
+  * `tech`: technology label used for reporting and component queries; defaults to `name`.
   * `n`: hydrogen demand node to connect the component to.
   * `val`: Total hydrogen demand in MWh/year. Must satisfy `val >= 0`.
   * `s`: snapshot to register the component in.
@@ -93,7 +93,7 @@ Build, connect and return a flexible hydrogen demand component.
 
 Arguments:
   * `name`: component name prefix.
-  * `tech`: technology label used for reporting; defaults to `name`.
+  * `tech`: technology label used for reporting and component queries; defaults to `name`.
   * `n`: hydrogen demand node to connect the component to.
   * `val`: Total hydrogen demand in MWh/year, enforced through
     `YearlySum("input", val, :equal)`. Must satisfy `val >= 0`.
@@ -132,7 +132,7 @@ side without modifying existing demand components.
 
 Arguments:
   * `name`: component name prefix.
-  * `tech`: technology label used for reporting; defaults to `name`.
+  * `tech`: technology label used for reporting and component queries; defaults to `name`.
   * `elec`: electricity node to connect the component to.
   * `cap`: Response capacity in MW. A number fixes capacity, a JuMP
     `VariableRef` or `AffExpr` reuses that expression, `nothing` creates a

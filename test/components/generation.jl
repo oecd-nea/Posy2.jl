@@ -29,7 +29,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         c = makedispatchable(
-            "CCGT", "CCGT", elec, co2, s;
+            "CCGT", elec, co2, s; tech_column="CCGT",
             cap=0.0, construction_profile=1.0, decommissioning_profile=1.0,
         )
         @test !isnothing(c)
@@ -40,7 +40,7 @@ using HiGHS
     # A valid dispatchable input should create and register the component.
     let
         s, elec, co2 = makesnapshot()
-        c = makedispatchable("CCGT", "CCGT", elec, co2, s; cap=100.0, construction_profile=1.0, decommissioning_profile=1.0)
+        c = makedispatchable("CCGT", elec, co2, s; tech_column="CCGT", cap=100.0, construction_profile=1.0, decommissioning_profile=1.0)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "CCGT ZONE1") === c
         capacity_behavior = only(Nosy.getbehaviors(c, Nosy.FixedCapacityBehavior))
@@ -56,7 +56,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         c = makedispatchable(
-            "CCGT continuous", "CCGT", elec, co2, s;
+            "CCGT continuous", elec, co2, s; tech="CCGT",
             cap=100.0, unit_size=0.0,
             construction_profile=1.0, decommissioning_profile=1.0,
         )
@@ -69,7 +69,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         @test_throws ArgumentError makenuclear(
-            "Nuclear", "CCGT", elec, co2, s;
+            "Nuclear", elec, co2, s; tech_column="CCGT",
             uc=true, cap=100.0,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=2.0,
             decommissioning=0.1, lifetime=30, construction_profile=1.0, decommissioning_profile=1.0,
@@ -86,7 +86,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         c = makenuclear(
-            "Generic refuelling", "CCGT", elec, co2, s;
+            "Generic refuelling", elec, co2, s; tech_column="CCGT",
             uc=true, cap=100.0, unit_size=100.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0, connection_cost=0.0, fuel_cost=0.0,
@@ -107,7 +107,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot(hours=24)
         c = makenuclear(
-            "Refuelling disabled", "CCGT", elec, co2, s;
+            "Refuelling disabled", elec, co2, s; tech_column="CCGT",
             uc=true, cap=100.0, unit_size=100.0, refuel=false,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0, connection_cost=0.0, fuel_cost=0.0,
@@ -219,15 +219,15 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot(hours=24)
         @test_throws ArgumentError makeintermittentsource(
-            "Onwind above one", "Onwind", elec, co2, s;
+            "Onwind above one", elec, co2, s; tech_column="Onwind",
             cap=100.0, profile=vcat(1.2, fill(0.3, 23)),
         )
         @test_throws ArgumentError makeintermittentsource(
-            "Onwind negative", "Onwind", elec, co2, s;
+            "Onwind negative", elec, co2, s; tech_column="Onwind",
             cap=100.0, profile=vcat(-0.1, fill(0.3, 23)),
         )
         @test !isnothing(makeintermittentsource(
-            "Onwind valid", "Onwind", elec, co2, s;
+            "Onwind valid", elec, co2, s; tech_column="Onwind",
             cap=100.0, profile=1.0, construction_profile=1.0, decommissioning_profile=1.0,
         ))
     end
@@ -246,15 +246,15 @@ using HiGHS
     # Generation capacity inputs accept real values or nothing, never complex values.
     let
         s, elec, co2 = makesnapshot()
-        @test_throws TypeError makenuclear("Nuclear", "CCGT", elec, co2, s; cap=1 + im)
-        @test_throws TypeError makeintermittentsource("Wind", "Onwind", elec, co2, s; cap=1 + im)
-        @test_throws TypeError makeintermittentsource("Wind", "Onwind", elec, co2, s; mincap=1 + im)
+        @test_throws TypeError makenuclear("Nuclear", elec, co2, s; tech_column="CCGT", cap=1 + im)
+        @test_throws TypeError makeintermittentsource("Wind", elec, co2, s; tech_column="Onwind", cap=1 + im)
+        @test_throws TypeError makeintermittentsource("Wind", elec, co2, s; tech_column="Onwind", mincap=1 + im)
     end
 
     # A valid intermittent source input should create and register the component.
     let
         s, elec, co2 = makesnapshot()
-        c = makeintermittentsource("Onwind gen", "Onwind", elec, co2, s; cap=100.0, weatheryear=2019, construction_profile=1.0, decommissioning_profile=1.0)
+        c = makeintermittentsource("Onwind gen", elec, co2, s; tech_column="Onwind", cap=100.0, weatheryear=2019, construction_profile=1.0, decommissioning_profile=1.0)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "Onwind gen ZONE1") === c
         @test Nosy.hastag(c, :function, "carbonfree")
@@ -264,7 +264,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         @test_throws ArgumentError makeintermittentsource(
-            "Wind missing year", "Onwind", elec, co2, s;
+            "Wind missing year", elec, co2, s; tech_column="Onwind",
             cap=100.0, construction_profile=1.0, decommissioning_profile=1.0,
         )
     end
@@ -280,7 +280,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         c = makeintermittentsource(
-            "Emitting intermittent", "Onwind", elec, co2, s;
+            "Emitting intermittent", elec, co2, s; tech_column="Onwind",
             cap=100.0, weatheryear=2019, co2_emission=100.0,
             construction_profile=1.0, decommissioning_profile=1.0,
         )
@@ -293,7 +293,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         @test_throws ArgumentError makedispatchable(
-            "CCGT no ramp", "CCGT", elec, co2, s;
+            "CCGT no ramp", elec, co2, s; tech_column="CCGT",
             cap=100.0, unit_size=0.0, ramp_up=0.5, ramp_down=0.5,
             construction_profile=1.0, decommissioning_profile=1.0,
         )
@@ -303,7 +303,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         c = makedispatchable(
-            "CCGT ramp", "CCGT", elec, co2, s;
+            "CCGT ramp", elec, co2, s; tech_column="CCGT",
             cap=8.0, unit_size=2.0, ramp_up=0.2, ramp_down=0.3,
             construction_profile=1.0, decommissioning_profile=1.0,
         )
@@ -319,7 +319,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot(hours=24)
         c = makedispatchable(
-            "CCGT integeruc bounds", "CCGT", elec, co2, s;
+            "CCGT integeruc bounds", elec, co2, s; tech_column="CCGT",
             cap=nothing, mincap=5.0, maxcap=11.0, unit_size=4.0,
             uc=true, integeruc=true,
             construction_profile=1.0, decommissioning_profile=1.0,

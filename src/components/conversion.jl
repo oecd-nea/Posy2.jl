@@ -3,8 +3,9 @@ Generate conversion components.
 """
 
 """
-    makeelectrolyser(name::String, techkey::String, elec::Node, h2::Node, s::Snapshot;
-        tech::String=name, cap=nothing, mincap=nothing, maxcap=nothing,
+    makeelectrolyser(name::String, elec::Node, h2::Node, s::Snapshot;
+        tech::String=name, tech_column::String=tech,
+        cap=nothing, mincap=nothing, maxcap=nothing,
         gridlosses=0.,
         eff::Union{Nothing,Real}=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -16,8 +17,9 @@ Build, connect and return an electrolyser component.
 
 Arguments:
   * `name`: component name prefix.
-  * `tech`: technology label used for reporting; defaults to `name`.
-  * `techkey`: technology column name in the `electrolysis` tech data sheet.
+  * `tech`: technology label used for reporting and component queries; defaults to `name`.
+  * `tech_column`: technology column name in the `electrolysis` tech data sheet;
+    defaults to `tech`.
   * `elec`: electricity node to connect the component to.
   * `h2`: hydrogen node to connect the component to.
   * `s`: snapshot to register the component in.
@@ -49,8 +51,8 @@ With `nothing`, economic arguments use workbook values in `:excel` mode. In
 `lifetime` and `construction_profile`, plus `decommissioning_profile` when
 decommissioning is nonzero.
 """
-function makeelectrolyser(name::String, techkey::String, elec::Node, h2::Node, s::Snapshot;
-    tech::String=name,
+function makeelectrolyser(name::String, elec::Node, h2::Node, s::Snapshot;
+    tech::String=name, tech_column::String=tech,
     # capacity / expansion
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     gridlosses::Real=0.,
@@ -65,11 +67,11 @@ function makeelectrolyser(name::String, techkey::String, elec::Node, h2::Node, s
 )
     excel = tech_mode(s) === :excel
     if excel
-        _eff = isnothing(eff) ? gettechparam(s, techkey, "efficiency", "electrolysis") : eff
-        _oc_raw = isnothing(overnight_cost) ? gettechparam(s, techkey, "overnight_cost", "electrolysis") : overnight_cost
-        _decom = isnothing(decommissioning) ? gettechparam(s, techkey, "decommissioning", "electrolysis") : decommissioning
-        _fom = isnothing(om_fixed_cost) ? gettechparam(s, techkey, "om_fixed_cost", "electrolysis") : om_fixed_cost
-        _vom = isnothing(om_var_cost) ? gettechparam(s, techkey, "om_var_cost", "electrolysis") : om_var_cost
+        _eff = isnothing(eff) ? gettechparam(s, tech_column, "efficiency", "electrolysis") : eff
+        _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech_column, "overnight_cost", "electrolysis") : overnight_cost
+        _decom = isnothing(decommissioning) ? gettechparam(s, tech_column, "decommissioning", "electrolysis") : decommissioning
+        _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech_column, "om_fixed_cost", "electrolysis") : om_fixed_cost
+        _vom = isnothing(om_var_cost) ? gettechparam(s, tech_column, "om_var_cost", "electrolysis") : om_var_cost
     else
         _eff = something(eff, 1.0)
         _oc_raw = something(overnight_cost, 0.0)
@@ -82,12 +84,12 @@ function makeelectrolyser(name::String, techkey::String, elec::Node, h2::Node, s
     _cp = nothing
     if !iszero(_oc_raw)
         if isnothing(_lt_raw)
-            _lt_raw = excel ? gettechparam(s, techkey, "lifetime", "electrolysis") : throw(ArgumentError(
+            _lt_raw = excel ? gettechparam(s, tech_column, "lifetime", "electrolysis") : throw(ArgumentError(
                 "`lifetime` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
             ))
         end
         _cp = if isnothing(construction_profile)
-            excel ? gettechparam(s, techkey, "construction_profile", "electrolysis") : throw(ArgumentError(
+            excel ? gettechparam(s, tech_column, "construction_profile", "electrolysis") : throw(ArgumentError(
                 "`construction_profile` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
             ))
         else
@@ -98,7 +100,7 @@ function makeelectrolyser(name::String, techkey::String, elec::Node, h2::Node, s
     _dcp = nothing
     if !iszero(_oc_raw) && !iszero(_decom)
         _dcp = if isnothing(decommissioning_profile)
-            excel ? gettechparam(s, techkey, "decommissioning_profile", "electrolysis") : throw(ArgumentError(
+            excel ? gettechparam(s, tech_column, "decommissioning_profile", "electrolysis") : throw(ArgumentError(
                 "`decommissioning_profile` must be supplied when overnight_cost and decommissioning are non-zero and tech_mode=:arguments",
             ))
         else

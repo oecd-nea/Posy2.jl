@@ -10,7 +10,7 @@ Build, connect and return a flat hydrogen purchase component.
 
 Arguments:
   * `name`: component name prefix.
-  * `tech`: technology label used for reporting; defaults to `name`.
+  * `tech`: technology label used for reporting and component queries; defaults to `name`.
   * `n`: hydrogen node to connect the component to.
   * `val`: Purchased hydrogen in MWh/year, converted internally to a flat
     hourly flow (`val / 8760`).

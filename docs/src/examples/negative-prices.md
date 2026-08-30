@@ -36,8 +36,8 @@ day = [12.0, 11.0, 11.0, 11.0, 12.0, 13.0, 14.0, 22.0, 30.0, 38.0, 46.0, 50.0, 5
 makedemand("Demand", "C", c, snapshot; profile=repeat(day, 365))
 
 # Nuclear at A and OCGT at C; fuel costs match the technology workbook
-makedispatchable("Nuclear", "Nuclear", a, co2, snapshot; cap=100.0, fuel_cost=7.0)
-makedispatchable("OCGT", "OCGT", c, co2, snapshot; cap=100.0, fuel_cost=68.24)
+makedispatchable("Nuclear", a, co2, snapshot; tech_column="Nuclear", cap=100.0, fuel_cost=7.0)
+makedispatchable("OCGT", c, co2, snapshot; tech_column="OCGT", cap=100.0, fuel_cost=68.24)
 
 # AC triangle: B–C is the tight corridor
 maketransmissionlink("IC", a, b, snapshot; cap=30.0, dc=false, susceptance=-1.0)

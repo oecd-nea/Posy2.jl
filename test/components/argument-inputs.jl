@@ -49,7 +49,7 @@ using HiGHS
         let
             s, electricity, carbon = argument_snapshot()
             c = makedispatchable(
-                "Neutral dispatchable", "unused", electricity, carbon, s; cap=10.0,
+                "Neutral dispatchable", electricity, carbon, s; tech_column="unused", cap=10.0,
             )
             @test !isnothing(c)
             capacity_behavior = only(Nosy.getbehaviors(c, Nosy.FixedCapacityBehavior))
@@ -63,7 +63,7 @@ using HiGHS
             s, electricity, carbon = argument_snapshot()
             fuel = Node("fuel", EnergyCarrier("fuel", sim(s)); rule=:curtailed)
             @test !isnothing(makedispatchable(
-                "Lossless fuel", "unused", electricity, carbon, s;
+                "Lossless fuel", electricity, carbon, s; tech_column="unused",
                 cap=10.0, fuelnode=fuel,
             ))
         end
@@ -71,7 +71,7 @@ using HiGHS
         let
             s, electricity, carbon = argument_snapshot()
             c = makedispatchable(
-                "Neutral UC", "unused", electricity, carbon, s;
+                "Neutral UC", electricity, carbon, s; tech_column="unused",
                 cap=10.0, unit_size=10.0, uc=true,
             )
             @test !isnothing(c)
@@ -83,7 +83,7 @@ using HiGHS
             s, electricity, carbon = argument_snapshot()
             err = try
                 makedispatchable(
-                    "UC without units", "unused", electricity, carbon, s;
+                    "UC without units", electricity, carbon, s; tech_column="unused",
                     cap=10.0, unit_size=nothing, uc=true,
                 )
                 nothing
@@ -95,7 +95,7 @@ using HiGHS
 
             err = try
                 makedispatchable(
-                    "Ramp without units", "unused", electricity, carbon, s;
+                    "Ramp without units", electricity, carbon, s; tech_column="unused",
                     cap=10.0, unit_size=nothing, ramp_up=0.5,
                 )
                 nothing
@@ -110,7 +110,7 @@ using HiGHS
             s, electricity, carbon = argument_snapshot()
             err = try
                 makedispatchable(
-                    "Missing lifetime", "unused", electricity, carbon, s;
+                    "Missing lifetime", electricity, carbon, s; tech_column="unused",
                     cap=10.0, overnight_cost=1_000.0,
                 )
                 nothing
@@ -122,7 +122,7 @@ using HiGHS
 
             err = try
                 makedispatchable(
-                    "Missing construction profile", "unused", electricity, carbon, s;
+                    "Missing construction profile", electricity, carbon, s; tech_column="unused",
                     cap=10.0, overnight_cost=1_000.0, lifetime=30,
                 )
                 nothing
@@ -133,7 +133,7 @@ using HiGHS
             @test occursin("construction_profile", sprint(showerror, err))
 
             @test !isnothing(makedispatchable(
-                "No decommissioning", "unused", electricity, carbon, s;
+                "No decommissioning", electricity, carbon, s;
                 cap=10.0, overnight_cost=1_000.0, lifetime=30,
                 construction_profile=1.0,
             ))
@@ -143,7 +143,7 @@ using HiGHS
             s, electricity, carbon = argument_snapshot()
             err = try
                 makedispatchable(
-                    "Missing decommissioning profile", "unused", electricity, carbon, s;
+                    "Missing decommissioning profile", electricity, carbon, s; tech_column="unused",
                     cap=10.0, overnight_cost=1_000.0, lifetime=30,
                     construction_profile=1.0, decommissioning=0.1,
                 )
@@ -161,10 +161,10 @@ using HiGHS
             s, electricity, carbon = argument_snapshot()
             hydrogen = Node("H2", EnergyCarrier("hydrogen", sim(s)); rule=:curtailed, tags=[:hydrogen])
 
-            nuclear = makenuclear("Neutral nuclear", "unused", electricity, carbon, s; cap=10.0)
-            battery = makebatterystorage("Neutral battery", "unused", electricity, s; duration=4.0)
-            h2_storage = makehydrogenstorage("Neutral H2 storage", "unused", hydrogen, s)
-            electrolyser = makeelectrolyser("Neutral electrolyser", "unused", electricity, hydrogen, s)
+            nuclear = makenuclear("Neutral nuclear", electricity, carbon, s; cap=10.0)
+            battery = makebatterystorage("Neutral battery", electricity, s; duration=4.0)
+            h2_storage = makehydrogenstorage("Neutral H2 storage", hydrogen, s)
+            electrolyser = makeelectrolyser("Neutral electrolyser", electricity, hydrogen, s)
 
             for component in (nuclear, battery, h2_storage, electrolyser)
                 @test !isnothing(component)
@@ -174,13 +174,13 @@ using HiGHS
             @test isempty(Nosy.getbehaviors(nuclear, Nosy.RampingBehavior))
 
             sized_nuclear = makenuclear(
-                "Neutral sized nuclear", "unused", electricity, carbon, s;
+                "Neutral sized nuclear", electricity, carbon, s; tech_column="unused",
                 cap=10.0, unit_size=5.0,
             )
             @test isempty(Nosy.getbehaviors(sized_nuclear, Nosy.RampingBehavior))
 
             ramped_nuclear = makenuclear(
-                "Ramped nuclear", "unused", electricity, carbon, s;
+                "Ramped nuclear", electricity, carbon, s; tech_column="unused",
                 cap=10.0, unit_size=5.0, ramp_up=0.2, ramp_down=0.3,
             )
             ramping = Nosy.getbehaviors(ramped_nuclear, Nosy.RampingBehavior)
@@ -191,7 +191,7 @@ using HiGHS
             @test down.data.val == 0.3 * 5.0
 
             @test_throws ArgumentError makenuclear(
-                "Nuclear ramp without units", "unused", electricity, carbon, s;
+                "Nuclear ramp without units", electricity, carbon, s; tech_column="unused",
                 cap=10.0, ramp_up=0.2,
             )
         end
@@ -274,7 +274,7 @@ using HiGHS
             "Demand", "unused", electricity, s; profile=collect(40.0:63.0),
         ))
         @test !isnothing(makeintermittentsource(
-            "Solar", "unused", electricity, carbon, s;
+            "Solar", electricity, carbon, s;
             cap=80.0, profile=0.42, intermittent_costs...,
         ))
         @test !isnothing(makehydroror(
@@ -282,7 +282,7 @@ using HiGHS
             cap=70.0, intake=840.0, intake_profile=fill(35.0, 24), hydro_costs...,
         ))
         @test !isnothing(makehydroreservoir(
-            "Reservoir", "unused", "unused", electricity, s;
+            "Reservoir", "unused", electricity, s;
             cap_discharging=55.0, cap_charging=20.0, intake=240.0,
             cap_reservoir=200.0,
             intake_profile=collect(1.0:24.0), eff=0.88, hydro_costs...,
@@ -329,7 +329,7 @@ using HiGHS
             profile=vcat(fill(1.0, 23), Inf),
         )
         @test !isnothing(makeintermittentsource(
-            "Solar", "unused", electricity, carbon, s; cap=80.0, profile=0.42,
+            "Solar", electricity, carbon, s; tech_column="unused", cap=80.0, profile=0.42,
         ))
     end
 
@@ -352,7 +352,7 @@ using HiGHS
             timeseries_mode=:arguments,
         )))
         @test !isnothing(makeintermittentsource(
-            "Mixed", "Onwind", electricity, carbon, tech_excel;
+            "Mixed", electricity, carbon, tech_excel; tech_column="Onwind",
             cap=10.0, profile=0.5,
             construction_profile=1.0, decommissioning_profile=1.0,
         ))
@@ -376,7 +376,7 @@ using HiGHS
             timeseries_mode=:excel,
         )))
         @test !isnothing(makeintermittentsource(
-            "Mixed reverse", "Onwind", electricity, carbon, series_excel;
+            "Mixed reverse", electricity, carbon, series_excel; tech_column="Onwind",
             cap=10.0, weatheryear=2019, intermittent_costs...,
         ))
     end
@@ -406,8 +406,8 @@ using HiGHS
 
         err = try
             makeintermittentsource(
-                "Wrong workbook horizon", "Onwind", electricity, carbon,
-                short_series_excel;
+                "Wrong workbook horizon", electricity, carbon,
+                short_series_excel; tech_column="Onwind",
                 cap=10.0, weatheryear=2019, intermittent_costs...,
             )
             nothing

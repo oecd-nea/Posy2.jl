@@ -52,8 +52,8 @@ See [Study Configuration](options.md) for the other study-wide options and the
 
 ## General Layout And Lookup Rules
 
-Sheet names, parameter names, and column headings are case-sensitive. Extra 
-columns, such as timestamps or comments, may be present. Posy2 only reads 
+Sheet names, parameter names, and column headings are case-sensitive. Extra
+columns, such as timestamps or comments, may be present. Posy2 only reads
 the columns a builder looks up by name and ignores the rest.
 
 Technology sheets use one row per parameter and one column per technology:
@@ -65,9 +65,10 @@ Technology sheets use one row per parameter and one column per technology:
 | `om_var_cost` | `2` | `3` | `0` |
 
 The first column must be named exactly `tech` and lists parameter names.
-The `techkey` argument passed to a builder selects a technology column. 
-For example, `techkey="CCGT"` and `param="overnight_cost"` select 
-the value at row `overnight_cost`, column `CCGT`.
+The `tech_column` keyword passed to a builder selects a technology column and
+normally defaults to `tech`. For example, `tech_column="CCGT"` and
+`param="overnight_cost"` select the value at row `overnight_cost`, column
+`CCGT`.
 
 Time-series sheets use one column per lookup key. A builder requests the
 complete column and expects it to align with the simulation mesh. Posy2
@@ -86,10 +87,9 @@ is consistent:
 ```julia
 makedispatchable(
     "Gas",
-    "CCGT",
     electricity,
     co2,
-    snapshot;
+    snapshot; tech_column="CCGT",
     fuel_cost=nothing,  # read dispatchable/CCGT/fuel_cost
 )
 ```
@@ -99,10 +99,9 @@ Passing a value replaces that one lookup:
 ```julia
 makedispatchable(
     "Gas sensitivity",
-    "CCGT",
     electricity,
     co2,
-    snapshot;
+    snapshot; tech_column="CCGT",
     fuel_cost=40.0,
 )
 ```
@@ -120,7 +119,7 @@ number, expanded to all hours, or a vector with exactly
 | Builder | Direct Keyword | Workbook Fallback |
 |:--------|:---------------|:---------------|
 | [`makedemand`](@ref) | `profile` | `<zone>` in `demand` |
-| [`makeintermittentsource`](@ref) | `profile` | `<techkey>_<node>` in `profiles_<year>` |
+| [`makeintermittentsource`](@ref) | `profile` | `<tech_column>_<node>` in `profiles_<year>` |
 | [`makehydroror`](@ref) | `intake_profile` | `<zone>` in `hydro_ror_<year>` |
 | [`makehydroreservoir`](@ref) | `intake_profile` | `<zone>` in `reservoir_inflow_<year>` |
 | [`makeEV`](@ref) | `departures` | `<zone>` in `EV_departure` |
@@ -240,7 +239,7 @@ Run-of-river rows are `overnight_cost`, `lifetime`, `construction_profile`,
 `decommissioning_profile`, `om_fixed_cost`, `om_var_cost`, and
 `decommissioning`.
 
-`makehydroror` defaults to `techkey="Hydro ror"`. Pass another `techkey` to
+`makehydroror` defaults to `tech_column="Hydro ror"`. Pass another `tech_column` to
 read a different column on the `intermittent` sheet.
 
 ### Storage Sheet
@@ -265,7 +264,7 @@ EV-fleet rows are `charging_eff`, `self_discharge`,
 `max_charging_power`, `max_dispatch_power`, and `battery_capacity`.
 
 In smart-charging or V2G mode, [`makeEV`](@ref) defaults to technology column
-`EV`, but its `techkey` keyword can select another column.
+`EV`, but its `tech_column` keyword can select another column.
 
 The `roundtrip_eff` row maps to the builder keyword `eff`. EV rows ending in
 power or capacity map to the corresponding `*_per_ev` override keywords.
@@ -342,7 +341,7 @@ directly.
 | Sheet | Expected Column | Used By And Condition |
 |:------|:----------------|:----------------------|
 | `demand` | `<zone>` | [`makedemand`](@ref) when `coeff != 0` |
-| `profiles_<year>` | `<techkey>_<node-name>` | [`makeintermittentsource`](@ref) |
+| `profiles_<year>` | `<tech_column>_<node-name>` | [`makeintermittentsource`](@ref) |
 | `hydro_ror_<year>` | `<zone>` | [`makehydroror`](@ref) |
 | `reservoir_inflow_<year>` | `<zone>` | [`makehydroreservoir`](@ref) when intake is enabled (`intake != 0`) |
 | `EV_departure` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |

@@ -42,12 +42,12 @@ co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 makedemand("Hydrogen demand", "country1", hydrogen, snapshot; coeff=0.038)
 
 # Expandable PV and electrolyser (workbook tech costs)
-makeintermittentsource("Solar", "PV", electricity, co2, snapshot; maxcap=1000.0, weatheryear=2019)
-makeelectrolyser("Electrolyser", "PEM", electricity, hydrogen, snapshot; maxcap=300.0)
+makeintermittentsource("Solar", electricity, co2, snapshot; tech_column="PV", maxcap=1000.0, weatheryear=2019)
+makeelectrolyser("Electrolyser", electricity, hydrogen, snapshot; tech_column="PEM", maxcap=300.0)
 
 # Fixed hydrogen storage
 makehydrogenstorage(
-    "H2 storage", "Hydrogen storage", hydrogen, snapshot;
+    "H2 storage", hydrogen, snapshot; tech_column="Hydrogen storage",
     cap=28.0 * 168,   # about one week of the mean hydrogen demand
 )
 

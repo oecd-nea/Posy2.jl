@@ -45,7 +45,7 @@ makedemand("Demand", "country1", electricity, snapshot)
 
 # Cheap fuel, high emissions
 makedispatchable(
-    "Coal", "Coal", electricity, emissions, snapshot;
+    "Coal", electricity, emissions, snapshot; tech_column="Coal",
     maxcap=2_000.0,
     overnight_cost=1_500.0,
     lifetime=40,
@@ -57,7 +57,7 @@ makedispatchable(
 
 # Costlier fuel, roughly half the emissions
 makedispatchable(
-    "Gas", "CCGT", electricity, emissions, snapshot;
+    "Gas", electricity, emissions, snapshot; tech_column="CCGT",
     maxcap=2_000.0,
     overnight_cost=955.0,
     lifetime=30,
@@ -69,7 +69,7 @@ makedispatchable(
 
 # Expensive to build, cheap to run, no emissions
 makenuclear(
-    "Nuclear", "Nuclear", electricity, emissions, snapshot;
+    "Nuclear", electricity, emissions, snapshot; tech_column="Nuclear",
     maxcap=2_000.0,
     overnight_cost=3_370.0,
     lifetime=60,
@@ -179,7 +179,7 @@ makedemand("Demand", "country1", electricity, snapshot)
 
 # Cheap fuel, high emissions
 makedispatchable(
-    "Coal", "Coal", electricity, emissions, snapshot;
+    "Coal", electricity, emissions, snapshot; tech_column="Coal",
     maxcap=2_000.0,
     overnight_cost=1_500.0,
     lifetime=40,
@@ -191,7 +191,7 @@ makedispatchable(
 
 # Costlier fuel, roughly half the emissions
 makedispatchable(
-    "Gas", "CCGT", electricity, emissions, snapshot;
+    "Gas", electricity, emissions, snapshot; tech_column="CCGT",
     maxcap=2_000.0,
     overnight_cost=955.0,
     lifetime=30,
@@ -203,7 +203,7 @@ makedispatchable(
 
 # Expensive to build, cheap to run, no emissions
 makenuclear(
-    "Nuclear", "Nuclear", electricity, emissions, snapshot;
+    "Nuclear", electricity, emissions, snapshot; tech_column="Nuclear",
     maxcap=2_000.0,
     overnight_cost=3_370.0,
     lifetime=60,
