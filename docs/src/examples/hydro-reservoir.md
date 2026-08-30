@@ -33,7 +33,7 @@ electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
 # Flat 50 MW demand so level changes come from the intake shape alone
-makedemand("Demand", "country1", electricity, snapshot; coeff=0.0, yearlyconstant=50.0 * 8760)
+makedemand("Demand", "country1", electricity, snapshot; profile_multiplier=0.0, annual_flat_demand=50.0 * 8760)
 
 # Fixed reservoir: 100 MW turbine, no grid pumping, 40 MW average intake
 makehydroreservoir(
@@ -45,7 +45,7 @@ makehydroreservoir(
     charge_cap=0.0,             # no pumping from the electricity grid
     intake=40.0 * 8760,         # annual natural intake (MWh)
     energy_cap=40.0 * 8760,     # fixed reservoir energy capacity (MWh)
-    weatheryear=2019,
+    weather_year=2019,
     simplified=true,
 )
 

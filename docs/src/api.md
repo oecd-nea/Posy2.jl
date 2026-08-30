@@ -16,7 +16,7 @@ Posy2
 ```@docs
 Posy2Options
 posy_options
-discountrate
+discount_rate
 co2_price
 tech_mode
 timeseries_mode

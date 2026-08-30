@@ -8,10 +8,10 @@ using ArgCheck: @argcheck
     makeEV(name::String, elec::Node, s::Snapshot;
         tech::String=name,
         fixed_profile::Bool=true, smart_charging::Bool=false, vehicle_to_grid::Bool=false,
-        yearly=nothing, offhours1=nothing, offhours2=nothing, minratio=nothing, days_threshold::Integer=104,
+        annual_consumption=nothing, offhours1=nothing, offhours2=nothing, minratio=nothing, days_threshold::Integer=104,
         number_ev=nothing, initial_connected_share=nothing,
         zone::Union{Nothing,String}=nothing, tech_column::String="EV",
-        compensation::Real=0., gridlosses=0.,
+        compensation::Real=0., grid_losses=0.,
         departures=nothing, arrivals=nothing,
         departure_soc=nothing, arrival_soc=nothing,
         charging_eff::Union{Nothing,Real}=nothing, self_discharge::Union{Nothing,Real}=nothing,
@@ -32,13 +32,13 @@ Arguments:
   * `vehicle_to_grid`: Enable flexible charging + grid discharge (V2G) mode.
     Exactly one of `fixed_profile`, `smart_charging`, `vehicle_to_grid` must be `true`.
 
-  * `yearly`: Yearly EV electricity consumption in fixed-profile mode
+  * `annual_consumption`: Yearly EV electricity consumption in fixed-profile mode
     (MWh/year). Must be non-negative and is rejected in flexible modes.
   * `offhours1`: Winter off-hour indices (0-23, no duplicates). Required when `fixed_profile=true`; ignored otherwise.
   * `offhours2`: Summer off-hour indices (0-23, no duplicates). Required when `fixed_profile=true`; ignored otherwise.
   * `minratio`: Dimensionless charging level during off-hours
     (`0 <= minratio <= 1`). Required when `fixed_profile=true`; ignored otherwise.
-    The hourly profile is normalized so that it sums to `yearly`; a schedule
+    The hourly profile is normalized so that it sums to `annual_consumption`; a schedule
     that leaves no charging hour at all (every hour an off-hour with
     `minratio=0`) is rejected.
   * `days_threshold`: Number of first winter days before summer segment in fixed-profile assembly (`0 <= days_threshold <= 183`, used only when `fixed_profile=true`).
@@ -65,8 +65,8 @@ below are used only in flexible/V2G modes unless stated otherwise.
     EV parameters, used in flexible/V2G modes; defaults to `"EV"`.
   * `compensation`: V2G compensation in currency/MWh of grid discharge
     (ignored in non-V2G modes).
-  * `gridlosses`: Proportional grid-loss fraction on EV input in fixed-profile
-    mode (`0 <= gridlosses < 1`).
+  * `grid_losses`: Proportional grid-loss fraction on EV input in fixed-profile
+    mode (`0 <= grid_losses < 1`).
   * `charging_eff`: Dimensionless charging efficiency in flexible/V2G modes
     (`0 < charging_eff <= 1`); defaults to one in `:arguments` mode.
   * `self_discharge`: Self-discharge fraction per hour in flexible/V2G modes
@@ -81,10 +81,10 @@ below are used only in flexible/V2G modes unless stated otherwise.
 function makeEV(name::String, elec::Node, s::Snapshot; tech::String=name,
     fixed_profile::Bool=true, smart_charging::Bool=false, vehicle_to_grid::Bool=false,
     # fixed-profile inputs
-    yearly::Union{Nothing,Real}=nothing, offhours1=nothing, offhours2=nothing, minratio::Union{Nothing,Real}=nothing, days_threshold::Integer=104,
+    annual_consumption::Union{Nothing,Real}=nothing, offhours1=nothing, offhours2=nothing, minratio::Union{Nothing,Real}=nothing, days_threshold::Integer=104,
     # flexible / V2G inputs
     number_ev::Union{Nothing,Real}=nothing, initial_connected_share::Union{Nothing,Real}=nothing,
-    zone::Union{Nothing,String}=nothing, tech_column::String="EV", compensation::Real=0., gridlosses::Real=0.,
+    zone::Union{Nothing,String}=nothing, tech_column::String="EV", compensation::Real=0., grid_losses::Real=0.,
     departures=nothing, arrivals=nothing, departure_soc=nothing, arrival_soc=nothing,
     charging_eff::Union{Nothing,Real}=nothing, self_discharge::Union{Nothing,Real}=nothing,
     max_charging_power_per_ev::Union{Nothing,Real}=nothing, max_dispatch_power_per_ev::Union{Nothing,Real}=nothing,
@@ -93,7 +93,7 @@ function makeEV(name::String, elec::Node, s::Snapshot; tech::String=name,
     @argcheck mode_count == 1 "Exactly one of fixed_profile, smart_charging, vehicle_to_grid must be true."
 
     if fixed_profile
-        @argcheck !isnothing(yearly) "`yearly` is required when fixed_profile=true."
+        @argcheck !isnothing(annual_consumption) "`annual_consumption` is required when fixed_profile=true."
         @argcheck isnothing(number_ev) "`number_ev` is only used in smart-charging and V2G modes."
         @argcheck isnothing(initial_connected_share) "`initial_connected_share` is only used in smart-charging and V2G modes."
         @argcheck !isnothing(offhours1) "offhours1 is required when fixed_profile=true."
@@ -107,14 +107,14 @@ function makeEV(name::String, elec::Node, s::Snapshot; tech::String=name,
         @argcheck allunique(offhours1) "offhours1 must not repeat an hour index."
         @argcheck allunique(offhours2) "offhours2 must not repeat an hour index."
 
-        inputs = demand_input(yearly=yearly, gridlosses=gridlosses, minratio=minratio)
+        inputs = demand_input(annual_consumption=annual_consumption, grid_losses=grid_losses, minratio=minratio)
         validate_demand_input(inputs)
-        _yearly = Float64(yearly)
-        _gridlosses = Float64(gridlosses)
+        _annual_consumption = Float64(annual_consumption)
+        _grid_losses = Float64(grid_losses)
         _minratio = Float64(minratio)
 
         # normalizing the generated shape, rather than a separately derived
-        # denominator, is what makes sum(series) == yearly by construction
+        # denominator, is what makes sum(series) == annual_consumption by construction
         shape = vcat(
             repeat([h in offhours1 ? _minratio : 1.0 for h in 0:23], days_threshold), # winter
             repeat([h in offhours2 ? _minratio : 1.0 for h in 0:23], 182), # summer
@@ -122,7 +122,7 @@ function makeEV(name::String, elec::Node, s::Snapshot; tech::String=name,
         )
         shapesum = sum(shape)
         @argcheck shapesum > 0 "the EV charging schedule is empty: every hour is an off-hour and minratio is zero."
-        series = shape * (_yearly / shapesum)
+        series = shape * (_annual_consumption / shapesum)
 
         m = Demand(elec.carrier, series)
         vb = Any[
@@ -134,7 +134,7 @@ function makeEV(name::String, elec::Node, s::Snapshot; tech::String=name,
                 mustconnect=false,
             ),
         ]
-        !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x -> x[1] * _gridlosses))
+        !iszero(_grid_losses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x -> x[1] * _grid_losses))
         c = Component(name * " " * elec.name, m, vb)
         tag!(c, :tech, tech)
         tag!(c, :zone, elec.name)
@@ -146,7 +146,7 @@ function makeEV(name::String, elec::Node, s::Snapshot; tech::String=name,
     else
         @argcheck !isnothing(number_ev) "`number_ev` is required in smart-charging and V2G modes."
         @argcheck !isnothing(initial_connected_share) "`initial_connected_share` is required in smart-charging and V2G modes."
-        @argcheck isnothing(yearly) "`yearly` is only used in fixed_profile mode."
+        @argcheck isnothing(annual_consumption) "`annual_consumption` is only used in fixed_profile mode."
 
         needs_profile_zone = timeseries_mode(s) === :excel && (
             isnothing(departures) || isnothing(arrivals) ||

@@ -33,7 +33,7 @@ export eac
 export selfcost
 export losses
 export printsnapshot
-export Posy2Options, posy_options, discountrate, co2_price, tech_mode, timeseries_mode
+export Posy2Options, posy_options, discount_rate, co2_price, tech_mode, timeseries_mode
 
 include("tools/_includes.jl")
 include("readdata/_includes.jl")

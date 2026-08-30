@@ -20,12 +20,12 @@ Diagrams](../components.md#Reading-The-Port-Diagrams).
 d_t = c p_t + D / 8760,
 ```
 
-where `c` is `coeff`, `p_t` is the workbook series selected by `zone`, and `D`
-is `yearlyconstant`. `shift` circularly shifts the workbook series before the
-flat term is added. Setting `coeff=0` suppresses the workbook lookup, which is
+where `c` is `profile_multiplier`, `p_t` is the workbook series selected by `zone`, and `D`
+is `annual_flat_demand`. `profile_shift` circularly shifts the workbook series before the
+flat term is added. Setting `profile_multiplier=0` suppresses the workbook lookup, which is
 useful for self-contained examples and purely flat demand.
 
-When `gridlosses` is non-zero, the builder adds a linked `grid losses` input
+When `grid_losses` is non-zero, the builder adds a linked `grid losses` input
 proportional to demand. The value must lie in `[0, 1)`.
 
 ![Ports of an electricity demand component](../assets/component-demand.svg)
@@ -34,7 +34,7 @@ Tags: `:tech => tech`, `:zone => n.name`, and the function tags `electricity`
 and `demand`.
 
 The workbook series is read from sheet `demand`, column `<zone>`. With the
-standard hourly MW/MWh convention, `yearlyconstant` is in MWh/year.
+standard hourly MW/MWh convention, `annual_flat_demand` is in MWh/year.
 
 See the [One Country example](../examples/one-country.md) for a complete model
 using this builder.
@@ -45,9 +45,9 @@ makedemand
 
 ## Hydrogen Demand
 
-[`makeflathydrogendemand`](@ref) creates a fixed `input` of `val / 8760` at a
+[`makeflathydrogendemand`](@ref) creates a fixed `input` of `annual_demand / 8760` at a
 hydrogen node. [`makeflexhydrogendemand`](@ref) instead creates a flexible
-`input` whose sum over the model year must equal `val`. Both builders therefore
+`input` whose sum over the model year must equal `annual_demand`. Both builders therefore
 take an annual hydrogen-energy quantity, but only the flat builder fixes its
 hourly shape.
 

@@ -137,9 +137,9 @@ using HiGHS
 
         b12, b23, b31 = -1.5, -0.7, -2.0
         loss12, loss23, loss31 = 0.10, 0.20, 0.30
-        maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, susceptance=b12, lossfactor=loss12)
-        maketransmissionlink("IC", n2, n3, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, susceptance=b23, lossfactor=loss23)
-        maketransmissionlink("IC", n3, n1, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, susceptance=b31, lossfactor=loss31)
+        maketransmissionlink("IC", n1, n2, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, susceptance=b12, loss_factor=loss12)
+        maketransmissionlink("IC", n2, n3, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, susceptance=b23, loss_factor=loss23)
+        maketransmissionlink("IC", n3, n1, snap; cap=100.0, atob_availability=1.0, btoa_availability=1.0, susceptance=b31, loss_factor=loss31)
 
         Posy2.applydcopf!(snap)
         Nosy.optimize!(snap, cost(snap))

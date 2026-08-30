@@ -14,7 +14,7 @@
 <text class="title" x="70" y="26.0">Hydrogen flows</text>
 <text class="axis-label" transform="translate(18 113.0) rotate(-90)">Hydrogen (MW)</text>
 <line class="grid" x1="70.0" y1="188.0" x2="972.0" y2="188.0"/>
-<text class="tick" x="62" y="192.0">0.0</text>
+<text class="tick" x="62" y="192.0">0</text>
 <line class="grid" x1="70.0" y1="150.5" x2="972.0" y2="150.5"/>
 <text class="tick" x="62" y="154.5">50</text>
 <line class="grid" x1="70.0" y1="113.0" x2="972.0" y2="113.0"/>
@@ -41,7 +41,7 @@
 <text class="title" x="70" y="223.0">Hydrogen storage</text>
 <text class="axis-label" transform="translate(18 307.5) rotate(-90)">Stored hydrogen (MWh)</text>
 <line class="grid" x1="70.0" y1="380.0" x2="972.0" y2="380.0"/>
-<text class="tick" x="62" y="384.0">0.0</text>
+<text class="tick" x="62" y="384.0">0</text>
 <line class="grid" x1="70.0" y1="343.8" x2="972.0" y2="343.8"/>
 <text class="tick" x="62" y="347.8">1250</text>
 <line class="grid" x1="70.0" y1="307.5" x2="972.0" y2="307.5"/>

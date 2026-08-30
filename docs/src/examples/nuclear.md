@@ -19,7 +19,7 @@ on, the yearly outage is fixed in length and must be taken. The optimiser only
 chooses when each unit refuels within the allowed starts. The example setup is:
 
 - three 1 000 MW nuclear units
-- hourly `country1` demand from the time-series workbook, scaled with `coeff=5.5`
+- hourly `country1` demand from the time-series workbook, scaled with `profile_multiplier=5.5`
 - expandable CCGT backup
 - a 720-hour refuelling outage per unit once refuelling is enabled
 
@@ -30,10 +30,10 @@ much CCGT is built.
 This page runs two related studies so that the capacity difference is easy to
 read:
 
-1. forced overlap: `refuelmask=8760` leaves only one allowed start, so all
+1. forced overlap: `refuel_slot_spacing=8760` leaves only one allowed start, so all
    three units refuel together from 1 February. Demand in that February–March
    outage window reaches about 5.64 GW, and the model builds about 5.64 GW of CCGT.
-2. flexible schedule: `refuelmask=730` opens about twelve monthly starts, so
+2. flexible schedule: `refuel_slot_spacing=730` opens about twelve monthly starts, so
    the optimiser can keep the full fleet online at the peak and limit how
    much the outages overlap. It builds about 2.78 GW of CCGT.
 
@@ -61,7 +61,7 @@ snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     timeseries_file="time_series.xlsx",
     tech_mode=:excel,
     timeseries_mode=:excel,
-    discountrate=0.05,
+    discount_rate=0.05,
 )))
 
 # Electricity node and CO2 sink
@@ -69,7 +69,7 @@ electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
 # Workbook demand shape, scaled up and shifted so hour 1 is 1 February
-makedemand("Demand", "country1", electricity, snapshot; coeff=5.5, shift=-744)
+makedemand("Demand", "country1", electricity, snapshot; profile_multiplier=5.5, profile_shift=-744)
 
 # Three fixed 1 GW units with refuelling on (720 h each). Only the start hour is chosen.
 makenuclear(
@@ -77,30 +77,30 @@ makenuclear(
     cap=1_000.0,
     unit_size=1_000.0,
     uc=true,
-    integeruc=true,
+    integer_uc=true,
     refuel_fraction_per_year=1.0,  # >=1 refuelling outage per unit per year
     refuel_duration=720.0,         # fixed outage length (~30 days), not shortened by the optimiser
-    refuelmask=8760,               # only one allowed start (1 February), so all three coincide
+    refuel_slot_spacing=8760,               # only one allowed start (1 February), so all three coincide
 )
 makenuclear(
     "NucB", electricity, co2, snapshot; tech_column="Nuclear",
     cap=1_000.0,
     unit_size=1_000.0,
     uc=true,
-    integeruc=true,
+    integer_uc=true,
     refuel_fraction_per_year=1.0,
     refuel_duration=720.0,
-    refuelmask=8760,
+    refuel_slot_spacing=8760,
 )
 makenuclear(
     "NucC", electricity, co2, snapshot; tech_column="Nuclear",
     cap=1_000.0,
     unit_size=1_000.0,
     uc=true,
-    integeruc=true,
+    integer_uc=true,
     refuel_fraction_per_year=1.0,
     refuel_duration=720.0,
-    refuelmask=8760,
+    refuel_slot_spacing=8760,
 )
 
 # Expandable CCGT backup for residual demand
@@ -154,7 +154,7 @@ snapshot = Snapshot(sim, Dict(:posy => Posy2Options(
     timeseries_file="time_series.xlsx",
     tech_mode=:excel,
     timeseries_mode=:excel,
-    discountrate=0.05,
+    discount_rate=0.05,
 )))
 
 # Electricity node and CO2 sink
@@ -162,7 +162,7 @@ electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
 # Same scaled workbook demand as in the forced case
-makedemand("Demand", "country1", electricity, snapshot; coeff=5.5, shift=-744)
+makedemand("Demand", "country1", electricity, snapshot; profile_multiplier=5.5, profile_shift=-744)
 
 # Same three units and 720 h refuelling outage. Only the allowed starts change.
 makenuclear(
@@ -170,30 +170,30 @@ makenuclear(
     cap=1_000.0,
     unit_size=1_000.0,
     uc=true,
-    integeruc=true,
+    integer_uc=true,
     refuel_fraction_per_year=1.0,  # >=1 refuelling outage per unit per year
     refuel_duration=720.0,         # same fixed outage length as above
-    refuelmask=730,                # ~12 allowed starts per year (~monthly)
+    refuel_slot_spacing=730,                # ~12 allowed starts per year (~monthly)
 )
 makenuclear(
     "NucB", electricity, co2, snapshot; tech_column="Nuclear",
     cap=1_000.0,
     unit_size=1_000.0,
     uc=true,
-    integeruc=true,
+    integer_uc=true,
     refuel_fraction_per_year=1.0,
     refuel_duration=720.0,
-    refuelmask=730,
+    refuel_slot_spacing=730,
 )
 makenuclear(
     "NucC", electricity, co2, snapshot; tech_column="Nuclear",
     cap=1_000.0,
     unit_size=1_000.0,
     uc=true,
-    integeruc=true,
+    integer_uc=true,
     refuel_fraction_per_year=1.0,
     refuel_duration=720.0,
-    refuelmask=730,
+    refuel_slot_spacing=730,
 )
 
 # Same expandable CCGT backup

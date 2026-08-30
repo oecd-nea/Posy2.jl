@@ -23,7 +23,7 @@
 <circle cx="350" cy="101.0" r="4.5" fill="#2a9d8f"/>
 <text class="port" x="260.0" y="91.0" fill="#2a9d8f">input</text>
 <text class="note" x="260.0" y="115.0">hourly shape is free</text>
-<text class="note" x="260.0" y="127.0">yearly sum = val (equality)</text>
+<text class="note" x="260.0" y="127.0">yearly sum = annual_demand (equality)</text>
 <rect x="20" y="78.0" width="150" height="46.0" rx="6" fill="#e6effa" stroke="#4a7fb5" stroke-width="1" stroke-dasharray="none"/>
 <text class="box" x="95.0" y="99.0">hydrogen node</text>
 <text class="boxsub" x="95.0" y="112.0">h2</text>

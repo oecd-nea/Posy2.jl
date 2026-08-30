@@ -194,9 +194,9 @@ const SPECS = [
         file="component-demand.svg",
         component="Electricity Demand",
         inputs=[
-            (name="input", kind=:fixed, note=["coeff x profile", "+ yearlyconstant / 8760"],
+            (name="input", kind=:fixed, note=["profile_multiplier x profile", "+ annual_flat_demand / 8760"],
                 endpoint=(label=["demand node", "n"], kind=:node, carrier=:electricity)),
-            (name="grid losses", kind=:linked, note=["only if gridlosses > 0", "gridlosses x input"],
+            (name="grid losses", kind=:linked, note=["only if grid_losses > 0", "grid_losses x input"],
                 endpoint=(label=["demand node", "n"], kind=:node, carrier=:electricity)),
         ],
         outputs=[],
@@ -205,14 +205,14 @@ const SPECS = [
     (
         file="component-flat-hydrogen-demand.svg",
         component="Flat Hydrogen Demand",
-        inputs=[(name="input", kind=:fixed, note=["val / 8760 every hour", "no capacity, no cost"], endpoint=H2)],
+        inputs=[(name="input", kind=:fixed, note=["annual_demand / 8760 every hour", "no capacity, no cost"], endpoint=H2)],
         outputs=[],
         level=nothing,
     ),
     (
         file="component-flex-hydrogen-demand.svg",
         component="Flexible Hydrogen Demand",
-        inputs=[(name="input", kind=:free, note=["hourly shape is free", "yearly sum = val (equality)"], endpoint=H2)],
+        inputs=[(name="input", kind=:free, note=["hourly shape is free", "yearly sum = annual_demand (equality)"], endpoint=H2)],
         outputs=[],
         level=nothing,
     ),
@@ -262,7 +262,7 @@ const SPECS = [
         component="Intermittent Generation",
         inputs=[
             (name="profile", kind=:fixed, port=false, note=["sets output, not a port", "values in [0, 1]"],
-                endpoint=(label=["profile series", "profiles_<weatheryear>", "column: <tech_column>_<node>"], kind=:series)),
+                endpoint=(label=["profile series", "profiles_<weather_year>", "column: <tech_column>_<node>"], kind=:series)),
         ],
         outputs=[
             (name="output", kind=:fixed, note=["cap x profile each hour", "curtailed at the node"], endpoint=ELEC),
@@ -275,7 +275,7 @@ const SPECS = [
         component="Run-of-river Hydro",
         inputs=[
             (name="intake envelope", kind=:fixed, port=false, note=["output <= hourly intake", "upper bound, not a port"],
-                endpoint=(label=["intake series", "hydro_ror_<weatheryear>", "column: zone"], kind=:series)),
+                endpoint=(label=["intake series", "hydro_ror_<weather_year>", "column: zone"], kind=:series)),
         ],
         outputs=[
             (name="output", kind=:free, note=["cap, investment, fom, vom", "dispatchable under the envelope"], endpoint=ELEC),
@@ -289,9 +289,9 @@ const SPECS = [
         component="Hydro Reservoir",
         inputs=[
             (name="natural", kind=:fixed, note=["intake profile x intake", "not connected; omitted if intake = 0"],
-                endpoint=(label=["intake series", "reservoir_inflow_<weatheryear>", "column: zone"], kind=:series)),
+                endpoint=(label=["intake series", "reservoir_inflow_<weather_year>", "column: zone"], kind=:series)),
             (name="input", kind=:free, note=["grid charging, charge_cap", "eff = roundtrip_eff"], endpoint=ELEC_BOTH),
-            (name="grid losses", kind=:linked, note=["gridlosses x input", "eff 0, energy discarded"], endpoint=ELEC_BOTH),
+            (name="grid losses", kind=:linked, note=["grid_losses x input", "eff 0, energy discarded"], endpoint=ELEC_BOTH),
         ],
         outputs=[
             (name="output", kind=:free, note=["generation, discharge_cap", "eff 1, all costs attach here"], endpoint=ELEC_BOTH),
@@ -305,7 +305,7 @@ const SPECS = [
         component="Battery Storage",
         inputs=[
             (name="input", kind=:free, note=["charging, cap", "eff_i, all costs attach here"], endpoint=ELEC_BOTH),
-            (name="grid losses", kind=:linked, note=["only if gridlosses > 0", "gridlosses x input"], endpoint=ELEC_BOTH),
+            (name="grid losses", kind=:linked, note=["only if grid_losses > 0", "grid_losses x input"], endpoint=ELEC_BOTH),
         ],
         outputs=[
             (name="output", kind=:free, note=["discharging, no own capacity", "bounded by cap through Duration"], endpoint=ELEC_BOTH),
@@ -318,7 +318,7 @@ const SPECS = [
         file="component-flat-hydrogen-purchase.svg",
         component="Flat Hydrogen Purchase",
         inputs=[],
-        outputs=[(name="output", kind=:fixed, note=["val / 8760 every hour", "flat profile source"], endpoint=H2)],
+        outputs=[(name="output", kind=:fixed, note=["annual_supply / 8760 every hour", "flat profile source"], endpoint=H2)],
         level=nothing,
     ),
     (
@@ -326,9 +326,9 @@ const SPECS = [
         component="Electrolyser",
         inputs=[
             (name="input", kind=:free, note=["electricity, cap", "all costs attach here"], endpoint=ELEC),
-            (name="grid losses", kind=:linked, note=["only if gridlosses > 0", "gridlosses x input"], endpoint=ELEC),
+            (name="grid losses", kind=:linked, note=["only if grid_losses > 0", "grid_losses x input"], endpoint=ELEC),
         ],
-        outputs=[(name="output", kind=:linked, note=["eff x input", "hydrogen production"], endpoint=H2)],
+        outputs=[(name="output", kind=:linked, note=["efficiency x input", "hydrogen production"], endpoint=H2)],
         level=nothing,
     ),
     (
@@ -350,11 +350,11 @@ const SPECS = [
                 endpoint=(label=["node b", "b"], kind=:node, carrier=:electricity)),
         ],
         outputs=[
-            (name="output", kind=:linked, note=["(1 - lossfactor) x input"],
+            (name="output", kind=:linked, note=["(1 - loss_factor) x input"],
                 endpoint=(label=["node b", "b"], kind=:node, carrier=:electricity)),
-            (name="output2", kind=:linked, note=["(1 - lossfactor) x input2"],
+            (name="output2", kind=:linked, note=["(1 - loss_factor) x input2"],
                 endpoint=(label=["node a", "a"], kind=:node, carrier=:electricity)),
-            (name="grid losses ic", kind=:linked, note=["lossfactor x (input + input2)", "reporting only"],
+            (name="grid losses ic", kind=:linked, note=["loss_factor x (input + input2)", "reporting only"],
                 endpoint=(label=["not connected", "avoids double counting"], kind=:unconnected)),
         ],
         level=nothing,
@@ -377,8 +377,8 @@ const SPECS = [
         file="component-ev-fixed.svg",
         component="EV, Fixed Profile",
         inputs=[
-            (name="input", kind=:fixed, note=["off-hour charging schedule", "sums to yearly"], endpoint=ELEC),
-            (name="grid losses", kind=:linked, note=["only if gridlosses > 0", "gridlosses x input"], endpoint=ELEC),
+            (name="input", kind=:fixed, note=["off-hour charging schedule", "sums to annual_consumption"], endpoint=ELEC),
+            (name="grid losses", kind=:linked, note=["only if grid_losses > 0", "grid_losses x input"], endpoint=ELEC),
         ],
         outputs=[(name="driving", kind=:fixed, note=["equals the charging series", "reporting only"], endpoint=DRIVING)],
         level=nothing,

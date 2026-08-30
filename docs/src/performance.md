@@ -72,11 +72,11 @@ changing formulation choices in Posy2 builders.
 ## Integer Decisions
 
 Integer unit commitment is usually the largest increase in solve difficulty.
-Use `integeruc=true` only when discrete commitment is important to the study.
-The relaxed formulation with `uc=true, integeruc=false` is faster but is not
+Use `integer_uc=true` only when discrete commitment is important to the study.
+The relaxed formulation with `uc=true, integer_uc=false` is faster but is not
 equivalent to integer commitment.
 
-Integer nuclear capacity decisions (`integercap=true`) also turn the
+Integer nuclear capacity decisions (`integer_cap=true`) also turn the
 capacity expansion into a MILP. Large unit sizes can make the investment
 problem combinatorial even when dispatch itself is simple.
 
@@ -87,7 +87,7 @@ refuelling windows.
 
 ## Interconnections
 
-For price and node interconnections, `dir=true` adds one SOS1 relation per
+For price and node interconnections, `exclusive_direction=true` adds one SOS1 relation per
 timestep so that the two directions cannot be used simultaneously. This can
 increase solver work.
 

@@ -38,15 +38,15 @@
 <line x1="650" y1="82.0" x2="822" y2="82.0" stroke="#e76f51" stroke-width="2" stroke-dasharray="3 3" marker-end="url(#head-linked)"/>
 <circle cx="650" cy="82.0" r="4.5" fill="#e76f51"/>
 <text class="port" x="740.0" y="72.0" fill="#e76f51">output</text>
-<text class="note" x="740.0" y="96.0">(1 - lossfactor) x input</text>
+<text class="note" x="740.0" y="96.0">(1 - loss_factor) x input</text>
 <line x1="650" y1="160.0" x2="822" y2="160.0" stroke="#e76f51" stroke-width="2" stroke-dasharray="3 3" marker-end="url(#head-linked)"/>
 <circle cx="650" cy="160.0" r="4.5" fill="#e76f51"/>
 <text class="port" x="740.0" y="150.0" fill="#e76f51">output2</text>
-<text class="note" x="740.0" y="174.0">(1 - lossfactor) x input2</text>
+<text class="note" x="740.0" y="174.0">(1 - loss_factor) x input2</text>
 <line x1="650" y1="238.0" x2="822" y2="238.0" stroke="#e76f51" stroke-width="2" stroke-dasharray="3 3" marker-end="url(#head-linked)"/>
 <circle cx="650" cy="238.0" r="4.5" fill="#e76f51"/>
 <text class="port" x="740.0" y="228.0" fill="#e76f51">grid losses ic</text>
-<text class="note" x="740.0" y="252.0">lossfactor x (input + input2)</text>
+<text class="note" x="740.0" y="252.0">loss_factor x (input + input2)</text>
 <text class="note" x="740.0" y="264.0">reporting only</text>
 <rect x="830" y="59.0" width="150" height="46.0" rx="6" fill="#fdf6cd" stroke="#c9a227" stroke-width="1" stroke-dasharray="none"/>
 <text class="box" x="905.0" y="80.0">node b</text>

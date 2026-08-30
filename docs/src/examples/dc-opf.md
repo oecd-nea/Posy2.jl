@@ -58,10 +58,10 @@ d = Node("D", EnergyCarrier("electricity D", sim), rule=:curtailed, evalprice=tr
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
 # Flat 1 MW demand in each zone
-makedemand("Demand", "A", a, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
-makedemand("Demand", "B", b, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
-makedemand("Demand", "C", c, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
-makedemand("Demand", "D", d, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+makedemand("Demand", "A", a, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
+makedemand("Demand", "B", b, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
+makedemand("Demand", "C", c, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
+makedemand("Demand", "D", d, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
 
 # 10 MW CCGT on A; costs from the technology workbook
 makedispatchable("CCGT", a, co2, snapshot; tech_column="CCGT", cap=10.0, unit_size=0.0)
@@ -137,10 +137,10 @@ d = Node("D", EnergyCarrier("electricity D", sim), rule=:curtailed, evalprice=tr
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
 # Flat 1 MW demand in each zone
-makedemand("Demand", "A", a, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
-makedemand("Demand", "B", b, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
-makedemand("Demand", "C", c, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
-makedemand("Demand", "D", d, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+makedemand("Demand", "A", a, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
+makedemand("Demand", "B", b, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
+makedemand("Demand", "C", c, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
+makedemand("Demand", "D", d, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
 
 # 10 MW CCGT on A; costs from the technology workbook
 makedispatchable("CCGT", a, co2, snapshot; tech_column="CCGT", cap=10.0, unit_size=0.0)
@@ -226,10 +226,10 @@ d = Node("D", EnergyCarrier("electricity D", sim), rule=:curtailed, evalprice=tr
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
 # Flat 1 MW demand in each zone
-makedemand("Demand", "A", a, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
-makedemand("Demand", "B", b, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
-makedemand("Demand", "C", c, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
-makedemand("Demand", "D", d, snapshot; coeff=0.0, yearlyconstant=1.0 * 8760)
+makedemand("Demand", "A", a, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
+makedemand("Demand", "B", b, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
+makedemand("Demand", "C", c, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
+makedemand("Demand", "D", d, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
 
 # 10 MW CCGT on A; costs from the technology workbook
 makedispatchable("CCGT", a, co2, snapshot; tech_column="CCGT", cap=10.0, unit_size=0.0)

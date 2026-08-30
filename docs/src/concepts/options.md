@@ -16,7 +16,7 @@ options = Posy2Options(
     timeseries_file="time_series.xlsx",
     tech_mode=:excel,
     timeseries_mode=:excel,
-    discountrate=0.05,
+    discount_rate=0.05,
     co2_price=100.0,
 )
 
@@ -29,7 +29,7 @@ technology inputs are supplied directly and no workbook is read.
 
 ```julia
 posy_options(snapshot)
-discountrate(snapshot)
+discount_rate(snapshot)
 co2_price(snapshot)
 tech_mode(snapshot)
 timeseries_mode(snapshot)
@@ -86,7 +86,7 @@ The defaults are workbook-free. The modes may be omitted when both sources use
 
 ```julia
 options = Posy2Options(
-    discountrate=0.05,
+    discount_rate=0.05,
     co2_price=0.0,
 )
 ```
@@ -113,7 +113,7 @@ See [Input Workbooks](input-data.md) for the full rules and sheet layout.
 
 ## Economic Assumptions
 
-`discountrate` is used when builders annualise overnight investment and
+`discount_rate` is used when builders annualise overnight investment and
 decommissioning costs. [`eac`](@ref) combines the overnight cost, construction
 profile, lifetime, and discount rate into an equivalent annual cost.
 Construction profiles can be provided as one numeric value or as a vector of
@@ -125,7 +125,7 @@ In compact form, annualised investment is written as
 A^{\mathrm{inv}} = C_0 \, \phi^{\mathrm{build}} \, \mathrm{CRF}^*(r, L)
 ```
 
-where ``C_0`` is the overnight cost, ``r`` is `discountrate`, ``L`` is
+where ``C_0`` is the overnight cost, ``r`` is `discount_rate`, ``L`` is
 `lifetime`, and ``\phi^{\mathrm{build}}`` is the construction-profile
 adjustment factor implied by `construction_profile`. The corrected annualisation
 factor used by Posy2 is
@@ -162,7 +162,7 @@ implied by `decommissioning_profile`.
 ```julia
 eac(
     4_000_000.0,             # overnight cost, currency per MW (4000 currency/kW)
-    discountrate(snapshot),  # discount rate r, here the default 0.05
+    discount_rate(snapshot),  # discount rate r, here the default 0.05
     60,                      # lifetime L, in years
     [0.3, 0.4, 0.3],         # construction profile: 30%, 40%, 30% over three years
 )
@@ -179,7 +179,7 @@ behaviours.
 `co2_price` is the default carbon price passed to emitting generation
 builders. When `co2_emission` is non-zero, the builder creates a linked CO2
 output port, connects it to the supplied CO2 node, and applies the carbon price
-to that flow. A builder-specific `co2price` keyword can override the study
+to that flow. A builder-specific `co2_price` keyword can override the study
 default.
 
 ## Optional DC Power Flow

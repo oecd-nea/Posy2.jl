@@ -52,15 +52,15 @@ absorbs the excess. It is opt-in: the default `spillage=false` keeps the forced
 use of all inflow. Spilled energy is reported by the hourly sheet's
 `Total spillage` and `spillage <component>` columns.
 
-The intake profile comes from sheet `reservoir_inflow_<weatheryear>`, column `<zone>`.
-When `intake_profile` is omitted and intake is enabled, `weatheryear` must be
+The intake profile comes from sheet `reservoir_inflow_<weather_year>`, column `<zone>`.
+When `intake_profile` is omitted and intake is enabled, `weather_year` must be
 provided explicitly. It defaults to `nothing` and is unused with an explicit
 profile or with `intake=0`. The profile is always normalized to sum to one,
 then scaled by the requested total `intake`.
 
-`eff` defaults to `roundtrip_eff` in the technology column named by `tech_column`
-of sheet `storage`. It applies to grid charging; natural intake and discharge have unit
-efficiency. `gridlosses` adds a proportional linked input flow. Cost defaults
+`roundtrip_eff` defaults to the row of the same name in the technology column named
+by `tech_column` of sheet `storage`. It applies to grid charging; natural intake and discharge have unit
+efficiency. `grid_losses` adds a proportional linked input flow. Cost defaults
 come from the same technology column and are attached to discharge capacity.
 
 Tags: `:tech => tech`, `:zone => elec.name`, and the function tags `generation`,
@@ -89,12 +89,12 @@ and bounds the level at `power_cap * duration`.
 
 `duration` links energy level to power capacity. It is structural: it comes
 from the `storage` technology column in `:excel` mode and must be supplied in
-`:arguments` mode. `eff` sets the storage input efficiency, and `simplified`
+`:arguments` mode. `roundtrip_eff` sets the storage input efficiency, and `simplified`
 selects the corresponding Nosy storage formulation. In `:arguments` mode,
 efficiency defaults to one and economic terms to zero; inactive capital and
 decommissioning data are not resolved. Investment, connection, fixed O&M,
 decommissioning, and variable O&M costs are attached to `input` capacity or
-flow. `gridlosses` adds a linked charging loss.
+flow. `grid_losses` adds a linked charging loss.
 
 Tags: `:tech => tech`, `:zone => elec.name`, and the function tags
 `electricity`, `storage`, and `generation`. These tags make charging and

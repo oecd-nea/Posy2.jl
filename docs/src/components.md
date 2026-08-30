@@ -100,7 +100,7 @@ capacity therefore resolves both directional availabilities even if the
 expression later evaluates to zero. Price interconnections apply the same rule
 to each separate directional capacity and also resolve their price input.
 
-`unit_size`, `integercap`, and `integeruc` control discrete formulations where
+`unit_size`, `integer_cap`, and `integer_uc` control discrete formulations where
 the relevant builder supports them. Their applicability and combined behavior
 are described in
 [Note On Capacity And Unit Commitment](components/generation.md#Note-On-Capacity-And-Unit-Commitment).

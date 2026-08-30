@@ -6,8 +6,8 @@ using ArgCheck: @argcheck
 
 """
     makedemand(name::String, zone::String, n::Node, s::Snapshot;
-        tech::String=name, profile=nothing, coeff=1.0, shift::Int=0,
-        yearlyconstant::Real=0., gridlosses=0.,
+        tech::String=name, profile=nothing, profile_multiplier=1.0, profile_shift::Int=0,
+        annual_flat_demand::Real=0., grid_losses=0.,
     )
 
 Build, connect and return a component based on the Demand template.
@@ -20,31 +20,31 @@ Arguments:
   * `s`: snapshot to register the component in.
   * `profile`: Hourly demand in MW, or a scalar expanded across the simulation
     mesh. If `nothing`, read `zone` from the `demand` sheet.
-  * `coeff`: Dimensionless multiplier applied to the profile demand. `0`
-    disables it and skips the `zone`, `profile`, and `shift` inputs.
-  * `shift`: Circular profile shift in time steps (e.g. align the first day to
+  * `profile_multiplier`: Dimensionless multiplier applied to the profile demand. `0`
+    disables it and skips the `zone`, `profile`, and `profile_shift` inputs.
+  * `profile_shift`: Circular profile shift in time steps (e.g. align the first day to
     Monday).
-  * `yearlyconstant`: Flat demand in MWh/year, distributed over 8760 hours
-    (`yearlyconstant >= 0`).
-  * `gridlosses`: Proportional grid-loss fraction on demand input
-    (`0 <= gridlosses < 1`).
+  * `annual_flat_demand`: Flat demand in MWh/year, distributed over 8760 hours
+    (`annual_flat_demand >= 0`).
+  * `grid_losses`: Proportional grid-loss fraction on demand input
+    (`0 <= grid_losses < 1`).
 """
 function makedemand(name::String, zone::String, n::Node, s::Snapshot;
-                    tech::String=name, profile=nothing, coeff::Real=1.0, shift::Int=0,
-                    yearlyconstant::Real=0., gridlosses::Real=0.)
-    inputs = demand_input(coeff=coeff, yearlyconstant=yearlyconstant, gridlosses=gridlosses)
+                    tech::String=name, profile=nothing, profile_multiplier::Real=1.0, profile_shift::Int=0,
+                    annual_flat_demand::Real=0., grid_losses::Real=0.)
+    inputs = demand_input(profile_multiplier=profile_multiplier, annual_flat_demand=annual_flat_demand, grid_losses=grid_losses)
     validate_demand_input(inputs)
-    _gridlosses = Float64(gridlosses)
-    if iszero(coeff)
+    _grid_losses = Float64(grid_losses)
+    if iszero(profile_multiplier)
         var = 0.
     else
-        var = coeff * _resolve_timeseries(s, profile, zone, "demand"; keyword="profile")
-        var = circshift(var, shift)
+        var = profile_multiplier * _resolve_timeseries(s, profile, zone, "demand"; keyword="profile")
+        var = circshift(var, profile_shift)
     end
 
-    m = Demand(n.carrier, (var .+ yearlyconstant / 8760))
+    m = Demand(n.carrier, (var .+ annual_flat_demand / 8760))
     vb = []
-    !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", n.carrier, :input, "input", x->x[1] * _gridlosses))
+    !iszero(_grid_losses) && push!(vb, LinkedJointFlow("grid losses", n.carrier, :input, "input", x->x[1] * _grid_losses))
     c = Component(name * " " * n.name, m, vb)
     tag!(c, :tech, tech)
     tag!(c, :zone, n.name)
@@ -56,7 +56,7 @@ function makedemand(name::String, zone::String, n::Node, s::Snapshot;
 end
 
 """
-    makeflathydrogendemand(name::String, n::Node, val::Real, s::Snapshot;
+    makeflathydrogendemand(name::String, n::Node, annual_demand::Real, s::Snapshot;
         tech::String=name)
 
 Build, connect and return a flat hydrogen demand component.
@@ -65,15 +65,15 @@ Arguments:
   * `name`: component name prefix.
   * `tech`: technology label used for reporting and component queries; defaults to `name`.
   * `n`: hydrogen demand node to connect the component to.
-  * `val`: Total hydrogen demand in MWh/year. Must satisfy `val >= 0`.
+  * `annual_demand`: Total hydrogen demand in MWh/year. Must satisfy `annual_demand >= 0`.
   * `s`: snapshot to register the component in.
 """
-function makeflathydrogendemand(name::String, n::Node, val::Real, s::Snapshot;
+function makeflathydrogendemand(name::String, n::Node, annual_demand::Real, s::Snapshot;
     tech::String=name,
 )
-    inputs = demand_input(val=val)
+    inputs = demand_input(annual_demand=annual_demand)
     validate_demand_input(inputs)
-    m = Demand(n.carrier, val / 8760)
+    m = Demand(n.carrier, annual_demand / 8760)
     vb = []
     c = Component(name * " " * n.name, m, vb)
     tag!(c, :tech, tech)
@@ -86,7 +86,7 @@ function makeflathydrogendemand(name::String, n::Node, val::Real, s::Snapshot;
 end
 
 """
-    makeflexhydrogendemand(name::String, n::Node, val::Real, s::Snapshot;
+    makeflexhydrogendemand(name::String, n::Node, annual_demand::Real, s::Snapshot;
         tech::String=name)
 
 Build, connect and return a flexible hydrogen demand component.
@@ -95,18 +95,18 @@ Arguments:
   * `name`: component name prefix.
   * `tech`: technology label used for reporting and component queries; defaults to `name`.
   * `n`: hydrogen demand node to connect the component to.
-  * `val`: Total hydrogen demand in MWh/year, enforced through
-    `YearlySum("input", val, :equal)`. Must satisfy `val >= 0`.
+  * `annual_demand`: Total hydrogen demand in MWh/year, enforced through
+    `YearlySum("input", annual_demand, :equal)`. Must satisfy `annual_demand >= 0`.
   * `s`: snapshot to register the component in.
 """
-function makeflexhydrogendemand(name::String, n::Node, val::Real, s::Snapshot;
+function makeflexhydrogendemand(name::String, n::Node, annual_demand::Real, s::Snapshot;
     tech::String=name,
 )
-    inputs = demand_input(val=val)
+    inputs = demand_input(annual_demand=annual_demand)
     validate_demand_input(inputs)
     m = BasicSink(n.carrier)
     vb = []
-    push!(vb, YearlySum("input", val, :equal))
+    push!(vb, YearlySum("input", annual_demand, :equal))
     c = Component(name * " " * n.name, m, vb)
     tag!(c, :tech, tech)
     tag!(c, :zone, n.name)

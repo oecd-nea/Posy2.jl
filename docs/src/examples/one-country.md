@@ -22,7 +22,7 @@ snapshot = Snapshot(
         timeseries_file="time_series.xlsx",
         tech_mode=:excel,
         timeseries_mode=:excel,
-        discountrate=0.05,
+        discount_rate=0.05,
     )),
 )
 
@@ -35,7 +35,7 @@ co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 makedemand("Demand", "country1", electricity, snapshot)
 
 # Fixed 800 MW wind and continuous CCGT expansion up to 2 GW
-makeintermittentsource("Onshore wind", electricity, co2, snapshot; tech_column="Onwind", cap=800.0, weatheryear=2019)
+makeintermittentsource("Onshore wind", electricity, co2, snapshot; tech_column="Onwind", cap=800.0, weather_year=2019)
 makedispatchable("CCGT", electricity, co2, snapshot; maxcap=2_000.0, unit_size=0.0)
 
 # Minimise total system cost and extract solved values

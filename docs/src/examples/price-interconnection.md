@@ -2,7 +2,7 @@
 
 This example compares a domestic CCGT with imports from an external market via
 [`makepricelink`](@ref). The model imports when the external `spot_price`
-plus `transactioncost` is below the CCGT `fuel_cost`.
+plus `transaction_cost` is below the CCGT `fuel_cost`.
 
 Unlike [`maketransmissionlink`](@ref), that market is not an explicit node.
 The single `"country2"` argument names the component (`"country2_country1"`), the
@@ -39,7 +39,7 @@ electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
 # Flat 100 MW demand
-makedemand("Demand", "country1", electricity, snapshot; coeff=0.0, yearlyconstant=100.0 * 8760)
+makedemand("Demand", "country1", electricity, snapshot; profile_multiplier=0.0, annual_flat_demand=100.0 * 8760)
 
 # Domestic 100 MW CCGT
 makedispatchable(
@@ -51,7 +51,7 @@ makedispatchable(
 # Priced import from "country2" (spot series); Large import capacity, export capacity off
 makepricelink(
     "country2", electricity, snapshot;
-    import_capacity=10_000.0, export_capacity=0.0, transactioncost=1.0,
+    import_capacity=10_000.0, export_capacity=0.0, transaction_cost=1.0,
 )
 
 # Minimise total system cost and extract solved values
@@ -65,7 +65,7 @@ Snapshot with 3 component(s) and 1 node(s)
 ```
 
 A sample week shows how meeting demand switches between imports and the
-domestic CCGT as `spot_price + transactioncost` moves relative to the CCGT
+domestic CCGT as `spot_price + transaction_cost` moves relative to the CCGT
 fuel cost. It plots `dualprice` next to that import cost and the fuel line,
 with import and CCGT dispatch underneath.
 

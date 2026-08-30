@@ -154,7 +154,7 @@ using HiGHS
         )
         @test_throws ArgumentError makenuclear(
             "Integer affine nuclear", elec1, carbon, s; tech_column="unused",
-            cap=affine, integercap=true,
+            cap=affine, integer_cap=true,
         )
     end
 

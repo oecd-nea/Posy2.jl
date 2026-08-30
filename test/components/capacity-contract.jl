@@ -37,14 +37,14 @@ using HiGHS
         makedispatchable("CCGT", elec, co2, s; tech_column="CCGT", cap=nothing, maxcap=40.0, om_var_cost=1.0)
         makeintermittentsource("PV", elec, co2, s; tech_column="PV", cap=nothing, maxcap=30.0, profile=1.0)
         makehydroror("ROR", "Z1", elec, s; cap=nothing, maxcap=20.0, intake=10.0, intake_profile=1.0)
-        makebatterystorage("Battery", elec, s; tech_column="Li", power_cap=nothing, power_maxcap=10.0, eff=1.0, duration=4.0)
-        makeelectrolyser("Electrolyser", elec, h2, s; tech_column="PEM", cap=nothing, maxcap=5.0, eff=1.0)
-        makehydrogenstorage("H2 storage", h2, s; tech_column="Cavern", energy_cap=nothing, energy_maxcap=50.0, eff=1.0)
+        makebatterystorage("Battery", elec, s; tech_column="Li", power_cap=nothing, power_maxcap=10.0, roundtrip_eff=1.0, duration=4.0)
+        makeelectrolyser("Electrolyser", elec, h2, s; tech_column="PEM", cap=nothing, maxcap=5.0, efficiency=1.0)
+        makehydrogenstorage("H2 storage", h2, s; tech_column="Cavern", energy_cap=nothing, energy_maxcap=50.0, roundtrip_eff=1.0)
         # reservoir capacities are exogenous, so the source fleet is fixed
         makehydroreservoir("Reservoir", "Z1", elec, s; tech_column="Hydro",
             discharge_cap=15.0, charge_cap=8.0, intake=0.0,
-            energy_cap=60.0, eff=1.0)
-        makedemand("Load", "Z1", elec, s; coeff=0.0, yearlyconstant=100.0)
+            energy_cap=60.0, roundtrip_eff=1.0)
+        makedemand("Load", "Z1", elec, s; profile_multiplier=0.0, annual_flat_demand=100.0)
         Nosy.optimize!(s, cost(s))
         ini = extract(s)
 
@@ -52,11 +52,11 @@ using HiGHS
         gas = makedispatchable("CCGT", telec, tco2, t; tech_column="CCGT", cap=ini, om_var_cost=1.0)
         pv = makeintermittentsource("PV", telec, tco2, t; tech_column="PV", cap=ini, profile=1.0)
         ror = makehydroror("ROR", "Z1", telec, t; cap=ini, intake=10.0, intake_profile=1.0)
-        bat = makebatterystorage("Battery", telec, t; tech_column="Li", power_cap=ini, eff=1.0, duration=4.0)
-        elyser = makeelectrolyser("Electrolyser", telec, th2, t; tech_column="PEM", cap=ini, eff=1.0)
-        h2store = makehydrogenstorage("H2 storage", th2, t; tech_column="Cavern", energy_cap=ini, eff=1.0)
+        bat = makebatterystorage("Battery", telec, t; tech_column="Li", power_cap=ini, roundtrip_eff=1.0, duration=4.0)
+        elyser = makeelectrolyser("Electrolyser", telec, th2, t; tech_column="PEM", cap=ini, efficiency=1.0)
+        h2store = makehydrogenstorage("H2 storage", th2, t; tech_column="Cavern", energy_cap=ini, roundtrip_eff=1.0)
         res = makehydroreservoir("Reservoir", "Z1", telec, t; tech_column="Hydro",
-            discharge_cap=ini, charge_cap=ini, intake=0.0, energy_cap=ini, eff=1.0)
+            discharge_cap=ini, charge_cap=ini, intake=0.0, energy_cap=ini, roundtrip_eff=1.0)
 
         @test fixedcap(gas, "output") ≈ capacity(ini, "CCGT E1")
         @test fixedcap(pv, "output") ≈ capacity(ini, "PV E1")
@@ -76,7 +76,7 @@ using HiGHS
     function extracted_without_components()
         e, eelec, _, eco2 = contract_snapshot()
         makedispatchable("Other", eelec, eco2, e; tech_column="CCGT", cap=100.0, om_var_cost=1.0)
-        makedemand("Load", "Z1", eelec, e; coeff=0.0, yearlyconstant=8760.0)
+        makedemand("Load", "Z1", eelec, e; profile_multiplier=0.0, annual_flat_demand=8760.0)
         Nosy.optimize!(e, cost(e))
         return extract(e)
     end
@@ -93,14 +93,14 @@ using HiGHS
         @test_throws "no component named \"PV E1\" to inherit port \"output\"" makeintermittentsource(
             "PV", elec, co2, s; tech_column="PV", cap=empty_ini, profile=1.0)
         @test_throws "no component named \"Battery E1\" to inherit port \"input\"" makebatterystorage(
-            "Battery", elec, s; tech_column="Li", power_cap=empty_ini, eff=1.0, duration=4.0)
+            "Battery", elec, s; tech_column="Li", power_cap=empty_ini, roundtrip_eff=1.0, duration=4.0)
         @test_throws "no component named \"Electrolyser E1\" to inherit port \"input\"" makeelectrolyser(
-            "Electrolyser", elec, h2, s; tech_column="PEM", cap=empty_ini, eff=1.0)
+            "Electrolyser", elec, h2, s; tech_column="PEM", cap=empty_ini, efficiency=1.0)
         @test_throws "no component named \"H2 storage H2\" to inherit port \"level\"" makehydrogenstorage(
-            "H2 storage", h2, s; tech_column="Cavern", energy_cap=empty_ini, eff=1.0)
+            "H2 storage", h2, s; tech_column="Cavern", energy_cap=empty_ini, roundtrip_eff=1.0)
         @test_throws "`discharge_cap` was given a snapshot with no component named \"Reservoir E1\" to inherit port \"output\" from" makehydroreservoir(
             "Reservoir", "Z1", elec, s; tech_column="Hydro",
-            discharge_cap=empty_ini, charge_cap=0.0, intake=0.0, eff=1.0)
+            discharge_cap=empty_ini, charge_cap=0.0, intake=0.0, roundtrip_eff=1.0)
     end
 
     # Inheriting reads solved values, so an unextracted source is rejected.
@@ -108,7 +108,7 @@ using HiGHS
         s, elec, _, co2 = contract_snapshot()
         makedispatchable("CCGT", elec, co2, s; tech_column="CCGT",
             cap=100.0, uc=true, unit_size=50.0, min_power=0.5, om_var_cost=1.0)
-        makedemand("Load", "Z1", elec, s; coeff=0.0, yearlyconstant=8760.0 * 60.0)
+        makedemand("Load", "Z1", elec, s; profile_multiplier=0.0, annual_flat_demand=8760.0 * 60.0)
         Nosy.optimize!(s, cost(s))
         # optimized but never extracted: capacities are still JuMP expressions
         @test s isa Snapshot{JuMP.AffExpr}
@@ -132,7 +132,7 @@ using HiGHS
         t, telec, _, _ = contract_snapshot()
         # "Twin E1" exists but is a generator: it has no "input" port to inherit
         @test_throws "component \"Twin E1\" has no port named \"input\"" makebatterystorage(
-            "Twin", telec, t; tech_column="Li", power_cap=ini, eff=1.0, duration=4.0)
+            "Twin", telec, t; tech_column="Li", power_cap=ini, roundtrip_eff=1.0, duration=4.0)
     end
 
     # A commitment schedule can be replayed, but only against a fixed capacity.
@@ -140,7 +140,7 @@ using HiGHS
         s, elec, _, co2 = contract_snapshot(hours=24)
         makedispatchable("CCGT", elec, co2, s; tech_column="CCGT",
             cap=100.0, uc=true, unit_size=50.0, min_power=0.5, om_var_cost=1.0)
-        makedemand("Load", "Z1", elec, s; coeff=0.0, yearlyconstant=8760.0 * 60.0)
+        makedemand("Load", "Z1", elec, s; profile_multiplier=0.0, annual_flat_demand=8760.0 * 60.0)
         Nosy.optimize!(s, cost(s))
         ini = extract(s)
 
@@ -170,7 +170,7 @@ using HiGHS
         x, xelec, _, xco2 = contract_snapshot(hours=24)
         y, yelec, _, yco2 = contract_snapshot(hours=24)
         makedispatchable("CCGT", yelec, yco2, y; tech_column="CCGT", cap=100.0, om_var_cost=1.0)
-        makedemand("Load", "Z1", yelec, y; coeff=0.0, yearlyconstant=8760.0)
+        makedemand("Load", "Z1", yelec, y; profile_multiplier=0.0, annual_flat_demand=8760.0)
         Nosy.optimize!(y, cost(y))
         nouc = extract(y)
         @test_throws "carries no unit commitment behavior on port \"output\"" makedispatchable(
@@ -183,7 +183,7 @@ using HiGHS
         s, elec, _, co2 = contract_snapshot(hours=24)
         makenuclear("EPR", elec, co2, s; tech_column="Nuclear",
             cap=100.0, uc=true, unit_size=50.0, min_power=0.5, om_var_cost=1.0)
-        makedemand("Load", "Z1", elec, s; coeff=0.0, yearlyconstant=8760.0 * 60.0)
+        makedemand("Load", "Z1", elec, s; profile_multiplier=0.0, annual_flat_demand=8760.0 * 60.0)
         Nosy.optimize!(s, cost(s))
         ini = extract(s)
         # the source was solved without refuelling, so it has a single shutdown selector
@@ -194,7 +194,7 @@ using HiGHS
         t, telec, _, tco2 = contract_snapshot(hours=24)
         replayed = @test_logs (:warn,) match_mode=:any makenuclear("EPR", telec, tco2, t; tech_column="Nuclear",
             cap=ini, uc=ini, unit_size=50.0, om_var_cost=1.0,
-            refuel_fraction_per_year=1.0, refuel_duration=30.0, refuelmask=24.0)
+            refuel_fraction_per_year=1.0, refuel_duration=30.0, refuel_slot_spacing=24)
         @test !isempty(Nosy.getbehaviors(replayed, Nosy.FleetUnitCommitmentFromIniBehavior))
     end
 
@@ -204,7 +204,7 @@ using HiGHS
         gas = makedispatchable("CCGT", elec, co2, s; tech_column="CCGT", cap=0.0)
         ror = makehydroror("ROR", "Z1", elec, s; cap=0.0, intake=0.0)
         res = makehydroreservoir("Reservoir", "Z1", elec, s; tech_column="Hydro",
-            discharge_cap=10.0, charge_cap=0.0, intake=0.0, eff=1.0)
+            discharge_cap=10.0, charge_cap=0.0, intake=0.0, roundtrip_eff=1.0)
         @test !isnothing(gas)
         @test Nosy.getcomponent(s, "CCGT E1") === gas
         @test fixedcap(gas, "output") == 0.0
@@ -283,7 +283,7 @@ using HiGHS
             import_capacity=nothing, import_maxcap=40.0,
             export_capacity=nothing, export_maxcap=25.0,
             spot_price=1.0, import_availability=1.0, export_availability=1.0)
-        makedemand("Load", "Z1", elec, s; coeff=0.0, yearlyconstant=100.0)
+        makedemand("Load", "Z1", elec, s; profile_multiplier=0.0, annual_flat_demand=100.0)
         Nosy.optimize!(s, cost(s))
         ini = extract(s)
 

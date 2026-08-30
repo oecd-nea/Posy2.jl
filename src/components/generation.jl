@@ -7,9 +7,9 @@ using ArgCheck: @argcheck
 """
     makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
-        cap=nothing, mincap=nothing, maxcap=nothing, capacitymultiplier=nothing,
-        integeruc=false, uc=false, fuelnode=nothing,
-        co2price=co2_price(s),
+        cap=nothing, mincap=nothing, maxcap=nothing, capacity_multiplier=nothing,
+        integer_uc=false, uc=false, fuelnode=nothing,
+        co2_price=co2_price(s),
         overnight_cost, om_fixed_cost, decommissioning, lifetime,
         construction_profile, decommissioning_profile, connection_cost,
         om_var_cost, fuel_cost, no_load_cost, startup_cost, co2_emission,
@@ -36,16 +36,16 @@ Arguments:
     checked as an assertion against a fixed or inherited one.
   * `maxcap`: Upper capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
-  * `capacitymultiplier`: Dimensionless time-varying multiplier on output capacity.
+  * `capacity_multiplier`: Dimensionless time-varying multiplier on output capacity.
 
-  * `integeruc`: If `true`, newly constructed UC commitment variables are
+  * `integer_uc`: If `true`, newly constructed UC commitment variables are
     integer; used only when `uc=true`.
   * `uc`: Enables UC constraints and UC linked costs (`no_load_cost`, `startup_cost`).
     An extracted `Snapshot` instead replays the commitment schedule already
     solved for the matching component, and then requires a fixed `cap`.
   * `fuelnode`: If provided, fuel is modeled as an input flow linked by efficiency. If `nothing`, fuel is modeled as a variable cost on output energy (`fuel_cost`).
 
-  * `co2price`: Carbon price in currency/tCO2, used only when
+  * `co2_price`: Carbon price in currency/tCO2, used only when
     `co2_emission != 0`.
 
   * `overnight_cost`: Overnight CAPEX in currency/kW of output capacity.
@@ -80,12 +80,12 @@ function makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
     tech::String=name, tech_column::String=tech,
     # capacity / expansion
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
-    capacitymultiplier=nothing,
+    capacity_multiplier=nothing,
 
     # unit commitment / operation
-    integeruc=false, uc::Union{Bool,Snapshot}=false, fuelnode=nothing,
+    integer_uc=false, uc::Union{Bool,Snapshot}=false, fuelnode=nothing,
 
-    co2price::Real=co2_price(s),
+    co2_price::Real=co2_price(s),
 
     # technical / economic overrides
     overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -153,7 +153,7 @@ function makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
         end
         validate_component_input(component_input(lifetime=_lt_raw))
         _lt = Int(_lt_raw)
-        _inv = eac(_oc, discountrate(s), _lt, _cp)
+        _inv = eac(_oc, discount_rate(s), _lt, _cp)
     end
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:connection, "output", energy, _inv * _conn))
@@ -161,8 +161,8 @@ function makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
     push!(vb, VariableCost(:vom, "output", energy, _vom))
     
     # capacity multiplier
-    if !isnothing(capacitymultiplier)
-        push!(vb, CapacityMultiplier("output", capacitymultiplier))
+    if !isnothing(capacity_multiplier)
+        push!(vb, CapacityMultiplier("output", capacity_multiplier))
     end
 
     # decommissioning costs are inactive unless both inputs are non-zero
@@ -175,12 +175,12 @@ function makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
         else
             decommissioning_profile
         end
-        _decom_cost = decom_cost(_oc, _decom, _lt, discountrate(s), _dcp)
+        _decom_cost = decom_cost(_oc, _decom, _lt, discount_rate(s), _dcp)
     end
     push!(vb, FixedCost(:decommissioning, "output", energy, _decom_cost))
     if !iszero(_co2_em)
         push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
-        push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2price))
+        push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2_price))
     end
     if isnothing(_usize_raw) || iszero(_usize_raw)
         _usize = nothing
@@ -190,7 +190,7 @@ function makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
     end
     _mincap = mincap
     _maxcap = maxcap
-    if _ucenabled(uc) && integeruc && !isnothing(_usize) && isnothing(cap)
+    if _ucenabled(uc) && integer_uc && !isnothing(_usize) && isnothing(cap)
         if !isnothing(_mincap)
             _mincap = ceil(_mincap / _usize) * _usize
         end
@@ -232,7 +232,7 @@ function makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
                 downtime=_min_downtime, 
                 startup=_startup_dur, 
                 shutdown=_shutdown_dur, 
-                integer=integeruc)
+                integer=integer_uc)
             )
         end
         _noload = isnothing(no_load_cost) ? (excel ? gettechparam(s, tech_column, "no_load_cost", "dispatchable") : 0.0) : no_load_cost
@@ -287,11 +287,11 @@ end
 """
     makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
-        cap=nothing, mincap=nothing, maxcap=nothing, integercap=false, warmstart=nothing,
-        uc=false, integeruc=false, startupmask=nothing, shutdownmask=nothing,
+        cap=nothing, mincap=nothing, maxcap=nothing, integer_cap=false, warmstart=nothing,
+        uc=false, integer_uc=false, startupmask=nothing, shutdownmask=nothing,
         refuel::Bool=true, refuel_duration::Union{Nothing,Real}=nothing,
-        refuelmask::Union{Nothing,Real}=nothing, refuel_fraction_per_year::Union{Nothing,Real}=nothing,
-        fuelnode=nothing, co2price=co2_price(s),
+        refuel_slot_spacing::Union{Nothing,Integer}=nothing, refuel_fraction_per_year::Union{Nothing,Real}=nothing,
+        fuelnode=nothing, co2_price=co2_price(s),
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
         connection_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing, fuel_cost::Union{Nothing,Real}=nothing,
@@ -320,7 +320,7 @@ Arguments:
     checked as an assertion against a fixed or inherited one.
   * `maxcap`: Upper capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
-  * `integercap`: Integer flag for variable capacity; ignored for fixed or
+  * `integer_cap`: Integer flag for variable capacity; ignored for fixed or
     inherited capacity.
   * `warmstart`: Variable-capacity warm start in MW; ignored for fixed or
     inherited capacity.
@@ -330,7 +330,7 @@ Arguments:
     component and requires a fixed `cap`. Fresh refuelling constraints are built
     only when `uc=true`; with `uc=false` they are ignored, and a replayed schedule
     retains its solved refuelling decisions.
-  * `integeruc`: Integer UC commitment variables, used only when `uc=true`.
+  * `integer_uc`: Integer UC commitment variables, used only when `uc=true`.
   * `startupmask`: Startup availability mask, used only when `uc=true`.
   * `shutdownmask`: Shutdown availability mask, used only when `uc=true`.
 
@@ -339,14 +339,16 @@ Arguments:
     enables refuelling constraints when `refuel_fraction_per_year > 0`. If
     `nothing`, use the workbook value in `:excel` mode and zero in `:arguments`
     mode.
-  * `refuelmask`: Positive integer interval in model time steps between allowed
-    refuelling windows; not read from the workbook.
+  * `refuel_slot_spacing`: Spacing, in model time steps, of the grid of steps at
+    which a refuelling outage may start: `8760` leaves a single allowed start,
+    `730` leaves about twelve. Must be positive. Required when refuelling is
+    enabled, and not read from the workbook.
   * `refuel_fraction_per_year`: Minimum refuelling events per unit/year. If
     `nothing`, use the workbook value in `:excel` mode and zero in `:arguments`
     mode.
 
   * `fuelnode`: If provided, fuel is represented as linked input flow using `efficiency`. If `nothing`, `fuel_cost` is applied as output variable cost.
-  * `co2price`: Carbon price in currency/tCO2, used only when
+  * `co2_price`: Carbon price in currency/tCO2, used only when
     `co2_emission != 0`.
 
   * `overnight_cost`: Overnight CAPEX in currency/kW of output capacity.
@@ -381,17 +383,17 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
     tech::String=name, tech_column::String=tech,
     # capacity / expansion
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
-    integercap=false, warmstart::Union{Nothing,Real}=nothing,
+    integer_cap=false, warmstart::Union{Nothing,Real}=nothing,
 
     # unit commitment / operation
-    uc::Union{Bool,Snapshot}=false, integeruc=false, startupmask=nothing, shutdownmask=nothing,
+    uc::Union{Bool,Snapshot}=false, integer_uc=false, startupmask=nothing, shutdownmask=nothing,
 
     # refuelling controls
     refuel::Bool=true, refuel_duration::Union{Nothing,Real}=nothing,
-    refuelmask::Union{Nothing,Real}=nothing, refuel_fraction_per_year::Union{Nothing,Real}=nothing,
+    refuel_slot_spacing::Union{Nothing,Integer}=nothing, refuel_fraction_per_year::Union{Nothing,Real}=nothing,
 
     # external nodes / prices
-    fuelnode=nothing, co2price::Real=co2_price(s),
+    fuelnode=nothing, co2_price::Real=co2_price(s),
 
     # technical / economic overrides
     overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -468,11 +470,11 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
     )
     validate_component_input(inputs)
 
-    _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discountrate(s), Int(_lt_raw), _cp)
+    _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discount_rate(s), Int(_lt_raw), _cp)
     _decom_cost = if iszero(_oc_raw) || iszero(_decom)
         0.0
     else
-        decom_cost(_oc_raw * 1000.0, _decom, Int(_lt_raw), discountrate(s), _dcp)
+        decom_cost(_oc_raw * 1000.0, _decom, Int(_lt_raw), discount_rate(s), _dcp)
     end
 
     push!(vb, FixedCost(:investment, "output", energy, _inv))
@@ -483,7 +485,7 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
     push!(vb, FixedCost(:decommissioning, "output", energy, _decom_cost))
     if !iszero(_co2_em)
         push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
-        push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2price))
+        push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2_price))
     end
     if isnothing(_usize_raw) || iszero(_usize_raw)
         _usize = nothing
@@ -491,11 +493,11 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
         @argcheck _usize_raw > 0 "unit_size must be > 0 when non-zero."
         _usize = _usize_raw
     end
-    if (_ucenabled(uc) || (integercap && isnothing(cap))) && isnothing(_usize)
+    if (_ucenabled(uc) || (integer_cap && isnothing(cap))) && isnothing(_usize)
         throw(ArgumentError("`unit_size` must be positive when unit commitment or integer capacity expansion is enabled"))
     end
     push!(vb, gencapacity(cap, "output", s, name * " " * elec.name;
-        mincap=mincap, maxcap=maxcap, unitsize=_usize, integer=integercap, warmstart=warmstart))
+        mincap=mincap, maxcap=maxcap, unitsize=_usize, integer=integer_cap, warmstart=warmstart))
 
     # fuel node management
     # fuel cost only used if fuel node is nothing
@@ -508,10 +510,10 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
 
     # special case: cycling constraints for nuclear
     _refuel = false
-    if refuel && !_ucenabled(uc) && (!isnothing(refuel_duration) || !isnothing(refuelmask) || !isnothing(refuel_fraction_per_year))
+    if refuel && !_ucenabled(uc) && (!isnothing(refuel_duration) || !isnothing(refuel_slot_spacing) || !isnothing(refuel_fraction_per_year))
         @warn "Because uc=false for nuclear component, refuelling is not modeled." component=name tech_column=tech_column
     end
-    if refuel && uc isa Snapshot && (!isnothing(refuel_duration) || !isnothing(refuelmask) || !isnothing(refuel_fraction_per_year))
+    if refuel && uc isa Snapshot && (!isnothing(refuel_duration) || !isnothing(refuel_slot_spacing) || !isnothing(refuel_fraction_per_year))
         @warn "Because uc replays a solved schedule for nuclear component, refuelling follows that schedule and refuelling arguments are ignored." component=name tech_column=tech_column
     end
     # refuelling constraints are built from fresh arguments, never over a replayed schedule
@@ -533,12 +535,9 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
             @argcheck _refuel_duration >= 0 "refuel_duration must be >= 0."
             _refuel = (_refuel_fraction > 0) && (_refuel_duration > 0)
             if _refuel
-                @argcheck !isnothing(refuelmask) "refuelmask must be provided when refuelling is enabled."
-                _refuel_mask_raw = refuelmask
-                @argcheck _refuel_mask_raw isa Real "refuelmask must be Real."
-                @argcheck _refuel_mask_raw > 0 "refuelmask must be > 0 when refuelling is enabled."
-                @argcheck isinteger(_refuel_mask_raw) "refuelmask must be integer-valued."
-                _refuel_mask = Int(_refuel_mask_raw)
+                @argcheck !isnothing(refuel_slot_spacing) "refuel_slot_spacing must be provided when refuelling is enabled."
+                @argcheck refuel_slot_spacing > 0 "refuel_slot_spacing must be > 0 when refuelling is enabled."
+                _refuel_spacing = Int(refuel_slot_spacing)
             end
         end
     end
@@ -571,7 +570,7 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
                     shutdown=_shutdown_dur,
                     startupmask=startupmask,
                     shutdownmask=shutdownmask,
-                    integer=integeruc)
+                    integer=integer_uc)
                 )
             else
                 push!(vb, Nosy.UnitCommitment("output", 
@@ -582,7 +581,7 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
                     shutdown=_shutdown_dur,
                     startupmask=startupmask,
                     shutdownmask=shutdownmask,
-                    integer=integeruc)
+                    integer=integer_uc)
                 )
             end
         end
@@ -640,7 +639,7 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
         # refuelling
         sum_refuel = AffExpr(0.)
         for h in 1:8760
-            if !iszero((h-1)%_refuel_mask)
+            if !iszero((h-1)%_refuel_spacing)
                 e = _ucb.shutdownselector[2][h]
                 if (e isa GenericAffExpr) && !iszero(e)
                     v = first(e.terms)[1]
@@ -670,8 +669,8 @@ end
     makeintermittentsource(name::String, elec::Node, co2::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
         cap=nothing, mincap=nothing, maxcap=nothing,
-        weatheryear=nothing, profile=nothing,
-        co2price=co2_price(s),
+        weather_year=nothing, profile=nothing,
+        co2_price=co2_price(s),
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
         connection_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing,
@@ -696,14 +695,14 @@ Arguments:
     checked as an assertion against a fixed or inherited one.
   * `maxcap`: Upper capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
-  * `weatheryear`: Year suffix used to select profile series `profiles_<year>`.
+  * `weather_year`: Year suffix used to select profile series `profiles_<year>`.
     Required for workbook lookup; unused when `profile` is supplied explicitly.
   * `profile`: Dimensionless hourly capacity-factor vector or scalar in `[0, 1]`.
     If `nothing`, read the `<tech_column>_<node>` workbook column. With numeric
     `cap == 0`, an omitted profile is replaced by zero without a workbook or
     weather-year lookup.
 
-  * `co2price`: Carbon price in currency/tCO2, used only when
+  * `co2_price`: Carbon price in currency/tCO2, used only when
     `co2_emission != 0`.
 
   * `overnight_cost`: Overnight CAPEX in currency/kW of output capacity.
@@ -725,9 +724,9 @@ function makeintermittentsource(name::String, elec::Node, co2::Node, s::Snapshot
     tech::String=name, tech_column::String=tech,
     # capacity / profile
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
-    weatheryear::Union{Nothing,Integer}=nothing, profile=nothing,
+    weather_year::Union{Nothing,Integer}=nothing, profile=nothing,
 
-    co2price::Real=co2_price(s),
+    co2_price::Real=co2_price(s),
 
     # technical / economic overrides
     overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -736,12 +735,12 @@ function makeintermittentsource(name::String, elec::Node, co2::Node, s::Snapshot
     fuel_cost::Union{Nothing,Real}=nothing, co2_emission::Union{Nothing,Real}=nothing,
 )
     profile_value = cap isa Real && iszero(cap) && isnothing(profile) ? 0.0 : profile
-    if isnothing(profile_value) && timeseries_mode(s) === :excel && isnothing(weatheryear)
+    if isnothing(profile_value) && timeseries_mode(s) === :excel && isnothing(weather_year)
         throw(ArgumentError(
-            "`weatheryear` must be supplied when `profile` is read from the time-series workbook",
+            "`weather_year` must be supplied when `profile` is read from the time-series workbook",
         ))
     end
-    profile_sheet = isnothing(weatheryear) ? nothing : "profiles_$weatheryear"
+    profile_sheet = isnothing(weather_year) ? nothing : "profiles_$weather_year"
     m = ProfileSource(elec.carrier, _resolve_timeseries(
         s, profile_value, tech_column * "_" * elec.name, profile_sheet;
         keyword="profile", lower=0.0, upper=1.0,
@@ -800,11 +799,11 @@ function makeintermittentsource(name::String, elec::Node, co2::Node, s::Snapshot
     )
     validate_component_input(inputs)
 
-    _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discountrate(s), Int(_lt_raw), _cp)
+    _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discount_rate(s), Int(_lt_raw), _cp)
     _decom_cost = if iszero(_oc_raw) || iszero(_decom)
         0.0
     else
-        decom_cost(_oc_raw * 1000.0, _decom, Int(_lt_raw), discountrate(s), _dcp)
+        decom_cost(_oc_raw * 1000.0, _decom, Int(_lt_raw), discount_rate(s), _dcp)
     end
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:connection, "output", energy, _inv * _conn))
@@ -814,7 +813,7 @@ function makeintermittentsource(name::String, elec::Node, co2::Node, s::Snapshot
     push!(vb, FixedCost(:decommissioning, "output", energy, _decom_cost))
     if !iszero(_co2_em)
         push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
-        push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2price))
+        push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2_price))
     end
     push!(vb, gencapacity(cap, "output", s, name * " " * elec.name; mincap=mincap, maxcap=maxcap))
     c = Component(name * " " * elec.name, m, vb)
@@ -834,7 +833,7 @@ end
 """
     makehydroror(name::String, zone::String, elec::Node, s::Snapshot;
         tech::String=name, cap=nothing, mincap=nothing, maxcap=nothing,
-        tech_column::String="Hydro ror", weatheryear=nothing,
+        tech_column::String="Hydro ror", weather_year=nothing,
         intake, intake_profile=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
@@ -859,7 +858,7 @@ Arguments:
     checked as an assertion against a fixed or inherited one.
   * `tech_column`: technology column name in the `intermittent` tech data sheet;
     defaults to `"Hydro ror"`.
-  * `weatheryear`: Year suffix used to select intake series `hydro_ror_<year>`.
+  * `weather_year`: Year suffix used to select intake series `hydro_ror_<year>`.
     Required for workbook lookup; unused when `intake_profile` is supplied
     explicitly.
   * `intake_profile`: Dimensionless hourly run-of-river intake shape or scalar,
@@ -888,7 +887,7 @@ function makehydroror(name::String, zone::String, elec::Node, s::Snapshot;
     # capacity / profile
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing,
     mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
-    tech_column::String="Hydro ror", weatheryear::Union{Nothing,Integer}=nothing, intake_profile=nothing,
+    tech_column::String="Hydro ror", weather_year::Union{Nothing,Integer}=nothing, intake_profile=nothing,
 
     intake::Real,
 
@@ -901,12 +900,12 @@ function makehydroror(name::String, zone::String, elec::Node, s::Snapshot;
     intake_series = if iszero(intake)
         zeros(Nosy.nhours(sim(s)))
     else
-        if isnothing(intake_profile) && timeseries_mode(s) === :excel && isnothing(weatheryear)
+        if isnothing(intake_profile) && timeseries_mode(s) === :excel && isnothing(weather_year)
             throw(ArgumentError(
-                "`weatheryear` must be supplied when `intake_profile` is read from the time-series workbook",
+                "`weather_year` must be supplied when `intake_profile` is read from the time-series workbook",
             ))
         end
-        profile_sheet = isnothing(weatheryear) ? nothing : "hydro_ror_$weatheryear"
+        profile_sheet = isnothing(weather_year) ? nothing : "hydro_ror_$weather_year"
         profile = _resolve_timeseries(
             s, intake_profile, zone, profile_sheet;
             keyword="intake_profile", lower=0.0,
@@ -967,11 +966,11 @@ function makehydroror(name::String, zone::String, elec::Node, s::Snapshot;
     )
     validate_component_input(inputs)
 
-    _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discountrate(s), Int(_lt_raw), _cp)
+    _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discount_rate(s), Int(_lt_raw), _cp)
     _decom_cost = if iszero(_oc_raw) || iszero(_decom)
         0.0
     else
-        decom_cost(_oc_raw * 1000.0, _decom, Int(_lt_raw), discountrate(s), _dcp)
+        decom_cost(_oc_raw * 1000.0, _decom, Int(_lt_raw), discount_rate(s), _dcp)
     end
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))

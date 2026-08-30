@@ -66,7 +66,7 @@ for case in cases
     makebatterystorage(
         "Battery", elec, case.snapshot; tech_column="Battery",
         power_cap=battery_cap,
-        eff=0.85,
+        roundtrip_eff=0.85,
         duration=4.0,
         overnight_cost=200.0,
         lifetime=15,

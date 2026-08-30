@@ -16,7 +16,7 @@ struct ComponentInputData
     fuel_cost::Union{Nothing,Real}
     efficiency::Union{Nothing,Real}
     waste_cost::Union{Nothing,Real}
-    gridlosses::Union{Nothing,Real}
+    grid_losses::Union{Nothing,Real}
     duration::Union{Nothing,Real}
 end
 
@@ -24,11 +24,11 @@ function component_input(;
     overnight_cost=nothing, lifetime=nothing, connection_cost=nothing,
     om_fixed_cost=nothing, om_var_cost=nothing, decommissioning=nothing,
     co2_emission=nothing, unit_size=nothing, fuel_cost=nothing, efficiency=nothing,
-    waste_cost=nothing, gridlosses=nothing, duration=nothing,
+    waste_cost=nothing, grid_losses=nothing, duration=nothing,
 )
     return ComponentInputData(
         overnight_cost, lifetime, connection_cost, om_fixed_cost, om_var_cost, decommissioning,
-        co2_emission, unit_size, fuel_cost, efficiency, waste_cost, gridlosses, duration,
+        co2_emission, unit_size, fuel_cost, efficiency, waste_cost, grid_losses, duration,
     )
 end
 
@@ -76,9 +76,9 @@ function validate_component_input(inputs::ComponentInputData)
     if !isnothing(inputs.waste_cost)
         @argcheck inputs.waste_cost isa Real "waste_cost must be Real."
     end
-    if !isnothing(inputs.gridlosses)
-        @argcheck inputs.gridlosses isa Real "gridlosses must be Real."
-        @argcheck 0 <= inputs.gridlosses < 1 "gridlosses must be in [0, 1)."
+    if !isnothing(inputs.grid_losses)
+        @argcheck inputs.grid_losses isa Real "grid_losses must be Real."
+        @argcheck 0 <= inputs.grid_losses < 1 "grid_losses must be in [0, 1)."
     end
     if !isnothing(inputs.duration)
         @argcheck inputs.duration isa Real "duration must be Real."
@@ -217,11 +217,11 @@ function _checkucsource(uc, cap, capname::String="cap")
 end
 
 struct ComponentDemandInputData
-    coeff::Union{Nothing,Real}
-    yearlyconstant::Union{Nothing,Real}
-    gridlosses::Union{Nothing,Real}
-    val::Union{Nothing,Real}
-    yearly::Union{Nothing,Real}
+    profile_multiplier::Union{Nothing,Real}
+    annual_flat_demand::Union{Nothing,Real}
+    grid_losses::Union{Nothing,Real}
+    annual_demand::Union{Nothing,Real}
+    annual_consumption::Union{Nothing,Real}
     compensation::Union{Nothing,Real}
     minratio::Union{Nothing,Real}
     number_ev::Union{Nothing,Real}
@@ -234,14 +234,14 @@ struct ComponentDemandInputData
 end
 
 function demand_input(;
-    coeff=nothing, yearlyconstant=nothing, gridlosses=nothing, val=nothing, yearly=nothing,
+    profile_multiplier=nothing, annual_flat_demand=nothing, grid_losses=nothing, annual_demand=nothing, annual_consumption=nothing,
     compensation=nothing, minratio=nothing, number_ev=nothing, initial_connected_share=nothing,
     charging_eff=nothing, self_discharge=nothing,
     max_charging_power=nothing, max_dispatch_power=nothing,
     battery_capacity=nothing,
 )
     return ComponentDemandInputData(
-        coeff, yearlyconstant, gridlosses, val, yearly, compensation, minratio, number_ev,
+        profile_multiplier, annual_flat_demand, grid_losses, annual_demand, annual_consumption, compensation, minratio, number_ev,
         initial_connected_share, charging_eff, self_discharge, max_charging_power,
         max_dispatch_power, battery_capacity,
     )
@@ -254,24 +254,24 @@ Validate only the fields present in `inputs`.
 Fields set to `nothing` are skipped.
 """
 function validate_demand_input(inputs::ComponentDemandInputData)
-    if !isnothing(inputs.coeff)
-        @argcheck inputs.coeff isa Real "coeff must be Real."
-        @argcheck inputs.coeff >= 0 "coeff must be >= 0."
+    if !isnothing(inputs.profile_multiplier)
+        @argcheck inputs.profile_multiplier isa Real "profile_multiplier must be Real."
+        @argcheck inputs.profile_multiplier >= 0 "profile_multiplier must be >= 0."
     end
-    if !isnothing(inputs.yearlyconstant)
-        @argcheck inputs.yearlyconstant isa Real "yearlyconstant must be Real."
-        @argcheck inputs.yearlyconstant >= 0 "yearlyconstant must be >= 0."
+    if !isnothing(inputs.annual_flat_demand)
+        @argcheck inputs.annual_flat_demand isa Real "annual_flat_demand must be Real."
+        @argcheck inputs.annual_flat_demand >= 0 "annual_flat_demand must be >= 0."
     end
-    if !isnothing(inputs.gridlosses)
-        @argcheck inputs.gridlosses isa Real "gridlosses must be Real."
-        @argcheck 0 <= inputs.gridlosses < 1 "gridlosses must be in [0, 1)."
+    if !isnothing(inputs.grid_losses)
+        @argcheck inputs.grid_losses isa Real "grid_losses must be Real."
+        @argcheck 0 <= inputs.grid_losses < 1 "grid_losses must be in [0, 1)."
     end
-    if !isnothing(inputs.val)
-        @argcheck inputs.val >= 0 "val must be >= 0."
+    if !isnothing(inputs.annual_demand)
+        @argcheck inputs.annual_demand >= 0 "annual_demand must be >= 0."
     end
-    if !isnothing(inputs.yearly)
-        @argcheck inputs.yearly isa Real "yearly must be Real."
-        @argcheck inputs.yearly >= 0 "yearly must be >= 0."
+    if !isnothing(inputs.annual_consumption)
+        @argcheck inputs.annual_consumption isa Real "annual_consumption must be Real."
+        @argcheck inputs.annual_consumption >= 0 "annual_consumption must be >= 0."
     end
     if !isnothing(inputs.compensation)
         @argcheck inputs.compensation isa Real "compensation must be Real or left as default."

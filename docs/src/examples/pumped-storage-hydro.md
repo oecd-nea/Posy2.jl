@@ -31,13 +31,13 @@ electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
 # Workbook country1 demand scaled to about 50 MW on average
-makedemand("Demand", "country1", electricity, snapshot; coeff=0.068)
+makedemand("Demand", "country1", electricity, snapshot; profile_multiplier=0.068)
 
 # Fixed 200 MW PV
 makeintermittentsource(
     "Solar", electricity, co2, snapshot; tech_column="PV",
     cap=200.0,
-    weatheryear=2019,
+    weather_year=2019,
 )
 
 # Fixed 50 MW CCGT backup for hours storage cannot cover
@@ -64,7 +64,7 @@ makehydroreservoir(
     charge_cap=75.0,        # pumping capacity
     intake=0.0,             # no natural intake
     energy_cap=12_000.0,    # fixed reservoir energy capacity
-    eff=0.8,
+    roundtrip_eff=0.8,
 )
 
 # Minimise total system cost and extract solved values

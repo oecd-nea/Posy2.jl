@@ -7,15 +7,15 @@ Generate interconnection components.
         neighbor::String=name, neighbor_column::String=neighbor,
         import_capacity=nothing, import_mincap=nothing, import_maxcap=nothing,
         export_capacity=nothing, export_mincap=nothing, export_maxcap=nothing,
-        dir::Bool=false, neighbor_is_foreign::Bool=true,
-        transactioncost::Real=0.,
+        exclusive_direction::Bool=false, neighbor_is_foreign::Bool=true,
+        transaction_cost::Real=0.,
         spot_price=nothing, import_availability=nothing, export_availability=nothing,
     )
 
 Build, connect and return an interconnection component named
 `"<name>_<elec.name>"`, trading with a neighbouring market represented by an
 exogenous price series instead of an explicit node.
-If `dir` is true, apply a one direction at a time constraint at every timestep.
+If `exclusive_direction` is true, apply a one direction at a time constraint at every timestep.
 
 Arguments:
   * `name`: interconnector name prefix.
@@ -42,7 +42,7 @@ Arguments:
   * `export_mincap`: Lower export capacity bound in MW.
   * `export_maxcap`: Upper export capacity bound in MW.
 
-  * `dir`: if `true`, apply SOS1 one direction at a time flow constraint.
+  * `exclusive_direction`: if `true`, apply SOS1 one direction at a time flow constraint.
   * `neighbor_is_foreign`: if `true`, the neighbouring market lies outside the
     modelled system and the component is tagged `:foreign`. A price
     interconnection carries this on itself because its remote endpoint is not a
@@ -50,7 +50,7 @@ Arguments:
     [`maketransmissionlink`](@ref). Set it to false when the price series
     represents another internal zone.
 
-  * `transactioncost`: Transaction adder in currency/MWh on both directions.
+  * `transaction_cost`: Transaction adder in currency/MWh on both directions.
   * `spot_price`: Foreign spot price in currency/MWh, as an hourly vector or scalar.
   * `import_availability`: Dimensionless hourly multiplier for the
     foreign-to-local direction, each value in `[0, 1]`, read from column
@@ -79,10 +79,10 @@ function makepricelink(name::String, elec::Node, s::Snapshot;
     export_mincap::Union{Nothing,Real}=nothing, export_maxcap::Union{Nothing,Real}=nothing,
 
     # operation flags
-    dir::Bool=false, neighbor_is_foreign::Bool=true,
+    exclusive_direction::Bool=false, neighbor_is_foreign::Bool=true,
 
     # economic controls
-    transactioncost::Real=0.,
+    transaction_cost::Real=0.,
     spot_price=nothing, import_availability=nothing, export_availability=nothing,
 )
     component_name = string(name, "_", elec.name)
@@ -130,7 +130,7 @@ function makepricelink(name::String, elec::Node, s::Snapshot;
     ))
     imports_active && push!(vb, Nosy.CapacityMultiplier("output", _imports))
     push!(vb, VariableCost(:imports, "output", energy, _spot))
-    push!(vb, VariableCost(:transaction, "output", energy, Float64(transactioncost)))
+    push!(vb, VariableCost(:transaction, "output", energy, Float64(transaction_cost)))
 
     # exports
     push!(vb, FreeJointFlow("input", elec.carrier, :input))
@@ -140,12 +140,12 @@ function makepricelink(name::String, elec::Node, s::Snapshot;
     ))
     exports_active && push!(vb, Nosy.CapacityMultiplier("input", _exports))
     push!(vb, VariableCost(:exports, "input", energy, -1 .* _spot))
-    push!(vb, VariableCost(:transaction, "input", energy, Float64(transactioncost)))
+    push!(vb, VariableCost(:transaction, "input", energy, Float64(transaction_cost)))
 
     c = Component(component_name, m, vb)
 
     # make the IC flow go in one direction only
-    if dir
+    if exclusive_direction
         bin = balance(c, :input, energy, collapse=false, aggregate=true)
         bout = balance(c, :output, energy, collapse=false, aggregate=true)
         for step in eachindex(bin)
@@ -168,8 +168,8 @@ end
 """
     maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
         cap=nothing, mincap=nothing, maxcap=nothing,
-        dir::Bool=false, dc::Bool=false,
-        transactioncost::Real=0., lossfactor::Real=0.,
+        exclusive_direction::Bool=false, dc::Bool=false,
+        transaction_cost::Real=0., loss_factor::Real=0.,
         susceptance::Union{Nothing,Real}=nothing,
         atob_availability=nothing, btoa_availability=nothing,
         overnight_cost=nothing, om_fixed_cost=nothing,
@@ -197,12 +197,12 @@ Arguments:
   * `maxcap`: Upper capacity bound in MW;
     checked as an assertion against a fixed or inherited one.
 
-  * `dir`: apply an SOS1 one direction at a time flow constraint.
+  * `exclusive_direction`: apply an SOS1 one direction at a time flow constraint.
   * `dc`: if `true`, tag as `:DC`; otherwise tag as `:AC`.
 
-  * `transactioncost`: Transaction adder in currency/MWh on each direction.
-  * `lossfactor`: Dimensionless proportional loss; must be finite and
-    satisfy `0 <= lossfactor < 1`.
+  * `transaction_cost`: Transaction adder in currency/MWh on each direction.
+  * `loss_factor`: Dimensionless proportional loss; must be finite and
+    satisfy `0 <= loss_factor < 1`.
   * `susceptance`: AC series susceptance in model power units/rad (MW/rad under
     the standard convention; must be negative), used only when `dc=false`;
     stored in `Snapshot.options[:ic_susceptance]` (required for KVL when
@@ -246,10 +246,10 @@ function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
     mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
 
     # operation flags
-    dir::Bool=false, dc::Bool=false,
+    exclusive_direction::Bool=false, dc::Bool=false,
 
     # economic / physical controls
-    transactioncost::Real=0., lossfactor::Real=0.,
+    transaction_cost::Real=0., loss_factor::Real=0.,
     susceptance::Union{Nothing,Real}=nothing,
     atob_availability=nothing, btoa_availability=nothing,
 
@@ -259,7 +259,7 @@ function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
     lifetime::Union{Nothing,Real}=nothing,
     construction_profile=nothing,
 )
-    @argcheck 0 <= lossfactor < 1 "lossfactor must be in [0, 1)"
+    @argcheck 0 <= loss_factor < 1 "loss_factor must be in [0, 1)"
     component_name = string(name, "_", a.name, "_", b.name)
     a.name == b.name && throw(ArgumentError("a node interconnection must connect two distinct nodes"))
     Nosy.hascomponent(s, component_name) && throw(ArgumentError("snapshot already has a component named $component_name"))
@@ -311,7 +311,7 @@ function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
         overnight_cost=_oc_raw, lifetime=_lt_raw, om_fixed_cost=_fom,
     ))
     _inv = iszero(_oc_raw) ? 0.0 : eac(
-        _oc_raw * 1000.0, discountrate(s), Int(_lt_raw), _cp,
+        _oc_raw * 1000.0, discount_rate(s), Int(_lt_raw), _cp,
     )
 
     # A node interconnection has one installed capacity. Both capacity
@@ -322,9 +322,9 @@ function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
     vb = []
 
     # a -> b
-    m = BasicConverter(a.carrier, b.carrier, ratio=1. - lossfactor)
+    m = BasicConverter(a.carrier, b.carrier, ratio=1. - loss_factor)
 
-    push!(vb, VariableCost(:transaction, "input", energy, Float64(transactioncost)))
+    push!(vb, VariableCost(:transaction, "input", energy, Float64(transaction_cost)))
     _atob = if capacity_active
         input = isnothing(atob_availability) && timeseries_mode(s) === :arguments ? 1.0 : atob_availability
         _resolve_timeseries(
@@ -336,8 +336,8 @@ function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
 
     # b -> a
     push!(vb, FreeJointFlow("input2", b.carrier, :input))
-    push!(vb, LinkedJointFlow("output2", a.carrier, :output, "input2", x->x[1] * (1. - lossfactor)))
-    push!(vb, VariableCost(:transaction, "input2", energy, Float64(transactioncost)))
+    push!(vb, LinkedJointFlow("output2", a.carrier, :output, "input2", x->x[1] * (1. - loss_factor)))
+    push!(vb, VariableCost(:transaction, "input2", energy, Float64(transaction_cost)))
     _btoa = if capacity_active
         input = isnothing(btoa_availability) && timeseries_mode(s) === :arguments ? 1.0 : btoa_availability
         _resolve_timeseries(
@@ -349,7 +349,7 @@ function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
 
     # grid losses balance
     # NB when counting grid losses from interconnectors, make sure to not double count losses as interconnectors belong to multiple nodes
-    push!(vb, LinkedJointFlow("grid losses ic", b.carrier, :output, ("input", "input2"), x->(x[1]+x[2])*lossfactor, mustconnect=false))
+    push!(vb, LinkedJointFlow("grid losses ic", b.carrier, :output, ("input", "input2"), x->(x[1]+x[2])*loss_factor, mustconnect=false))
 
     if _cap isa Real
         input_capacity = gencapacity(
@@ -391,7 +391,7 @@ function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
     c = Component(component_name, m, vb)
 
     # make the IC flow go in one direction only
-    if dir
+    if exclusive_direction
         flows = balance(c, :input, energy, collapse=false, aggregate=false)
         b1 = flows["input"]
         b2 = flows["input2"]

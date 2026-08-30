@@ -28,13 +28,13 @@ electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
 # Flat 50 MW demand so evenings short of solar come from the PV shape alone
-makedemand("Demand", "country1", electricity, snapshot; coeff=0.0, yearlyconstant=50.0 * 8760)
+makedemand("Demand", "country1", electricity, snapshot; profile_multiplier=0.0, annual_flat_demand=50.0 * 8760)
 
 # Fixed 100 MW PV
 makeintermittentsource(
     "Solar", electricity, co2, snapshot; tech_column="PV",
     cap=100.0,
-    weatheryear=2019,
+    weather_year=2019,
     om_var_cost=15.0,
 )
 
@@ -42,7 +42,7 @@ makeintermittentsource(
 makebatterystorage(
     "Battery", electricity, snapshot; tech_column="Battery",
     power_cap=50.0,
-    eff=0.85,
+    roundtrip_eff=0.85,
     duration=4.0,
 )
 

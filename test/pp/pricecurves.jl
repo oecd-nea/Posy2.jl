@@ -19,7 +19,7 @@ using HiGHS
                 timeseries_file="time_series_test.xlsx",
                 tech_mode=:excel,
                 timeseries_mode=:excel,
-                discountrate=0.05,
+                discount_rate=0.05,
                 co2_price=50.0,
             ),
         )
@@ -37,7 +37,7 @@ using HiGHS
     # genpricecurves: one column per electricity node; rows are hourly prices sorted descending.
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
@@ -57,8 +57,8 @@ using HiGHS
     # Foreign price IC: ZONE2 column is exogenous import price sorted descending (no optimized ZONE2 node price).
     let
         snap, elec1, _, _ = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -75,7 +75,7 @@ using HiGHS
     # Fully disabled price IC: the zone column is an hourly series of zeros, not a scalar.
     let
         snap, elec1, _, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makepricelink("ZONE2", elec1, snap; import_capacity=0.0, export_capacity=0.0)
         Nosy.optimize!(snap, cost(snap))

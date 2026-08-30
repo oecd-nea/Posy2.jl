@@ -15,7 +15,7 @@ using HiGHS
                 timeseries_file="time_series_test.xlsx",
                 tech_mode=:excel,
                 timeseries_mode=:excel,
-                discountrate=0.05,
+                discount_rate=0.05,
                 co2_price=50.0,
             ),
         )
@@ -26,10 +26,10 @@ using HiGHS
         return snap, elec, heat, h2
     end
 
-    # Electrolyser should fail when gridlosses is outside [0, 1).
+    # Electrolyser should fail when grid_losses is outside [0, 1).
     let
         s, elec, _, h2 = makesnapshot()
-        @test_throws ArgumentError makeelectrolyser("EL", elec, h2, s; tech_column="PEM", gridlosses=1.0)
+        @test_throws ArgumentError makeelectrolyser("EL", elec, h2, s; tech_column="PEM", grid_losses=1.0)
     end
 
     # Electrolyser capacity inputs reject non-real numeric values at the API boundary.
@@ -43,7 +43,7 @@ using HiGHS
         s, elec, _, h2 = makesnapshot()
         c = makeelectrolyser(
             "EL", elec, h2, s; tech_column="PEM",
-            cap=100.0, gridlosses=0.0, eff=0.8,
+            cap=100.0, grid_losses=0.0, efficiency=0.8,
             overnight_cost=1200.0, om_fixed_cost=5.0,
             decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,
             om_var_cost=1.0,

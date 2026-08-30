@@ -41,9 +41,9 @@ directional multiplier to zero to disable that direction. Price interconnections
 retain their separate directional-capacity behavior, and skip a direction's
 lookup when that direction's capacity is a fixed zero.
 
-For a price interconnection, `dir=true` adds an SOS1 constraint at every
+For a price interconnection, `exclusive_direction=true` adds an SOS1 constraint at every
 timestep so that imports and exports cannot be used simultaneously. For a
-node interconnection, `dir=true` likewise constrains the two sending ports
+node interconnection, `exclusive_direction=true` likewise constrains the two sending ports
 (`input` and `input2`) so that only one direction can be positive in a given
 hour. This may require solver support beyond a plain continuous LP.
 
@@ -54,18 +54,18 @@ hour. This may require solver support beyond a plain continuous LP.
 
 - `input` withdraws from node `a` and carries the shared `cap` multiplied by
   `atob_availability`;
-- `output` delivers to node `b` after `lossfactor`.
+- `output` delivers to node `b` after `loss_factor`.
 
 The reverse direction is `b -> a`:
 
 - `input2` withdraws from node `b` and carries the same `cap` multiplied by
   `btoa_availability`;
-- `output2` delivers to node `a` after `lossfactor`.
+- `output2` delivers to node `a` after `loss_factor`.
 
 ![Ports of a node interconnection component](../assets/component-node-interco.svg)
 
-`lossfactor` must be finite and lie in `[0, 1)`. Each delivered flow is its
-sending flow multiplied by `1 - lossfactor`; invalid factors are rejected
+`loss_factor` must be finite and lie in `[0, 1)`. Each delivered flow is its
+sending flow multiplied by `1 - loss_factor`; invalid factors are rejected
 before model construction.
 
 The endpoints must be distinct. Self-connections and generated-name
@@ -87,7 +87,7 @@ affine expression. Nosy applies each directional constraint and multiplier,
 but there is only one capacity value and therefore one investment decision.
 
 Annualized `overnight_cost` and annual `om_fixed_cost` are attached once to the
-shared capacity. `transactioncost` is applied to each direction's sending
+shared capacity. `transaction_cost` is applied to each direction's sending
 flow. The unconnected `grid losses ic` output records proportional losses for
 reporting.
 
@@ -128,7 +128,7 @@ an explicit node for the neighbouring market. Imports use component `output`,
 base capacity `import_capacity`, multiplier column `neighbor_column>local`, and
 the neighbour's `spot_price` series. Exports use component `input`, base
 capacity `export_capacity`, and multiplier column `local>neighbor_column`.
-Export energy earns the same exogenous spot price; `transactioncost` is added in
+Export energy earns the same exogenous spot price; `transaction_cost` is added in
 both directions.
 
 The counterparty has three separable roles. `name` gives the component its

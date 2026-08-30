@@ -15,7 +15,7 @@ using HiGHS
                 timeseries_file="time_series_test.xlsx",
                 tech_mode=:excel,
                 timeseries_mode=:excel,
-                discountrate=0.05,
+                discount_rate=0.05,
                 co2_price=50.0,
             ),
         )
@@ -25,16 +25,16 @@ using HiGHS
         return snap, elec, h2
     end
 
-    # Demand should fail when coeff is negative.
+    # Demand should fail when profile_multiplier is negative.
     let
         s, elec, _ = makesnapshot()
-        @test_throws ArgumentError makedemand("Demand", "ZONE1", elec, s; coeff=-1.0)
+        @test_throws ArgumentError makedemand("Demand", "ZONE1", elec, s; profile_multiplier=-1.0)
     end
 
     # A valid demand input should create and register the component.
     let
         s, elec, _ = makesnapshot()
-        c = makedemand("Demand", "ZONE1", elec, s; coeff=1.0)
+        c = makedemand("Demand", "ZONE1", elec, s; profile_multiplier=1.0)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "Demand ZONE1") === c
     end
@@ -58,7 +58,7 @@ using HiGHS
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makeEV(
             "EV", elec, s;
-            yearly=1000.0,
+            annual_consumption=1000.0,
             fixed_profile=true, smart_charging=true, vehicle_to_grid=false,
             offhours1=[0, 1], offhours2=[2, 3], minratio=0.2,
         )
@@ -69,7 +69,7 @@ using HiGHS
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makeEV(
             "EV", elec, s;
-            yearly=1000.0,
+            annual_consumption=1000.0,
             fixed_profile=true, smart_charging=false, vehicle_to_grid=false,
             offhours1=nothing, offhours2=[2, 3], minratio=0.2,
         )
@@ -99,7 +99,7 @@ using HiGHS
         s, elec, _ = makesnapshot()
         c = makeEV(
             "EV", elec, s;
-            yearly=1000.0,
+            annual_consumption=1000.0,
             fixed_profile=true, smart_charging=false, vehicle_to_grid=false,
             offhours1=[0, 1], offhours2=[2, 3], minratio=0.2,
         )
@@ -107,9 +107,9 @@ using HiGHS
     end
 
     # The fixed profile is normalized on the series that is actually generated,
-    # so it consumes exactly `yearly` whatever the off-hour schedule is.
+    # so it consumes exactly `annual_consumption` whatever the off-hour schedule is.
     let
-        yearly = 1000.0
+        annual_consumption = 1000.0
         schedules = (
             (offhours1=[0, 1], offhours2=[2, 3], minratio=0.2, days_threshold=104),
             (offhours1=Int[], offhours2=Int[], minratio=0.0, days_threshold=104),   # no off-hour
@@ -118,10 +118,10 @@ using HiGHS
         )
         for schedule in schedules
             s, elec, _ = makesnapshot()
-            c = makeEV("EV", elec, s; yearly=yearly, fixed_profile=true, schedule...)
+            c = makeEV("EV", elec, s; annual_consumption=annual_consumption, fixed_profile=true, schedule...)
             # a demand series is exogenous, so its balance is a constant
             consumed = JuMP.constant(Nosy.balance(c, :input, energy; collapse=true, aggregate=true))
-            @test isapprox(consumed, yearly; rtol=1e-9)
+            @test isapprox(consumed, annual_consumption; rtol=1e-9)
         end
     end
 
@@ -130,7 +130,7 @@ using HiGHS
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makeEV(
             "EV", elec, s;
-            yearly=1000.0,
+            annual_consumption=1000.0,
             fixed_profile=true, offhours1=[0, 0], offhours2=[2, 3], minratio=0.2,
         )
     end
@@ -140,7 +140,7 @@ using HiGHS
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makeEV(
             "EV", elec, s;
-            yearly=1000.0,
+            annual_consumption=1000.0,
             fixed_profile=true, offhours1=collect(0:23), offhours2=collect(0:23), minratio=0.0,
         )
     end
@@ -309,7 +309,7 @@ using HiGHS
     # its negative to the demand side of the electricity node.
     let
         s, elec, _ = makesnapshot()
-        makedemand("Demand", "ZONE1", elec, s; coeff=1.0)
+        makedemand("Demand", "ZONE1", elec, s; profile_multiplier=1.0)
         c = makedemandresponse("DR", elec, 100.0, 50.0, s)
 
         @test Nosy.getcomponent(s, "DR ZONE1") === c
@@ -333,7 +333,7 @@ using HiGHS
     # are 20%, while cost applies to the full positive activation output.
     let
         s, elec, _ = makesnapshot(losses=0.2)
-        makedemand("Demand", "ZONE1", elec, s; coeff=1.0)
+        makedemand("Demand", "ZONE1", elec, s; profile_multiplier=1.0)
         makedemandresponse("DR", elec, 125.0, 50.0, s)
         Nosy.optimize!(s, cost(s))
         result = extract(s)

@@ -27,8 +27,8 @@
 <line x1="170" y1="170.0" x2="342" y2="170.0" stroke="#e76f51" stroke-width="2" stroke-dasharray="3 3" marker-end="url(#head-linked)"/>
 <circle cx="350" cy="170.0" r="4.5" fill="#e76f51"/>
 <text class="port" x="260.0" y="160.0" fill="#e76f51">grid losses</text>
-<text class="note" x="260.0" y="184.0">only if gridlosses &gt; 0</text>
-<text class="note" x="260.0" y="196.0">gridlosses x input</text>
+<text class="note" x="260.0" y="184.0">only if grid_losses &gt; 0</text>
+<text class="note" x="260.0" y="196.0">grid_losses x input</text>
 <rect x="20" y="69.0" width="150" height="124.0" rx="6" fill="#fdf6cd" stroke="#c9a227" stroke-width="1" stroke-dasharray="none"/>
 <text class="box" x="95.0" y="129.0">electricity node</text>
 <text class="boxsub" x="95.0" y="142.0">elec</text>

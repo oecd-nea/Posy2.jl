@@ -15,7 +15,7 @@ using HiGHS
                 timeseries_file="time_series_test.xlsx",
                 tech_mode=:excel,
                 timeseries_mode=:excel,
-                discountrate=0.05,
+                discount_rate=0.05,
                 co2_price=50.0,
             ),
         )
@@ -65,7 +65,7 @@ using HiGHS
         @test isempty(Nosy.getbehaviors(c, Nosy.RampingBehavior))
     end
 
-    # If refuelling is enabled, a missing refuelmask should be rejected.
+    # If refuelling is enabled, a missing refuel_slot_spacing should be rejected.
     let
         s, elec, co2 = makesnapshot()
         @test_throws ArgumentError makenuclear(
@@ -78,7 +78,7 @@ using HiGHS
             co2_emission=0.0, unit_size=0.0,
             min_power=0.3, min_uptime=1, min_downtime=1,
             startup_duration=1, shutdown_duration=1,
-            refuel_fraction_per_year=0.2, refuel_duration=12, refuelmask=nothing,
+            refuel_fraction_per_year=0.2, refuel_duration=12, refuel_slot_spacing=nothing,
         )
     end
 
@@ -94,7 +94,7 @@ using HiGHS
             co2_emission=0.0, ramp_up=0.0, ramp_down=0.0,
             min_power=0.3, min_uptime=1, min_downtime=1,
             startup_duration=1, shutdown_duration=1,
-            refuel_fraction_per_year=0.2, refuel_duration=12, refuelmask=12,
+            refuel_fraction_per_year=0.2, refuel_duration=12, refuel_slot_spacing=12,
         )
         ucb = only(Nosy.getbehaviors(c, Nosy.AbstractFleetUnitCommitmentBehavior))
         @test length(ucb.shutdownselector) == 2
@@ -115,7 +115,7 @@ using HiGHS
             co2_emission=0.0, ramp_up=0.0, ramp_down=0.0,
             min_power=0.3, min_uptime=1, min_downtime=1,
             startup_duration=1, shutdown_duration=1,
-            refuel_fraction_per_year=0.2, refuel_duration=12, refuelmask=nothing,
+            refuel_fraction_per_year=0.2, refuel_duration=12, refuel_slot_spacing=nothing,
         )
         ucb = only(Nosy.getbehaviors(c, Nosy.AbstractFleetUnitCommitmentBehavior))
         @test length(ucb.shutdownselector) == 1
@@ -254,7 +254,7 @@ using HiGHS
     # A valid intermittent source input should create and register the component.
     let
         s, elec, co2 = makesnapshot()
-        c = makeintermittentsource("Onwind gen", elec, co2, s; tech_column="Onwind", cap=100.0, weatheryear=2019, construction_profile=1.0, decommissioning_profile=1.0)
+        c = makeintermittentsource("Onwind gen", elec, co2, s; tech_column="Onwind", cap=100.0, weather_year=2019, construction_profile=1.0, decommissioning_profile=1.0)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "Onwind gen ZONE1") === c
         @test Nosy.hastag(c, :function, "carbonfree")
@@ -281,7 +281,7 @@ using HiGHS
         s, elec, co2 = makesnapshot()
         c = makeintermittentsource(
             "Emitting intermittent", elec, co2, s; tech_column="Onwind",
-            cap=100.0, weatheryear=2019, co2_emission=100.0,
+            cap=100.0, weather_year=2019, co2_emission=100.0,
             construction_profile=1.0, decommissioning_profile=1.0,
         )
         @test Nosy.hastag(c, :function, "generation")
@@ -319,9 +319,9 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot(hours=24)
         c = makedispatchable(
-            "CCGT integeruc bounds", elec, co2, s; tech_column="CCGT",
+            "CCGT integer_uc bounds", elec, co2, s; tech_column="CCGT",
             cap=nothing, mincap=5.0, maxcap=11.0, unit_size=4.0,
-            uc=true, integeruc=true,
+            uc=true, integer_uc=true,
             construction_profile=1.0, decommissioning_profile=1.0,
             min_power=0.3, min_uptime=1, min_downtime=1,
             startup_duration=1, shutdown_duration=1,

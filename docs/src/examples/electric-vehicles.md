@@ -72,7 +72,7 @@ makedemand(
 makeintermittentsource(
     "Solar", electricity, co2, snapshot; tech_column="PV",
     cap=1500.0,
-    weatheryear=2019,
+    weather_year=2019,
 )
 
 # Smart-charging fleet: 10 000 vehicles; charge only
@@ -181,7 +181,7 @@ makedemand(
 makeintermittentsource(
     "Solar", electricity, co2, snapshot; tech_column="PV",
     cap=1500.0,
-    weatheryear=2019,
+    weather_year=2019,
 )
 
 # Same fleet as smart charging, with grid discharge enabled

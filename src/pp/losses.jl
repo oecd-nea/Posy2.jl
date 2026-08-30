@@ -146,7 +146,7 @@ function _losstable(s::Snapshot, collapse::Bool, categories)
     val = (collapse ? Float64 : Vector{Float64})[]
     function _push!(n, src, t, cat, v)
         # a lossless source is not a loss: node interconnections always carry a
-        # `grid losses ic` port, even with `lossfactor=0`
+        # `grid losses ic` port, even with `loss_factor=0`
         (cat in categories && !all(iszero, v)) || return
         push!(node, n); push!(source, src); push!(tech, t); push!(category, cat); push!(val, v)
     end

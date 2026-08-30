@@ -19,7 +19,7 @@ snapshot = Snapshot(
     s,
     Dict(
         :posy => Posy2Options(
-            discountrate=0.05,
+            discount_rate=0.05,
             co2_price=100.0,
         ),
     ),
@@ -72,8 +72,8 @@ Nosy before the snapshot is finalised.
 ### Demand And Flexibility
 
 - [`makedemand`](@ref) combines a scaled hourly demand profile with an optional
-  flat annual demand term. `shift` circularly shifts the profile and
-  `gridlosses` adds a linked loss flow.
+  flat annual demand term. `profile_shift` circularly shifts the profile and
+  `grid_losses` adds a linked loss flow.
 - [`makeflathydrogendemand`](@ref) spreads a yearly hydrogen demand evenly over
   8760 hours.
 - [`makeflexhydrogendemand`](@ref) creates a flexible sink whose yearly intake
@@ -120,7 +120,7 @@ fuel input through `efficiency`, so fuel supply, storage, or other fuel uses
 can be modelled elsewhere in the same snapshot.
 
 Unit commitment is enabled with `uc=true`. A  positive `unit_size` sets the
-fleet unit scale (`0` means no unit-size constraint). `integeruc=true` makes
+fleet unit scale (`0` means no unit-size constraint). `integer_uc=true` makes
 commitment decisions integer. With `refuel=true` (the default), nuclear
 refuelling constraints are active only together with unit commitment and
 require consistent refuel duration, frequency, and mask inputs. Set
@@ -143,7 +143,7 @@ behaviour links that power capacity to the storage level. Hydrogen storage
 instead attaches investment to the level capacity and deliberately uses
 Nosy's simplified storage formulation.
 
-`gridlosses` on demand, batteries, electrolysers, EVs, and reservoir charging
+`grid_losses` on demand, batteries, electrolysers, EVs, and reservoir charging
 creates an explicit linked loss flow. It is separate from the conversion or
 storage efficiency.
 

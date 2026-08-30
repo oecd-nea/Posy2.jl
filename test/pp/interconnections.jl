@@ -19,7 +19,7 @@ using HiGHS
                 timeseries_file="time_series_test.xlsx",
                 tech_mode=:excel,
                 timeseries_mode=:excel,
-                discountrate=0.05,
+                discount_rate=0.05,
                 co2_price=50.0,
             ),
         )
@@ -37,7 +37,7 @@ using HiGHS
     # Node IC: directed endpoints come from port topology, not name parsing; rewrite labels are "from > to".
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
@@ -60,10 +60,10 @@ using HiGHS
     # With 50 MW CCGT on both zones, ZONE1 internal import is 50 MW each hour (annual = 50 * nhours); no foreign corridors.
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, transactioncost=1.)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -78,7 +78,7 @@ using HiGHS
     # Snapshot totals: imports_all equals internal plus foreign; exports_all equals exports_internal when no foreign IC exists.
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
@@ -99,7 +99,7 @@ using HiGHS
     # imports_internal: collapse=true returns corridor totals; collapse=false returns hourly series keyed by neighbor zone.
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
@@ -129,7 +129,7 @@ using HiGHS
     # exports_internal with collapse=false returns hourly series; annual values are the sum of hourly flows.
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
@@ -155,7 +155,7 @@ using HiGHS
     # _all_ic_directed_flows keys are (from, to) tuples; ZONE2->ZONE1 hourly sum matches imports_internal(ZONE1).
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
@@ -179,7 +179,7 @@ using HiGHS
         elec_a = Node("ZONE_A", EnergyCarrier("electricity ZONE_A", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         elec_b = Node("ZONE_B", EnergyCarrier("electricity ZONE_B", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
-        makedemand("Other consumption", "ZONE1", elec_a, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec_a, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec_b, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink(
             "IC_LINK", elec_a, elec_b, snap;
@@ -198,9 +198,9 @@ using HiGHS
     # Internal price IC (neighbor ZONE2 is a model node): external topology is ZONE2->ZONE1; rewrite labels match import/export directions.
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -213,9 +213,9 @@ using HiGHS
     # Price IC whose neighbor matches an electricity node counts as internal import, not foreign.
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -229,8 +229,8 @@ using HiGHS
     # Foreign price IC (no generation on ZONE2): imports_foreign reports ZONE2->ZONE1; imports_internal is empty; all = internal + foreign.
     let
         snap, elec1, _, _ = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -253,8 +253,8 @@ using HiGHS
     # Foreign imports with collapse=false return one hourly vector per corridor; collapsed annual equals sum of hours.
     let
         snap, elec1, _, _ = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -275,8 +275,8 @@ using HiGHS
     # Foreign exports with collapse=false return hourly series; collapsed annual equals sum of hours.
     let
         snap, elec1, _, _ = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -296,8 +296,8 @@ using HiGHS
     # Foreign price IC: exports_foreign at ZONE1 is zero when only import direction flows.
     let
         snap, elec1, _, _ = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -314,10 +314,10 @@ using HiGHS
     # Node IC between two self zones: self interconnection helpers throw; selfcosts imports/exports/rent are 0.
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, transactioncost=1.)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -346,7 +346,7 @@ using HiGHS
         elec1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
         elec2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity, :foreign])
         co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
@@ -368,8 +368,8 @@ using HiGHS
     # Price IC: geticprice returns hourly import and export price vectors of length nhours.
     let
         snap, elec1, _, _ = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -387,8 +387,8 @@ using HiGHS
     # Price IC: ispriceicmaxed returns hourly Bool vectors indicating import/export capacity saturation.
     let
         snap, elec1, _, _ = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -405,7 +405,7 @@ using HiGHS
     # Node IC: isnodeicmaxed returns hourly saturation flags on both input ports (forward and reverse).
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
@@ -425,7 +425,7 @@ using HiGHS
     # Non IC components: geticprice and isnodeicmaxed reject dispatchable sources.
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)

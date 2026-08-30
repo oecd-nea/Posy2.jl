@@ -286,7 +286,7 @@ using HiGHS
             "Reservoir", "unused", electricity, s;
             discharge_cap=55.0, charge_cap=20.0, intake=240.0,
             energy_cap=200.0,
-            intake_profile=collect(1.0:24.0), eff=0.88, hydro_costs...,
+            intake_profile=collect(1.0:24.0), roundtrip_eff=0.88, hydro_costs...,
         ))
         @test !isnothing(makeEV(
             "EV", electricity, s;
@@ -379,7 +379,7 @@ using HiGHS
         )))
         @test !isnothing(makeintermittentsource(
             "Mixed reverse", electricity, carbon, series_excel; tech_column="Onwind",
-            cap=10.0, weatheryear=2019, intermittent_costs...,
+            cap=10.0, weather_year=2019, intermittent_costs...,
         ))
     end
 
@@ -410,7 +410,7 @@ using HiGHS
             makeintermittentsource(
                 "Wrong workbook horizon", electricity, carbon,
                 short_series_excel; tech_column="Onwind",
-                cap=10.0, weatheryear=2019, intermittent_costs...,
+                cap=10.0, weather_year=2019, intermittent_costs...,
             )
             nothing
         catch caught

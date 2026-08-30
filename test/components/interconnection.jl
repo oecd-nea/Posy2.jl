@@ -15,7 +15,7 @@ using HiGHS
                 timeseries_file="time_series_test.xlsx",
                 tech_mode=:excel,
                 timeseries_mode=:excel,
-                discountrate=0.05,
+                discount_rate=0.05,
                 co2_price=50.0,
             ),
         )
@@ -89,34 +89,34 @@ using HiGHS
         end
 
         before = model_size()
-        for lossfactor in (-0.1, 1.0, Inf, NaN)
+        for loss_factor in (-0.1, 1.0, Inf, NaN)
             @test_throws ArgumentError maketransmissionlink(
                 "Invalid loss", elec1, elec2, s;
-                cap=100.0, dir=true, lossfactor=lossfactor,
+                cap=100.0, exclusive_direction=true, loss_factor=loss_factor,
             )
             @test model_size() == before
         end
 
         @test_throws ArgumentError maketransmissionlink(
-            "Self", elec1, elec1, s; cap=100.0, dir=true,
+            "Self", elec1, elec1, s; cap=100.0, exclusive_direction=true,
         )
         @test model_size() == before
 
         @test_throws ArgumentError maketransmissionlink(
             "Invalid B", elec1, elec2, s;
-            cap=100.0, dir=true, susceptance=1.0,
+            cap=100.0, exclusive_direction=true, susceptance=1.0,
         )
         @test model_size() == before
 
         maketransmissionlink("IC", elec1, elec2, s; cap=100.0, dc=false)
         before_duplicate = model_size()
         @test_throws ArgumentError maketransmissionlink(
-            "Parallel", elec1, elec2, s; cap=100.0, dc=false, dir=true,
+            "Parallel", elec1, elec2, s; cap=100.0, dc=false, exclusive_direction=true,
         )
         @test model_size() == before_duplicate
 
         @test_throws ArgumentError maketransmissionlink(
-            "IC", elec1, elec2, s; cap=100.0, dc=true, dir=true,
+            "IC", elec1, elec2, s; cap=100.0, dc=true, exclusive_direction=true,
         )
         @test model_size() == before_duplicate
     end
@@ -124,7 +124,7 @@ using HiGHS
     # Directional SOS construction keeps the second node argument intact.
     let
         s, elec1, elec2 = makesnapshot()
-        c = maketransmissionlink("Directional", elec1, elec2, s; cap=100.0, dir=true)
+        c = maketransmissionlink("Directional", elec1, elec2, s; cap=100.0, exclusive_direction=true)
         @test Nosy.getcomponent(s, "Directional_ZONE1_ZONE2") === c
     end
 
@@ -132,7 +132,7 @@ using HiGHS
     # `neighbor` and `neighbor_column` default down the chain from `name`.
     let
         s, elec1, _ = makesnapshot()
-        c = makepricelink("ZONE2", elec1, s; import_capacity=100.0, export_capacity=100.0, transactioncost=1.)
+        c = makepricelink("ZONE2", elec1, s; import_capacity=100.0, export_capacity=100.0, transaction_cost=1.)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "ZONE2_ZONE1") === c
         @test Nosy.hastag(c, :function, "priceinterconnection")

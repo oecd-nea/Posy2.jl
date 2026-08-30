@@ -88,7 +88,7 @@ f_{ij,t} =
 \left(f^{i \to j,\mathrm{send}}_t-f^{j \to i,\mathrm{send}}_t\right).
 ```
 
-This reduces to forward minus reverse transfer when `lossfactor=0`.
+This reduces to forward minus reverse transfer when `loss_factor=0`.
 ``B_{ij}`` is the series susceptance of that AC link. For the inductive lines
 used here, ``B_{ij}\approx-1/X_{ij}<0``. With the usual lossless DC flow
 ``f_{ij}=(1/X_{ij})(\theta_i-\theta_j)``, that sign choice makes the angle drop
@@ -110,18 +110,18 @@ is a model-construction step, not part of the solver call.
 Continuous capacity expansion and dispatch normally produce an LP. Common
 features that make a Posy2 study discrete or otherwise harder to solve include:
 
-- `integercap=true` for nuclear or SMR capacity;
-- `integeruc=true` with unit commitment;
-- one direction at a time price interconnections using `dir=true`;
+- `integer_cap=true` for nuclear or SMR capacity;
+- `integer_uc=true` with unit commitment;
+- one direction at a time price interconnections using `exclusive_direction=true`;
 - combinations of these decisions over a full 8760-hour horizon.
 
-`uc=true` with `integeruc=false` retains the unit-commitment equations but
+`uc=true` with `integer_uc=false` retains the unit-commitment equations but
 relaxes the commitment variables. This can be useful for exploratory studies,
 although it is a different mathematical model from integer commitment.
 
 The selected optimiser must support every constraint set used by the study.
 In particular, check solver support before enabling SOS1 interconnection
-direction constraints (`dir=true` on price or node interconnections).
+direction constraints (`exclusive_direction=true` on price or node interconnections).
 
 ## Extracting Results
 

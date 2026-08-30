@@ -39,10 +39,10 @@ hydrogen = Node("H2 country1", EnergyCarrier("hydrogen country1", sim), rule=:de
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
 # Shaped hydrogen demand, about 28 MW on average
-makedemand("Hydrogen demand", "country1", hydrogen, snapshot; coeff=0.038)
+makedemand("Hydrogen demand", "country1", hydrogen, snapshot; profile_multiplier=0.038)
 
 # Expandable PV and electrolyser (workbook tech costs)
-makeintermittentsource("Solar", electricity, co2, snapshot; tech_column="PV", maxcap=1000.0, weatheryear=2019)
+makeintermittentsource("Solar", electricity, co2, snapshot; tech_column="PV", maxcap=1000.0, weather_year=2019)
 makeelectrolyser("Electrolyser", electricity, hydrogen, snapshot; tech_column="PEM", maxcap=300.0)
 
 # Fixed hydrogen storage

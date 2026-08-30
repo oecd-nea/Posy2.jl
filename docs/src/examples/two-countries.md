@@ -50,14 +50,14 @@ makedispatchable(
 makeintermittentsource(
     "Solar", country2, co2, snapshot; tech_column="PV",
     cap=1200.0,
-    weatheryear=2019,
+    weather_year=2019,
 )
 
 # Country 2: 400 MW, 4 hour duration battery
 makebatterystorage(
     "Battery", country2, snapshot;
     power_cap=400.0,
-    eff=0.85,
+    roundtrip_eff=0.85,
     duration=4.0,
 )
 
@@ -172,14 +172,14 @@ makedispatchable(
 makeintermittentsource(
     "Solar", country2, co2, snapshot; tech_column="PV",
     cap=1200.0,
-    weatheryear=2019,
+    weather_year=2019,
 )
 
 # Country 2: 400 MW, 4 hour duration battery
 makebatterystorage(
     "Battery", country2, snapshot; tech_column="Battery",
     power_cap=400.0,
-    eff=0.85,
+    roundtrip_eff=0.85,
     duration=4.0,
 )
 

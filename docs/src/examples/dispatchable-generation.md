@@ -34,7 +34,7 @@ makedemand("Demand", "country1", electricity, snapshot)
 makeintermittentsource(
     "Solar", electricity, co2, snapshot; tech_column="PV",
     maxcap=5_000.0,
-    weatheryear=2019,
+    weather_year=2019,
     overnight_cost=500.0,
     lifetime=25,
     construction_profile=1.0,

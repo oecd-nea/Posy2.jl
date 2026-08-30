@@ -6,9 +6,9 @@ Generate storage components.
     makehydroreservoir(name::String, zone::String, elec::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
         discharge_cap, charge_cap, intake, energy_cap=Inf, spillage=false,
-        weatheryear=nothing, gridlosses=0., simplified=false,
+        weather_year=nothing, grid_losses=0., simplified=false,
         intake_profile=nothing,
-        eff::Union{Nothing,Real}=nothing,
+        roundtrip_eff::Union{Nothing,Real}=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing,
         construction_profile=nothing, decommissioning_profile=nothing,
@@ -52,18 +52,18 @@ Arguments:
     reservoir release stored energy without generating. It defaults to `false`,
     which forces all natural intake to eventually become generation.
 
-  * `weatheryear`: Year suffix used to select the intake series stored in
+  * `weather_year`: Year suffix used to select the intake series stored in
     `reservoir_inflow_<year>`. Required when `intake_profile` is read from the
     time-series workbook; unused when a profile is supplied explicitly or
     natural intake is disabled.
-  * `gridlosses`: Proportional charging-loss fraction (`0 <= gridlosses < 1`).
+  * `grid_losses`: Proportional charging-loss fraction (`0 <= grid_losses < 1`).
   * `simplified`: Passed to `LazyStorage(..., simplified=...)`.
   * `intake_profile`: Dimensionless hourly natural-intake shape or scalar,
     nonnegative with a strictly positive sum. It is normalized to sum to one
     before `intake` is applied. If `nothing`, read `zone` from
-    `reservoir_inflow_<weatheryear>`.
+    `reservoir_inflow_<weather_year>`.
 
-  * `eff`: Dimensionless round-trip charging efficiency.
+  * `roundtrip_eff`: Dimensionless round-trip charging efficiency.
 
   * `overnight_cost`: Overnight CAPEX in currency/kW of discharging capacity.
   * `om_fixed_cost`: Fixed O&M in currency/kW/year of discharging capacity.
@@ -88,12 +88,12 @@ function makehydroreservoir(name::String, zone::String, elec::Node, s::Snapshot;
 
     # storage operation controls
     spillage::Bool=false,
-    weatheryear::Union{Nothing,Integer}=nothing, gridlosses::Real=0.,
+    weather_year::Union{Nothing,Integer}=nothing, grid_losses::Real=0.,
     simplified::Bool=false,
     intake_profile=nothing,
 
     # technical overrides
-    eff::Union{Nothing,Real}=nothing,
+    roundtrip_eff::Union{Nothing,Real}=nothing,
 
     # technical / economic overrides
     overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -102,13 +102,13 @@ function makehydroreservoir(name::String, zone::String, elec::Node, s::Snapshot;
 )
     excel = tech_mode(s) === :excel
     if excel
-        _eff = isnothing(eff) ? gettechparam(s, tech_column, "roundtrip_eff", "storage") : eff
+        _eff = isnothing(roundtrip_eff) ? gettechparam(s, tech_column, "roundtrip_eff", "storage") : roundtrip_eff
         _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech_column, "overnight_cost", "storage") : overnight_cost
         _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech_column, "om_fixed_cost", "storage") : om_fixed_cost
         _decom = isnothing(decommissioning) ? gettechparam(s, tech_column, "decommissioning", "storage") : decommissioning
         _vom = isnothing(om_var_cost) ? gettechparam(s, tech_column, "om_var_cost", "storage") : om_var_cost
     else
-        _eff = something(eff, 1.0)
+        _eff = something(roundtrip_eff, 1.0)
         _oc_raw = something(overnight_cost, 0.0)
         _fom = something(om_fixed_cost, 0.0)
         _decom = something(decommissioning, 0.0)
@@ -144,12 +144,12 @@ function makehydroreservoir(name::String, zone::String, elec::Node, s::Snapshot;
     end
 
     inputs = component_input(
-        gridlosses=gridlosses, efficiency=_eff, overnight_cost=_oc_raw, lifetime=_lt_raw,
+        grid_losses=grid_losses, efficiency=_eff, overnight_cost=_oc_raw, lifetime=_lt_raw,
         om_fixed_cost=_fom, decommissioning=_decom, om_var_cost=_vom,
     )
     validate_component_input(inputs)
 
-    _gridlosses = Float64(gridlosses)
+    _grid_losses = Float64(grid_losses)
     _eff = Float64(_eff)
     _effs = Dict("natural" => 1., "output" => 1., "input" => _eff, "grid losses" => 0.)
     spillage && (_effs["spill"] = 1.)
@@ -161,11 +161,11 @@ function makehydroreservoir(name::String, zone::String, elec::Node, s::Snapshot;
     spillage && push!(vb, FreeJointFlow("spill", elec.carrier, :output, mustconnect=false))
 
     # costs
-    _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discountrate(s), Int(_lt_raw), _cp)
+    _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discount_rate(s), Int(_lt_raw), _cp)
     _decom_cost = if iszero(_oc_raw) || iszero(_decom)
         0.0
     else
-        decom_cost(_oc_raw * 1000.0, _decom, Int(_lt_raw), discountrate(s), _dcp)
+        decom_cost(_oc_raw * 1000.0, _decom, Int(_lt_raw), discount_rate(s), _dcp)
     end
     push!(vb, FixedCost(:investment, "output", energy, _inv))
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))
@@ -176,12 +176,12 @@ function makehydroreservoir(name::String, zone::String, elec::Node, s::Snapshot;
     intake_series = if iszero(intake)
         zeros(Nosy.nhours(sim(s)))
     else
-        if isnothing(intake_profile) && timeseries_mode(s) === :excel && isnothing(weatheryear)
+        if isnothing(intake_profile) && timeseries_mode(s) === :excel && isnothing(weather_year)
             throw(ArgumentError(
-                "`weatheryear` must be supplied when `intake_profile` is read from the time-series workbook",
+                "`weather_year` must be supplied when `intake_profile` is read from the time-series workbook",
             ))
         end
-        profile_sheet = isnothing(weatheryear) ? nothing : "reservoir_inflow_$weatheryear"
+        profile_sheet = isnothing(weather_year) ? nothing : "reservoir_inflow_$weather_year"
         profile = _resolve_timeseries(
             s, intake_profile, zone, profile_sheet;
             keyword="intake_profile", lower=0.0,
@@ -199,7 +199,7 @@ function makehydroreservoir(name::String, zone::String, elec::Node, s::Snapshot;
     # the charging branch always exists, at zero capacity when charging is disabled
     push!(vb, FreeJointFlow("input", elec.carrier, :input))
     push!(vb, gencapacity(charge_cap, "input", s, name * " " * elec.name; argname="charge_cap"))
-    !iszero(_gridlosses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _gridlosses))
+    !iszero(_grid_losses) && push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _grid_losses))
 
     # `Inf` leaves the level unlimited by adding no level capacity behavior
     if !(energy_cap isa Real && energy_cap == Inf)
@@ -226,8 +226,8 @@ end
     makebatterystorage(name::String, elec::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
         power_cap=nothing, power_mincap=nothing, power_maxcap=nothing,
-        simplified=false, gridlosses=0.,
-        eff::Union{Nothing,Real}=nothing, duration::Union{Nothing,Real}=nothing,
+        simplified=false, grid_losses=0.,
+        roundtrip_eff::Union{Nothing,Real}=nothing, duration::Union{Nothing,Real}=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
         connection_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing,
@@ -254,9 +254,9 @@ Arguments:
     checked as an assertion against a fixed or inherited one.
   * `simplified`: Passed to `BasicStorage(..., simplified=...)`.
 
-  * `gridlosses`: Proportional charging-loss fraction (`0 <= gridlosses < 1`).
+  * `grid_losses`: Proportional charging-loss fraction (`0 <= grid_losses < 1`).
 
-  * `eff`: Dimensionless round-trip storage efficiency.
+  * `roundtrip_eff`: Dimensionless round-trip storage efficiency.
   * `duration`: Storage duration in hours (`duration > 0`); required in
     `:arguments` mode and otherwise read from the workbook when `nothing`.
 
@@ -279,10 +279,10 @@ function makebatterystorage(name::String, elec::Node, s::Snapshot;
     # capacity / expansion
     power_cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing,
     power_mincap::Union{Nothing,Real}=nothing, power_maxcap::Union{Nothing,Real}=nothing,
-    simplified::Bool=false, gridlosses::Real=0.,
+    simplified::Bool=false, grid_losses::Real=0.,
 
     # technical overrides
-    eff::Union{Nothing,Real}=nothing, duration::Union{Nothing,Real}=nothing,
+    roundtrip_eff::Union{Nothing,Real}=nothing, duration::Union{Nothing,Real}=nothing,
 
     # economic overrides
     overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -292,7 +292,7 @@ function makebatterystorage(name::String, elec::Node, s::Snapshot;
     excel = tech_mode(s) === :excel
     if excel
         _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech_column, "overnight_cost", "storage") : overnight_cost
-        _eff = isnothing(eff) ? gettechparam(s, tech_column, "roundtrip_eff", "storage") : eff
+        _eff = isnothing(roundtrip_eff) ? gettechparam(s, tech_column, "roundtrip_eff", "storage") : roundtrip_eff
         _dur = isnothing(duration) ? gettechparam(s, tech_column, "duration", "storage") : duration
         _conn = isnothing(connection_cost) ? gettechparam(s, tech_column, "connection_cost", "storage") : connection_cost
         _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech_column, "om_fixed_cost", "storage") : om_fixed_cost
@@ -300,7 +300,7 @@ function makebatterystorage(name::String, elec::Node, s::Snapshot;
         _vom = isnothing(om_var_cost) ? gettechparam(s, tech_column, "om_var_cost", "storage") : om_var_cost
     else
         _oc_raw = something(overnight_cost, 0.0)
-        _eff = something(eff, 1.0)
+        _eff = something(roundtrip_eff, 1.0)
         _dur = isnothing(duration) ? throw(ArgumentError(
             "`duration` must be supplied when tech_mode=:arguments",
         )) : duration
@@ -339,17 +339,17 @@ function makebatterystorage(name::String, elec::Node, s::Snapshot;
     end
 
     inputs = component_input(
-        gridlosses=gridlosses, overnight_cost=_oc_raw, lifetime=_lt_raw, efficiency=_eff,
+        grid_losses=grid_losses, overnight_cost=_oc_raw, lifetime=_lt_raw, efficiency=_eff,
         duration=_dur, connection_cost=_conn, om_fixed_cost=_fom, decommissioning=_decom, om_var_cost=_vom,
     )
     validate_component_input(inputs)
 
-    _gridlosses = Float64(gridlosses)
-    _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discountrate(s), Int(_lt_raw), _cp)
+    _grid_losses = Float64(grid_losses)
+    _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discount_rate(s), Int(_lt_raw), _cp)
     _decom_cost = if iszero(_oc_raw) || iszero(_decom)
         0.0
     else
-        decom_cost(_oc_raw * 1000.0, _decom, Int(_lt_raw), discountrate(s), _dcp)
+        decom_cost(_oc_raw * 1000.0, _decom, Int(_lt_raw), discount_rate(s), _dcp)
     end
     _eff = Float64(_eff)
     m = BasicStorage(elec.carrier, eff_i=_eff, simplified=simplified)
@@ -364,8 +364,8 @@ function makebatterystorage(name::String, elec::Node, s::Snapshot;
     push!(vb, FixedCost(:decommissioning, "input", energy, _decom_cost))
     push!(vb, VariableCost(:vom, "input", energy, _vom))
 
-    if !iszero(_gridlosses)
-        push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _gridlosses))
+    if !iszero(_grid_losses)
+        push!(vb, LinkedJointFlow("grid losses", elec.carrier, :input, "input", x->x[1] * _grid_losses))
     end
 
     c = Component(name * " " * elec.name, m, vb)
@@ -384,7 +384,7 @@ end
     makehydrogenstorage(name::String, h2::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
         energy_cap=nothing, energy_mincap=nothing, energy_maxcap=nothing,
-        eff::Union{Nothing,Real}=nothing,
+        roundtrip_eff::Union{Nothing,Real}=nothing,
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
     )
@@ -408,7 +408,7 @@ Arguments:
   * `energy_maxcap`: Upper energy-capacity bound in MWh;
     checked as an assertion against a fixed or inherited one.
 
-  * `eff`: Dimensionless round-trip storage efficiency. If `nothing`, read it
+  * `roundtrip_eff`: Dimensionless round-trip storage efficiency. If `nothing`, read it
     from the workbook in `:excel` mode and use one in `:arguments` mode.
 
   * `overnight_cost`: Overnight CAPEX in currency/kWh of storage capacity.
@@ -430,7 +430,7 @@ function makehydrogenstorage(name::String, h2::Node, s::Snapshot;
     energy_mincap::Union{Nothing,Real}=nothing, energy_maxcap::Union{Nothing,Real}=nothing,
 
     # technical overrides
-    eff::Union{Nothing,Real}=nothing,
+    roundtrip_eff::Union{Nothing,Real}=nothing,
 
     # economic overrides
     overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -438,12 +438,12 @@ function makehydrogenstorage(name::String, h2::Node, s::Snapshot;
 )
     excel = tech_mode(s) === :excel
     if excel
-        _eff = isnothing(eff) ? gettechparam(s, tech_column, "roundtrip_eff", "storage") : eff
+        _eff = isnothing(roundtrip_eff) ? gettechparam(s, tech_column, "roundtrip_eff", "storage") : roundtrip_eff
         _oc_raw = isnothing(overnight_cost) ? gettechparam(s, tech_column, "overnight_cost", "storage") : overnight_cost
         _fom = isnothing(om_fixed_cost) ? gettechparam(s, tech_column, "om_fixed_cost", "storage") : om_fixed_cost
         _decom = isnothing(decommissioning) ? gettechparam(s, tech_column, "decommissioning", "storage") : decommissioning
     else
-        _eff = something(eff, 1.0)
+        _eff = something(roundtrip_eff, 1.0)
         _oc_raw = something(overnight_cost, 0.0)
         _fom = something(om_fixed_cost, 0.0)
         _decom = something(decommissioning, 0.0)
@@ -487,11 +487,11 @@ function makehydrogenstorage(name::String, h2::Node, s::Snapshot;
     m = BasicStorage(h2.carrier, eff_i=_eff, simplified=true) # always simplified for this medium or long term storage archetype
     vb = []
     _oc = _oc_raw * 1000.0
-    _inv = iszero(_oc_raw) ? 0.0 : eac(_oc, discountrate(s), Int(_lt_raw), _cp)
+    _inv = iszero(_oc_raw) ? 0.0 : eac(_oc, discount_rate(s), Int(_lt_raw), _cp)
     _decom_cost = if iszero(_oc_raw) || iszero(_decom)
         0.0
     else
-        decom_cost(_oc, _decom, Int(_lt_raw), discountrate(s), _dcp)
+        decom_cost(_oc, _decom, Int(_lt_raw), discount_rate(s), _dcp)
     end
     push!(vb, FixedCost(:investment, "level", energy, _inv))
     push!(vb, FixedCost(:fom, "level", energy, _fom * 1000.))

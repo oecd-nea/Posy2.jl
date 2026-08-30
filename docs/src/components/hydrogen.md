@@ -13,7 +13,7 @@ Diagrams](../components.md#Reading-The-Port-Diagrams).
 ## Purchased Hydrogen
 
 [`makeflathydrogenpurchase`](@ref) represents an exogenous hydrogen supply. It
-creates fixed `output` capacity `val / 8760` with a constant profile, so `val`
+creates fixed `output` capacity `annual_supply / 8760` with a constant profile, so `annual_supply`
 is the total annual hydrogen-energy purchase. It reads no workbook and adds no
 cost. Add an explicit Nosy cost behaviour when purchases should affect the
 objective.
@@ -32,9 +32,9 @@ makeflathydrogenpurchase
 ## Electrolysers
 
 [`makeelectrolyser`](@ref) creates a converter with electricity `input` and
-hydrogen `output`. The output-to-input ratio is `eff`. In `:excel` mode,
+hydrogen `output`. The output-to-input ratio is `efficiency`. In `:excel` mode,
 omitted values come from the `electrolysis` technology column. In `:arguments`
-mode, `eff` defaults to one and costs to zero; lifetime and construction data
+mode, `efficiency` defaults to one and costs to zero; lifetime and construction data
 are required only for nonzero overnight cost, and the decommissioning profile
 only when decommissioning cost is active.
 
@@ -44,7 +44,7 @@ Capacity and all cost behaviours are attached to electricity `input`. A
 numeric `cap` fixes input power; a JuMP variable or affine expression reuses an
 external decision; `nothing` creates a new decision; and an extracted snapshot
 fixes capacity from the matching component. `mincap` and `maxcap` bound either
-variable form. `gridlosses` adds a proportional electricity input flow.
+variable form. `grid_losses` adds a proportional electricity input flow.
 
 The generated name is `"$name $(elec.name)"`.
 
@@ -72,7 +72,7 @@ either variable form.
 ![Ports of a hydrogen storage component](../assets/component-hydrogen-storage.svg)
 
 In `:excel` mode, omitted values come from the `storage` technology column. In
-`:arguments` mode, `eff` defaults to one and economic terms to zero; inactive
+`:arguments` mode, `roundtrip_eff` defaults to one and economic terms to zero; inactive
 capital and decommissioning data are not required. Investment, fixed O&M, and
 decommissioning are attached to `level`. The builder intentionally adds
 neither a duration constraint nor a variable O&M cost, making it suitable for

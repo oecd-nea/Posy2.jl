@@ -20,7 +20,7 @@ using DataFrames
                 timeseries_file="time_series_test.xlsx",
                 tech_mode=:excel,
                 timeseries_mode=:excel,
-                discountrate=0.05,
+                discount_rate=0.05,
                 co2_price=50.0,
             ),
         )
@@ -55,7 +55,7 @@ using DataFrames
     # A lossless system reports no rows at all, and the aggregates stay well defined.
     let
         snap, elec1, _, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
@@ -70,7 +70,7 @@ using DataFrames
     # Component grid losses: one `:component` row per source, attributed to its electricity node.
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0, gridlosses=0.05)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0, grid_losses=0.05)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         Nosy.optimize!(snap, cost(snap))
@@ -94,7 +94,7 @@ using DataFrames
     # Node losses come from the node inflow ratio and match the Nosy node loss port.
     let
         snap, elec1, _, co2 = makesnapshot(nodelosses=0.02)
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
@@ -112,9 +112,9 @@ using DataFrames
     # total is counted once, while grouping by source recovers the whole corridor.
     let
         snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, lossfactor=0.05)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, loss_factor=0.05)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -142,7 +142,7 @@ using DataFrames
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=120.0, construction_profile=1.0, decommissioning_profile=1.0)
         makebatterystorage(
             "Battery", elec1, snap; tech_column="Battery",
-            power_cap=100.0, eff=0.9, duration=4.0,
+            power_cap=100.0, roundtrip_eff=0.9, duration=4.0,
             overnight_cost=0.0, om_fixed_cost=0.0, decommissioning=0.0, lifetime=20.0,
             construction_profile=1.0, decommissioning_profile=1.0, connection_cost=0.0, om_var_cost=0.0,
         )
@@ -249,9 +249,9 @@ using DataFrames
     # lossesby groups on any column combination, keeps hourly series, and honours `categories`.
     let
         snap, elec1, elec2, co2 = makesnapshot(nodelosses=0.02)
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0, gridlosses=0.05)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0, grid_losses=0.05)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, lossfactor=0.05)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, loss_factor=0.05)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -286,9 +286,9 @@ using DataFrames
     # gentimeseries: per-source network loss columns sum to the "Total losses" column.
     let
         snap, elec1, elec2, co2 = makesnapshot(nodelosses=0.02)
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0, gridlosses=0.05)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0, grid_losses=0.05)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, lossfactor=0.05)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, loss_factor=0.05)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -307,17 +307,17 @@ using DataFrames
     let
         snap, elec1, elec2, co2 = makesnapshot(nodelosses=0.02)
         nh = Nosy.nhours(sim(snap))
-        makedemand("Other consumption", "ZONE1", elec1, snap; profile=[h % 24 < 12 ? 50.0 : 150.0 for h in 1:nh], gridlosses=0.05)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile=[h % 24 < 12 ? 50.0 : 150.0 for h in 1:nh], grid_losses=0.05)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=120.0, construction_profile=1.0, decommissioning_profile=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         makebatterystorage(
             "Battery", elec1, snap; tech_column="Battery",
-            power_cap=100.0, eff=0.9, duration=4.0,
+            power_cap=100.0, roundtrip_eff=0.9, duration=4.0,
             overnight_cost=0.0, om_fixed_cost=0.0, decommissioning=0.0, lifetime=20.0,
             construction_profile=1.0, decommissioning_profile=1.0, connection_cost=0.0, om_var_cost=0.0,
         )
         # ZONE1 peak needs more than its CCGT plus the corridor, so the battery must cycle
-        maketransmissionlink("IC", elec1, elec2, snap; cap=10.0, lossfactor=0.05)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10.0, loss_factor=0.05)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -340,9 +340,9 @@ using DataFrames
     # The loss report pivots by category and by technology, and lists every row.
     let
         snap, elec1, elec2, co2 = makesnapshot(nodelosses=0.02)
-        makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0, gridlosses=0.05)
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0, grid_losses=0.05)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, lossfactor=0.05)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0, loss_factor=0.05)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 

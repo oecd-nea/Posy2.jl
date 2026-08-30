@@ -23,7 +23,7 @@ options = Posy2Options(
     timeseries_file="time_series.xlsx",
     tech_mode=:excel,
     timeseries_mode=:excel,
-    discountrate=0.05,
+    discount_rate=0.05,
     co2_price=0.0,
 )
 
@@ -212,7 +212,8 @@ of them.
 With the default `refuel=true`, `uc=true` on nuclear additionally reads
 `refuel_fraction_per_year`, and a positive refuel fraction causes
 `refuel_duration` to be read. Set `refuel=false` to skip these reads and disable
-refuelling. `refuelmask` is an argument-only scheduling interval and has no
+refuelling. `refuel_slot_spacing` is an argument-only `Integer` spacing of allowed outage
+start steps and has no
 workbook row. A replayed schedule already contains whatever refuelling outages
 it was solved with, so `uc=<extracted snapshot>` builds no refuelling constraints
 and warns if refuelling arguments are supplied.
@@ -266,7 +267,7 @@ EV-fleet rows are `charging_eff`, `self_discharge`,
 In smart-charging or V2G mode, [`makeEV`](@ref) defaults to technology column
 `EV`, but its `tech_column` keyword can select another column.
 
-The `roundtrip_eff` row maps to the builder keyword `eff`. EV rows ending in
+The `roundtrip_eff` row maps to the builder keyword of the same name. EV rows ending in
 power or capacity map to the corresponding `*_per_ev` override keywords.
 Fixed-profile EV mode reads no technology data.
 
@@ -280,7 +281,7 @@ Electrolysis rows are `efficiency`, `overnight_cost`, `lifetime`,
 `construction_profile`, `decommissioning_profile`, `decommissioning`,
 `om_fixed_cost`, and `om_var_cost`.
 
-The `efficiency` row maps to the keyword `eff`.
+The `efficiency` row maps to the keyword of the same name.
 
 ## Parameter Conventions And Validation
 
@@ -334,13 +335,13 @@ by the hydrogen-production example.
 
 The time-series lookup key depends on the builder:
 
-Weather-indexed builders require an explicit `weatheryear` when they read a
+Weather-indexed builders require an explicit `weather_year` when they read a
 workbook. The keyword is unused when the corresponding profile is supplied
 directly.
 
 | Sheet | Expected Column | Used By And Condition |
 |:------|:----------------|:----------------------|
-| `demand` | `<zone>` | [`makedemand`](@ref) when `coeff != 0` |
+| `demand` | `<zone>` | [`makedemand`](@ref) when `profile_multiplier != 0` |
 | `profiles_<year>` | `<tech_column>_<node-name>` | [`makeintermittentsource`](@ref) |
 | `hydro_ror_<year>` | `<zone>` | [`makehydroror`](@ref) |
 | `reservoir_inflow_<year>` | `<zone>` | [`makehydroreservoir`](@ref) when intake is enabled (`intake != 0`) |
@@ -360,8 +361,8 @@ direction is `country1>country2`.
 
 The principal series semantics are:
 
-- `demand` contains exogenous hourly demand. `coeff` multiplies it, `shift`
-  circularly shifts it, and `yearlyconstant / 8760` is then added.
+- `demand` contains exogenous hourly demand. `profile_multiplier` multiplies it, `profile_shift`
+  circularly shifts it, and `annual_flat_demand / 8760` is then added.
 - `profiles_<year>` contains a profile that multiplies installed capacity.
 - `hydro_ror_<year>` contains an intake shape. The builder normalises it to sum
   to one, distributes `intake` over that shape, and limits hourly
@@ -369,7 +370,7 @@ The principal series semantics are:
 - `reservoir_inflow_<year>` contains a natural-intake shape. As for run-of-river,
   the builder normalises it to sum to one and scales it by `intake`.
   `intake=0` disables natural intake without reading a
-  profile; otherwise workbook lookup requires an explicit `weatheryear` when
+  profile; otherwise workbook lookup requires an explicit `weather_year` when
   `intake_profile` is omitted.
 - `EV_departure` and `EV_arrival` hold hourly vehicle counts (nonnegative).
   `EV_departure_soc` and `EV_arrival_soc` hold mean state-of-charge values in

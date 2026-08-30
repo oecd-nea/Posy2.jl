@@ -15,7 +15,7 @@ using HiGHS
                 timeseries_file="time_series_test.xlsx",
                 tech_mode=:excel,
                 timeseries_mode=:excel,
-                discountrate=0.05,
+                discount_rate=0.05,
                 co2_price=50.0,
             ),
         )
@@ -36,7 +36,7 @@ using HiGHS
             discharge_cap=500.0, charge_cap=0.0, intake=total_intake,
             energy_cap=2_000.0,
             intake_profile=profile,
-            gridlosses=0.0, eff=1.0,
+            grid_losses=0.0, roundtrip_eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
         )
@@ -58,7 +58,7 @@ using HiGHS
             discharge_cap=500.0, charge_cap=0.0, intake=1_000.0,
             energy_cap=2_000.0,
             intake_profile=vcat(-1.0, fill(2.0, 23)),
-            gridlosses=0.0, eff=1.0,
+            grid_losses=0.0, roundtrip_eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
         )
@@ -69,7 +69,7 @@ using HiGHS
         s, elec, _ = makesnapshot()
         @test_throws ArgumentError makebatterystorage(
             "Battery", elec, s; tech_column="Battery",
-            eff=0.9, duration=0.0,
+            roundtrip_eff=0.9, duration=0.0,
             overnight_cost=1000.0, lifetime=20, construction_profile=1.0, decommissioning_profile=1.0,
         )
     end
@@ -87,7 +87,7 @@ using HiGHS
         c = makebatterystorage(
             "Battery", elec, s; tech_column="Battery",
             power_cap=100.0,
-            eff=0.9, duration=4.0,
+            roundtrip_eff=0.9, duration=4.0,
             overnight_cost=1000.0, om_fixed_cost=10.0,
             decommissioning=0.1, lifetime=20.0, construction_profile=1.0, decommissioning_profile=1.0,
             connection_cost=0.0, om_var_cost=1.0,
@@ -99,7 +99,7 @@ using HiGHS
     # Hydrogen storage should fail when efficiency is outside (0, 1].
     let
         s, _, h2 = makesnapshot()
-        @test_throws ArgumentError makehydrogenstorage("H2 Storage", h2, s; tech_column="Hydrogen storage", eff=1.2)
+        @test_throws ArgumentError makehydrogenstorage("H2 Storage", h2, s; tech_column="Hydrogen storage", roundtrip_eff=1.2)
     end
 
     # A valid hydro reservoir input should create and register the component.
@@ -109,7 +109,7 @@ using HiGHS
             "Hydro reservoir", "ZONE1", elec, s; tech_column="Battery",
             discharge_cap=100.0, charge_cap=50.0, intake=0.0,
             energy_cap=500.0,
-            gridlosses=0.0, eff=0.9,
+            grid_losses=0.0, roundtrip_eff=0.9,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=1.0,
             decommissioning=0.1, lifetime=30.0, construction_profile=1.0, decommissioning_profile=1.0,
         )
@@ -119,13 +119,13 @@ using HiGHS
 
     # Pumping capacity creates its input flow before attaching the capacity and
     # optional grid-loss behaviors.
-    for gridlosses in (0.0, 0.05)
+    for grid_losses in (0.0, 0.05)
         s, elec, _ = makesnapshot()
         c = makehydroreservoir(
             "Pumping reservoir", "ZONE1", elec, s; tech_column="Battery",
             discharge_cap=100.0, charge_cap=75.0, intake=0.0,
             energy_cap=500.0,
-            gridlosses=gridlosses, eff=0.9,
+            grid_losses=grid_losses, roundtrip_eff=0.9,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
         )
@@ -135,7 +135,7 @@ using HiGHS
             Nosy.getbehaviors(c, Nosy.FixedCapacityBehavior),
         )
         @test length(input_capacities) == 1
-        @test Nosy.hasport(c, "grid losses") == !iszero(gridlosses)
+        @test Nosy.hasport(c, "grid losses") == !iszero(grid_losses)
     end
 
     # Reservoir level capacity is exogenous: a finite value is fixed and the
@@ -143,7 +143,7 @@ using HiGHS
     let
         s, elec, _ = makesnapshot()
         common = (
-            intake_profile=1.0, gridlosses=0.0, eff=0.9,
+            intake_profile=1.0, grid_losses=0.0, roundtrip_eff=0.9,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
         )
@@ -182,7 +182,7 @@ using HiGHS
         turbine = 10.0
         total_intake = 1_000.0 # far above turbine * hours = 240
         common = (
-            intake_profile=1.0, gridlosses=0.0, eff=1.0,
+            intake_profile=1.0, grid_losses=0.0, roundtrip_eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
         )
@@ -224,7 +224,7 @@ using HiGHS
         c = makehydroreservoir(
             "Default reservoir", "ZONE1", elec, s; tech_column="Battery",
             discharge_cap=100.0, charge_cap=0.0, intake=100.0,
-            intake_profile=1.0, gridlosses=0.0, eff=1.0,
+            intake_profile=1.0, grid_losses=0.0, roundtrip_eff=1.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
         )
@@ -240,7 +240,7 @@ using HiGHS
             discharge_cap=100.0, charge_cap=0.0, intake=1_000.0,
             energy_cap=500.0,
             intake_profile=0.0,
-            gridlosses=0.0, eff=0.9,
+            grid_losses=0.0, roundtrip_eff=0.9,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=1.0,
             decommissioning=0.1, lifetime=30.0,
             construction_profile=1.0, decommissioning_profile=1.0,
@@ -254,7 +254,7 @@ using HiGHS
         @test_throws ArgumentError makehydroreservoir(
             "Missing weather year", "ZONE1", elec, s; tech_column="Battery",
             discharge_cap=100.0, charge_cap=0.0, intake=1_000.0,
-            energy_cap=500.0, gridlosses=0.0, eff=0.9,
+            energy_cap=500.0, grid_losses=0.0, roundtrip_eff=0.9,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0,
         )
