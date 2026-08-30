@@ -1,13 +1,16 @@
 # Price Interconnection
 
 This example compares a domestic CCGT with imports from an external market via
-[`makepriceinterco`](@ref). The model imports when the external `spot_price`
+[`makepricelink`](@ref). The model imports when the external `spot_price`
 plus `transactioncost` is below the CCGT `fuel_cost`.
 
-Unlike [`maketransmissionlink`](@ref), that market is not an explicit node;
-`country2` is used to look up the spot-price time series. Import capacity is
-set large on purpose (`mcap=10_000`) and export is off (`xcap=0`), so the
-import/CCGT choice depends on price, not on transfer limits.
+Unlike [`maketransmissionlink`](@ref), that market is not an explicit node.
+The single `"country2"` argument names the component (`"country2_country1"`), the
+reported neighbour, and the workbook columns the spot-price and transfer series
+are read from; pass `neighbor` or `neighbor_column` to separate those roles.
+Import capacity is set large on purpose (`import_capacity=10_000`) and export is
+off (`export_capacity=0`), so the import/CCGT choice depends on price, not on
+transfer limits.
 
 ```jldoctest price_interconnection; output = false
 using Posy2
@@ -46,7 +49,10 @@ makedispatchable(
 )
 
 # Priced import from "country2" (spot series); Large import capacity, export capacity off
-makepriceinterco("country2", electricity, 10_000.0, 0.0, snapshot; transactioncost=1.0)
+makepricelink(
+    "country2", electricity, snapshot;
+    import_capacity=10_000.0, export_capacity=0.0, transactioncost=1.0,
+)
 
 # Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))
@@ -69,7 +75,7 @@ Over the full year, both imports and the domestic CCGT contribute to meeting
 demand (`376400 + 499600 = 876000 MWh`):
 
 ```jldoctest price_interconnection
-julia> balance(result, "IC_country2_country1", :output, energy; collapse=true, aggregate=true)
+julia> balance(result, "country2_country1", :output, energy; collapse=true, aggregate=true)
 376400.0
 
 julia> balance(result, "CCGT country1", :output, energy; collapse=true, aggregate=true)

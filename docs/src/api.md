@@ -68,7 +68,7 @@ makeelectrolyser
 ## Interconnections
 
 ```@docs
-makepriceinterco
+makepricelink
 maketransmissionlink
 ```
 

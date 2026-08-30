@@ -14,8 +14,8 @@ Orientation comes from the endpoints' foreignness, not from builder port names, 
 corridor with both endpoints on the same side of the boundary contributes nothing, and
 swapping the endpoints passed to a builder does not change the result. A node
 interconnection endpoint is foreign when its node is tagged `:foreign`; a price
-interconnection has no counterparty node, so its `foreign` tag (`makepriceinterco(...;
-foreign)`) decides, and a `foreign=false` corridor to another internal zone is excluded.
+interconnection has no counterparty node, so its `foreign` tag (`makepricelink(...;
+neighbor_is_foreign)`) decides, and a corridor to another internal zone is excluded.
 Flows are measured at the sending end, as in the annual interconnection tables.
 """
 function netinterconnection(s; collapse=false)

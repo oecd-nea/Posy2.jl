@@ -231,19 +231,20 @@ using HiGHS
 
         let
             s, electricity, _ = argument_snapshot()
-            @test !isnothing(makepriceinterco("inactive", electricity, 0.0, 0.0, s))
+            @test !isnothing(makepricelink("inactive", electricity, s; import_capacity=0.0, export_capacity=0.0))
         end
 
         let
             s, electricity, _ = argument_snapshot()
-            @test !isnothing(makepriceinterco(
-                "active", electricity, 10.0, 0.0, s; spot_price=50.0,
+            @test !isnothing(makepricelink(
+                "active", electricity, s;
+                import_capacity=10.0, export_capacity=0.0, spot_price=50.0,
             ))
         end
 
         let
             s, electricity, _ = argument_snapshot()
-            @test_throws ArgumentError makepriceinterco("active", electricity, 10.0, 0.0, s)
+            @test_throws ArgumentError makepricelink("active", electricity, s; import_capacity=10.0, export_capacity=0.0)
         end
 
         let
@@ -306,8 +307,9 @@ using HiGHS
             "country2", EnergyCarrier("electricity country2", sim(s));
             rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity],
         )
-        @test !isnothing(makepriceinterco(
-            "country2", electricity, 100.0, 80.0, s;
+        @test !isnothing(makepricelink(
+            "country2", electricity, s;
+            import_capacity=100.0, export_capacity=80.0,
             spot_price=collect(51.0:74.0),
             import_availability=0.9, export_availability=fill(0.85, 24),
         ))

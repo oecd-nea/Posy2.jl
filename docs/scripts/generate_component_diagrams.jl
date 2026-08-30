@@ -362,12 +362,12 @@ const SPECS = [
     (
         file="component-price-interco.svg",
         component="Price Interconnection",
-        inside=["the counterparty is a price series, not a node:", "spot_price and transfer capacities for zone"],
+        inside=["the counterparty is a price series, not a node:", "spot_price and transfer capacities for neighbor_column"],
         inputs=[
-            (name="input", kind=:free, note=["exports, capacity xcap", "x export_availability", "revenue -spot_price"], endpoint=ELEC_BOTH),
+            (name="input", kind=:free, note=["exports, export_capacity", "x export_availability", "revenue -spot_price"], endpoint=ELEC_BOTH),
         ],
         outputs=[
-            (name="output", kind=:free, note=["imports, capacity mcap", "x import_availability", "cost +spot_price"], endpoint=ELEC_BOTH),
+            (name="output", kind=:free, note=["imports, import_capacity", "x import_availability", "cost +spot_price"], endpoint=ELEC_BOTH),
         ],
         level=nothing,
     ),

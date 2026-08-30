@@ -129,27 +129,49 @@ using HiGHS
     end
 
     # Price interconnection succeeds when zone series exist in the fixture.
+    # `neighbor` and `neighbor_column` default down the chain from `name`.
     let
         s, elec1, _ = makesnapshot()
-        c = makepriceinterco("ZONE2", elec1, 100.0, 100.0, s; transactioncost=1.)
+        c = makepricelink("ZONE2", elec1, s; import_capacity=100.0, export_capacity=100.0, transactioncost=1.)
         @test !isnothing(c)
-        @test Nosy.getcomponent(s, "IC_ZONE2_ZONE1") === c
+        @test Nosy.getcomponent(s, "ZONE2_ZONE1") === c
         @test Nosy.hastag(c, :function, "priceinterconnection")
+        @test Nosy.hastag(c, :function, "foreign")
         @test Nosy.hastag(c, :neighbor, "ZONE2")
         @test get(c.tags, :neighbor, String[]) == ["ZONE2"]
+    end
+
+    # The counterparty's three roles are separable: the component takes the
+    # caller's name, reports the neighbor, and reads the workbook column.
+    let
+        s, elec1, _ = makesnapshot()
+        c = makepricelink(
+            "Import", elec1, s;
+            neighbor="Neighbouring market", neighbor_column="ZONE2",
+            import_capacity=100.0, export_capacity=100.0, neighbor_is_foreign=false,
+        )
+        @test Nosy.getcomponent(s, "Import_ZONE1") === c
+        @test get(c.tags, :neighbor, String[]) == ["Neighbouring market"]
+        @test !Nosy.hastag(c, :function, "foreign")
+        vals = Dict(
+            b.data.pname => b.val.data
+            for b in Nosy.getbehaviors(c, Nosy.CapacityMultiplierBehavior)
+        )
+        @test vals["output"] == gettimeseries(s, "ZONE2>ZONE1", "transfer_capacities")
+        @test vals["input"] == gettimeseries(s, "ZONE1>ZONE2", "transfer_capacities")
     end
 
     # Price interconnection fails when spot/transfer columns for the zone are missing.
     let
         s, elec1, _ = makesnapshot()
-        @test_throws ArgumentError makepriceinterco("ZONE3", elec1, 100.0, 100.0, s)
+        @test_throws ArgumentError makepricelink("ZONE3", elec1, s; import_capacity=100.0, export_capacity=100.0)
     end
 
     # Both directions zero: no spot price is read, but the import/export costs still
     # hold an hourly series of zeros so that reporting can build them.
     let
         s, elec1, _ = makesnapshot()
-        c = makepriceinterco("ZONE2", elec1, 0.0, 0.0, s)
+        c = makepricelink("ZONE2", elec1, s; import_capacity=0.0, export_capacity=0.0)
         spot = [
             b.data.val for b in Nosy.getbehaviors(c, Nosy.VariableCostBehavior)
             if Nosy._costtype(b) in (:imports, :exports)
@@ -168,11 +190,12 @@ using HiGHS
         @test_throws ArgumentError maketransmissionlink(
             "Negative", elec1, elec2, s; cap=100.0, atob_availability=1.0, btoa_availability=-0.1,
         )
-        @test_throws ArgumentError makepriceinterco(
-            "ZONE2", elec1, 100.0, 100.0, s; import_availability=1.5,
+        @test_throws ArgumentError makepricelink(
+            "ZONE2", elec1, s;
+            import_capacity=100.0, export_capacity=100.0, import_availability=1.5,
         )
-        @test !isnothing(makepriceinterco(
-            "ZONE2", elec1, 100.0, 100.0, s;
+        @test !isnothing(makepricelink(
+            "ZONE2", elec1, s; import_capacity=100.0, export_capacity=100.0,
             import_availability=1.0, export_availability=0.0,
         ))
     end
@@ -203,7 +226,7 @@ using HiGHS
     # do not replace it.
     let
         s, elec1, _ = makesnapshot()
-        c = makepriceinterco("ZONE2", elec1, 100.0, 100.0, s)
+        c = makepricelink("ZONE2", elec1, s; import_capacity=100.0, export_capacity=100.0)
         vals = Dict(
             b.data.pname => b.val.data
             for b in Nosy.getbehaviors(c, Nosy.CapacityMultiplierBehavior)

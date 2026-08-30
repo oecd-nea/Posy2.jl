@@ -92,8 +92,9 @@ using HiGHS
             cap_reservoir=shared,
         )
         response = makedemandresponse("Linked DR", elec1, affine, 1.0, s)
-        price_interconnection = makepriceinterco(
-            "external", elec1, shared, affine, s; spot_price=1.0,
+        price_interconnection = makepricelink(
+            "external", elec1, s;
+            import_capacity=shared, export_capacity=affine, spot_price=1.0,
         )
         node_interconnection = maketransmissionlink(
             "Linked IC", elec1, elec2, s;

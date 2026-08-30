@@ -89,7 +89,7 @@ using HiGHS
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -106,17 +106,17 @@ using HiGHS
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
         df = Posy2.gentimeseries(s)
-        c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
+        c = Nosy.getcomponent(s, "ZONE2_ZONE1")
 
         @test "price ZONE1" in names(df)
         @test "price ZONE2" in names(df)
-        @test "price IC_ZONE2_ZONE1" in names(df)
-        @test isapprox(df[!, "price IC_ZONE2_ZONE1"], Posy2.getexogenousprice(c); rtol=1e-12)
+        @test "price ZONE2_ZONE1" in names(df)
+        @test isapprox(df[!, "price ZONE2_ZONE1"], Posy2.getexogenousprice(c); rtol=1e-12)
     end
 
     # storage/losses/charging/discharging/level totals present; Total demand sums consumption components.
@@ -284,17 +284,17 @@ using HiGHS
         snap, elec1, _, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepriceinterco("ZONE2", elec1, 0.0, 0.0, snap)
+        makepricelink("ZONE2", elec1, snap; import_capacity=0.0, export_capacity=0.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
+        c = Nosy.getcomponent(s, "ZONE2_ZONE1")
         price = Posy2.getexogenousprice(c)
         @test price == zeros(Nosy.nhours(sim(s)))
 
         df = Posy2.gentimeseries(s)
         @test size(df, 1) == Nosy.nhours(sim(s))
-        @test df[!, "price IC_ZONE2_ZONE1"] == price
+        @test df[!, "price ZONE2_ZONE1"] == price
         @test all(iszero, df[!, "ZONE2 > ZONE1"])
         @test all(iszero, df[!, "ZONE1 > ZONE2"])
     end

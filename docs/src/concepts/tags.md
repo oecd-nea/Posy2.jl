@@ -92,7 +92,7 @@ and naming; this table is the reporting map.
 | [`makebatterystorage`](@ref) | `electricity`, `storage`, `generation` | `:tech => tech`, `:zone => elec.name` |
 | [`makehydrogenstorage`](@ref) | `hydrogen`, `storage` | `:tech => tech`, `:zone => h2.name` |
 | [`makeelectrolyser`](@ref) | `demand`, `electrolysis`, `hydrogen` | `:tech => tech`, `:zone => elec.name` |
-| [`makepriceinterco`](@ref) | `interconnection`, `priceinterconnection`; also `foreign` when `foreign=true` | `:neighbor => zone`, `:zone => elec.name` |
+| [`makepricelink`](@ref) | `interconnection`, `priceinterconnection`; also `foreign` when `neighbor_is_foreign=true` | `:neighbor => neighbor`, `:zone => elec.name` |
 | [`maketransmissionlink`](@ref) | `interconnection`, `nodeinterconnection`, and `AC` or `DC` | `:zone => a.name`, `:zone => b.name` |
 
 ## Custom Components

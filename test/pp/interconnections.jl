@@ -200,11 +200,11 @@ using HiGHS
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
+        c = Nosy.getcomponent(s, "ZONE2_ZONE1")
         @test Posy2._fromto_ic_external(s, c) == ("ZONE2", "ZONE1")
         @test Posy2.rewrite_import_from_implicit(s, Nosy.name(c), c) == "ZONE2 > ZONE1"
         @test Posy2.rewrite_export_from_implicit(s, Nosy.name(c), c) == "ZONE1 > ZONE2"
@@ -215,7 +215,7 @@ using HiGHS
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -230,11 +230,11 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
+        c = Nosy.getcomponent(s, "ZONE2_ZONE1")
         d = Posy2.imports_foreign(s)
         collapsed_zone = Posy2.imports_foreign(s, "ZONE1"; collapse=true)
 
@@ -254,7 +254,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -276,7 +276,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -297,7 +297,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -369,11 +369,11 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
+        c = Nosy.getcomponent(s, "ZONE2_ZONE1")
         prices = Posy2.geticprice(c)
         nh = Nosy.nhours(sim(s))
         @test haskey(prices, :import)
@@ -388,11 +388,11 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
+        c = Nosy.getcomponent(s, "ZONE2_ZONE1")
         dmaxed = Posy2.ispriceicmaxed(c)
         nh = Nosy.nhours(sim(s))
         @test haskey(dmaxed, :import)

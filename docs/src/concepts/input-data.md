@@ -126,9 +126,9 @@ number, expanded to all hours, or a vector with exactly
 | [`makeEV`](@ref) | `arrivals` | `<zone>` in `EV_arrival` |
 | [`makeEV`](@ref) | `departure_soc` | `<zone>` in `EV_departure_soc` |
 | [`makeEV`](@ref) | `arrival_soc` | `<zone>` in `EV_arrival_soc` |
-| [`makepriceinterco`](@ref) | `spot_price` | `<foreign-zone>` in `spot_price` |
-| [`makepriceinterco`](@ref) | `import_availability` | `zone>local` in `transfer_capacities` |
-| [`makepriceinterco`](@ref) | `export_availability` | `local>zone` in `transfer_capacities` |
+| [`makepricelink`](@ref) | `spot_price` | `<neighbor_column>` in `spot_price` |
+| [`makepricelink`](@ref) | `import_availability` | `<neighbor_column>>local` in `transfer_capacities` |
+| [`makepricelink`](@ref) | `export_availability` | `local><neighbor_column>` in `transfer_capacities` |
 | [`maketransmissionlink`](@ref) | `atob_availability` | `a>b` in `transfer_capacities_AC` (`dc=false`) or `transfer_capacities_DC` (`dc=true`) |
 | [`maketransmissionlink`](@ref) | `btoa_availability` | `b>a` in `transfer_capacities_AC` (`dc=false`) or `transfer_capacities_DC` (`dc=true`) |
 
@@ -348,8 +348,8 @@ directly.
 | `EV_arrival` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
 | `EV_departure_soc` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
 | `EV_arrival_soc` | `<zone>` | [`makeEV`](@ref) in smart-charging or V2G mode |
-| `spot_price` | `<foreign-zone>` | [`makepriceinterco`](@ref) |
-| `transfer_capacities` | `From>To` | [`makepriceinterco`](@ref), always |
+| `spot_price` | `<neighbor_column>` | [`makepricelink`](@ref), unless both capacities are a fixed zero |
+| `transfer_capacities` | `From>To` | [`makepricelink`](@ref), per direction that is not a fixed zero |
 | `transfer_capacities_AC` | `From>To` | [`maketransmissionlink`](@ref) with `dc=false`, when shared `cap` is not a fixed zero |
 | `transfer_capacities_DC` | `From>To` | [`maketransmissionlink`](@ref) with `dc=true`, when shared `cap` is not a fixed zero |
 
@@ -382,15 +382,16 @@ The principal series semantics are:
   them. Each interconnection kind owns one sheet, so an AC and a DC link on the
   same node pair, or a priced corridor sharing a zone name with a modelled node,
   keep separate series:
-  - `transfer_capacities` for [`makepriceinterco`](@ref);
+  - `transfer_capacities` for [`makepricelink`](@ref);
   - `transfer_capacities_AC` for [`maketransmissionlink`](@ref) with `dc=false`;
   - `transfer_capacities_DC` for [`maketransmissionlink`](@ref) with `dc=true`.
 - For [`maketransmissionlink`](@ref), the shared `cap` is multiplied by column `a>b`
   for forward ATC and by `b>a` for reverse ATC. A fixed zero `cap` reads neither
   column.
-- [`makepriceinterco`](@ref) uses both directional transfer series and the
-  foreign-zone spot price. Each can be supplied explicitly or read from its
-  workbook fallback.
+- [`makepricelink`](@ref) uses both directional transfer series and the
+  neighbour spot price, all named after `neighbor_column`. Each can be supplied
+  explicitly or read from its workbook fallback. A direction fixed at zero reads
+  no transfer column, and two zero capacities also skip the spot price.
 
 Physical domains are enforced when a series is resolved, whether it comes from
 the workbook or from a keyword. Availability and capacity multipliers

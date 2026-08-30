@@ -164,11 +164,14 @@ function _inheritedcapacity(ini::Snapshot, compname::String, pname::String, argn
 end
 
 function _checkcapacitybounds(val::Real, mincap, maxcap, argname::String)
+    # bound names follow the capacity name: "cap_x" bounds are "mincap_x"/"maxcap_x",
+    # and "y_capacity" bounds are "y_mincap"/"y_maxcap"
+    base = replace(argname, "capacity" => "cap")
     if !isnothing(mincap)
-        @argcheck val >= mincap "`$argname` is fixed at $val, below `$(replace(argname, "cap" => "mincap"))` = $mincap."
+        @argcheck val >= mincap "`$argname` is fixed at $val, below `$(replace(base, "cap" => "mincap"))` = $mincap."
     end
     if !isnothing(maxcap)
-        @argcheck val <= maxcap "`$argname` is fixed at $val, above `$(replace(argname, "cap" => "maxcap"))` = $maxcap."
+        @argcheck val <= maxcap "`$argname` is fixed at $val, above `$(replace(base, "cap" => "maxcap"))` = $maxcap."
     end
     return nothing
 end

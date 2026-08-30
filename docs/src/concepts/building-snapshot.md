@@ -234,10 +234,15 @@ Which `:function` values appear in which report blocks is described in
 
 ## Interconnections
 
-[`makepriceinterco`](@ref) represents a neighbouring zone through exogenous
+[`makepricelink`](@ref) represents a neighbouring zone through exogenous
 spot prices and directional transfer-capacity profiles. Imports are priced as
 positive system costs and exports as negative costs. It is useful when the
-neighbour itself is outside the model.
+neighbour itself is outside the model. `name` identifies the corridor, while
+`neighbor` names the counterparty for reports and `neighbor_column` the workbook
+columns; both default to `name`. `import_capacity` and `export_capacity` follow
+the common capacity contract with their own `mincap`/`maxcap` bounds. Because
+the counterparty is not a node that could be tagged `:foreign`, the builder
+carries `neighbor_is_foreign` itself.
 
 [`maketransmissionlink`](@ref) connects two explicit Nosy nodes with directional
 flows. It applies one shared installed capacity, directional time-varying
@@ -258,7 +263,7 @@ The shared capacity uses the common `cap`/`mincap`/`maxcap` contract. Its two
 directional limits use the corresponding `From>To` columns of a time-series
 sheet as multipliers: `transfer_capacities_AC` for an AC link and
 `transfer_capacities_DC` for a DC one. `transfer_capacities` belongs to
-[`makepriceinterco`](@ref). A numeric zero capacity skips both profile lookups;
+[`makepricelink`](@ref). A numeric zero capacity skips both profile lookups;
 a zero directional multiplier disables only that direction.
 
 After all components and interconnections have been created, continue with

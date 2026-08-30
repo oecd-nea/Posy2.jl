@@ -191,7 +191,7 @@ using HiGHS
     let
         snap, elec1, _, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -205,11 +205,11 @@ using HiGHS
     let
         snap, elec1, _, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; foreign=false, transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, neighbor_is_foreign=false, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        c = Nosy.getcomponent(s, "IC_ZONE2_ZONE1")
+        c = Nosy.getcomponent(s, "ZONE2_ZONE1")
         @test !hastag(c, :function, "foreign")
         @test sum(balance(c, :output, energy, collapse=false, aggregate=false)["output"]) > 0.0 # the corridor does flow
         @test Posy2.netinterconnection(s; collapse=true) == 0.0
@@ -342,7 +342,7 @@ using HiGHS
     let
         snap, elec1, _, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 

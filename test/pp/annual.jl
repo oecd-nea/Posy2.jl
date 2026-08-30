@@ -65,7 +65,7 @@ using DataFrames
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -285,11 +285,11 @@ using DataFrames
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        cname = "IC_ZONE2_ZONE1"
+        cname = "ZONE2_ZONE1"
         df = Posy2.selfcosts(s)
         row = first(df[df[!, :component] .== cname, :])
         imp = Posy2.selfinterconnectioncost_price(s, cname)
@@ -304,7 +304,7 @@ using DataFrames
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -320,7 +320,7 @@ using DataFrames
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
         makedispatchable("CCGT", elec2, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -334,7 +334,7 @@ using DataFrames
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; coeff=1.0)
-        makepriceinterco("ZONE2", elec1, 110.0, 100.0, snap; transactioncost=1.)
+        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transactioncost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 

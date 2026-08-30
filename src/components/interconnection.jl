@@ -3,66 +3,118 @@ Generate interconnection components.
 """
 
 """
-    makepriceinterco(zone::String, elec::Node, mcap, xcap, s::Snapshot;
-        dir::Bool=false, foreign::Bool=true,
+    makepricelink(name::String, elec::Node, s::Snapshot;
+        neighbor::String=name, neighbor_column::String=neighbor,
+        import_capacity=nothing, import_mincap=nothing, import_maxcap=nothing,
+        export_capacity=nothing, export_mincap=nothing, export_maxcap=nothing,
+        dir::Bool=false, neighbor_is_foreign::Bool=true,
         transactioncost::Real=0.,
         spot_price=nothing, import_availability=nothing, export_availability=nothing,
     )
 
-Build, connect and return an interconnection component based on a price time series.
+Build, connect and return an interconnection component named
+`"<name>_<elec.name>"`, trading with a neighbouring market represented by an
+exogenous price series instead of an explicit node.
 If `dir` is true, apply a one direction at a time constraint at every timestep.
 
 Arguments:
-  * `zone`: priced counterparty zone name for spot price and transfer capacity time series
+  * `name`: interconnector name prefix.
   * `elec`: local electricity node to connect the interconnector to.
-  * `mcap`: Import capacity in MW as a number, JuMP `VariableRef`, or `AffExpr`.
-  * `xcap`: Export capacity in MW as a number, JuMP `VariableRef`, or `AffExpr`.
   * `s`: snapshot to register the component in.
 
+  * `neighbor`: counterparty market, reported as the `:neighbor` tag and as the
+    remote endpoint of directed flows. Defaults to `name`.
+  * `neighbor_column`: name the workbook columns are built from. Defaults to
+    `neighbor`.
+
+  * `import_capacity`: Import capacity in MW, following the common capacity
+    contract: a number fixes it, a JuMP `VariableRef` or `AffExpr` reuses that
+    expression, `nothing` creates a capacity decision, and an extracted
+    `Snapshot` inherits the `"output"` capacity of `"<name>_<elec.name>"` in it.
+    Numeric `0` disables imports.
+  * `import_mincap`: Lower import capacity bound in MW; checked as an assertion
+    against a fixed or inherited one.
+  * `import_maxcap`: Upper import capacity bound in MW; checked as an assertion
+    against a fixed or inherited one.
+  * `export_capacity`: Export capacity in MW, with the same contract; an
+    extracted `Snapshot` inherits the `"input"` capacity. Numeric `0` disables
+    exports.
+  * `export_mincap`: Lower export capacity bound in MW.
+  * `export_maxcap`: Upper export capacity bound in MW.
+
   * `dir`: if `true`, apply SOS1 one direction at a time flow constraint.
-  * `foreign`: if `true`, tag interconnector as `:foreign`.
+  * `neighbor_is_foreign`: if `true`, the neighbouring market lies outside the
+    modelled system and the component is tagged `:foreign`. A price
+    interconnection carries this on itself because its remote endpoint is not a
+    node that could hold a `:foreign` tag, unlike
+    [`maketransmissionlink`](@ref). Set it to false when the price series
+    represents another internal zone.
 
   * `transactioncost`: Transaction adder in currency/MWh on both directions.
   * `spot_price`: Foreign spot price in currency/MWh, as an hourly vector or scalar.
   * `import_availability`: Dimensionless hourly multiplier for the
-    foreign-to-local direction, each value in `[0, 1]`.
+    foreign-to-local direction, each value in `[0, 1]`, read from column
+    `"<neighbor_column>><elec.name>"`.
   * `export_availability`: Dimensionless hourly multiplier for the
-    local-to-foreign direction, with the same `[0, 1]` domain.
-    Availability is resolved for numeric nonzero and all symbolic directions. When omitted,
-    it comes from the workbook in `:excel` mode and defaults to one in
+    local-to-foreign direction, with the same `[0, 1]` domain, read from column
+    `"<elec.name>><neighbor_column>"`.
+    Availability is resolved for every direction except a numeric zero one. When
+    omitted, it comes from the workbook in `:excel` mode and defaults to one in
     `:arguments` mode. `spot_price` is required whenever either direction has
-    active capacity. When both capacities are numeric zeros the corridor is
-    disabled: no spot price is read and the reported exogenous price is an
-    hourly series of zeros.
+    active capacity, and is read from column `"<neighbor_column>"`. When both
+    capacities are numeric zeros the corridor is disabled: no spot price is read
+    and the reported exogenous price is an hourly series of zeros.
+
+Neither direction carries an investment cost, so bound an optimized capacity
+with `import_maxcap` or `export_maxcap`.
 """
-function makepriceinterco(zone::String, elec::Node, mcap::Union{Real,VariableRef,AffExpr}, xcap::Union{Real,VariableRef,AffExpr}, s::Snapshot;
+function makepricelink(name::String, elec::Node, s::Snapshot;
+    # identity
+    neighbor::String=name, neighbor_column::String=neighbor,
+
+    # capacity / expansion
+    import_capacity::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing,
+    import_mincap::Union{Nothing,Real}=nothing, import_maxcap::Union{Nothing,Real}=nothing,
+    export_capacity::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing,
+    export_mincap::Union{Nothing,Real}=nothing, export_maxcap::Union{Nothing,Real}=nothing,
+
     # operation flags
-    dir::Bool=false, foreign::Bool=true,
+    dir::Bool=false, neighbor_is_foreign::Bool=true,
 
     # economic controls
     transactioncost::Real=0.,
     spot_price=nothing, import_availability=nothing, export_availability=nothing,
 )
+    component_name = string(name, "_", elec.name)
+    # inheritance is resolved first, so that an inherited zero disables its
+    # direction exactly like a numeric zero
+    _mcap = import_capacity isa Snapshot ?
+        _inheritedcapacity(import_capacity, component_name, "output", "import_capacity") :
+        import_capacity
+    _xcap = export_capacity isa Snapshot ?
+        _inheritedcapacity(export_capacity, component_name, "input", "export_capacity") :
+        export_capacity
+    imports_active = !(_mcap isa Real && iszero(_mcap))
+    exports_active = !(_xcap isa Real && iszero(_xcap))
+
     vb = []
-    imports_active = mcap isa Real ? !iszero(mcap) : true
-    exports_active = xcap isa Real ? !iszero(xcap) : true
     _imports = if imports_active
         input = isnothing(import_availability) && timeseries_mode(s) === :arguments ? 1.0 : import_availability
         _resolve_timeseries(
-            s, input, zone * ">" * elec.name, "transfer_capacities";
+            s, input, neighbor_column * ">" * elec.name, "transfer_capacities";
             keyword="import_availability", lower=0.0, upper=1.0,
         )
     end
     _exports = if exports_active
         input = isnothing(export_availability) && timeseries_mode(s) === :arguments ? 1.0 : export_availability
         _resolve_timeseries(
-            s, input, elec.name * ">" * zone, "transfer_capacities";
+            s, input, elec.name * ">" * neighbor_column, "transfer_capacities";
             keyword="export_availability", lower=0.0, upper=1.0,
         )
     end
     _spot = if imports_active || exports_active
         _resolve_timeseries(
-            s, spot_price, zone, "spot_price"; keyword="spot_price", digits=2,
+            s, spot_price, neighbor_column, "spot_price"; keyword="spot_price", digits=2,
         )
     else
         # a fully disabled corridor has no price to resolve, but reporting still
@@ -72,29 +124,25 @@ function makepriceinterco(zone::String, elec::Node, mcap::Union{Real,VariableRef
 
     # imports
     m = DispatchableSource(elec.carrier)
-    if mcap isa Real
-        push!(vb, FixedCapacity("output", energy, mcap))
-    elseif mcap isa VariableRef || mcap isa AffExpr
-        JuMP.check_belongs_to_model(mcap, Nosy.uppermodel(sim(s)))
-        push!(vb, VariableCapacity("output", energy; expression=mcap))
-    end
+    push!(vb, gencapacity(
+        _mcap, "output", s, component_name;
+        mincap=import_mincap, maxcap=import_maxcap, argname="import_capacity",
+    ))
     imports_active && push!(vb, Nosy.CapacityMultiplier("output", _imports))
     push!(vb, VariableCost(:imports, "output", energy, _spot))
     push!(vb, VariableCost(:transaction, "output", energy, Float64(transactioncost)))
 
     # exports
     push!(vb, FreeJointFlow("input", elec.carrier, :input))
-    if xcap isa Real
-        push!(vb, FixedCapacity("input", energy, xcap))
-    elseif xcap isa VariableRef || xcap isa AffExpr
-        JuMP.check_belongs_to_model(xcap, Nosy.uppermodel(sim(s)))
-        push!(vb, VariableCapacity("input", energy; expression=xcap))
-    end
+    push!(vb, gencapacity(
+        _xcap, "input", s, component_name;
+        mincap=export_mincap, maxcap=export_maxcap, argname="export_capacity",
+    ))
     exports_active && push!(vb, Nosy.CapacityMultiplier("input", _exports))
     push!(vb, VariableCost(:exports, "input", energy, -1 .* _spot))
     push!(vb, VariableCost(:transaction, "input", energy, Float64(transactioncost)))
 
-    c = Component("IC_" * zone * "_" * elec.name, m, vb)
+    c = Component(component_name, m, vb)
 
     # make the IC flow go in one direction only
     if dir
@@ -107,10 +155,10 @@ function makepriceinterco(zone::String, elec::Node, mcap::Union{Real,VariableRef
     for t in ("interconnection", "priceinterconnection")
         tag!(c, :function, t)
     end
-    if foreign
+    if neighbor_is_foreign
         tag!(c, :function, "foreign")
     end
-    tag!(c, :neighbor, zone)
+    tag!(c, :neighbor, neighbor)
     connect!(s, c, elec)
     tag!(c, :zone, elec.name)
 
@@ -181,7 +229,7 @@ matches the link type: `transfer_capacities_AC` when `dc=false`,
 `transfer_capacities_DC` when `dc=true`. Columns are named `From>To` after the
 node names. An AC and a DC link on the same node pair therefore carry their own
 availability series, and neither reads `transfer_capacities`, which belongs to
-[`makepriceinterco`](@ref).
+[`makepricelink`](@ref).
 
 Node interconnections cannot be added after [`applydcopf!`](@ref) has run on the
 snapshot; build the full topology first.

@@ -23,7 +23,7 @@ is read from the sheet that belongs to the builder and link type; in
 
 | Builder | Sheet |
 |:--------|:------|
-| [`makepriceinterco`](@ref) | `transfer_capacities` |
+| [`makepricelink`](@ref) | `transfer_capacities` |
 | [`maketransmissionlink`](@ref), `dc=false` | `transfer_capacities_AC` |
 | [`maketransmissionlink`](@ref), `dc=true` | `transfer_capacities_DC` |
 
@@ -38,7 +38,8 @@ Setting a node interconnection's shared `cap` to numeric zero skips both
 multiplier lookups. An optimized or externally supplied capacity resolves both
 directions because its value is not known while the component is built. Set a
 directional multiplier to zero to disable that direction. Price interconnections
-retain their separate directional-capacity behavior.
+retain their separate directional-capacity behavior, and skip a direction's
+lookup when that direction's capacity is a fixed zero.
 
 For a price interconnection, `dir=true` adds an SOS1 constraint at every
 timestep so that imports and exports cannot be used simultaneously. For a
@@ -122,33 +123,53 @@ maketransmissionlink
 
 ## Price Interconnections
 
-[`makepriceinterco`](@ref) creates `"IC_$(zone)_$(elec.name)"` without creating
+[`makepricelink`](@ref) creates `"$(name)_$(elec.name)"` without creating
 an explicit node for the neighbouring market. Imports use component `output`,
-base capacity `mcap`, multiplier column `zone>local`, and the neighbour's
-`spot_price` series. Exports use component `input`, base capacity `xcap`, and
-multiplier column `local>zone`. Export energy earns the same exogenous spot
-price; `transactioncost` is added in both directions.
+base capacity `import_capacity`, multiplier column `neighbor_column>local`, and
+the neighbour's `spot_price` series. Exports use component `input`, base
+capacity `export_capacity`, and multiplier column `local>neighbor_column`.
+Export energy earns the same exogenous spot price; `transactioncost` is added in
+both directions.
+
+The counterparty has three separable roles. `name` gives the component its
+identity, `neighbor` is the counterparty reported by the `:neighbor` tag and by
+directed flow labels, and `neighbor_column` names the workbook columns.
+`neighbor` defaults to `name` and `neighbor_column` to `neighbor`, so a corridor
+whose report label and workbook columns both match its name needs only `name`.
+
+Both capacities follow the common capacity contract of
+[Component Builders](../components.md): a number fixes them, `nothing` optimizes
+them, a JuMP variable or affine expression is reused, and an extracted snapshot
+inherits the `output` (import) and `input` (export) capacities of
+`"$(name)_$(elec.name)"`. `import_mincap`/`import_maxcap` and
+`export_mincap`/`export_maxcap` bound an optimized or reused capacity and assert
+against a fixed or inherited one. Neither direction carries an investment cost,
+so an optimized capacity should be bounded.
 
 ![Ports of a price interconnection component](../assets/component-price-interco.svg)
 
-Tags: `:neighbor => zone`, `:zone => elec.name`, and the function tags
-`interconnection` and `priceinterconnection`. With `foreign=true`, the builder
-also adds the function tag `foreign`. This is the default because the common
-use case is a market outside the modelled system. Set it to false when the
-price series represents another internal zone.
+Tags: `:neighbor => neighbor`, `:zone => elec.name`, and the function tags
+`interconnection` and `priceinterconnection`. With `neighbor_is_foreign=true`,
+the builder also adds the function tag `foreign`. This is the default because
+the common use case is a market outside the modelled system. Set it to false
+when the price series represents another internal zone. A transmission link
+needs no such flag: its two endpoints are nodes, so their own `:foreign` tags
+decide. A price interconnection's remote endpoint is not a node, so the builder
+states the neighbour's foreignness instead.
 
 Price interconnections do not participate in DC power flow cycle constraints:
 they have no second explicit electrical node or susceptance.
 
-Numeric zero capacities disable a direction. When both `mcap` and `xcap` are
-zero the whole corridor is disabled: no spot price or availability column is
-read, and reports show the interconnection with a zero price and zero volumes.
+Numeric zero capacities disable a direction. When both `import_capacity` and
+`export_capacity` are zero the whole corridor is disabled: no spot price or
+availability column is read, and reports show the interconnection with a zero
+price and zero volumes.
 
 See the [Price Interconnection example](../examples/price-interconnection.md)
 for a complete model using this builder.
 
 ```@docs; canonical=false
-makepriceinterco
+makepricelink
 ```
 
 ## Losses And Reporting

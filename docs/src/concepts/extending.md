@@ -85,7 +85,7 @@ linked carrier flows use names such as `fuel`, `co2`, and `grid losses`.
 Some Posy2 builders compose archetypes with joint flows. Demand response uses
 a zero `Demand` host plus a linked negative input; interconnections reuse
 these archetypes ([`maketransmissionlink`](@ref) uses `BasicConverter`,
-[`makepriceinterco`](@ref) uses `DispatchableSource`).
+[`makepricelink`](@ref) uses `DispatchableSource`).
 
 | Builder | Archetype | Capacity port(s) | Typical costs on | Typical `:function` |
 |:--------|:----------|:-----------------|:-----------------|:--------------------|

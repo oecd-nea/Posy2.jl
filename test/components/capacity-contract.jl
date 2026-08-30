@@ -281,4 +281,55 @@ using HiGHS
             "Line", elec, other, s; cap=empty_ini,
         )
     end
+
+    # Price links expose the same contract on two independent directional
+    # capacities, each inheriting from the port that carries it.
+    let
+        s, elec, _, _ = contract_snapshot()
+        makepricelink("Market", elec, s;
+            import_capacity=nothing, import_maxcap=40.0,
+            export_capacity=nothing, export_maxcap=25.0,
+            spot_price=1.0, import_availability=1.0, export_availability=1.0)
+        makedemand("Load", "Z1", elec, s; coeff=0.0, yearlyconstant=100.0)
+        Nosy.optimize!(s, cost(s))
+        ini = extract(s)
+
+        t, telec, _, _ = contract_snapshot()
+        inherited = makepricelink("Market", telec, t;
+            import_capacity=ini, export_capacity=ini,
+            spot_price=1.0, import_availability=1.0, export_availability=1.0)
+        source = Nosy.getcomponent(ini, "Market_E1")
+        @test fixedcap(inherited, "output") ≈ capacity(source, "output")
+        @test fixedcap(inherited, "input") ≈ capacity(source, "input")
+    end
+
+    # A fixed zero disables a direction without dropping its port, and two zeros
+    # build the whole corridor without resolving any series.
+    let
+        s, elec, _, _ = contract_snapshot()
+        disabled = makepricelink("Disabled", elec, s;
+            import_capacity=0.0, export_capacity=0.0)
+        @test fixedcap(disabled, "output") == 0.0
+        @test fixedcap(disabled, "input") == 0.0
+    end
+
+    # Each direction is bounded by its own mincap/maxcap, named in the message.
+    let
+        s, elec, _, _ = contract_snapshot()
+        @test_throws "below `import_mincap`" makepricelink("Below", elec, s;
+            import_capacity=5.0, import_mincap=10.0, export_capacity=0.0,
+            spot_price=1.0, import_availability=1.0)
+        @test_throws "above `export_maxcap`" makepricelink("Above", elec, s;
+            import_capacity=0.0, export_capacity=50.0, export_maxcap=10.0,
+            spot_price=1.0, export_availability=1.0)
+    end
+
+    let
+        s, elec, _, _ = contract_snapshot()
+        empty_ini = extracted_without_components()
+        @test_throws "no component named \"Market_E1\" to inherit port \"output\"" makepricelink(
+            "Market", elec, s; import_capacity=empty_ini, export_capacity=0.0,
+            spot_price=1.0, import_availability=1.0,
+        )
+    end
 end
