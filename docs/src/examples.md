@@ -25,6 +25,7 @@ remaining assets are kept simple.
 | [Price Interconnection](examples/price-interconnection.md) | Choosing between domestic generation and priced imports |
 | [DC OPF](examples/dc-opf.md) | How KVL changes flows across meshed AC lines, and how controllable HVDC differs |
 | [Stochastic Programming](examples/stochastic.md) | Sharing investment capacities across two snapshots while operation adapts to each future |
+| [Coarse Time Mesh](examples/coarse-time-mesh.md) | Trading resolution for model size by solving a two-country system on two-hour steps |
 | [Infeasibility](examples/infeasibility.md) | Using `conflicts` to locate incompatible constraints in an infeasible model |
 
 ## Data sources
@@ -53,8 +54,8 @@ The table shows which combination each example uses.
 | [Two Countries](examples/two-countries.md) | `:arguments` | `:excel` |
 | [Price Interconnection](examples/price-interconnection.md) | `:arguments` | `:excel` |
 | [DC OPF](examples/dc-opf.md) | `:excel` | `:arguments` |
-| [Negative Locational Prices](examples/negative-prices.md) | `:arguments` | `:arguments` |
 | [Stochastic Programming](examples/stochastic.md) | `:arguments` | `:arguments` |
+| [Coarse Time Mesh](examples/coarse-time-mesh.md) | `:arguments` | `:excel` |
 | [Infeasibility](examples/infeasibility.md) | `:arguments` | `:arguments` |
 
 ## Exporting Example Results
