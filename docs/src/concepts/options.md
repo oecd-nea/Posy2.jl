@@ -23,9 +23,12 @@ options = Posy2Options(
 snapshot = Snapshot(s, Dict(:posy => options))
 ```
 
-Every Posy2 component builder expects this entry to exist, even when all
-technology inputs are supplied directly and no workbook is read.
-[`posy_options`](@ref) validates and returns it:
+The entry is optional. A snapshot without one is read as `Posy2Options()`:
+both input modes `:arguments`, no workbook, `discount_rate=0.05` and
+`co2_price=0.0`. A study that passes every technology input through builder
+keywords and accepts those two economic defaults needs no options object.
+Attach one to read a workbook, or to state a different discount rate or carbon
+price. [`posy_options`](@ref) returns the entry, or those defaults:
 
 ```julia
 posy_options(snapshot)
@@ -118,6 +121,9 @@ decommissioning costs. [`eac`](@ref) combines the overnight cost, construction
 profile, lifetime, and discount rate into an equivalent annual cost.
 Construction profiles can be provided as one numeric value or as a vector of
 yearly shares whose entries sum approximately to one.
+
+Both assumptions accept any `Real` and are stored as `Float64`, so
+`discount_rate=0` and `co2_price=100` are as good as their decimal spellings.
 
 In compact form, annualised investment is written as
 

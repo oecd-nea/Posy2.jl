@@ -5,11 +5,14 @@
         discount_rate=0.05, co2_price=0.0)
 
 Configure Posy2 input workbooks and economic assumptions. Pass the resulting
-object to a Nosy snapshot as `Snapshot(sim, Dict(:posy => options))`.
+object to a Nosy snapshot as `Snapshot(sim, Dict(:posy => options))`. A
+snapshot carrying no `:posy` entry is read as `Posy2Options()`, which is
+workbook-free.
 
 Fields:
 
-- `data_dir`: directory containing the input workbooks.
+- `data_dir`: directory containing the input workbooks. It defaults to
+  `joinpath(pwd(), "data")`, which follows the process working directory.
 - `techdata_file`: technology-parameter workbook filename.
 - `timeseries_file`: hourly time-series workbook filename.
 - `tech_mode`: `:arguments` (default) to use documented neutral defaults and
@@ -34,13 +37,13 @@ struct Posy2Options
     discount_rate::Float64
     co2_price::Float64
 
-    function Posy2Options(data_dir::String,
-                          techdata_file::String,
-                          timeseries_file::String,
+    function Posy2Options(data_dir::AbstractString,
+                          techdata_file::AbstractString,
+                          timeseries_file::AbstractString,
                           tech_mode::Symbol,
                           timeseries_mode::Symbol,
-                          discount_rate::Float64,
-                          co2_price::Float64)
+                          discount_rate::Real,
+                          co2_price::Real)
         tech_mode in (:excel, :arguments) ||
             throw(ArgumentError("tech_mode must be :excel or :arguments, got $(repr(tech_mode))"))
         timeseries_mode in (:excel, :arguments) ||
@@ -51,13 +54,13 @@ struct Posy2Options
 end
 
 Posy2Options(;
-    data_dir::String=joinpath(pwd(), "data"),
-    techdata_file::String="tech_data.xlsx",
-    timeseries_file::String="time_series.xlsx",
+    data_dir::AbstractString=joinpath(pwd(), "data"),
+    techdata_file::AbstractString="tech_data.xlsx",
+    timeseries_file::AbstractString="time_series.xlsx",
     tech_mode::Symbol=:arguments,
     timeseries_mode::Symbol=:arguments,
-    discount_rate::Float64=0.05,
-    co2_price::Float64=0.0,
+    discount_rate::Real=0.05,
+    co2_price::Real=0.0,
 ) =
     Posy2Options(data_dir, techdata_file, timeseries_file, tech_mode, timeseries_mode,
                  discount_rate, co2_price)
@@ -65,13 +68,14 @@ Posy2Options(;
 """
     posy_options(s::Snapshot)
 
-Return the [`Posy2Options`](@ref) stored in `s.options[:posy]`.
+Return the [`Posy2Options`](@ref) stored in `s.options[:posy]`, or the
+workbook-free `Posy2Options()` when the snapshot carries no `:posy` entry.
 
-Throw an `ArgumentError` when the entry is missing or is not a
+Throw an `ArgumentError` when the entry is present but is not a
 `Posy2Options` object.
 """
 function posy_options(s::Snapshot)
-    haskey(s.options, :posy) || throw(ArgumentError("Snapshot.options[:posy] is required."))
+    haskey(s.options, :posy) || return Posy2Options()
     opts = s.options[:posy]
     opts isa Posy2Options || throw(ArgumentError(":posy must be a Posy2Options, got $(typeof(opts))"))
     return opts
