@@ -70,7 +70,6 @@ makedocs(
             "Two Countries" => "examples/two-countries.md",
             "Price Interconnection" => "examples/price-interconnection.md",
             "DC OPF" => "examples/dc-opf.md",
-            "Negative Locational Prices" => "examples/negative-prices.md",
             "Stochastic Programming" => "examples/stochastic.md",
             "Infeasibility" => "examples/infeasibility.md",
         ],

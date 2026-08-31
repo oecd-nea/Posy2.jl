@@ -24,7 +24,6 @@ remaining assets are kept simple.
 | [Two Countries](examples/two-countries.md) | Comparing trade and local generation with and without a transmission limit |
 | [Price Interconnection](examples/price-interconnection.md) | Choosing between domestic generation and priced imports |
 | [DC OPF](examples/dc-opf.md) | How KVL changes flows across meshed AC lines, and how controllable HVDC differs |
-| [Negative Locational Prices](examples/negative-prices.md) | How congestion can make a locational price negative despite positive generation costs |
 | [Stochastic Programming](examples/stochastic.md) | Sharing investment capacities across two snapshots while operation adapts to each future |
 | [Infeasibility](examples/infeasibility.md) | Using `conflicts` to locate incompatible constraints in an infeasible model |
 
