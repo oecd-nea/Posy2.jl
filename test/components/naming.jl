@@ -35,15 +35,15 @@ using HiGHS
             tech=reporting_tech,
         ),
         makedispatchable(
-            "Named dispatchable", electricity, carbon, snapshot; tech_column="unused",
+            "Named dispatchable", electricity, snapshot; co2_node=carbon, tech_column="unused",
             tech=reporting_tech, cap=1.0,
         ),
         makenuclear(
-            "Named nuclear", electricity, carbon, snapshot; tech_column="unused",
+            "Named nuclear", electricity, snapshot; co2_node=carbon, tech_column="unused",
             tech=reporting_tech, cap=1.0,
         ),
         makeintermittentsource(
-            "Named intermittent", electricity, carbon, snapshot; tech_column="unused",
+            "Named intermittent", electricity, snapshot; co2_node=carbon, tech_column="unused",
             tech=reporting_tech, cap=1.0, profile=1.0,
         ),
         makehydroror(

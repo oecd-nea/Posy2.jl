@@ -33,8 +33,8 @@ zero-capacity component.
 If `fuelnode` is absent, `fuel_cost` is a variable cost on electricity output.
 If a fuel node is supplied, the builder instead creates a `fuel` input equal to
 electricity output divided by `efficiency`. Non-zero `co2_emission` adds a
-linked `co2` output and connects it to the CO2 node; `co2_price` prices that
-flow.
+linked `co2` output and requires `co2_node`; `co2_price` prices that flow.
+Zero-emission generation needs no CO2 node.
 
 ![Ports of a dispatchable generation component](../assets/component-dispatchable.svg)
 

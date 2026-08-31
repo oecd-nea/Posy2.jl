@@ -184,8 +184,8 @@ first_result = extract(first_snapshot)
 makedispatchable(
     "Gas",
     new_grid,
-    new_co2,
-    new_snapshot; tech_column="CCGT",
+    new_snapshot;
+    co2_node=new_co2, tech_column="CCGT",
     cap=first_result,
     # Other technology inputs...
 )
@@ -203,11 +203,11 @@ requires a capacity fixed to that same fleet — a number, or the same snapshot:
 
 ```julia
 # Fleet and commitment schedule both frozen: re-solve as an LP, e.g. for duals
-makedispatchable("Gas", new_grid, new_co2, new_snapshot; tech_column="CCGT",
+makedispatchable("Gas", new_grid, new_snapshot; co2_node=new_co2, tech_column="CCGT",
     cap=first_result, uc=first_result, unit_size=400.0)
 
 # Fleet frozen, commitment re-optimised
-makedispatchable("Gas", new_grid, new_co2, new_snapshot; tech_column="CCGT",
+makedispatchable("Gas", new_grid, new_snapshot; co2_node=new_co2, tech_column="CCGT",
     cap=first_result, uc=true, unit_size=400.0)
 ```
 

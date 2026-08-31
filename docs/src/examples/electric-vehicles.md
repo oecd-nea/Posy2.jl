@@ -70,7 +70,7 @@ makedemand(
 
 # Fixed 1500 MW PV
 makeintermittentsource(
-    "Solar", electricity, co2, snapshot; tech_column="PV",
+    "Solar", electricity, snapshot; co2_node=co2, tech_column="PV",
     cap=1500.0,
     weather_year=2019,
 )
@@ -90,7 +90,7 @@ makeEV(
 
 # Fixed OCGT backup (continuous UC with startup cost, same plant in both cases)
 makedispatchable(
-    "OCGT", electricity, co2, snapshot; tech_column="OCGT",
+    "OCGT", electricity, snapshot; co2_node=co2, tech_column="OCGT",
     cap=1200.0,
     fuel_cost=68.24,
     unit_size=100.0,
@@ -179,7 +179,7 @@ makedemand(
 
 # Fixed 1500 MW PV (same as smart-charging case)
 makeintermittentsource(
-    "Solar", electricity, co2, snapshot; tech_column="PV",
+    "Solar", electricity, snapshot; co2_node=co2, tech_column="PV",
     cap=1500.0,
     weather_year=2019,
 )
@@ -201,7 +201,7 @@ makeEV(
 
 # Same OCGT plant as the smart-charging case
 makedispatchable(
-    "OCGT", electricity, co2, snapshot; tech_column="OCGT",
+    "OCGT", electricity, snapshot; co2_node=co2, tech_column="OCGT",
     cap=1200.0,
     fuel_cost=68.24,
     unit_size=100.0,

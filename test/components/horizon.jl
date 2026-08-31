@@ -34,9 +34,9 @@ using HiGHS
             () -> makedemandresponse("X", elec, 1.0, 1.0, s),
             () -> makeflathydrogenpurchase("X", h2, 1.0, s),
             () -> makeEV("X", elec, s),
-            () -> makedispatchable("X", elec, co2, s),
-            () -> makenuclear("X", elec, co2, s),
-            () -> makeintermittentsource("X", elec, co2, s),
+            () -> makedispatchable("X", elec, s),
+            () -> makenuclear("X", elec, s),
+            () -> makeintermittentsource("X", elec, s),
             () -> makehydroror("X", "Z1", elec, s; intake=0.0),
             () -> makehydroreservoir(
                 "X", "Z1", elec, s; discharge_cap=1.0, charge_cap=0.0, intake=0.0),
@@ -92,7 +92,7 @@ using HiGHS
     function refuel_slots(mesh, refuel_slot_spacing)
         s, elec, _, _, co2 = horizon_snapshot(mesh)
         c = makenuclear(
-            "N", elec, co2, s; uc=true, cap=3000.0, unit_size=1000.0,
+            "N", elec, s; co2_node=co2, uc=true, cap=3000.0, unit_size=1000.0,
             min_power=0.3, min_uptime=1, min_downtime=1,
             startup_duration=1, shutdown_duration=1,
             refuel_fraction_per_year=1.0, refuel_duration=720.0,

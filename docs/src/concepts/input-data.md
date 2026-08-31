@@ -88,8 +88,8 @@ is consistent:
 makedispatchable(
     "Gas",
     electricity,
-    co2,
-    snapshot; tech_column="CCGT",
+    snapshot;
+    co2_node=co2, tech_column="CCGT",
     fuel_cost=nothing,  # read dispatchable/CCGT/fuel_cost
 )
 ```
@@ -100,8 +100,8 @@ Passing a value replaces that one lookup:
 makedispatchable(
     "Gas sensitivity",
     electricity,
-    co2,
-    snapshot; tech_column="CCGT",
+    snapshot;
+    co2_node=co2, tech_column="CCGT",
     fuel_cost=40.0,
 )
 ```

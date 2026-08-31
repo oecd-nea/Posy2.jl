@@ -34,14 +34,14 @@ makedemand("Demand", "country1", electricity, snapshot; profile=repeat(day, 365)
 # Fixed 100 MW PV
 pvday = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.125, 0.25, 0.5, 0.75, 1.0, 1.0, 1.0, 1.0, 0.75, 0.5, 0.25, 0.125, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 makeintermittentsource(
-    "Solar", electricity, co2, snapshot; tech_column="PV",
+    "Solar", electricity, snapshot; co2_node=co2, tech_column="PV",
     cap=100.0,
     profile=repeat(pvday, 365),
 )
 
 # Gas: capacity chosen in the cost minimisation
 makedispatchable(
-    "Gas", electricity, co2, snapshot; tech_column="Gas",
+    "Gas", electricity, snapshot; co2_node=co2, tech_column="Gas",
     maxcap=150.0,
     overnight_cost=800.0,
     lifetime=30,
@@ -155,14 +155,14 @@ makedemand("Demand", "country1", electricity, snapshot; profile=repeat(day, 365)
 # Same fixed PV
 pvday = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.125, 0.25, 0.5, 0.75, 1.0, 1.0, 1.0, 1.0, 0.75, 0.5, 0.25, 0.125, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 makeintermittentsource(
-    "Solar", electricity, co2, snapshot; tech_column="PV",
+    "Solar", electricity, snapshot; co2_node=co2, tech_column="PV",
     cap=100.0,
     profile=repeat(pvday, 365),
 )
 
 # Same gas plant, no demand response
 makedispatchable(
-    "Gas", electricity, co2, snapshot; tech_column="Gas",
+    "Gas", electricity, snapshot; co2_node=co2, tech_column="Gas",
     maxcap=150.0,
     overnight_cost=800.0,
     lifetime=30,

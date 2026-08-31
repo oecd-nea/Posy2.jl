@@ -25,11 +25,39 @@ using HiGHS
         return snap, elec, co2
     end
 
+    # A CO2 node is optional for zero-emission generation and required otherwise.
+    let
+        sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+        set_silent(sim.model)
+        s = Snapshot(sim)
+        elec = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed)
+
+        dispatchable = makedispatchable("Zero-emission dispatchable", elec, s; cap=1.0)
+        nuclear = makenuclear("Zero-emission nuclear", elec, s; cap=1.0)
+        intermittent = makeintermittentsource(
+            "Zero-emission intermittent", elec, s; cap=1.0, profile=1.0,
+        )
+        @test !Nosy.hasport(dispatchable, "co2")
+        @test !Nosy.hasport(nuclear, "co2")
+        @test !Nosy.hasport(intermittent, "co2")
+
+        @test_throws ArgumentError makedispatchable(
+            "Emitting dispatchable", elec, s; cap=1.0, co2_emission=1.0,
+        )
+        @test_throws ArgumentError makenuclear(
+            "Emitting nuclear", elec, s; cap=1.0, co2_emission=1.0,
+        )
+        @test_throws ArgumentError makeintermittentsource(
+            "Emitting intermittent", elec, s; cap=1.0, profile=1.0,
+            co2_emission=1.0,
+        )
+    end
+
     # cap=0 registers a zero-capacity component, like every other builder.
     let
         s, elec, co2 = makesnapshot()
         c = makedispatchable(
-            "CCGT", elec, co2, s; tech_column="CCGT",
+            "CCGT", elec, s; co2_node=co2, tech_column="CCGT",
             cap=0.0, construction_profile=1.0, decommissioning_profile=1.0,
         )
         @test !isnothing(c)
@@ -40,7 +68,7 @@ using HiGHS
     # A valid dispatchable input should create and register the component.
     let
         s, elec, co2 = makesnapshot()
-        c = makedispatchable("CCGT", elec, co2, s; tech_column="CCGT", cap=100.0, construction_profile=1.0, decommissioning_profile=1.0)
+        c = makedispatchable("CCGT", elec, s; co2_node=co2, tech_column="CCGT", cap=100.0, construction_profile=1.0, decommissioning_profile=1.0)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "CCGT ZONE1") === c
         capacity_behavior = only(Nosy.getbehaviors(c, Nosy.FixedCapacityBehavior))
@@ -56,7 +84,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         c = makedispatchable(
-            "CCGT continuous", elec, co2, s; tech="CCGT",
+            "CCGT continuous", elec, s; co2_node=co2, tech="CCGT",
             cap=100.0, unit_size=0.0,
             construction_profile=1.0, decommissioning_profile=1.0,
         )
@@ -69,7 +97,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         @test_throws ArgumentError makenuclear(
-            "Nuclear", elec, co2, s; tech_column="CCGT",
+            "Nuclear", elec, s; co2_node=co2, tech_column="CCGT",
             uc=true, cap=100.0,
             overnight_cost=1000.0, om_fixed_cost=10.0, om_var_cost=2.0,
             decommissioning=0.1, lifetime=30, construction_profile=1.0, decommissioning_profile=1.0,
@@ -86,7 +114,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         c = makenuclear(
-            "Generic refuelling", elec, co2, s; tech_column="CCGT",
+            "Generic refuelling", elec, s; co2_node=co2, tech_column="CCGT",
             uc=true, cap=100.0, unit_size=100.0,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0, connection_cost=0.0, fuel_cost=0.0,
@@ -107,7 +135,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         c = makenuclear(
-            "Refuelling disabled", elec, co2, s; tech_column="CCGT",
+            "Refuelling disabled", elec, s; co2_node=co2, tech_column="CCGT",
             uc=true, cap=100.0, unit_size=100.0, refuel=false,
             overnight_cost=0.0, om_fixed_cost=0.0, om_var_cost=0.0,
             decommissioning=0.0, connection_cost=0.0, fuel_cost=0.0,
@@ -219,15 +247,15 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         @test_throws ArgumentError makeintermittentsource(
-            "Onwind above one", elec, co2, s; tech_column="Onwind",
+            "Onwind above one", elec, s; co2_node=co2, tech_column="Onwind",
             cap=100.0, profile=vcat(1.2, fill(0.3, 8759)),
         )
         @test_throws ArgumentError makeintermittentsource(
-            "Onwind negative", elec, co2, s; tech_column="Onwind",
+            "Onwind negative", elec, s; co2_node=co2, tech_column="Onwind",
             cap=100.0, profile=vcat(-0.1, fill(0.3, 8759)),
         )
         @test !isnothing(makeintermittentsource(
-            "Onwind valid", elec, co2, s; tech_column="Onwind",
+            "Onwind valid", elec, s; co2_node=co2, tech_column="Onwind",
             cap=100.0, profile=1.0, construction_profile=1.0, decommissioning_profile=1.0,
         ))
     end
@@ -246,15 +274,15 @@ using HiGHS
     # Generation capacity inputs accept real values or nothing, never complex values.
     let
         s, elec, co2 = makesnapshot()
-        @test_throws TypeError makenuclear("Nuclear", elec, co2, s; tech_column="CCGT", cap=1 + im)
-        @test_throws TypeError makeintermittentsource("Wind", elec, co2, s; tech_column="Onwind", cap=1 + im)
-        @test_throws TypeError makeintermittentsource("Wind", elec, co2, s; tech_column="Onwind", mincap=1 + im)
+        @test_throws TypeError makenuclear("Nuclear", elec, s; co2_node=co2, tech_column="CCGT", cap=1 + im)
+        @test_throws TypeError makeintermittentsource("Wind", elec, s; co2_node=co2, tech_column="Onwind", cap=1 + im)
+        @test_throws TypeError makeintermittentsource("Wind", elec, s; co2_node=co2, tech_column="Onwind", mincap=1 + im)
     end
 
     # A valid intermittent source input should create and register the component.
     let
         s, elec, co2 = makesnapshot()
-        c = makeintermittentsource("Onwind gen", elec, co2, s; tech_column="Onwind", cap=100.0, weather_year=2019, construction_profile=1.0, decommissioning_profile=1.0)
+        c = makeintermittentsource("Onwind gen", elec, s; co2_node=co2, tech_column="Onwind", cap=100.0, weather_year=2019, construction_profile=1.0, decommissioning_profile=1.0)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "Onwind gen ZONE1") === c
         @test Nosy.hastag(c, :function, "carbonfree")
@@ -264,7 +292,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         @test_throws ArgumentError makeintermittentsource(
-            "Wind missing year", elec, co2, s; tech_column="Onwind",
+            "Wind missing year", elec, s; co2_node=co2, tech_column="Onwind",
             cap=100.0, construction_profile=1.0, decommissioning_profile=1.0,
         )
     end
@@ -280,7 +308,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         c = makeintermittentsource(
-            "Emitting intermittent", elec, co2, s; tech_column="Onwind",
+            "Emitting intermittent", elec, s; co2_node=co2, tech_column="Onwind",
             cap=100.0, weather_year=2019, co2_emission=100.0,
             construction_profile=1.0, decommissioning_profile=1.0,
         )
@@ -293,7 +321,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         @test_throws ArgumentError makedispatchable(
-            "CCGT no ramp", elec, co2, s; tech_column="CCGT",
+            "CCGT no ramp", elec, s; co2_node=co2, tech_column="CCGT",
             cap=100.0, unit_size=0.0, ramp_up=0.5, ramp_down=0.5,
             construction_profile=1.0, decommissioning_profile=1.0,
         )
@@ -303,7 +331,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         c = makedispatchable(
-            "CCGT ramp", elec, co2, s; tech_column="CCGT",
+            "CCGT ramp", elec, s; co2_node=co2, tech_column="CCGT",
             cap=8.0, unit_size=2.0, ramp_up=0.2, ramp_down=0.3,
             construction_profile=1.0, decommissioning_profile=1.0,
         )
@@ -319,7 +347,7 @@ using HiGHS
     let
         s, elec, co2 = makesnapshot()
         c = makedispatchable(
-            "CCGT integer_uc bounds", elec, co2, s; tech_column="CCGT",
+            "CCGT integer_uc bounds", elec, s; co2_node=co2, tech_column="CCGT",
             cap=nothing, mincap=5.0, maxcap=11.0, unit_size=4.0,
             uc=true, integer_uc=true,
             construction_profile=1.0, decommissioning_profile=1.0,

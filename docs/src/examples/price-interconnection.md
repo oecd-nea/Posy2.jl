@@ -43,7 +43,7 @@ makedemand("Demand", "country1", electricity, snapshot; profile_multiplier=0.0, 
 
 # Domestic 100 MW CCGT
 makedispatchable(
-    "CCGT", electricity, co2, snapshot; tech_column="CCGT",
+    "CCGT", electricity, snapshot; co2_node=co2, tech_column="CCGT",
     cap=100.0,
     fuel_cost=47.06,
 )

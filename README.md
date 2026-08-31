@@ -101,8 +101,8 @@ makedemand("Load", "grid", grid, snapshot; profile=demand_profile)
 makedispatchable(
     "CCGT",
     grid,
-    atmosphere,
     snapshot;
+    co2_node=atmosphere,
     overnight_cost=1_000.0,      # overnight investment cost (USD/kW)
     lifetime=30,                 # economic lifetime (years)
     construction_profile=1.0,    # one-year construction

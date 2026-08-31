@@ -70,9 +70,9 @@ options = Posy2Options(
 )
 snapshot = Snapshot(s, Dict(:posy => options))
 
-# With electricity / co2 nodes already on the snapshot:
+# No CO2 node is needed because this source has zero direct emissions.
 makeintermittentsource(
-    "Solar", electricity, co2, snapshot; tech_column="Solar PV",
+    "Solar", electricity, snapshot; tech_column="Solar PV",
     cap=100.0,
     profile=repeat(
         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
@@ -184,9 +184,10 @@ behaviours.
 
 `co2_price` is the default carbon price passed to emitting generation
 builders. When `co2_emission` is non-zero, the builder creates a linked CO2
-output port, connects it to the supplied CO2 node, and applies the carbon price
-to that flow. A builder-specific `co2_price` keyword can override the study
-default.
+output port, connects it to the node supplied through `co2_node`, and applies
+the carbon price to that flow. `co2_node` defaults to `nothing` and is required
+only for an emitting component. A builder-specific `co2_price` keyword can
+override the study default.
 
 ## Optional DC Power Flow
 

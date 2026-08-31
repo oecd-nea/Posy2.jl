@@ -50,7 +50,7 @@ makehydroreservoir(
 )
 
 # Fixed 100 MW CCGT backup when hydro cannot cover demand
-makedispatchable("CCGT", electricity, co2, snapshot; tech_column="CCGT", cap=100.0, unit_size=0.0)
+makedispatchable("CCGT", electricity, snapshot; co2_node=co2, tech_column="CCGT", cap=100.0, unit_size=0.0)
 
 # Minimise total system cost and extract solved values
 optimize!(snapshot, cost(snapshot))

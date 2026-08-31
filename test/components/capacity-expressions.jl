@@ -59,15 +59,15 @@ using HiGHS
         affine = 2.0 * shared + 1.0
 
         dispatchable = makedispatchable(
-            "Linked dispatchable", elec1, carbon, s; tech_column="unused",
+            "Linked dispatchable", elec1, s; co2_node=carbon, tech_column="unused",
             cap=shared, mincap=1.0, maxcap=100.0,
         )
         nuclear = makenuclear(
-            "Linked nuclear", elec1, carbon, s; tech_column="unused",
+            "Linked nuclear", elec1, s; co2_node=carbon, tech_column="unused",
             cap=affine, mincap=1.0, maxcap=100.0,
         )
         intermittent = makeintermittentsource(
-            "Linked intermittent", elec1, carbon, s; tech_column="unused",
+            "Linked intermittent", elec1, s; co2_node=carbon, tech_column="unused",
             cap=shared, mincap=1.0, maxcap=100.0, profile=1.0,
         )
         ror = makehydroror(
@@ -149,11 +149,11 @@ using HiGHS
         shared = @variable(Nosy.uppermodel(sim(s)), lower_bound=0.0)
         affine = 2.0 * shared
         @test_throws ArgumentError makenuclear(
-            "Warm linked nuclear", elec1, carbon, s; tech_column="unused",
+            "Warm linked nuclear", elec1, s; co2_node=carbon, tech_column="unused",
             cap=shared, warmstart=10.0,
         )
         @test_throws ArgumentError makenuclear(
-            "Integer affine nuclear", elec1, carbon, s; tech_column="unused",
+            "Integer affine nuclear", elec1, s; co2_node=carbon, tech_column="unused",
             cap=affine, integer_cap=true,
         )
     end
@@ -166,13 +166,13 @@ using HiGHS
         variables_before = num_variables(sim(s).model)
 
         @test_throws JuMP.VariableNotOwned makedispatchable(
-            "Foreign linked dispatchable", elec1, carbon, s; tech_column="unused",
+            "Foreign linked dispatchable", elec1, s; co2_node=carbon, tech_column="unused",
             cap=foreign,
         )
         @test num_variables(sim(s).model) == variables_before
 
         @test_throws JuMP.VariableNotOwned makedispatchable(
-            "Foreign affine dispatchable", elec1, carbon, s; tech_column="unused",
+            "Foreign affine dispatchable", elec1, s; co2_node=carbon, tech_column="unused",
             cap=2.0 * foreign + 1.0,
         )
         @test num_variables(sim(s).model) == variables_before

@@ -216,7 +216,7 @@ using HiGHS
             battery_capacity_per_ev=0.06,
         )
         makedispatchable(
-            "Supply", elec, co2, s; tech_column="CCGT",
+            "Supply", elec, s; co2_node=co2, tech_column="CCGT",
             cap=100.0, fuel_cost=1_000.0, overnight_cost=0.0, co2_emission=0.0,
         )
         Nosy.optimize!(s, cost(s))
@@ -244,7 +244,7 @@ using HiGHS
             battery_capacity_per_ev=0.06,
         )
         makedispatchable(
-            "Supply", elec, co2, s; tech_column="CCGT",
+            "Supply", elec, s; co2_node=co2, tech_column="CCGT",
             cap=100.0, fuel_cost=1_000.0, overnight_cost=0.0, co2_emission=0.0,
         )
         Nosy.optimize!(s, cost(s))

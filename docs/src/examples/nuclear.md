@@ -73,7 +73,7 @@ makedemand("Demand", "country1", electricity, snapshot; profile_multiplier=5.5, 
 
 # Three fixed 1 GW units with refuelling on (720 h each). Only the start hour is chosen.
 makenuclear(
-    "NucA", electricity, co2, snapshot; tech_column="Nuclear",
+    "NucA", electricity, snapshot; co2_node=co2, tech_column="Nuclear",
     cap=1_000.0,
     unit_size=1_000.0,
     uc=true,
@@ -83,7 +83,7 @@ makenuclear(
     refuel_slot_spacing=8760,               # only one allowed start (1 February), so all three coincide
 )
 makenuclear(
-    "NucB", electricity, co2, snapshot; tech_column="Nuclear",
+    "NucB", electricity, snapshot; co2_node=co2, tech_column="Nuclear",
     cap=1_000.0,
     unit_size=1_000.0,
     uc=true,
@@ -93,7 +93,7 @@ makenuclear(
     refuel_slot_spacing=8760,
 )
 makenuclear(
-    "NucC", electricity, co2, snapshot; tech_column="Nuclear",
+    "NucC", electricity, snapshot; co2_node=co2, tech_column="Nuclear",
     cap=1_000.0,
     unit_size=1_000.0,
     uc=true,
@@ -105,7 +105,7 @@ makenuclear(
 
 # Expandable CCGT backup for residual demand
 makedispatchable(
-    "CCGT", electricity, co2, snapshot; tech_column="CCGT",
+    "CCGT", electricity, snapshot; co2_node=co2, tech_column="CCGT",
     maxcap=8_000.0,
     unit_size=0.0,
 )
@@ -166,7 +166,7 @@ makedemand("Demand", "country1", electricity, snapshot; profile_multiplier=5.5, 
 
 # Same three units and 720 h refuelling outage. Only the allowed starts change.
 makenuclear(
-    "NucA", electricity, co2, snapshot; tech_column="Nuclear",
+    "NucA", electricity, snapshot; co2_node=co2, tech_column="Nuclear",
     cap=1_000.0,
     unit_size=1_000.0,
     uc=true,
@@ -176,7 +176,7 @@ makenuclear(
     refuel_slot_spacing=730,                # ~12 allowed starts per year (~monthly)
 )
 makenuclear(
-    "NucB", electricity, co2, snapshot; tech_column="Nuclear",
+    "NucB", electricity, snapshot; co2_node=co2, tech_column="Nuclear",
     cap=1_000.0,
     unit_size=1_000.0,
     uc=true,
@@ -186,7 +186,7 @@ makenuclear(
     refuel_slot_spacing=730,
 )
 makenuclear(
-    "NucC", electricity, co2, snapshot; tech_column="Nuclear",
+    "NucC", electricity, snapshot; co2_node=co2, tech_column="Nuclear",
     cap=1_000.0,
     unit_size=1_000.0,
     uc=true,
@@ -198,7 +198,7 @@ makenuclear(
 
 # Same expandable CCGT backup
 makedispatchable(
-    "CCGT", electricity, co2, snapshot; tech_column="CCGT",
+    "CCGT", electricity, snapshot; co2_node=co2, tech_column="CCGT",
     maxcap=8_000.0,
     unit_size=0.0,
 )

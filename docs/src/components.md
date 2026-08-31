@@ -41,7 +41,7 @@ These names and the common technology keywords have distinct purposes:
 
 Except for interconnections, a builder normally names its component by joining
 `name` and the principal node name with a space. For example,
-`makedispatchable("CCGT", elec, co2, snapshot)` creates
+`makedispatchable("CCGT", elec, snapshot; co2_node=co2)` creates
 `"CCGT $(elec.name)"`.
 Names must be unique within a snapshot. Interconnection names are described on
 the [Interconnections](components/interconnections.md) page.

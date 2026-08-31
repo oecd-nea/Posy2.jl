@@ -118,7 +118,7 @@ function solve_hydrogen()
     co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
     makedemand("Hydrogen demand", "country1", hydrogen, snapshot; profile_multiplier=0.038)
-    makeintermittentsource("Solar", electricity, co2, snapshot; tech_column="PV", maxcap=1000.0, weather_year=2019)
+    makeintermittentsource("Solar", electricity, snapshot; co2_node=co2, tech_column="PV", maxcap=1000.0, weather_year=2019)
     makeelectrolyser("Electrolyser", electricity, hydrogen, snapshot; tech_column="PEM", maxcap=300.0)
     makehydrogenstorage(
         "H2 storage", hydrogen, snapshot; tech_column="Hydrogen storage",
@@ -153,7 +153,7 @@ function solve_ev(vehicle_to_grid)
         profile=repeat(daily_extra_demand, 365),
     )
     makeintermittentsource(
-        "Solar", electricity, co2, snapshot; tech_column="PV",
+        "Solar", electricity, snapshot; co2_node=co2, tech_column="PV",
         cap=1500.0,
         weather_year=2019,
     )
@@ -172,7 +172,7 @@ function solve_ev(vehicle_to_grid)
         compensation=vehicle_to_grid ? 20.0 : 0.0,
     )
     makedispatchable(
-        "OCGT", electricity, co2, snapshot; tech_column="OCGT",
+        "OCGT", electricity, snapshot; co2_node=co2, tech_column="OCGT",
         cap=1200.0,
         fuel_cost=68.24,
         unit_size=100.0,

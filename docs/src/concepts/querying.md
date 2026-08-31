@@ -8,7 +8,7 @@ cost, price, table, component, and node queries work without an adapter.
 Most Posy2 component names combine the component prefix and principal node:
 
 ```julia
-makedispatchable("Gas", grid, co2_node, snapshot; tech_column="CCGT")
+makedispatchable("Gas", grid, snapshot; co2_node=co2_node, tech_column="CCGT")
 # "Gas grid"
 
 makebatterystorage("Battery", grid, snapshot; tech_column="Li-ion")

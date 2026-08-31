@@ -64,7 +64,7 @@ makedemand("Demand", "C", c, snapshot; profile_multiplier=0.0, annual_flat_deman
 makedemand("Demand", "D", d, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
 
 # 10 MW CCGT on A; costs from the technology workbook
-makedispatchable("CCGT", a, co2, snapshot; tech_column="CCGT", cap=10.0, unit_size=0.0)
+makedispatchable("CCGT", a, snapshot; co2_node=co2, tech_column="CCGT", cap=10.0, unit_size=0.0)
 
 # AC ring with a nonbinding 10 MW capacity
 maketransmissionlink("IC", a, b, snapshot; cap=10.0)
@@ -144,7 +144,7 @@ makedemand("Demand", "C", c, snapshot; profile_multiplier=0.0, annual_flat_deman
 makedemand("Demand", "D", d, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
 
 # 10 MW CCGT on A; costs from the technology workbook
-makedispatchable("CCGT", a, co2, snapshot; tech_column="CCGT", cap=10.0, unit_size=0.0)
+makedispatchable("CCGT", a, snapshot; co2_node=co2, tech_column="CCGT", cap=10.0, unit_size=0.0)
 
 # AC ring with susceptances
 maketransmissionlink("IC", a, b, snapshot; cap=10.0, susceptance=-1.0)
@@ -234,7 +234,7 @@ makedemand("Demand", "C", c, snapshot; profile_multiplier=0.0, annual_flat_deman
 makedemand("Demand", "D", d, snapshot; profile_multiplier=0.0, annual_flat_demand=1.0 * 8760)
 
 # 10 MW CCGT on A; costs from the technology workbook
-makedispatchable("CCGT", a, co2, snapshot; tech_column="CCGT", cap=10.0, unit_size=0.0)
+makedispatchable("CCGT", a, snapshot; co2_node=co2, tech_column="CCGT", cap=10.0, unit_size=0.0)
 
 # AC ring with susceptances
 maketransmissionlink("IC", a, b, snapshot; cap=10.0, susceptance=-1.0)

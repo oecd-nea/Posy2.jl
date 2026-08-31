@@ -38,10 +38,10 @@ function two_countries(mesh)
 
     makedemand("Demand", "country1", country1, snapshot)
     makedemand("Demand", "country2", country2, snapshot)
-    makedispatchable("CCGT", country1, co2, snapshot; cap=1500.0, fuel_cost=47.06)
-    makeintermittentsource("Solar", country2, co2, snapshot; tech_column="PV", cap=1200.0, weather_year=2019)
+    makedispatchable("CCGT", country1, snapshot; co2_node=co2, cap=1500.0, fuel_cost=47.06)
+    makeintermittentsource("Solar", country2, snapshot; co2_node=co2, tech_column="PV", cap=1200.0, weather_year=2019)
     makebatterystorage("Battery", country2, snapshot; power_cap=400.0, roundtrip_eff=0.85, duration=4.0)
-    makedispatchable("Gas", country2, co2, snapshot; tech_column="Gas", cap=1000.0, fuel_cost=90.0)
+    makedispatchable("Gas", country2, snapshot; co2_node=co2, tech_column="Gas", cap=1000.0, fuel_cost=90.0)
     maketransmissionlink("IC", country1, country2, snapshot; cap=10_000.0, atob_availability=1.0, btoa_availability=1.0)
 
     return sim, snapshot

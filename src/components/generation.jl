@@ -5,10 +5,10 @@ Generate generation-side components.
 using ArgCheck: @argcheck
 
 """
-    makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
+    makedispatchable(name::String, elec::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
         cap=nothing, mincap=nothing, maxcap=nothing, capacity_multiplier=nothing,
-        integer_uc=false, uc=false, fuelnode=nothing,
+        integer_uc=false, uc=false, fuelnode=nothing, co2_node=nothing,
         co2_price=co2_price(s),
         overnight_cost, om_fixed_cost, decommissioning, lifetime,
         construction_profile, decommissioning_profile, connection_cost,
@@ -25,7 +25,6 @@ Arguments:
   * `tech_column`: technology column name in the `dispatchable` tech data sheet;
     defaults to `tech`.
   * `elec`: Electricity node connected to component output flow.
-  * `co2`: CO2 node connected only when `co2_emission != 0`.
   * `s`: Target snapshot where the component and behaviors are registered.
 
   * `cap`: Output capacity in MW. A number fixes capacity, a
@@ -44,6 +43,8 @@ Arguments:
     An extracted `Snapshot` instead replays the commitment schedule already
     solved for the matching component, and then requires a fixed `cap`.
   * `fuelnode`: If provided, fuel is modeled as an input flow linked by efficiency. If `nothing`, fuel is modeled as a variable cost on output energy (`fuel_cost`).
+  * `co2_node`: CO2 node connected when `co2_emission` is nonzero. It is
+    required in that case and otherwise defaults to `nothing`.
 
   * `co2_price`: Carbon price in currency/tCO2, used only when
     `co2_emission != 0`.
@@ -76,7 +77,7 @@ With `nothing`, economic arguments use workbook values in `:excel` mode. In
 `lifetime` and `construction_profile`, plus `decommissioning_profile` when
 decommissioning is nonzero.
 """
-function makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
+function makedispatchable(name::String, elec::Node, s::Snapshot;
     tech::String=name, tech_column::String=tech,
     # capacity / expansion
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
@@ -84,6 +85,7 @@ function makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
 
     # unit commitment / operation
     integer_uc=false, uc::Union{Bool,Snapshot}=false, fuelnode=nothing,
+    co2_node::Union{Nothing,Node}=nothing,
 
     co2_price::Real=co2_price(s),
 
@@ -130,6 +132,9 @@ function makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
         fuel_cost=_fuel, efficiency=_eff,
     )
     validate_component_input(inputs)
+    !iszero(_co2_em) && isnothing(co2_node) && throw(ArgumentError(
+        "`co2_node` must be supplied when `co2_emission` is nonzero",
+    ))
 
     m = DispatchableSource(elec.carrier)
     vb = []
@@ -180,7 +185,7 @@ function makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
     end
     push!(vb, FixedCost(:decommissioning, "output", energy, _decom_cost))
     if !iszero(_co2_em)
-        push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
+        push!(vb, LinkedJointFlow("co2", co2_node.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
         push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2_price))
     end
     if isnothing(_usize_raw) || iszero(_usize_raw)
@@ -277,7 +282,7 @@ function makedispatchable(name::String, elec::Node, co2::Node, s::Snapshot;
     end
     connect!(s, c, elec)
     if !iszero(_co2_em)
-        connect!(s, c, co2)
+        connect!(s, c, co2_node)
     end
     if !isnothing(fuelnode)
         connect!(s, c, fuelnode)
@@ -311,13 +316,13 @@ function _fixzero!(e)
 end
 
 """
-    makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
+    makenuclear(name::String, elec::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
         cap=nothing, mincap=nothing, maxcap=nothing, integer_cap=false, warmstart=nothing,
         uc=false, integer_uc=false, startupmask=nothing, shutdownmask=nothing,
         refuel::Bool=true, refuel_duration::Union{Nothing,Real}=nothing,
         refuel_slot_spacing::Union{Nothing,Integer}=nothing, refuel_fraction_per_year::Union{Nothing,Real}=nothing,
-        fuelnode=nothing, co2_price=co2_price(s),
+        fuelnode=nothing, co2_node=nothing, co2_price=co2_price(s),
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
         connection_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing, fuel_cost::Union{Nothing,Real}=nothing,
@@ -336,7 +341,6 @@ Arguments:
   * `tech_column`: technology column name in the `dispatchable` tech data sheet;
     defaults to `tech`.
   * `elec`: electricity node to connect the component to.
-  * `co2`: CO2 node connected when `co2_emission` is non zero.
   * `s`: snapshot to register the component in.
 
   * `cap`: Output capacity in MW. A number fixes capacity, a JuMP `VariableRef` or
@@ -375,6 +379,8 @@ Arguments:
     mode.
 
   * `fuelnode`: If provided, fuel is represented as linked input flow using `efficiency`. If `nothing`, `fuel_cost` is applied as output variable cost.
+  * `co2_node`: CO2 node connected when `co2_emission` is nonzero. It is
+    required in that case and otherwise defaults to `nothing`.
   * `co2_price`: Carbon price in currency/tCO2, used only when
     `co2_emission != 0`.
 
@@ -406,7 +412,7 @@ With `nothing`, economic arguments use workbook values in `:excel` mode. In
 `lifetime` and `construction_profile`, plus `decommissioning_profile` when
 decommissioning is nonzero.
 """
-function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
+function makenuclear(name::String, elec::Node, s::Snapshot;
     tech::String=name, tech_column::String=tech,
     # capacity / expansion
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
@@ -420,7 +426,8 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
     refuel_slot_spacing::Union{Nothing,Integer}=nothing, refuel_fraction_per_year::Union{Nothing,Real}=nothing,
 
     # external nodes / prices
-    fuelnode=nothing, co2_price::Real=co2_price(s),
+    fuelnode=nothing, co2_node::Union{Nothing,Node}=nothing,
+    co2_price::Real=co2_price(s),
 
     # technical / economic overrides
     overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -497,6 +504,9 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
         unit_size=_usize_raw, fuel_cost=_fuel, efficiency=_eff,
     )
     validate_component_input(inputs)
+    !iszero(_co2_em) && isnothing(co2_node) && throw(ArgumentError(
+        "`co2_node` must be supplied when `co2_emission` is nonzero",
+    ))
 
     _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discount_rate(s), Int(_lt_raw), _cp)
     _decom_cost = if iszero(_oc_raw) || iszero(_decom)
@@ -512,7 +522,7 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
     push!(vb, VariableCost(:waste, "output", energy, _waste))
     push!(vb, FixedCost(:decommissioning, "output", energy, _decom_cost))
     if !iszero(_co2_em)
-        push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
+        push!(vb, LinkedJointFlow("co2", co2_node.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
         push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2_price))
     end
     if isnothing(_usize_raw) || iszero(_usize_raw)
@@ -676,7 +686,7 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
     end
     connect!(s, c, elec)
     if !iszero(_co2_em)
-        connect!(s, c, co2)
+        connect!(s, c, co2_node)
     end
     if !isnothing(fuelnode)
         connect!(s, c, fuelnode)
@@ -686,11 +696,11 @@ function makenuclear(name::String, elec::Node, co2::Node, s::Snapshot;
 end
 
 """
-    makeintermittentsource(name::String, elec::Node, co2::Node, s::Snapshot;
+    makeintermittentsource(name::String, elec::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
         cap=nothing, mincap=nothing, maxcap=nothing,
         weather_year=nothing, profile=nothing,
-        co2_price=co2_price(s),
+        co2_node=nothing, co2_price=co2_price(s),
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
         connection_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing,
@@ -705,7 +715,6 @@ Arguments:
   * `tech_column`: technology column name in the `intermittent` tech data sheet;
     defaults to `tech`.
   * `elec`: electricity node to connect the component to.
-  * `co2`: CO2 node connected when `co2_emission` is non zero.
   * `s`: snapshot to register the component in.
 
   * `cap`: Output capacity in MW. A number fixes capacity, a JuMP `VariableRef` or
@@ -724,6 +733,8 @@ Arguments:
 
   * `co2_price`: Carbon price in currency/tCO2, used only when
     `co2_emission != 0`.
+  * `co2_node`: CO2 node connected when `co2_emission` is nonzero. It is
+    required in that case and otherwise defaults to `nothing`.
 
   * `overnight_cost`: Overnight CAPEX in currency/kW of output capacity.
   * `om_fixed_cost`: Fixed O&M in currency/kW/year of output capacity.
@@ -740,13 +751,13 @@ With `nothing`, economic arguments use workbook values in `:excel` mode. In
 `lifetime` and `construction_profile`, plus `decommissioning_profile` when
 decommissioning is nonzero.
 """
-function makeintermittentsource(name::String, elec::Node, co2::Node, s::Snapshot;
+function makeintermittentsource(name::String, elec::Node, s::Snapshot;
     tech::String=name, tech_column::String=tech,
     # capacity / profile
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     weather_year::Union{Nothing,Integer}=nothing, profile=nothing,
 
-    co2_price::Real=co2_price(s),
+    co2_node::Union{Nothing,Node}=nothing, co2_price::Real=co2_price(s),
 
     # technical / economic overrides
     overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
@@ -819,6 +830,9 @@ function makeintermittentsource(name::String, elec::Node, co2::Node, s::Snapshot
         om_var_cost=_vom, fuel_cost=_fuel, decommissioning=_decom, co2_emission=_co2_em,
     )
     validate_component_input(inputs)
+    !iszero(_co2_em) && isnothing(co2_node) && throw(ArgumentError(
+        "`co2_node` must be supplied when `co2_emission` is nonzero",
+    ))
 
     _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discount_rate(s), Int(_lt_raw), _cp)
     _decom_cost = if iszero(_oc_raw) || iszero(_decom)
@@ -833,7 +847,7 @@ function makeintermittentsource(name::String, elec::Node, co2::Node, s::Snapshot
     push!(vb, VariableCost(:fuel, "output", energy, _fuel))
     push!(vb, FixedCost(:decommissioning, "output", energy, _decom_cost))
     if !iszero(_co2_em)
-        push!(vb, LinkedJointFlow("co2", co2.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
+        push!(vb, LinkedJointFlow("co2", co2_node.carrier, :output, "output", x->x[1] * _co2_em / 1000.))
         push!(vb, VariableCost(:co2, "co2", Nosy.co2, co2_price))
     end
     push!(vb, gencapacity(cap, "output", s, name * " " * elec.name; mincap=mincap, maxcap=maxcap))
@@ -842,7 +856,7 @@ function makeintermittentsource(name::String, elec::Node, co2::Node, s::Snapshot
     tag!(c, :zone, elec.name)
     connect!(s, c, elec)
     if !iszero(_co2_em)
-        connect!(s, c, co2)
+        connect!(s, c, co2_node)
     end
     for t in ("generation", "intermittent")
         tag!(c, :function, t)
