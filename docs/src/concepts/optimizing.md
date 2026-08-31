@@ -135,7 +135,7 @@ result = extract(snapshot)
 
 The original `snapshot` remains the mathematical problem. The extracted
 `result` is the normal object for reporting, cost tables, balances, and
-[`printsnapshot`](@ref).
+[`write_results`](@ref).
 
 Check the solver status before relying on an extracted result:
 

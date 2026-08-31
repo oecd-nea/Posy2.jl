@@ -133,7 +133,7 @@ biased impact on the results.
 
 ## Reporting
 
-[`printsnapshot`](@ref) computes a broad collection of annual and hourly
+[`write_results`](@ref) computes a broad collection of annual and hourly
 tables before writing the workbook. For repeated interactive analysis, query
 only the required Nosy metrics and generate the full workbook once at the end
 of the study.

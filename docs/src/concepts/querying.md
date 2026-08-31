@@ -239,12 +239,12 @@ rows and indicators include a tagged component—see
 
 ## Standard Reports
 
-[`printsnapshot`](@ref) generates the full Posy2 post-processing workbook,
+[`write_results`](@ref) generates the full Posy2 post-processing workbook,
 including annual values, time series, and price duration curves:
 
 ```julia
-printsnapshot(result, "scenario.xlsx")
+write_results(result, "results/scenario.xlsx")
 ```
 
-See [Exporting Results](exporting.md) for its output location and file
-replacement behaviour.
+See [Exporting Results](exporting.md) for its output path and file
+replacement policy.

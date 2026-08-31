@@ -32,7 +32,7 @@ export applydcopf!
 export eac
 export selfcost
 export losses
-export printsnapshot
+export write_results
 export Posy2Options, posy_options, discount_rate, co2_price, tech_mode, timeseries_mode
 
 include("tools/_includes.jl")

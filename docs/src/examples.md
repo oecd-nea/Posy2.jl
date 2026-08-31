@@ -61,17 +61,17 @@ The table shows which combination each example uses.
 ## Exporting Example Results
 
 Every solved example returns a numeric result from `extract(snapshot)`.
-[`printsnapshot`](@ref) turns that result into Posy2's standard workbook report:
+[`write_results`](@ref) turns that result into Posy2's standard workbook report:
 
 ```julia
-printsnapshot(result, "scenario.xlsx")
+write_results(result, "results/scenario.xlsx")
 ```
 
-The file is written to `results/scenario.xlsx` and contains annual values for
-the complete system and the modelled system boundary, detailed time series,
-and price-duration curves. If a file with the same name already exists,
-Posy2 moves it to `results/old/` before writing the new report. Call
-`printsnapshot` with the extracted result, not the unsolved symbolic snapshot.
+The file is written at the given path and contains annual values for the
+complete system and the modelled system boundary, detailed time series, and
+price-duration curves. An existing file is kept and an error raised unless
+`overwrite=true` is passed. Call `write_results` with the extracted result, not
+the unsolved symbolic snapshot.
 
 Posy2 follows Nosy's unit-agnostic convention: values only need to be
 self-consistent. Here, power and capacity are MW, energy is MWh, overnight

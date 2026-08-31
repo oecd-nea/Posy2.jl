@@ -78,10 +78,11 @@ julia> discharge / charge
 0.8500000000000003
 ```
 
-Write the solved result with [`printsnapshot`](@ref) to open the workbook report:
+Write the solved result with [`write_results`](@ref) to open the workbook report:
 
 ```jldoctest battery_storage
-julia> printsnapshot(result, "battery-storage.xlsx")
+julia> write_results(result, "results/battery-storage.xlsx", overwrite=true)
+"results/battery-storage.xlsx"
 ```
 
 On the `Time series` sheet look at the rows where `Hour` is 4065–4077

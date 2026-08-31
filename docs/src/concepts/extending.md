@@ -23,7 +23,7 @@ Every Posy2 technology follows the same sequence:
 A pure Nosy component already has physics and behaviours. Posy2 adds the
 wrapper so the object uses the same naming and tagging rules as the shipped
 builders. Compatible tags and ports are what let Posy2 queries and
-[`printsnapshot`](@ref) place the component with generation, storage, or
+[`write_results`](@ref) place the component with generation, storage, or
 interconnections.
 
 ## Common Design Questions

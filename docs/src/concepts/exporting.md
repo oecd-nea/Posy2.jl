@@ -5,15 +5,15 @@ serialize extracted snapshots or write the underlying optimisation model.
 
 ## Workbook Post-Processing
 
-[`printsnapshot`](@ref) accepts an extracted `Snapshot{Float64}`:
+[`write_results`](@ref) accepts an extracted `Snapshot{Float64}`:
 
 ```julia
 result = extract(snapshot)
-printsnapshot(result, "scenario.xlsx")
+write_results(result, "results/scenario.xlsx")
 ```
 
-The workbook is written to `results/scenario.xlsx` relative to the current
-working directory. The output contains five sheets:
+The workbook is written at the given path, missing parent directories included,
+and the path is returned. The output contains five sheets:
 
 - `Annual values (all)`: annual capacities, flows, prices, costs, and related
   indicators for the complete snapshot;
@@ -29,12 +29,15 @@ working directory. The output contains five sheets:
 Interconnection-specific tables and column conventions are described in
 [Interconnections](../components/interconnections.md#Losses-And-Reporting).
 
-If the destination already exists, Posy2 moves it to
-`results/old/scenario.xlsx` before writing the new workbook. An older file with
-that backup name is replaced. Use distinct filenames or copy important results
-elsewhere when retaining several revisions.
+An existing file is never replaced silently: `write_results` throws an
+`ArgumentError` and leaves it in place. Pass `overwrite=true` to replace it, or
+write to a new path to keep several revisions:
 
-`printsnapshot` accepts only an extracted `Snapshot{Float64}`.
+```julia
+write_results(result, "results/scenario.xlsx", overwrite=true)
+```
+
+`write_results` accepts only an extracted `Snapshot{Float64}`.
 The current standard report assumes a complete 8760-hour result and the
 Posy2 node and component tags described in
 [Tags And Post-Processing](tags.md).

@@ -266,5 +266,5 @@ julia> cost(result_taxed) - cost(result_taxed, :co2) - cost(result)
 ```
 
 Emissions and the carbon charge also appear in the standard workbook report:
-[`printsnapshot`](@ref) writes an annual `CO2 emissions (t/y)` row and a `co2`
+[`write_results`](@ref) writes an annual `CO2 emissions (t/y)` row and a `co2`
 column in the annual cost table.

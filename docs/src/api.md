@@ -84,5 +84,5 @@ applydcopf!
 ```@docs
 selfcost
 losses
-printsnapshot
+write_results
 ```

@@ -61,7 +61,7 @@ Posy2 adds a power system modelling layer on top of Nosy:
 - Investment and decommissioning costs are annualised before being attached
   as Nosy fixed costs.
 - Solved snapshots can be inspected in Julia or exported to a workbook
-  with `printsnapshot`.
+  with `write_results`.
 
 Carriers, nodes, behaviours, optimisation, and generic metrics are provided
 by Nosy.

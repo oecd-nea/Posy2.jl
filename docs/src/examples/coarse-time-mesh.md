@@ -151,7 +151,7 @@ country 1's cheap CCGT instead of country 2's peaker. A cost difference between
 two meshes measures the meshes, not the systems.
 
 Report shapes are unaffected by the mesh. Hourly series are interpolated back
-onto the 8760-hour grid, so `collapse=false` queries and [`printsnapshot`](@ref)
+onto the 8760-hour grid, so `collapse=false` queries and [`write_results`](@ref)
 return 8760 values whatever the step length:
 
 ```jldoctest coarse_mesh

@@ -114,7 +114,7 @@ using DataFrames
         end
     end
 
-    # _printsnapshot writes an xlsx with the four named sheets in order.
+    # _write_results writes an xlsx with the four named sheets in order.
     let
         snap, elec1, elec2, co2 = makesnapshot()
         h2 = Node("H2", EnergyCarrier("hydrogen", sim(snap)), rule=:curtailed, tags=[:hydrogen])
@@ -142,7 +142,7 @@ using DataFrames
 
         dat = Posy2._gensnapshotpp(s)
         filepath = joinpath(mktempdir(), "pp_snapshot.xlsx")
-        Posy2._printsnapshot(dat, filepath)
+        Posy2._write_results(dat, filepath)
         @test isfile(filepath)
         XLSX.openxlsx(filepath) do xf
             @test XLSX.sheetnames(xf) == [
@@ -177,7 +177,7 @@ using DataFrames
         @test "ATC ZONE2 > ZONE1" in names(ts)
 
         filepath = joinpath(mktempdir(), "pp_foreign_node_ic.xlsx")
-        Posy2._printsnapshot(dat, filepath)
+        Posy2._write_results(dat, filepath)
         @test isfile(filepath)
         XLSX.openxlsx(filepath) do xf
             @test XLSX.sheetnames(xf) == [
@@ -201,7 +201,7 @@ using DataFrames
         s = extract(snap)
 
         filepath = joinpath(mktempdir(), "pp_disabled_price_ic.xlsx")
-        Posy2.printsnapshot(s, filepath)
+        Posy2.write_results(s, filepath)
         @test isfile(filepath)
         XLSX.openxlsx(filepath) do xf
             @test XLSX.sheetnames(xf) == [
@@ -215,7 +215,7 @@ using DataFrames
     end
 
     # 2.11: a turbine-only reservoir keeps a zero-capacity input port, so the annual
-    # charging column no longer throws a KeyError on the way through printsnapshot.
+    # charging column no longer throws a KeyError on the way through write_results.
     let
         snap, elec1, _, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
@@ -229,13 +229,37 @@ using DataFrames
         s = extract(snap)
 
         filepath = joinpath(mktempdir(), "pp_turbine_only_reservoir.xlsx")
-        Posy2.printsnapshot(s, filepath)
+        Posy2.write_results(s, filepath)
         @test isfile(filepath)
     end
 
-    # printsnapshot requires an optimized snapshot; unoptimized snapshot raises AssertionError.
+    # write_results writes at the given path, creating missing parent directories,
+    # and returns it. An existing file is kept unless overwrite=true.
+    let
+        snap, elec1, _, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
+        makedispatchable("CCGT", elec1, co2, snap; tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        filepath = joinpath(mktempdir(), "nested", "pp_overwrite.xlsx")
+        @test Posy2.write_results(s, filepath) == filepath
+        @test isfile(filepath)
+
+        # a second write refuses, and does not touch the file it refused to replace
+        before = stat(filepath)
+        @test_throws ArgumentError Posy2.write_results(s, filepath)
+        @test stat(filepath).mtime == before.mtime
+
+        @test Posy2.write_results(s, filepath, overwrite=true) == filepath
+        XLSX.openxlsx(filepath) do xf
+            @test first(XLSX.sheetnames(xf)) == "Annual values (all)"
+        end
+    end
+
+    # write_results requires an optimized snapshot; unoptimized snapshot raises AssertionError.
     let
         snap = Snapshot(tsim(), posyopts())
-        @test_throws AssertionError Posy2.printsnapshot(snap, "should_fail.xlsx")
+        @test_throws AssertionError Posy2.write_results(snap, "should_fail.xlsx")
     end
 end

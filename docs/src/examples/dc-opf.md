@@ -21,7 +21,7 @@ This page keeps the same plants and demand and changes only the network:
 2. DC OPF on the same AC mesh ([`applydcopf!`](@ref) after the network is built);
 3. DC OPF again, but with the diagonal built as controllable HVDC (`dc=true`).
 
-After each solve, [`printsnapshot`](@ref) writes the standard Posy2 workbook
+After each solve, [`write_results`](@ref) writes the standard Posy2 workbook
 report under `results/`—one workbook per scenario. In `Annual values (all)`,
 the Interconnection volume tables (total, AC, and DC) summarise annual
 corridor exchanges. The markdown tables on this page match that workbook
@@ -85,7 +85,8 @@ Snapshot with 10 component(s) and 5 node(s)
 ```
 
 ```jldoctest dc_opf_transport
-julia> printsnapshot(result_transport, "transport.xlsx")
+julia> write_results(result_transport, "results/transport.xlsx", overwrite=true)
+"results/transport.xlsx"
 ```
 
 That creates `results/transport.xlsx`. The directed corridor volumes below
@@ -165,7 +166,8 @@ Snapshot with 10 component(s) and 5 node(s)
 ```
 
 ```jldoctest dc_opf
-julia> printsnapshot(result, "dc-opf.xlsx")
+julia> write_results(result, "results/dc-opf.xlsx", overwrite=true)
+"results/dc-opf.xlsx"
 ```
 
 That writes `results/dc-opf.xlsx`. The Interconnection volume table in
@@ -254,7 +256,8 @@ Snapshot with 10 component(s) and 5 node(s)
 ```
 
 ```jldoctest dc_opf_dc
-julia> printsnapshot(result_dc, "dc-opf-hvdc.xlsx")
+julia> write_results(result_dc, "results/dc-opf-hvdc.xlsx", overwrite=true)
+"results/dc-opf-hvdc.xlsx"
 ```
 
 That creates `results/dc-opf-hvdc.xlsx`. With the HVDC diagonal, the AC and

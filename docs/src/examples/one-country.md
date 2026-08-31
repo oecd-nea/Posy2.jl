@@ -84,11 +84,13 @@ julia> costs(result)[:, [:component, :investment, :fuel, :total]]
    4 │ all                     1.39761e8  1.90446e8  4.01378e8
 ```
 
-Write the solved result with [`printsnapshot`](@ref) if you want the
-workbook report:
+Write the solved result with [`write_results`](@ref) if you want the
+workbook report. It returns the path it wrote, and `overwrite=true` lets the
+example be re-run over its own output:
 
 ```jldoctest one_country
-julia> printsnapshot(result, "one-country.xlsx")
+julia> write_results(result, "results/one-country.xlsx", overwrite=true)
+"results/one-country.xlsx"
 ```
 
 That creates `results/one-country.xlsx` with annual indicators, time series,

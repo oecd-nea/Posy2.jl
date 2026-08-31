@@ -3,7 +3,7 @@
 Posy2 component builders attach Nosy tags so that reporting code can select
 components without parsing names. Tags do not change the optimisation model.
 They decide which report rows and indicators a component enters when you
-call [`printsnapshot`](@ref).
+call [`write_results`](@ref).
 
 ## Tag Kinds
 
@@ -27,7 +27,7 @@ If a component carries a given `:function` value, standard post-processing
 includes it in the blocks below. A component may carry several values at once
 (for example a battery is both `"storage"` and `"generation"`).
 
-| `:function` | Consequence in `printsnapshot` / indicators |
+| `:function` | Consequence in `write_results` / indicators |
 |:------------|:--------------------------------------------|
 | `"generation"` | Electrical production capacity and yearly net production; CO2 emissions; generation costs, earnings, and average price received. Hourly production series. |
 | `"storage"` | Electrical storage charge / discharge / max-level capacity and yearly charge / discharge (on `:electricity` nodes). Hydrogen storage max level (on `:hydrogen` nodes). Hourly charging, discharging, and level series. |
@@ -110,6 +110,6 @@ tags are set by the builder's modelling role.
 ## Related Pages
 
 - [Querying A Snapshot](querying.md) — `getcomponents` / `getnodes` filters
-- [Exporting Results](exporting.md) — workbook sheets produced by `printsnapshot`
+- [Exporting Results](exporting.md) — workbook sheets produced by `write_results`
 - [Component Builders](../components.md) — per-builder ports and tags
 - [Building A Snapshot](building-snapshot.md) — when tags are attached

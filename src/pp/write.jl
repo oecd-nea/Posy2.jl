@@ -2,25 +2,26 @@ import XLSX
 using OrderedCollections: LittleDict
 
 """
-    printsnapshot(s::Snapshot, filename::String="res.xlsx")
-Write the post-processing of Snapshot `s` in file named `filename`.
+    write_results(s::Snapshot{Float64}, path::String; overwrite::Bool=false)
+Write the standard Posy2 workbook report of the extracted snapshot `s` to
+`path` and return `path`. Missing parent directories are created.
+
+`path` is taken as given, extension included; nothing is prepended to it. An
+existing file is never touched unless `overwrite=true` is passed, in which case
+it is replaced.
 """
-function printsnapshot(s::Snapshot{Float64}, filename::String="res.xlsx")
+function write_results(s::Snapshot{Float64}, path::String; overwrite::Bool=false)
+    if !overwrite && isfile(path)
+        throw(ArgumentError("$path already exists; pass overwrite=true to replace it"))
+    end
     # generate data before opening the file
     dat = _gensnapshotpp(s)
-    
-    dpath = "results"
-    mkpath(dpath)
-    fpath = joinpath(dpath, filename)
-    if isfile(fpath)
-        oldpath = joinpath(dpath, "old")
-        mkpath(oldpath)
-        oldfpath = joinpath(oldpath, filename)
-        mv(fpath, oldfpath, force=true)
-    end
-    _printsnapshot(dat, joinpath(dpath, filename))
+
+    mkpath(dirname(path))
+    _write_results(dat, path)
+    return path
 end
-printsnapshot(::Snapshot, filename::String="res.xlsx") = throw(AssertionError("Snapshot is not optimized"))
+write_results(::Snapshot, ::String; overwrite::Bool=false) = throw(AssertionError("Snapshot is not optimized"))
 
 function _gensnapshotpp(s::Snapshot)
     return LittleDict(
@@ -33,7 +34,7 @@ function _gensnapshotpp(s::Snapshot)
 end
 
 # write one sheet per value in dat
-function _printsnapshot(dat, filepath::String)
+function _write_results(dat, filepath::String)
     # write in file
     XLSX.openxlsx(filepath, mode="w") do xf
 
