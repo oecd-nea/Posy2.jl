@@ -8,7 +8,7 @@ using ArgCheck: @argcheck
     makedispatchable(name::String, elec::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
         cap=nothing, mincap=nothing, maxcap=nothing, capacity_multiplier=nothing,
-        integer_uc=false, uc=false, fuelnode=nothing, co2_node=nothing,
+        integer_uc=false, uc=false, fuel_node=nothing, co2_node=nothing,
         co2_price=co2_price(s),
         overnight_cost, om_fixed_cost, decommissioning, lifetime,
         construction_profile, decommissioning_profile, connection_cost,
@@ -42,7 +42,7 @@ Arguments:
   * `uc`: Enables UC constraints and UC linked costs (`no_load_cost`, `startup_cost`).
     An extracted `Snapshot` instead replays the commitment schedule already
     solved for the matching component, and then requires a fixed `cap`.
-  * `fuelnode`: If provided, fuel is modeled as an input flow linked by efficiency. If `nothing`, fuel is modeled as a variable cost on output energy (`fuel_cost`).
+  * `fuel_node`: If provided, fuel is modeled as an input flow linked by efficiency. If `nothing`, fuel is modeled as a variable cost on output energy (`fuel_cost`).
   * `co2_node`: CO2 node connected when `co2_emission` is nonzero. It is
     required in that case and otherwise defaults to `nothing`.
 
@@ -57,12 +57,12 @@ Arguments:
   * `decommissioning_profile`: Dimensionless yearly decommissioning-cost shares.
   * `connection_cost`: Connection cost as a fraction of annualized investment.
   * `om_var_cost`: Variable O&M in currency/MWh of output.
-  * `fuel_cost`: Fuel cost in currency/MWh of output, used only without `fuelnode`.
+  * `fuel_cost`: Fuel cost in currency/MWh of output, used only without `fuel_node`.
   * `no_load_cost`: No-load cost in currency/committed-unit/hour, used with UC.
   * `startup_cost`: Startup cost in currency/unit-start, used with UC.
   * `co2_emission`: Emission factor in kgCO2/MWh of output; converted to tCO2.
   * `efficiency`: Output per unit of fuel input (dimensionless when both carriers
-    use MWh), used only with `fuelnode`.
+    use MWh), used only with `fuel_node`.
   * `unit_size`: Generating-unit size in MW. `0` disables unit sizing; a positive
     value is required with UC.
   * `ramp_up`, `ramp_down`: Maximum ramp fractions of unit capacity per hour;
@@ -84,7 +84,7 @@ function makedispatchable(name::String, elec::Node, s::Snapshot;
     capacity_multiplier=nothing,
 
     # unit commitment / operation
-    integer_uc=false, uc::Union{Bool,Snapshot}=false, fuelnode=nothing,
+    integer_uc=false, uc::Union{Bool,Snapshot}=false, fuel_node=nothing,
     co2_node::Union{Nothing,Node}=nothing,
 
     co2_price::Real=co2_price(s),
@@ -113,8 +113,8 @@ function makedispatchable(name::String, elec::Node, s::Snapshot;
         _decom = isnothing(decommissioning) ? gettechparam(s, tech_column, "decommissioning", "dispatchable") : decommissioning
         _co2_em = isnothing(co2_emission) ? gettechparam(s, tech_column, "co2_emission", "dispatchable") : co2_emission
         _usize_raw = isnothing(unit_size) ? gettechparam(s, tech_column, "unit_size", "dispatchable") : unit_size
-        _fuel = isnothing(fuelnode) ? (isnothing(fuel_cost) ? gettechparam(s, tech_column, "fuel_cost", "dispatchable") : fuel_cost) : nothing
-        _eff = isnothing(fuelnode) ? nothing : (isnothing(efficiency) ? gettechparam(s, tech_column, "efficiency", "dispatchable") : efficiency)
+        _fuel = isnothing(fuel_node) ? (isnothing(fuel_cost) ? gettechparam(s, tech_column, "fuel_cost", "dispatchable") : fuel_cost) : nothing
+        _eff = isnothing(fuel_node) ? nothing : (isnothing(efficiency) ? gettechparam(s, tech_column, "efficiency", "dispatchable") : efficiency)
     else
         _oc_raw = something(overnight_cost, 0.0)
         _conn = something(connection_cost, 0.0)
@@ -123,8 +123,8 @@ function makedispatchable(name::String, elec::Node, s::Snapshot;
         _decom = something(decommissioning, 0.0)
         _co2_em = something(co2_emission, 0.0)
         _usize_raw = unit_size
-        _fuel = isnothing(fuelnode) ? something(fuel_cost, 0.0) : nothing
-        _eff = isnothing(fuelnode) ? nothing : something(efficiency, 1.0)
+        _fuel = isnothing(fuel_node) ? something(fuel_cost, 0.0) : nothing
+        _eff = isnothing(fuel_node) ? nothing : something(efficiency, 1.0)
     end
     inputs = component_input(
         overnight_cost=_oc_raw, connection_cost=_conn, om_fixed_cost=_fom,
@@ -208,11 +208,11 @@ function makedispatchable(name::String, elec::Node, s::Snapshot;
         mincap=_mincap, maxcap=_maxcap, unitsize=_usize))
 
     # fuel node management
-    if isnothing(fuelnode)
+    if isnothing(fuel_node)
         push!(vb, VariableCost(:fuel, "output", energy, _fuel))
     else
         _eff = Float64(_eff)
-        push!(vb, LinkedJointFlow("fuel", fuelnode.carrier, :input, "output", x->x[1] / _eff))
+        push!(vb, LinkedJointFlow("fuel", fuel_node.carrier, :input, "output", x->x[1] / _eff))
     end
 
     if _ucenabled(uc)
@@ -284,8 +284,8 @@ function makedispatchable(name::String, elec::Node, s::Snapshot;
     if !iszero(_co2_em)
         connect!(s, c, co2_node)
     end
-    if !isnothing(fuelnode)
-        connect!(s, c, fuelnode)
+    if !isnothing(fuel_node)
+        connect!(s, c, fuel_node)
     end
     return c
 end
@@ -318,11 +318,11 @@ end
 """
     makenuclear(name::String, elec::Node, s::Snapshot;
         tech::String=name, tech_column::String=tech,
-        cap=nothing, mincap=nothing, maxcap=nothing, integer_cap=false, warmstart=nothing,
-        uc=false, integer_uc=false, startupmask=nothing, shutdownmask=nothing,
+        cap=nothing, mincap=nothing, maxcap=nothing, integer_cap=false, warm_start=nothing,
+        uc=false, integer_uc=false, startup_mask=nothing, shutdown_mask=nothing,
         refuel::Bool=true, refuel_duration::Union{Nothing,Real}=nothing,
         refuel_slot_spacing::Union{Nothing,Integer}=nothing, refuel_fraction_per_year::Union{Nothing,Real}=nothing,
-        fuelnode=nothing, co2_node=nothing, co2_price=co2_price(s),
+        fuel_node=nothing, co2_node=nothing, co2_price=co2_price(s),
         overnight_cost::Union{Nothing,Real}=nothing, om_fixed_cost::Union{Nothing,Real}=nothing,
         decommissioning::Union{Nothing,Real}=nothing, lifetime::Union{Nothing,Real}=nothing, construction_profile=nothing, decommissioning_profile=nothing,
         connection_cost::Union{Nothing,Real}=nothing, om_var_cost::Union{Nothing,Real}=nothing, fuel_cost::Union{Nothing,Real}=nothing,
@@ -352,7 +352,7 @@ Arguments:
     checked as an assertion against a fixed or inherited one.
   * `integer_cap`: Integer flag for variable capacity; ignored for fixed or
     inherited capacity.
-  * `warmstart`: Variable-capacity warm start in MW; ignored for fixed or
+  * `warm_start`: Variable-capacity warm start in MW; ignored for fixed or
     inherited capacity.
 
   * `uc`: Enables UC constraints and UC linked costs. An extracted `Snapshot`
@@ -361,8 +361,8 @@ Arguments:
     only when `uc=true`; with `uc=false` they are ignored, and a replayed schedule
     retains its solved refuelling decisions.
   * `integer_uc`: Integer UC commitment variables, used only when `uc=true`.
-  * `startupmask`: Startup availability mask, used only when `uc=true`.
-  * `shutdownmask`: Shutdown availability mask, used only when `uc=true`.
+  * `startup_mask`: Startup availability mask, used only when `uc=true`.
+  * `shutdown_mask`: Shutdown availability mask, used only when `uc=true`.
 
   * `refuel`: Enables planned refuelling constraints. Set to `false` to disable refuelling regardless of the other refuelling arguments.
   * `refuel_duration`: Planned refuelling outage in hours. A positive value
@@ -378,7 +378,7 @@ Arguments:
     `nothing`, use the workbook value in `:excel` mode and zero in `:arguments`
     mode.
 
-  * `fuelnode`: If provided, fuel is represented as linked input flow using `efficiency`. If `nothing`, `fuel_cost` is applied as output variable cost.
+  * `fuel_node`: If provided, fuel is represented as linked input flow using `efficiency`. If `nothing`, `fuel_cost` is applied as output variable cost.
   * `co2_node`: CO2 node connected when `co2_emission` is nonzero. It is
     required in that case and otherwise defaults to `nothing`.
   * `co2_price`: Carbon price in currency/tCO2, used only when
@@ -392,12 +392,12 @@ Arguments:
   * `decommissioning_profile`: Dimensionless yearly decommissioning-cost shares.
   * `connection_cost`: Connection cost as a fraction of annualized investment.
   * `om_var_cost`, `fuel_cost`, `waste_cost`: Costs in currency/MWh of output;
-    `fuel_cost` is used directly only without `fuelnode`.
+    `fuel_cost` is used directly only without `fuel_node`.
   * `no_load_cost`: No-load cost in currency/committed-unit/hour, used with UC.
   * `startup_cost`: Startup cost in currency/unit-start, used with UC.
   * `co2_emission`: Emission factor in kgCO2/MWh of output; converted to tCO2.
   * `efficiency`: Output per unit of fuel input (dimensionless when both carriers
-    use MWh), used only with `fuelnode`.
+    use MWh), used only with `fuel_node`.
   * `unit_size`: Reactor-unit size in MW. `0` disables unit sizing; a positive
     value is required with UC.
   * `ramp_up`, `ramp_down`: Maximum ramp fractions of unit capacity per hour;
@@ -416,17 +416,17 @@ function makenuclear(name::String, elec::Node, s::Snapshot;
     tech::String=name, tech_column::String=tech,
     # capacity / expansion
     cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing, mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
-    integer_cap=false, warmstart::Union{Nothing,Real}=nothing,
+    integer_cap=false, warm_start::Union{Nothing,Real}=nothing,
 
     # unit commitment / operation
-    uc::Union{Bool,Snapshot}=false, integer_uc=false, startupmask=nothing, shutdownmask=nothing,
+    uc::Union{Bool,Snapshot}=false, integer_uc=false, startup_mask=nothing, shutdown_mask=nothing,
 
     # refuelling controls
     refuel::Bool=true, refuel_duration::Union{Nothing,Real}=nothing,
     refuel_slot_spacing::Union{Nothing,Integer}=nothing, refuel_fraction_per_year::Union{Nothing,Real}=nothing,
 
     # external nodes / prices
-    fuelnode=nothing, co2_node::Union{Nothing,Node}=nothing,
+    fuel_node=nothing, co2_node::Union{Nothing,Node}=nothing,
     co2_price::Real=co2_price(s),
 
     # technical / economic overrides
@@ -455,8 +455,8 @@ function makenuclear(name::String, elec::Node, s::Snapshot;
         _decom = isnothing(decommissioning) ? gettechparam(s, tech_column, "decommissioning", "dispatchable") : decommissioning
         _co2_em = isnothing(co2_emission) ? gettechparam(s, tech_column, "co2_emission", "dispatchable") : co2_emission
         _usize_raw = isnothing(unit_size) ? gettechparam(s, tech_column, "unit_size", "dispatchable") : unit_size
-        _fuel = isnothing(fuelnode) ? (isnothing(fuel_cost) ? gettechparam(s, tech_column, "fuel_cost", "dispatchable") : fuel_cost) : nothing
-        _eff = isnothing(fuelnode) ? nothing : (isnothing(efficiency) ? gettechparam(s, tech_column, "efficiency", "dispatchable") : efficiency)
+        _fuel = isnothing(fuel_node) ? (isnothing(fuel_cost) ? gettechparam(s, tech_column, "fuel_cost", "dispatchable") : fuel_cost) : nothing
+        _eff = isnothing(fuel_node) ? nothing : (isnothing(efficiency) ? gettechparam(s, tech_column, "efficiency", "dispatchable") : efficiency)
     else
         _oc_raw = something(overnight_cost, 0.0)
         _conn = something(connection_cost, 0.0)
@@ -466,8 +466,8 @@ function makenuclear(name::String, elec::Node, s::Snapshot;
         _decom = something(decommissioning, 0.0)
         _co2_em = something(co2_emission, 0.0)
         _usize_raw = unit_size
-        _fuel = isnothing(fuelnode) ? something(fuel_cost, 0.0) : nothing
-        _eff = isnothing(fuelnode) ? nothing : something(efficiency, 1.0)
+        _fuel = isnothing(fuel_node) ? something(fuel_cost, 0.0) : nothing
+        _eff = isnothing(fuel_node) ? nothing : something(efficiency, 1.0)
     end
 
     _lt_raw = lifetime
@@ -535,15 +535,15 @@ function makenuclear(name::String, elec::Node, s::Snapshot;
         throw(ArgumentError("`unit_size` must be positive when unit commitment or integer capacity expansion is enabled"))
     end
     push!(vb, gencapacity(cap, "output", s, name * " " * elec.name;
-        mincap=mincap, maxcap=maxcap, unitsize=_usize, integer=integer_cap, warmstart=warmstart))
+        mincap=mincap, maxcap=maxcap, unitsize=_usize, integer=integer_cap, warm_start=warm_start))
 
     # fuel node management
     # fuel cost only used if fuel node is nothing
-    if isnothing(fuelnode)
+    if isnothing(fuel_node)
         push!(vb, VariableCost(:fuel, "output", energy, _fuel))
     else
         _eff = Float64(_eff)
-        push!(vb, LinkedJointFlow("fuel", fuelnode.carrier, :input, "output", x->x[1] / _eff))
+        push!(vb, LinkedJointFlow("fuel", fuel_node.carrier, :input, "output", x->x[1] / _eff))
     end
 
     # special case: cycling constraints for nuclear
@@ -606,8 +606,8 @@ function makenuclear(name::String, elec::Node, s::Snapshot;
                     downtime=[_min_downtime, _refuel_duration],
                     startup=_startup_dur, 
                     shutdown=_shutdown_dur,
-                    startupmask=startupmask,
-                    shutdownmask=shutdownmask,
+                    startupmask=startup_mask,
+                    shutdownmask=shutdown_mask,
                     integer=integer_uc)
                 )
             else
@@ -617,8 +617,8 @@ function makenuclear(name::String, elec::Node, s::Snapshot;
                     downtime=_min_downtime,
                     startup=_startup_dur, 
                     shutdown=_shutdown_dur,
-                    startupmask=startupmask,
-                    shutdownmask=shutdownmask,
+                    startupmask=startup_mask,
+                    shutdownmask=shutdown_mask,
                     integer=integer_uc)
                 )
             end
@@ -688,8 +688,8 @@ function makenuclear(name::String, elec::Node, s::Snapshot;
     if !iszero(_co2_em)
         connect!(s, c, co2_node)
     end
-    if !isnothing(fuelnode)
-        connect!(s, c, fuelnode)
+    if !isnothing(fuel_node)
+        connect!(s, c, fuel_node)
     end
 
     return c

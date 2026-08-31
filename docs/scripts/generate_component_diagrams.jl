@@ -236,7 +236,7 @@ const SPECS = [
         component="Dispatchable Generation",
         inputs=[
             (name="fuel", kind=:linked, note=["only with a fuel node", "output / efficiency"],
-                endpoint=(label=["fuel node", "fuelnode"], kind=:node, carrier=:other)),
+                endpoint=(label=["fuel node", "fuel_node"], kind=:node, carrier=:other)),
         ],
         outputs=[
             (name="output", kind=:free, note=["cap, unit_size, uc, ramping", "investment, fom, vom, fuel cost"], endpoint=ELEC),
@@ -249,7 +249,7 @@ const SPECS = [
         component="Nuclear Generation",
         inputs=[
             (name="fuel", kind=:linked, note=["only with a fuel node", "output / efficiency"],
-                endpoint=(label=["fuel node", "fuelnode"], kind=:node, carrier=:other)),
+                endpoint=(label=["fuel node", "fuel_node"], kind=:node, carrier=:other)),
         ],
         outputs=[
             (name="output", kind=:free, note=["cap, unit_size, uc, refuel", "investment, fom, vom, waste"], endpoint=ELEC),
@@ -344,9 +344,9 @@ const SPECS = [
         file="component-node-interco.svg",
         component="Node Interconnection",
         inputs=[
-            (name="input", kind=:free, note=["a to b, shared cap", "x atob_availability"],
+            (name="input", kind=:free, note=["a to b, shared cap", "x a_to_b_availability"],
                 endpoint=(label=["node a", "a"], kind=:node, carrier=:electricity)),
-            (name="input2", kind=:free, note=["b to a, shared cap", "x btoa_availability"],
+            (name="input2", kind=:free, note=["b to a, shared cap", "x b_to_a_availability"],
                 endpoint=(label=["node b", "b"], kind=:node, carrier=:electricity)),
         ],
         outputs=[
@@ -364,10 +364,10 @@ const SPECS = [
         component="Price Interconnection",
         inside=["the counterparty is a price series, not a node:", "spot_price and transfer capacities for neighbor_column"],
         inputs=[
-            (name="input", kind=:free, note=["exports, export_capacity", "x export_availability", "revenue -spot_price"], endpoint=ELEC_BOTH),
+            (name="input", kind=:free, note=["exports, export_cap", "x export_availability", "revenue -spot_price"], endpoint=ELEC_BOTH),
         ],
         outputs=[
-            (name="output", kind=:free, note=["imports, import_capacity", "x import_availability", "cost +spot_price"], endpoint=ELEC_BOTH),
+            (name="output", kind=:free, note=["imports, import_cap", "x import_availability", "cost +spot_price"], endpoint=ELEC_BOTH),
         ],
         level=nothing,
     ),

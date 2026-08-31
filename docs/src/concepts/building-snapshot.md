@@ -77,7 +77,7 @@ Nosy before the snapshot is finalised.
 ### Demand And Flexibility
 
 - [`makedemand`](@ref) combines a scaled hourly demand profile with an optional
-  flat annual demand term. `profile_shift` circularly shifts the profile and
+  flat annual demand term. `profile_shift_hours` circularly shifts the profile and
   `grid_losses` adds a linked loss flow.
 - [`makeflathydrogendemand`](@ref) spreads a yearly hydrogen demand evenly over
   8760 hours.
@@ -119,7 +119,7 @@ supports a positive numeric output capacity, a new optimised capacity, or an
 external JuMP variable or affine expression bounded by `mincap` and `maxcap`.
 
 Dispatchable and nuclear plants can treat fuel in two ways. With
-`fuelnode=nothing`, there is no separate fuel system: generation only adds a
+`fuel_node=nothing`, there is no separate fuel system: generation only adds a
 `fuel_cost` on electricity output. With a fuel node, generation draws a linked
 fuel input through `efficiency`, so fuel supply, storage, or other fuel uses
 can be modelled elsewhere in the same snapshot.
@@ -244,7 +244,7 @@ spot prices and directional transfer-capacity profiles. Imports are priced as
 positive system costs and exports as negative costs. It is useful when the
 neighbour itself is outside the model. `name` identifies the corridor, while
 `neighbor` names the counterparty for reports and `neighbor_column` the workbook
-columns; both default to `name`. `import_capacity` and `export_capacity` follow
+columns; both default to `name`. `import_cap` and `export_cap` follow
 the common capacity contract with their own `mincap`/`maxcap` bounds. Because
 the counterparty is not a node that could be tagged `:foreign`, the builder
 carries `neighbor_is_foreign` itself.

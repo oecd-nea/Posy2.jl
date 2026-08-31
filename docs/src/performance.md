@@ -80,7 +80,7 @@ Integer nuclear capacity decisions (`integer_cap=true`) also turn the
 capacity expansion into a MILP. Large unit sizes can make the investment
 problem combinatorial even when dispatch itself is simple.
 
-For nuclear unit commitment, use `startupmask` and `shutdownmask` to avoid
+For nuclear unit commitment, use `startup_mask` and `shutdown_mask` to avoid
 creating event choices at timesteps where transitions are not allowed.
 Nuclear refuel masks should similarly reflect the actual set of permissible
 refuelling windows.

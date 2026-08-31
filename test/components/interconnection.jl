@@ -132,7 +132,7 @@ using HiGHS
     # `neighbor` and `neighbor_column` default down the chain from `name`.
     let
         s, elec1, _ = makesnapshot()
-        c = makepricelink("ZONE2", elec1, s; import_capacity=100.0, export_capacity=100.0, transaction_cost=1.)
+        c = makepricelink("ZONE2", elec1, s; import_cap=100.0, export_cap=100.0, transaction_cost=1.)
         @test !isnothing(c)
         @test Nosy.getcomponent(s, "ZONE2_ZONE1") === c
         @test Nosy.hastag(c, :function, "priceinterconnection")
@@ -148,7 +148,7 @@ using HiGHS
         c = makepricelink(
             "Import", elec1, s;
             neighbor="Neighbouring market", neighbor_column="ZONE2",
-            import_capacity=100.0, export_capacity=100.0, neighbor_is_foreign=false,
+            import_cap=100.0, export_cap=100.0, neighbor_is_foreign=false,
         )
         @test Nosy.getcomponent(s, "Import_ZONE1") === c
         @test get(c.tags, :neighbor, String[]) == ["Neighbouring market"]
@@ -164,14 +164,14 @@ using HiGHS
     # Price interconnection fails when spot/transfer columns for the zone are missing.
     let
         s, elec1, _ = makesnapshot()
-        @test_throws ArgumentError makepricelink("ZONE3", elec1, s; import_capacity=100.0, export_capacity=100.0)
+        @test_throws ArgumentError makepricelink("ZONE3", elec1, s; import_cap=100.0, export_cap=100.0)
     end
 
     # Both directions zero: no spot price is read, but the import/export costs still
     # hold an hourly series of zeros so that reporting can build them.
     let
         s, elec1, _ = makesnapshot()
-        c = makepricelink("ZONE2", elec1, s; import_capacity=0.0, export_capacity=0.0)
+        c = makepricelink("ZONE2", elec1, s; import_cap=0.0, export_cap=0.0)
         spot = [
             b.data.val for b in Nosy.getbehaviors(c, Nosy.VariableCostBehavior)
             if Nosy._costtype(b) in (:imports, :exports)
@@ -185,17 +185,17 @@ using HiGHS
     let
         s, elec1, elec2 = makesnapshot()
         @test_throws ArgumentError maketransmissionlink(
-            "Above one", elec1, elec2, s; cap=100.0, atob_availability=1.5, btoa_availability=1.0,
+            "Above one", elec1, elec2, s; cap=100.0, a_to_b_availability=1.5, b_to_a_availability=1.0,
         )
         @test_throws ArgumentError maketransmissionlink(
-            "Negative", elec1, elec2, s; cap=100.0, atob_availability=1.0, btoa_availability=-0.1,
+            "Negative", elec1, elec2, s; cap=100.0, a_to_b_availability=1.0, b_to_a_availability=-0.1,
         )
         @test_throws ArgumentError makepricelink(
             "ZONE2", elec1, s;
-            import_capacity=100.0, export_capacity=100.0, import_availability=1.5,
+            import_cap=100.0, export_cap=100.0, import_availability=1.5,
         )
         @test !isnothing(makepricelink(
-            "ZONE2", elec1, s; import_capacity=100.0, export_capacity=100.0,
+            "ZONE2", elec1, s; import_cap=100.0, export_cap=100.0,
             import_availability=1.0, export_availability=0.0,
         ))
     end
@@ -226,7 +226,7 @@ using HiGHS
     # do not replace it.
     let
         s, elec1, _ = makesnapshot()
-        c = makepricelink("ZONE2", elec1, s; import_capacity=100.0, export_capacity=100.0)
+        c = makepricelink("ZONE2", elec1, s; import_cap=100.0, export_cap=100.0)
         vals = Dict(
             b.data.pname => b.val.data
             for b in Nosy.getbehaviors(c, Nosy.CapacityMultiplierBehavior)
@@ -254,8 +254,8 @@ using HiGHS
         c = maketransmissionlink(
             "Costed", elec1, elec2, s;
             cap=100.0,
-            atob_availability=1.0,
-            btoa_availability=0.5,
+            a_to_b_availability=1.0,
+            b_to_a_availability=0.5,
             overnight_cost=2.0,
             om_fixed_cost=3.0,
             lifetime=20,

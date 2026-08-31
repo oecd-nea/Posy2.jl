@@ -129,8 +129,8 @@ number, expanded to all hours, or a vector with exactly
 | [`makepricelink`](@ref) | `spot_price` | `<neighbor_column>` in `spot_price` |
 | [`makepricelink`](@ref) | `import_availability` | `<neighbor_column>>local` in `transfer_capacities` |
 | [`makepricelink`](@ref) | `export_availability` | `local><neighbor_column>` in `transfer_capacities` |
-| [`maketransmissionlink`](@ref) | `atob_availability` | `a>b` in `transfer_capacities_AC` (`dc=false`) or `transfer_capacities_DC` (`dc=true`) |
-| [`maketransmissionlink`](@ref) | `btoa_availability` | `b>a` in `transfer_capacities_AC` (`dc=false`) or `transfer_capacities_DC` (`dc=true`) |
+| [`maketransmissionlink`](@ref) | `a_to_b_availability` | `a>b` in `transfer_capacities_AC` (`dc=false`) or `transfer_capacities_DC` (`dc=true`) |
+| [`maketransmissionlink`](@ref) | `b_to_a_availability` | `b>a` in `transfer_capacities_AC` (`dc=false`) or `transfer_capacities_DC` (`dc=true`) |
 
 For example, this demand never reads `time_series.xlsx`:
 
@@ -201,7 +201,7 @@ decommissioning ratio are both non-zero. These defaults currently apply only
 to `makedispatchable`, not `makenuclear`.
 
 For the fuel group, `makedispatchable` and `makenuclear` read `fuel_cost`
-without `fuelnode`, or `efficiency` with `fuelnode`.
+without `fuel_node`, or `efficiency` with `fuel_node`.
 
 For `makedispatchable` and `makenuclear`, enabling unit commitment reads
 `no_load_cost` and `startup_cost`. Only `uc=true` also reads `min_power`,
@@ -361,7 +361,7 @@ direction is `country1>country2`.
 
 The principal series semantics are:
 
-- `demand` contains exogenous hourly demand. `profile_multiplier` multiplies it, `profile_shift`
+- `demand` contains exogenous hourly demand. `profile_multiplier` multiplies it, `profile_shift_hours`
   circularly shifts it, and `annual_flat_demand / 8760` is then added.
 - `profiles_<year>` contains a profile that multiplies installed capacity.
 - `hydro_ror_<year>` contains an intake shape. The builder normalises it to sum

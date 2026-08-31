@@ -69,7 +69,7 @@ electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
 # Workbook demand shape, scaled up and shifted so hour 1 is 1 February
-makedemand("Demand", "country1", electricity, snapshot; profile_multiplier=5.5, profile_shift=-744)
+makedemand("Demand", "country1", electricity, snapshot; profile_multiplier=5.5, profile_shift_hours=-744)
 
 # Three fixed 1 GW units with refuelling on (720 h each). Only the start hour is chosen.
 makenuclear(
@@ -162,7 +162,7 @@ electricity = Node("country1", EnergyCarrier("electricity country1", sim), rule=
 co2 = Node("CO2", CO2Carrier("CO2", sim), rule=:curtailed, tags=[:co2])
 
 # Same scaled workbook demand as in the forced case
-makedemand("Demand", "country1", electricity, snapshot; profile_multiplier=5.5, profile_shift=-744)
+makedemand("Demand", "country1", electricity, snapshot; profile_multiplier=5.5, profile_shift_hours=-744)
 
 # Same three units and 720 h refuelling outage. Only the allowed starts change.
 makenuclear(

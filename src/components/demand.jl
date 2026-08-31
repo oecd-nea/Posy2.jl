@@ -6,7 +6,7 @@ using ArgCheck: @argcheck
 
 """
     makedemand(name::String, zone::String, n::Node, s::Snapshot;
-        tech::String=name, profile=nothing, profile_multiplier=1.0, profile_shift::Int=0,
+        tech::String=name, profile=nothing, profile_multiplier=1.0, profile_shift_hours::Int=0,
         annual_flat_demand::Real=0., grid_losses=0.,
     )
 
@@ -21,8 +21,8 @@ Arguments:
   * `profile`: Hourly demand in MW, or a scalar expanded across the simulation
     mesh. If `nothing`, read `zone` from the `demand` sheet.
   * `profile_multiplier`: Dimensionless multiplier applied to the profile demand. `0`
-    disables it and skips the `zone`, `profile`, and `profile_shift` inputs.
-  * `profile_shift`: Circular profile shift in time steps (e.g. align the first day to
+    disables it and skips the `zone`, `profile`, and `profile_shift_hours` inputs.
+  * `profile_shift_hours`: Circular profile shift in hours (e.g. align the first day to
     Monday).
   * `annual_flat_demand`: Flat demand in MWh/year, distributed over 8760 hours
     (`annual_flat_demand >= 0`).
@@ -30,7 +30,7 @@ Arguments:
     (`0 <= grid_losses < 1`).
 """
 function makedemand(name::String, zone::String, n::Node, s::Snapshot;
-                    tech::String=name, profile=nothing, profile_multiplier::Real=1.0, profile_shift::Int=0,
+                    tech::String=name, profile=nothing, profile_multiplier::Real=1.0, profile_shift_hours::Int=0,
                     annual_flat_demand::Real=0., grid_losses::Real=0.)
     checkhorizon(s)
     inputs = demand_input(profile_multiplier=profile_multiplier, annual_flat_demand=annual_flat_demand, grid_losses=grid_losses)
@@ -40,7 +40,7 @@ function makedemand(name::String, zone::String, n::Node, s::Snapshot;
         var = 0.
     else
         var = profile_multiplier * _resolve_timeseries(s, profile, zone, "demand"; keyword="profile")
-        var = circshift(var, profile_shift)
+        var = circshift(var, profile_shift_hours)
     end
 
     m = Demand(n.carrier, (var .+ annual_flat_demand / HOURS_PER_YEAR))

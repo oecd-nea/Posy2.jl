@@ -64,7 +64,7 @@ using HiGHS
             fuel = Node("fuel", EnergyCarrier("fuel", sim(s)); rule=:curtailed)
             @test !isnothing(makedispatchable(
                 "Lossless fuel", electricity, s; co2_node=carbon, tech_column="unused",
-                cap=10.0, fuelnode=fuel,
+                cap=10.0, fuel_node=fuel,
             ))
         end
 
@@ -231,20 +231,20 @@ using HiGHS
 
         let
             s, electricity, _ = argument_snapshot()
-            @test !isnothing(makepricelink("inactive", electricity, s; import_capacity=0.0, export_capacity=0.0))
+            @test !isnothing(makepricelink("inactive", electricity, s; import_cap=0.0, export_cap=0.0))
         end
 
         let
             s, electricity, _ = argument_snapshot()
             @test !isnothing(makepricelink(
                 "active", electricity, s;
-                import_capacity=10.0, export_capacity=0.0, spot_price=50.0,
+                import_cap=10.0, export_cap=0.0, spot_price=50.0,
             ))
         end
 
         let
             s, electricity, _ = argument_snapshot()
-            @test_throws ArgumentError makepricelink("active", electricity, s; import_capacity=10.0, export_capacity=0.0)
+            @test_throws ArgumentError makepricelink("active", electricity, s; import_cap=10.0, export_cap=0.0)
         end
 
         let
@@ -263,7 +263,7 @@ using HiGHS
                 rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity],
             )
             @test !isnothing(maketransmissionlink(
-                "Active", electricity, other, s; cap=10.0, btoa_availability=0.0,
+                "Active", electricity, other, s; cap=10.0, b_to_a_availability=0.0,
             ))
         end
     end
@@ -309,13 +309,13 @@ using HiGHS
         )
         @test !isnothing(makepricelink(
             "country2", electricity, s;
-            import_capacity=100.0, export_capacity=80.0,
+            import_cap=100.0, export_cap=80.0,
             spot_price=repeat(collect(51.0:74.0), 365),
             import_availability=0.9, export_availability=fill(0.85, 8760),
         ))
         @test !isnothing(maketransmissionlink(
             "Line", electricity, other, s; cap=70.0,
-            atob_availability=0.95, btoa_availability=fill(0.8, 8760),
+            a_to_b_availability=0.95, b_to_a_availability=fill(0.8, 8760),
         ))
     end
 

@@ -89,7 +89,7 @@ using HiGHS
         response = makedemandresponse("Linked DR", elec1, affine, 1.0, s)
         price_interconnection = makepricelink(
             "external", elec1, s;
-            import_capacity=shared, export_capacity=affine, spot_price=1.0,
+            import_cap=shared, export_cap=affine, spot_price=1.0,
         )
         node_interconnection = maketransmissionlink(
             "Linked IC", elec1, elec2, s;
@@ -150,7 +150,7 @@ using HiGHS
         affine = 2.0 * shared
         @test_throws ArgumentError makenuclear(
             "Warm linked nuclear", elec1, s; co2_node=carbon, tech_column="unused",
-            cap=shared, warmstart=10.0,
+            cap=shared, warm_start=10.0,
         )
         @test_throws ArgumentError makenuclear(
             "Integer affine nuclear", elec1, s; co2_node=carbon, tech_column="unused",

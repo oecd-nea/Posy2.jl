@@ -21,7 +21,7 @@ d_t = c p_t + D / 8760,
 ```
 
 where `c` is `profile_multiplier`, `p_t` is the workbook series selected by `zone`, and `D`
-is `annual_flat_demand`. `profile_shift` circularly shifts the workbook series before the
+is `annual_flat_demand`. `profile_shift_hours` circularly shifts the workbook series before the
 flat term is added. Setting `profile_multiplier=0` suppresses the workbook lookup, which is
 useful for self-contained examples and purely flat demand.
 

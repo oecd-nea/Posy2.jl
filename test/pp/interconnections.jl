@@ -183,7 +183,7 @@ using HiGHS
         makedispatchable("CCGT", elec_b, snap; co2_node=co2, tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink(
             "IC_LINK", elec_a, elec_b, snap;
-            cap=10_000.0, atob_availability=1.0, btoa_availability=1.0,
+            cap=10_000.0, a_to_b_availability=1.0, b_to_a_availability=1.0,
         )
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
@@ -200,7 +200,7 @@ using HiGHS
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec2, snap; co2_node=co2, tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
+        makepricelink("ZONE2", elec1, snap; import_cap=110.0, export_cap=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -215,7 +215,7 @@ using HiGHS
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
         makedispatchable("CCGT", elec2, snap; co2_node=co2, tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
+        makepricelink("ZONE2", elec1, snap; import_cap=110.0, export_cap=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -230,7 +230,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
+        makepricelink("ZONE2", elec1, snap; import_cap=110.0, export_cap=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -254,7 +254,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
+        makepricelink("ZONE2", elec1, snap; import_cap=110.0, export_cap=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -276,7 +276,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
+        makepricelink("ZONE2", elec1, snap; import_cap=110.0, export_cap=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -297,7 +297,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
+        makepricelink("ZONE2", elec1, snap; import_cap=110.0, export_cap=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -369,7 +369,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
+        makepricelink("ZONE2", elec1, snap; import_cap=110.0, export_cap=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -388,7 +388,7 @@ using HiGHS
     let
         snap, elec1, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
+        makepricelink("ZONE2", elec1, snap; import_cap=110.0, export_cap=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 

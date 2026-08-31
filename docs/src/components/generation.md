@@ -30,7 +30,7 @@ decision; and an extracted snapshot inherits the matching component's capacity.
 zero-capacity component.
 `capacity_multiplier` can impose a time-varying availability on output.
 
-If `fuelnode` is absent, `fuel_cost` is a variable cost on electricity output.
+If `fuel_node` is absent, `fuel_cost` is a variable cost on electricity output.
 If a fuel node is supplied, the builder instead creates a `fuel` input equal to
 electricity output divided by `efficiency`. Non-zero `co2_emission` adds a
 linked `co2` output and requires `co2_node`; `co2_price` prices that flow.
@@ -60,7 +60,7 @@ makedispatchable
 
 [`makenuclear`](@ref) uses the same `dispatchable` sheet and the same principal
 electricity, fuel, and CO2 ports. It adds `waste_cost`, supports integer
-capacity with `integer_cap`, and accepts `warmstart` for a capacity decision.
+capacity with `integer_cap`, and accepts `warm_start` for a capacity decision.
 Ramping follows [`makedispatchable`](@ref): non-zero `ramp_up` and `ramp_down`
 values are multiplied by `unit_size`. They default to inactive in `:arguments`
 mode; in `:excel` mode, omitted values come from the technology column.
@@ -86,7 +86,7 @@ and emissions also default to zero in `:arguments` mode.
 
 Capacity follows the common numeric, external-expression, `nothing`, and
 inherited-from-a-snapshot semantics. For an external expression, `mincap` and
-`maxcap` constrain that expression. Nosy does not allow `warmstart` with an
+`maxcap` constrain that expression. Nosy does not allow `warm_start` with an
 external expression. With `integer_cap=true`, a `VariableRef` is made integer,
 whereas an `AffExpr` is rejected. In particular, `unit_size` does not make an
 external variable a number-of-units variable; represent that explicitly as
@@ -188,8 +188,8 @@ supplied variable itself is made integer; `unit_size` does not reinterpret or
 scale it. An external `AffExpr` cannot be made integer and is rejected. To
 share unit-block capacity, create an integer unit-count variable and pass
 `unit_size * integer_units` explicitly. Fixed and inherited capacities contain
-no capacity decision, so `integer_cap` and `warmstart` have no effect on them.
-`warmstart` applies only to a new capacity decision and is rejected for an
+no capacity decision, so `integer_cap` and `warm_start` have no effect on them.
+`warm_start` applies only to a new capacity decision and is rejected for an
 external expression.
 
 `integer_cap` and `integer_uc` are independent. If both are enabled for a new
@@ -199,7 +199,7 @@ simplification.
 
 For fresh `uc=true`, `min_power`, `min_uptime`, `min_downtime`,
 `startup_duration`, and `shutdown_duration` configure the UC equations.
-Nuclear `startupmask` and `shutdownmask` also apply only to fresh UC. A replayed
+Nuclear `startup_mask` and `shutdown_mask` also apply only to fresh UC. A replayed
 schedule already contains those choices, so these operating arguments and
 `integer_uc` do not alter it. `no_load_cost` and `startup_cost` are attached
 whenever UC is enabled, including replayed UC. For [`makedispatchable`](@ref)

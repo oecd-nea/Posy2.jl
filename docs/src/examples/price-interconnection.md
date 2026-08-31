@@ -8,8 +8,8 @@ Unlike [`maketransmissionlink`](@ref), that market is not an explicit node.
 The single `"country2"` argument names the component (`"country2_country1"`), the
 reported neighbour, and the workbook columns the spot-price and transfer series
 are read from; pass `neighbor` or `neighbor_column` to separate those roles.
-Import capacity is set large on purpose (`import_capacity=10_000`) and export is
-off (`export_capacity=0`), so the import/CCGT choice depends on price, not on
+Import capacity is set large on purpose (`import_cap=10_000`) and export is
+off (`export_cap=0`), so the import/CCGT choice depends on price, not on
 transfer limits.
 
 ```jldoctest price_interconnection; output = false
@@ -51,7 +51,7 @@ makedispatchable(
 # Priced import from "country2" (spot series); Large import capacity, export capacity off
 makepricelink(
     "country2", electricity, snapshot;
-    import_capacity=10_000.0, export_capacity=0.0, transaction_cost=1.0,
+    import_cap=10_000.0, export_cap=0.0, transaction_cost=1.0,
 )
 
 # Minimise total system cost and extract solved values

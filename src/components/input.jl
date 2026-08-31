@@ -123,7 +123,7 @@ argument in error messages.
 function gencapacity(cap, pname::String, s::Snapshot, compname::String;
     mincap::Union{Nothing,Real}=nothing, maxcap::Union{Nothing,Real}=nothing,
     unitsize::Union{Nothing,Real}=nothing, integer::Bool=false,
-    warmstart::Union{Nothing,Real}=nothing, argname::String="cap",
+    warm_start::Union{Nothing,Real}=nothing, argname::String="cap",
 )
     if cap isa Snapshot
         val = _inheritedcapacity(cap, compname, pname, argname)
@@ -136,13 +136,13 @@ function gencapacity(cap, pname::String, s::Snapshot, compname::String;
         JuMP.check_belongs_to_model(cap, Nosy.uppermodel(sim(s)))
         return VariableCapacity(
             pname, energy;
-            expression=cap, unitsize=unitsize, integer=integer, warmstart=warmstart,
+            expression=cap, unitsize=unitsize, integer=integer, warmstart=warm_start,
             lb=isnothing(mincap) ? 0.0 : mincap, ub=isnothing(maxcap) ? Inf : maxcap,
         )
     else
         return VariableCapacity(
             pname, energy;
-            unitsize=unitsize, integer=integer, warmstart=warmstart,
+            unitsize=unitsize, integer=integer, warmstart=warm_start,
             lb=isnothing(mincap) ? 0.0 : mincap, ub=isnothing(maxcap) ? Inf : maxcap,
         )
     end

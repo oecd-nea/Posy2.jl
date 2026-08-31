@@ -72,8 +72,8 @@ makedispatchable(
 maketransmissionlink(
     "IC", country1, country2, snapshot;
     cap=10_000.0,
-    atob_availability=1.0,
-    btoa_availability=1.0,
+    a_to_b_availability=1.0,
+    b_to_a_availability=1.0,
 )
 
 # Minimise total system cost and extract solved values
@@ -194,8 +194,8 @@ makedispatchable(
 maketransmissionlink(
     "IC", country1, country2, snapshot;
     cap=500.0,
-    atob_availability=1.0,
-    btoa_availability=1.0,
+    a_to_b_availability=1.0,
+    b_to_a_availability=1.0,
 )
 
 # Minimise total system cost and extract solved values

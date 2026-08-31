@@ -191,7 +191,7 @@ using HiGHS
     let
         snap, elec1, _, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
+        makepricelink("ZONE2", elec1, snap; import_cap=110.0, export_cap=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -205,7 +205,7 @@ using HiGHS
     let
         snap, elec1, _, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, neighbor_is_foreign=false, transaction_cost=1.)
+        makepricelink("ZONE2", elec1, snap; import_cap=110.0, export_cap=100.0, neighbor_is_foreign=false, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -342,7 +342,7 @@ using HiGHS
     let
         snap, elec1, _, _, _ = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
-        makepricelink("ZONE2", elec1, snap; import_capacity=110.0, export_capacity=100.0, transaction_cost=1.)
+        makepricelink("ZONE2", elec1, snap; import_cap=110.0, export_cap=100.0, transaction_cost=1.)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
@@ -367,7 +367,7 @@ using HiGHS
         makedispatchable("CCGT", elec2, snap; co2_node=co2, tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink(
             "IC", elec1, elec2, snap;
-            cap=10_000.0, atob_availability=0.8, btoa_availability=0.5,
+            cap=10_000.0, a_to_b_availability=0.8, b_to_a_availability=0.5,
         )
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
@@ -393,7 +393,7 @@ using HiGHS
         makedispatchable("CCGT", elec2, snap; co2_node=co2, tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink(
             "IC", elec1, elec2, snap;
-            cap=10_000.0, atob_availability=1.0, btoa_availability=0.0,
+            cap=10_000.0, a_to_b_availability=1.0, b_to_a_availability=0.0,
         )
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
@@ -422,11 +422,11 @@ using HiGHS
         makedispatchable("CCGT", elec2, snap; co2_node=co2, tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
         maketransmissionlink(
             "AC", elec1, elec2, snap;
-            cap=2_000.0, atob_availability=1.0, btoa_availability=0.5,
+            cap=2_000.0, a_to_b_availability=1.0, b_to_a_availability=0.5,
         )
         maketransmissionlink(
             "DC", elec1, elec2, snap;
-            cap=500.0, dc=true, atob_availability=1.0, btoa_availability=0.5,
+            cap=500.0, dc=true, a_to_b_availability=1.0, b_to_a_availability=0.5,
         )
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)

@@ -53,13 +53,13 @@ hour. This may require solver support beyond a plain continuous LP.
 `"$(name)_$(a.name)_$(b.name)"`. Its first direction is `a -> b`:
 
 - `input` withdraws from node `a` and carries the shared `cap` multiplied by
-  `atob_availability`;
+  `a_to_b_availability`;
 - `output` delivers to node `b` after `loss_factor`.
 
 The reverse direction is `b -> a`:
 
 - `input2` withdraws from node `b` and carries the same `cap` multiplied by
-  `btoa_availability`;
+  `b_to_a_availability`;
 - `output2` delivers to node `a` after `loss_factor`.
 
 ![Ports of a node interconnection component](../assets/component-node-interco.svg)
@@ -125,9 +125,9 @@ maketransmissionlink
 
 [`makepricelink`](@ref) creates `"$(name)_$(elec.name)"` without creating
 an explicit node for the neighbouring market. Imports use component `output`,
-base capacity `import_capacity`, multiplier column `neighbor_column>local`, and
+base capacity `import_cap`, multiplier column `neighbor_column>local`, and
 the neighbour's `spot_price` series. Exports use component `input`, base
-capacity `export_capacity`, and multiplier column `local>neighbor_column`.
+capacity `export_cap`, and multiplier column `local>neighbor_column`.
 Export energy earns the same exogenous spot price; `transaction_cost` is added in
 both directions.
 
@@ -160,8 +160,8 @@ states the neighbour's foreignness instead.
 Price interconnections do not participate in DC power flow cycle constraints:
 they have no second explicit electrical node or susceptance.
 
-Numeric zero capacities disable a direction. When both `import_capacity` and
-`export_capacity` are zero the whole corridor is disabled: no spot price or
+Numeric zero capacities disable a direction. When both `import_cap` and
+`export_cap` are zero the whole corridor is disabled: no spot price or
 availability column is read, and reports show the interconnection with a zero
 price and zero volumes.
 

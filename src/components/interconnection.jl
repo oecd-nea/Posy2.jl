@@ -5,8 +5,8 @@ Generate interconnection components.
 """
     makepricelink(name::String, elec::Node, s::Snapshot;
         neighbor::String=name, neighbor_column::String=neighbor,
-        import_capacity=nothing, import_mincap=nothing, import_maxcap=nothing,
-        export_capacity=nothing, export_mincap=nothing, export_maxcap=nothing,
+        import_cap=nothing, import_mincap=nothing, import_maxcap=nothing,
+        export_cap=nothing, export_mincap=nothing, export_maxcap=nothing,
         exclusive_direction::Bool=false, neighbor_is_foreign::Bool=true,
         transaction_cost::Real=0.,
         spot_price=nothing, import_availability=nothing, export_availability=nothing,
@@ -27,7 +27,7 @@ Arguments:
   * `neighbor_column`: name the workbook columns are built from. Defaults to
     `neighbor`.
 
-  * `import_capacity`: Import capacity in MW, following the common capacity
+  * `import_cap`: Import capacity in MW, following the common capacity
     contract: a number fixes it, a JuMP `VariableRef` or `AffExpr` reuses that
     expression, `nothing` creates a capacity decision, and an extracted
     `Snapshot` inherits the `"output"` capacity of `"<name>_<elec.name>"` in it.
@@ -36,7 +36,7 @@ Arguments:
     against a fixed or inherited one.
   * `import_maxcap`: Upper import capacity bound in MW; checked as an assertion
     against a fixed or inherited one.
-  * `export_capacity`: Export capacity in MW, with the same contract; an
+  * `export_cap`: Export capacity in MW, with the same contract; an
     extracted `Snapshot` inherits the `"input"` capacity. Numeric `0` disables
     exports.
   * `export_mincap`: Lower export capacity bound in MW.
@@ -73,9 +73,9 @@ function makepricelink(name::String, elec::Node, s::Snapshot;
     neighbor::String=name, neighbor_column::String=neighbor,
 
     # capacity / expansion
-    import_capacity::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing,
+    import_cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing,
     import_mincap::Union{Nothing,Real}=nothing, import_maxcap::Union{Nothing,Real}=nothing,
-    export_capacity::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing,
+    export_cap::Union{Nothing,Real,VariableRef,AffExpr,Snapshot}=nothing,
     export_mincap::Union{Nothing,Real}=nothing, export_maxcap::Union{Nothing,Real}=nothing,
 
     # operation flags
@@ -89,12 +89,12 @@ function makepricelink(name::String, elec::Node, s::Snapshot;
     component_name = string(name, "_", elec.name)
     # inheritance is resolved first, so that an inherited zero disables its
     # direction exactly like a numeric zero
-    _mcap = import_capacity isa Snapshot ?
-        _inheritedcapacity(import_capacity, component_name, "output", "import_capacity") :
-        import_capacity
-    _xcap = export_capacity isa Snapshot ?
-        _inheritedcapacity(export_capacity, component_name, "input", "export_capacity") :
-        export_capacity
+    _mcap = import_cap isa Snapshot ?
+        _inheritedcapacity(import_cap, component_name, "output", "import_cap") :
+        import_cap
+    _xcap = export_cap isa Snapshot ?
+        _inheritedcapacity(export_cap, component_name, "input", "export_cap") :
+        export_cap
     imports_active = !(_mcap isa Real && iszero(_mcap))
     exports_active = !(_xcap isa Real && iszero(_xcap))
 
@@ -127,7 +127,7 @@ function makepricelink(name::String, elec::Node, s::Snapshot;
     m = DispatchableSource(elec.carrier)
     push!(vb, gencapacity(
         _mcap, "output", s, component_name;
-        mincap=import_mincap, maxcap=import_maxcap, argname="import_capacity",
+        mincap=import_mincap, maxcap=import_maxcap, argname="import_cap",
     ))
     imports_active && push!(vb, Nosy.CapacityMultiplier("output", _imports))
     push!(vb, VariableCost(:imports, "output", energy, _spot))
@@ -137,7 +137,7 @@ function makepricelink(name::String, elec::Node, s::Snapshot;
     push!(vb, FreeJointFlow("input", elec.carrier, :input))
     push!(vb, gencapacity(
         _xcap, "input", s, component_name;
-        mincap=export_mincap, maxcap=export_maxcap, argname="export_capacity",
+        mincap=export_mincap, maxcap=export_maxcap, argname="export_cap",
     ))
     exports_active && push!(vb, Nosy.CapacityMultiplier("input", _exports))
     push!(vb, VariableCost(:exports, "input", energy, -1 .* _spot))
@@ -172,7 +172,7 @@ end
         exclusive_direction::Bool=false, dc::Bool=false,
         transaction_cost::Real=0., loss_factor::Real=0.,
         susceptance::Union{Nothing,Real}=nothing,
-        atob_availability=nothing, btoa_availability=nothing,
+        a_to_b_availability=nothing, b_to_a_availability=nothing,
         overnight_cost=nothing, om_fixed_cost=nothing,
         lifetime=nothing, construction_profile=nothing,
     )
@@ -208,9 +208,9 @@ Arguments:
     the standard convention; must be negative), used only when `dc=false`;
     stored in `Snapshot.options[:ic_susceptance]` (required for KVL when
     [`applydcopf!`](@ref) is called).
-  * `atob_availability`: Dimensionless hourly `a -> b` multiplier vector or
+  * `a_to_b_availability`: Dimensionless hourly `a -> b` multiplier vector or
     scalar, each value in `[0, 1]`.
-  * `btoa_availability`: Dimensionless hourly `b -> a` multiplier vector or
+  * `b_to_a_availability`: Dimensionless hourly `b -> a` multiplier vector or
     scalar, with the same `[0, 1]` domain. These directional multipliers
     represent asymmetric available transfer capacity against the shared
     installed capacity. A nonzero fixed or optimized capacity reads both
@@ -252,7 +252,7 @@ function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
     # economic / physical controls
     transaction_cost::Real=0., loss_factor::Real=0.,
     susceptance::Union{Nothing,Real}=nothing,
-    atob_availability=nothing, btoa_availability=nothing,
+    a_to_b_availability=nothing, b_to_a_availability=nothing,
 
     # economic controls
     overnight_cost::Union{Nothing,Real}=nothing,
@@ -328,10 +328,10 @@ function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
 
     push!(vb, VariableCost(:transaction, "input", energy, Float64(transaction_cost)))
     _atob = if capacity_active
-        input = isnothing(atob_availability) && timeseries_mode(s) === :arguments ? 1.0 : atob_availability
+        input = isnothing(a_to_b_availability) && timeseries_mode(s) === :arguments ? 1.0 : a_to_b_availability
         _resolve_timeseries(
             s, input, a.name * ">" * b.name, transfer_sheet;
-            keyword="atob_availability", digits=2, lower=0.0, upper=1.0,
+            keyword="a_to_b_availability", digits=2, lower=0.0, upper=1.0,
         )
     end
     capacity_active && push!(vb, Nosy.CapacityMultiplier("input", _atob))
@@ -341,10 +341,10 @@ function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
     push!(vb, LinkedJointFlow("output2", a.carrier, :output, "input2", x->x[1] * (1. - loss_factor)))
     push!(vb, VariableCost(:transaction, "input2", energy, Float64(transaction_cost)))
     _btoa = if capacity_active
-        input = isnothing(btoa_availability) && timeseries_mode(s) === :arguments ? 1.0 : btoa_availability
+        input = isnothing(b_to_a_availability) && timeseries_mode(s) === :arguments ? 1.0 : b_to_a_availability
         _resolve_timeseries(
             s, input, b.name * ">" * a.name, transfer_sheet;
-            keyword="btoa_availability", digits=2, lower=0.0, upper=1.0,
+            keyword="b_to_a_availability", digits=2, lower=0.0, upper=1.0,
         )
     end
     capacity_active && push!(vb, Nosy.CapacityMultiplier("input2", _btoa))
