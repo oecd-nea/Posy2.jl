@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="368" viewBox="0 0 1000 368" role="img">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<defs>
+<marker id="head-level" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#c44536"/></marker>
+<marker id="head-linked" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#e76f51"/></marker>
+<marker id="head-fixed" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#264653"/></marker>
+<marker id="head-free" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#2a9d8f"/></marker>
+</defs>
+<style>
+    text { font-family: system-ui, sans-serif; fill: #263238; }
+    .port { font-size: 12px; font-weight: 600; text-anchor: middle; }
+    .note { font-size: 10px; fill: #546e7a; text-anchor: middle; }
+    .noteleft { font-size: 10px; fill: #546e7a; }
+    .box { font-size: 11.5px; text-anchor: middle; }
+    .boxsub { font-size: 9.5px; fill: #546e7a; text-anchor: middle; }
+    .chip { font-size: 9px; fill: #78909c; font-style: italic; text-anchor: middle; }
+    .name { font-size: 12.5px; font-weight: 600; text-anchor: middle; }
+    .legend { font-size: 10.5px; fill: #546e7a; }
+</style>
+<rect x="350" y="26" width="300" height="268" rx="10" fill="#f8f9fa" stroke="#37474f" stroke-width="1.5"/>
+<text class="name" x="500.0" y="52">EV, Smart Charging And V2G</text>
+<line x1="170" y1="121.0" x2="342" y2="121.0" stroke="#2a9d8f" stroke-width="2" stroke-dasharray="none" marker-end="url(#head-free)"/>
+<circle cx="350" cy="121.0" r="4.5" fill="#2a9d8f"/>
+<text class="port" x="260.0" y="111.0" fill="#2a9d8f">input</text>
+<text class="note" x="260.0" y="135.0">fleet charging power</text>
+<text class="note" x="260.0" y="147.0">x charging availability</text>
+<line x1="170" y1="199.0" x2="342" y2="199.0" stroke="#264653" stroke-width="2" stroke-dasharray="7 4" marker-end="url(#head-fixed)"/>
+<circle cx="350" cy="199.0" r="4.5" fill="#264653"/>
+<text class="port" x="260.0" y="189.0" fill="#264653">arrival</text>
+<text class="note" x="260.0" y="213.0">returning battery energy</text>
+<text class="note" x="260.0" y="225.0">count x SOC x battery_capacity</text>
+<rect x="20" y="98.0" width="150" height="46.0" rx="6" fill="#fdf6cd" stroke="#c9a227" stroke-width="1" stroke-dasharray="none"/>
+<text class="box" x="95.0" y="119.0">electricity node</text>
+<text class="boxsub" x="95.0" y="132.0">elec</text>
+<text class="chip" x="95.0" y="156.0">(same node)</text>
+<rect x="20" y="176.0" width="150" height="46.0" rx="6" fill="#ffffff" stroke="#78909c" stroke-width="1" stroke-dasharray="5 3"/>
+<text class="box" x="95.0" y="197.0">not connected</text>
+<text class="boxsub" x="95.0" y="210.0">own carrier</text>
+<line x1="650" y1="82.0" x2="822" y2="82.0" stroke="#2a9d8f" stroke-width="2" stroke-dasharray="none" marker-end="url(#head-free)"/>
+<circle cx="650" cy="82.0" r="4.5" fill="#2a9d8f"/>
+<text class="port" x="740.0" y="72.0" fill="#2a9d8f">output</text>
+<text class="note" x="740.0" y="96.0">only if vehicle_to_grid</text>
+<text class="note" x="740.0" y="108.0">fleet dispatch power x avail.</text>
+<text class="note" x="740.0" y="120.0">compensation cost</text>
+<line x1="650" y1="160.0" x2="822" y2="160.0" stroke="#264653" stroke-width="2" stroke-dasharray="7 4" marker-end="url(#head-fixed)"/>
+<circle cx="650" cy="160.0" r="4.5" fill="#264653"/>
+<text class="port" x="740.0" y="150.0" fill="#264653">departure</text>
+<text class="note" x="740.0" y="174.0">leaving battery energy</text>
+<text class="note" x="740.0" y="186.0">count x SOC x battery_capacity</text>
+<line x1="650" y1="238.0" x2="822" y2="238.0" stroke="#264653" stroke-width="2" stroke-dasharray="7 4" marker-end="url(#head-fixed)"/>
+<circle cx="650" cy="238.0" r="4.5" fill="#264653"/>
+<text class="port" x="740.0" y="228.0" fill="#264653">driving</text>
+<text class="note" x="740.0" y="252.0">net driving</text>
+<text class="note" x="740.0" y="264.0">departure - arrival</text>
+<text class="note" x="740.0" y="276.0">reporting only</text>
+<rect x="830" y="59.0" width="150" height="46.0" rx="6" fill="#fdf6cd" stroke="#c9a227" stroke-width="1" stroke-dasharray="none"/>
+<text class="box" x="905.0" y="80.0">electricity node</text>
+<text class="boxsub" x="905.0" y="93.0">elec</text>
+<text class="chip" x="905.0" y="117.0">(same node)</text>
+<rect x="830" y="137.0" width="150" height="124.0" rx="6" fill="#ffffff" stroke="#78909c" stroke-width="1" stroke-dasharray="5 3"/>
+<text class="box" x="905.0" y="197.0">not connected</text>
+<text class="boxsub" x="905.0" y="210.0">own carrier</text>
+<rect x="372" y="130" width="88" height="130" rx="4" fill="#ffffff" stroke="#c44536" stroke-width="1.5"/>
+<rect x="372" y="184.6" width="88" height="75.39999999999999" rx="4" fill="#c44536" fill-opacity="0.28"/>
+<line x1="372" y1="184.6" x2="460" y2="184.6" stroke="#c44536" stroke-width="1.5"/>
+<line x1="416.0" y1="256" x2="416.0" y2="191.6" stroke="#2a9d8f" stroke-width="2" marker-end="url(#head-free)"/>
+<text class="note" x="416.0" y="273">0</text>
+<text class="port" x="416.0" y="121" fill="#c44536">level</text>
+<text class="noteleft" x="478" y="195.0">fleet battery capacity</text>
+<text class="noteleft" x="478" y="207.0">x charging availability</text>
+<line x1="20" y1="346" x2="44" y2="346" stroke="#2a9d8f" stroke-width="2.5" stroke-dasharray="none"/>
+<text class="legend" x="51" y="350">optimized flow</text>
+<line x1="175" y1="346" x2="199" y2="346" stroke="#264653" stroke-width="2.5" stroke-dasharray="7 4"/>
+<text class="legend" x="206" y="350">exogenous fixed flow</text>
+<line x1="372" y1="346" x2="396" y2="346" stroke="#c44536" stroke-width="2.5" stroke-dasharray="none"/>
+<text class="legend" x="403" y="350">stored energy</text>
+<rect x="520" y="339" width="24" height="14" rx="3" fill="#ffffff" stroke="#78909c" stroke-dasharray="5 3"/>
+<text class="legend" x="551" y="350">not connected</text>
+</svg>

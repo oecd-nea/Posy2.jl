@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="250" viewBox="0 0 1000 250" role="img">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<defs>
+<marker id="head-level" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#c44536"/></marker>
+<marker id="head-linked" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#e76f51"/></marker>
+<marker id="head-fixed" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#264653"/></marker>
+<marker id="head-free" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#2a9d8f"/></marker>
+</defs>
+<style>
+    text { font-family: system-ui, sans-serif; fill: #263238; }
+    .port { font-size: 12px; font-weight: 600; text-anchor: middle; }
+    .note { font-size: 10px; fill: #546e7a; text-anchor: middle; }
+    .noteleft { font-size: 10px; fill: #546e7a; }
+    .box { font-size: 11.5px; text-anchor: middle; }
+    .boxsub { font-size: 9.5px; fill: #546e7a; text-anchor: middle; }
+    .chip { font-size: 9px; fill: #78909c; font-style: italic; text-anchor: middle; }
+    .name { font-size: 12.5px; font-weight: 600; text-anchor: middle; }
+    .legend { font-size: 10.5px; fill: #546e7a; }
+</style>
+<rect x="350" y="26" width="300" height="150" rx="10" fill="#f8f9fa" stroke="#37474f" stroke-width="1.5"/>
+<text class="name" x="500.0" y="52">Price Interconnection</text>
+<text class="boxsub" x="500.0" y="70">the counterparty is a price series, not a node:</text>
+<text class="boxsub" x="500.0" y="84">spot_price and transfer capacities for neighbor_column</text>
+<line x1="170" y1="101.0" x2="342" y2="101.0" stroke="#2a9d8f" stroke-width="2" stroke-dasharray="none" marker-end="url(#head-free)"/>
+<circle cx="350" cy="101.0" r="4.5" fill="#2a9d8f"/>
+<text class="port" x="260.0" y="91.0" fill="#2a9d8f">input</text>
+<text class="note" x="260.0" y="115.0">exports, export_cap</text>
+<text class="note" x="260.0" y="127.0">x export_availability</text>
+<text class="note" x="260.0" y="139.0">revenue -spot_price</text>
+<rect x="20" y="78.0" width="150" height="46.0" rx="6" fill="#fdf6cd" stroke="#c9a227" stroke-width="1" stroke-dasharray="none"/>
+<text class="box" x="95.0" y="99.0">electricity node</text>
+<text class="boxsub" x="95.0" y="112.0">elec</text>
+<text class="chip" x="95.0" y="136.0">(same node)</text>
+<line x1="650" y1="101.0" x2="822" y2="101.0" stroke="#2a9d8f" stroke-width="2" stroke-dasharray="none" marker-end="url(#head-free)"/>
+<circle cx="650" cy="101.0" r="4.5" fill="#2a9d8f"/>
+<text class="port" x="740.0" y="91.0" fill="#2a9d8f">output</text>
+<text class="note" x="740.0" y="115.0">imports, import_cap</text>
+<text class="note" x="740.0" y="127.0">x import_availability</text>
+<text class="note" x="740.0" y="139.0">cost +spot_price</text>
+<rect x="830" y="78.0" width="150" height="46.0" rx="6" fill="#fdf6cd" stroke="#c9a227" stroke-width="1" stroke-dasharray="none"/>
+<text class="box" x="905.0" y="99.0">electricity node</text>
+<text class="boxsub" x="905.0" y="112.0">elec</text>
+<text class="chip" x="905.0" y="136.0">(same node)</text>
+<line x1="20" y1="228" x2="44" y2="228" stroke="#2a9d8f" stroke-width="2.5" stroke-dasharray="none"/>
+<text class="legend" x="51" y="232">optimized flow</text>
+</svg>

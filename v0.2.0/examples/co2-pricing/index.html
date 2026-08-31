@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>CO2 Pricing · Posy2.jl</title><meta name="title" content="CO2 Pricing · Posy2.jl"/><meta property="og:title" content="CO2 Pricing · Posy2.jl"/><meta property="twitter:title" content="CO2 Pricing · Posy2.jl"/><meta name="description" content="Documentation for Posy2.jl."/><meta property="og:description" content="Documentation for Posy2.jl."/><meta property="twitter:description" content="Documentation for Posy2.jl."/><meta property="og:url" content="https://oecd-nea.github.io/Posy2.jl/stable/examples/co2-pricing/"/><meta property="twitter:url" content="https://oecd-nea.github.io/Posy2.jl/stable/examples/co2-pricing/"/><link rel="canonical" href="https://oecd-nea.github.io/Posy2.jl/stable/examples/co2-pricing/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.63.2/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Posy2.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../getting-started/">Getting Started</a></li><li><span class="tocitem">Modelling Concepts</span><ul><li><a class="tocitem" href="../../concepts/">Overview</a></li><li><a class="tocitem" href="../../concepts/options/">Study Configuration</a></li><li><a class="tocitem" href="../../concepts/input-data/">Input Workbooks</a></li><li><a class="tocitem" href="../../concepts/building-snapshot/">Building a Snapshot</a></li><li><input class="collapse-toggle" id="menuitem-3-5" type="checkbox"/><label class="tocitem" for="menuitem-3-5"><span class="docs-label">Component Builders</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../components/">Overview</a></li><li><a class="tocitem" href="../../components/demand/">Demand and Flexibility</a></li><li><a class="tocitem" href="../../components/generation/">Generation</a></li><li><a class="tocitem" href="../../components/storage-conversion/">Storage</a></li><li><a class="tocitem" href="../../components/electric-vehicles/">Electric Vehicles</a></li><li><a class="tocitem" href="../../components/interconnections/">Interconnections</a></li><li><a class="tocitem" href="../../components/hydrogen/">Hydrogen</a></li></ul></li><li><a class="tocitem" href="../../concepts/extending/">Extending Posy2</a></li><li><a class="tocitem" href="../../concepts/optimizing/">Optimizing a Snapshot</a></li><li><a class="tocitem" href="../../concepts/querying/">Querying a Snapshot</a></li><li><a class="tocitem" href="../../concepts/tags/">Tags and Post-Processing</a></li><li><a class="tocitem" href="../../concepts/exporting/">Exporting Results</a></li></ul></li><li><a class="tocitem" href="../../performance/">Performance</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../one-country/">One Country</a></li><li><a class="tocitem" href="../dispatchable-generation/">Dispatchable Generation</a></li><li><a class="tocitem" href="../dispatch-optimization/">Dispatch Optimization</a></li><li class="is-active"><a class="tocitem" href>CO2 Pricing</a><ul class="internal"><li><a class="tocitem" href="#Emission-Accounting"><span>Emission Accounting</span></a></li><li><a class="tocitem" href="#A-Carbon-Price-Of-100-USD/ton"><span>A Carbon Price Of 100 USD/ton</span></a></li></ul></li><li><a class="tocitem" href="../nuclear/">Nuclear</a></li><li><a class="tocitem" href="../battery-storage/">Battery Storage</a></li><li><a class="tocitem" href="../pumped-storage-hydro/">Pumped Storage</a></li><li><a class="tocitem" href="../hydro-reservoir/">Hydro Reservoir</a></li><li><a class="tocitem" href="../demand-response/">Demand Response</a></li><li><a class="tocitem" href="../electric-vehicles/">Electric Vehicles</a></li><li><a class="tocitem" href="../hydrogen-production/">Hydrogen Production</a></li><li><a class="tocitem" href="../two-countries/">Two Countries</a></li><li><a class="tocitem" href="../price-interconnection/">Price Interconnection</a></li><li><a class="tocitem" href="../dc-opf/">DC OPF</a></li><li><a class="tocitem" href="../stochastic/">Stochastic Programming</a></li><li><a class="tocitem" href="../coarse-time-mesh/">Coarse Time Mesh</a></li><li><a class="tocitem" href="../infeasibility/">Infeasibility</a></li></ul></li><li><a class="tocitem" href="../../api/">API Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>CO2 Pricing</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>CO2 Pricing</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/oecd-nea/Posy2.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="CO2-Pricing"><a class="docs-heading-anchor" href="#CO2-Pricing">CO2 Pricing</a><a id="CO2-Pricing-1"></a><a class="docs-heading-anchor-permalink" href="#CO2-Pricing" title="Permalink"></a></h1><p>A single electricity node is served by three candidate technologies:</p><ul><li>Coal: cheap fuel, 820 kg/MWh</li><li>CCGT: costlier fuel, 348 kg/MWh</li><li>Nuclear: expensive to build, cheap to run, no emissions</li></ul><p><code>co2_price</code> in <a href="../../api/#Posy2.Posy2Options"><code>Posy2Options</code></a> is the carbon price every emitting builder applies by default. Each emitting component links its electricity output to a CO2 flow of <code>output * co2_emission / 1000</code> tonnes and charges the price on that flow under the <code>:co2</code> cost tag. Components declared with <code>co2_emission=0</code> are never connected to the CO2 node and carry no carbon cost.</p><p>All three capacities are chosen in the cost minimisation, so the carbon price changes both what is dispatched and what is built. The study is run twice: without a carbon price, then at 100 USD/ton.</p><pre><code class="language-julia hljs">using Posy2
+using Nosy
+using HiGHS
+import JuMP: set_silent
+
+# Simulation and Posy2 input configuration, without a carbon price
+sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+set_silent(model(sim))
+example_data_dir = joinpath(pkgdir(Posy2), &quot;data&quot;)
+snapshot = Snapshot(sim, Dict(:posy =&gt; Posy2Options(
+    data_dir=example_data_dir,
+    techdata_file=&quot;tech_data.xlsx&quot;,
+    timeseries_file=&quot;time_series.xlsx&quot;,
+    tech_mode=:arguments,
+    timeseries_mode=:excel,
+    co2_price=0.0,
+)))
+
+# Electricity node and CO2 sink. The node variable is not named `co2`, so that
+# Nosy&#39;s `co2` modifier stays available for the emission queries below.
+electricity = Node(&quot;country1&quot;, EnergyCarrier(&quot;electricity country1&quot;, sim), rule=:curtailed, tags=[:electricity])
+emissions = Node(&quot;CO2&quot;, CO2Carrier(&quot;CO2&quot;, sim), rule=:curtailed, tags=[:co2])
+
+# Hourly electricity demand from the time-series workbook
+makedemand(&quot;Demand&quot;, &quot;country1&quot;, electricity, snapshot)
+
+# Cheap fuel, high emissions
+makedispatchable(
+    &quot;Coal&quot;, electricity, snapshot; co2_node=emissions, tech_column=&quot;Coal&quot;,
+    maxcap=2_000.0,
+    overnight_cost=1_500.0,
+    lifetime=40,
+    construction_profile=1.0,
+    om_fixed_cost=35.0,
+    fuel_cost=25.0,
+    co2_emission=820.0,
+)
+
+# Costlier fuel, roughly half the emissions
+makedispatchable(
+    &quot;Gas&quot;, electricity, snapshot; co2_node=emissions, tech_column=&quot;CCGT&quot;,
+    maxcap=2_000.0,
+    overnight_cost=955.0,
+    lifetime=30,
+    construction_profile=1.0,
+    om_fixed_cost=26.79,
+    fuel_cost=47.06,
+    co2_emission=348.0,
+)
+
+# Expensive to build, cheap to run, no emissions
+makenuclear(
+    &quot;Nuclear&quot;, electricity, snapshot; co2_node=emissions, tech_column=&quot;Nuclear&quot;,
+    maxcap=2_000.0,
+    overnight_cost=3_370.0,
+    lifetime=60,
+    construction_profile=1.0,
+    om_fixed_cost=79.0,
+    fuel_cost=7.0,
+    co2_emission=0.0,
+)
+
+# Minimise total system cost and extract solved values
+optimize!(snapshot, cost(snapshot))
+result = extract(snapshot)</code></pre><p>Two nodes appear in the snapshot because coal and CCGT emit: the CO2 node is connected only by components with a non-zero emission factor.</p><p>Without a carbon price, nuclear covers the base load, and coal takes the mid-merit slice ahead of CCGT because its fuel is cheaper:</p><pre><code class="language-julia-repl hljs">julia&gt; table(result, capacity)
+1×4 DataFrame
+ Row │ Coal country1  Demand country1  Gas country1  Nuclear country1
+     │ Float64        Float64          Float64       Float64
+─────┼────────────────────────────────────────────────────────────────
+   1 │       194.871              0.0       204.522           631.371</code></pre><h2 id="Emission-Accounting"><a class="docs-heading-anchor" href="#Emission-Accounting">Emission Accounting</a><a id="Emission-Accounting-1"></a><a class="docs-heading-anchor-permalink" href="#Emission-Accounting" title="Permalink"></a></h2><p>The CO2 flow of an emitting component is queried like any other balance, using Nosy&#39;s <code>co2</code> modifier. Collapsed over the year, it returns tonnes emitted:</p><pre><code class="language-julia-repl hljs">julia&gt; balance(result, &quot;Coal country1&quot;, :output, co2; collapse=true, aggregate=true)
+707827.9212400212
+
+julia&gt; balance(result, &quot;Gas country1&quot;, :output, co2; collapse=true, aggregate=true)
+30832.662539999958
+
+julia&gt; balance(result, &quot;Nuclear country1&quot;, :output, co2; collapse=true, aggregate=true)
+0.0</code></pre><p>Coal generates about 0.86 TWh against 5.49 TWh of nuclear, yet accounts for 96% of the 739 kt emitted:</p><pre><code class="language-julia-repl hljs">julia&gt; balance(result, &quot;Coal country1&quot;, :output, energy; collapse=true, aggregate=true)
+863204.7820000256
+
+julia&gt; balance(result, &quot;Nuclear country1&quot;, :output, energy; collapse=true, aggregate=true)
+5.4877001550002415e6</code></pre><p>The carbon charge itself is a cost tag, so it is zero here:</p><pre><code class="language-julia-repl hljs">julia&gt; cost(result, :co2)
+0.0
+
+julia&gt; cost(result)
+2.6848589016233397e8</code></pre><h2 id="A-Carbon-Price-Of-100-USD/ton"><a class="docs-heading-anchor" href="#A-Carbon-Price-Of-100-USD/ton">A Carbon Price Of 100 USD/ton</a><a id="A-Carbon-Price-Of-100-USD/ton-1"></a><a class="docs-heading-anchor-permalink" href="#A-Carbon-Price-Of-100-USD/ton" title="Permalink"></a></h2><p>A carbon price adds <code>co2_price * co2_emission / 1000</code> to each emitting plant&#39;s variable cost: 0.820 per tonne of price for coal, 0.348 for CCGT. Coal starts 22.06 per MWh below CCGT on fuel, so the two swap places in the merit order at a price of about 47 USD/ton. At 100 USD/ton coal is dearer than CCGT by running cost alone, and its cheap fuel no longer pays for its capital.</p><p>Only the <code>co2_price</code> option changes; the rest of the study is identical.</p><pre><code class="language-julia hljs">using Posy2
+using Nosy
+using HiGHS
+import JuMP: set_silent
+
+# Simulation and Posy2 input configuration, at 100 USD/ton of CO2
+sim = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+set_silent(model(sim))
+example_data_dir = joinpath(pkgdir(Posy2), &quot;data&quot;)
+snapshot = Snapshot(sim, Dict(:posy =&gt; Posy2Options(
+    data_dir=example_data_dir,
+    techdata_file=&quot;tech_data.xlsx&quot;,
+    timeseries_file=&quot;time_series.xlsx&quot;,
+    tech_mode=:arguments,
+    timeseries_mode=:excel,
+    co2_price=100.0,
+)))
+
+# Electricity node and CO2 sink
+electricity = Node(&quot;country1&quot;, EnergyCarrier(&quot;electricity country1&quot;, sim), rule=:curtailed, tags=[:electricity])
+emissions = Node(&quot;CO2&quot;, CO2Carrier(&quot;CO2&quot;, sim), rule=:curtailed, tags=[:co2])
+
+# Hourly electricity demand from the time-series workbook
+makedemand(&quot;Demand&quot;, &quot;country1&quot;, electricity, snapshot)
+
+# Cheap fuel, high emissions
+makedispatchable(
+    &quot;Coal&quot;, electricity, snapshot; co2_node=emissions, tech_column=&quot;Coal&quot;,
+    maxcap=2_000.0,
+    overnight_cost=1_500.0,
+    lifetime=40,
+    construction_profile=1.0,
+    om_fixed_cost=35.0,
+    fuel_cost=25.0,
+    co2_emission=820.0,
+)
+
+# Costlier fuel, roughly half the emissions
+makedispatchable(
+    &quot;Gas&quot;, electricity, snapshot; co2_node=emissions, tech_column=&quot;CCGT&quot;,
+    maxcap=2_000.0,
+    overnight_cost=955.0,
+    lifetime=30,
+    construction_profile=1.0,
+    om_fixed_cost=26.79,
+    fuel_cost=47.06,
+    co2_emission=348.0,
+)
+
+# Expensive to build, cheap to run, no emissions
+makenuclear(
+    &quot;Nuclear&quot;, electricity, snapshot; co2_node=emissions, tech_column=&quot;Nuclear&quot;,
+    maxcap=2_000.0,
+    overnight_cost=3_370.0,
+    lifetime=60,
+    construction_profile=1.0,
+    om_fixed_cost=79.0,
+    fuel_cost=7.0,
+    co2_emission=0.0,
+)
+
+# Minimise total system cost and extract solved values
+optimize!(snapshot, cost(snapshot))
+result_taxed = extract(snapshot)</code></pre><p>Coal is no longer built at all. Nuclear absorbs most of the displaced energy, and CCGT keeps a slightly larger peaking role than before:</p><pre><code class="language-julia-repl hljs">julia&gt; table(result_taxed, capacity)
+1×4 DataFrame
+ Row │ Coal country1  Demand country1  Gas country1  Nuclear country1
+     │ Float64        Float64          Float64       Float64
+─────┼────────────────────────────────────────────────────────────────
+   1 │           0.0              0.0       235.937           794.827</code></pre><p>Annual emissions fall from about 739 kt to 51 kt, all of it now from CCGT:</p><pre><code class="language-julia-repl hljs">julia&gt; balance(result_taxed, &quot;Coal country1&quot;, :output, co2; collapse=true, aggregate=true)
+0.0
+
+julia&gt; balance(result_taxed, &quot;Gas country1&quot;, :output, co2; collapse=true, aggregate=true)
+51108.57699600004</code></pre><p>The remaining emissions are charged at 100 USD/ton, which appears as the <code>:co2</code> cost tag and lifts the total system cost:</p><pre><code class="language-julia-repl hljs">julia&gt; cost(result_taxed, :co2)
+5.110857699599994e6
+
+julia&gt; cost(result_taxed)
+2.8134404546231943e8</code></pre><p>The carbon charge of 5.11 M is a transfer, not a resource cost. Net of it, the system spends 276.2 M against 268.5 M without a carbon price: 7.7 M more of capital and fuel to avoid 688 kt of CO2.</p><pre><code class="language-julia-repl hljs">julia&gt; cost(result_taxed) - cost(result_taxed, :co2) - cost(result)
+7.747297600385487e6</code></pre><p>Emissions and the carbon charge also appear in the standard workbook report: <a href="../../api/#Posy2.write_results"><code>write_results</code></a> writes an annual <code>CO2 emissions (t/y)</code> row and a <code>co2</code> column in the annual cost table.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../dispatch-optimization/">« Dispatch Optimization</a><a class="docs-footer-nextpage" href="../nuclear/">Nuclear »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.18.0 on <span class="colophon-date" title="Monday 31 August 2026 17:29">Monday 31 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
