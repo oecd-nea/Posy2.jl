@@ -27,15 +27,15 @@
 <line x1="170" y1="160.0" x2="342" y2="160.0" stroke="#e76f51" stroke-width="2" stroke-dasharray="3 3" marker-end="url(#head-linked)"/>
 <circle cx="350" cy="160.0" r="4.5" fill="#e76f51"/>
 <text class="port" x="260.0" y="150.0" fill="#e76f51">grid losses</text>
-<text class="note" x="260.0" y="174.0">only if gridlosses &gt; 0</text>
-<text class="note" x="260.0" y="186.0">gridlosses x input</text>
+<text class="note" x="260.0" y="174.0">only if grid_losses &gt; 0</text>
+<text class="note" x="260.0" y="186.0">grid_losses x input</text>
 <rect x="20" y="59.0" width="150" height="124.0" rx="6" fill="#fdf6cd" stroke="#c9a227" stroke-width="1" stroke-dasharray="none"/>
 <text class="box" x="95.0" y="119.0">electricity node</text>
 <text class="boxsub" x="95.0" y="132.0">elec</text>
 <line x1="650" y1="121.0" x2="822" y2="121.0" stroke="#e76f51" stroke-width="2" stroke-dasharray="3 3" marker-end="url(#head-linked)"/>
 <circle cx="650" cy="121.0" r="4.5" fill="#e76f51"/>
 <text class="port" x="740.0" y="111.0" fill="#e76f51">output</text>
-<text class="note" x="740.0" y="135.0">eff x input</text>
+<text class="note" x="740.0" y="135.0">efficiency x input</text>
 <text class="note" x="740.0" y="147.0">hydrogen production</text>
 <rect x="830" y="98.0" width="150" height="46.0" rx="6" fill="#e6effa" stroke="#4a7fb5" stroke-width="1" stroke-dasharray="none"/>
 <text class="box" x="905.0" y="119.0">hydrogen node</text>

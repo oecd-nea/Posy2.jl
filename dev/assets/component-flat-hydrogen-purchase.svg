@@ -22,7 +22,7 @@
 <line x1="650" y1="101.0" x2="822" y2="101.0" stroke="#264653" stroke-width="2" stroke-dasharray="7 4" marker-end="url(#head-fixed)"/>
 <circle cx="650" cy="101.0" r="4.5" fill="#264653"/>
 <text class="port" x="740.0" y="91.0" fill="#264653">output</text>
-<text class="note" x="740.0" y="115.0">val / 8760 every hour</text>
+<text class="note" x="740.0" y="115.0">annual_supply / 8760 every hour</text>
 <text class="note" x="740.0" y="127.0">flat profile source</text>
 <rect x="830" y="78.0" width="150" height="46.0" rx="6" fill="#e6effa" stroke="#4a7fb5" stroke-width="1" stroke-dasharray="none"/>
 <text class="box" x="905.0" y="99.0">hydrogen node</text>
