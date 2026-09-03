@@ -853,4 +853,36 @@ using DataFrames
         @test ismissing(agg.d["Physical"])
         @test Posy2._gensnapshotpp(s) isa AbstractDict
     end
+
+    # Hydrogen transport From\To capacity and annual A->B volume
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        h2_a = Node("A", EnergyCarrier("hydrogen A", sim(snap)), rule=:curtailed, tags=[:hydrogen])
+        h2_b = Node("B", EnergyCarrier("hydrogen B", sim(snap)), rule=:curtailed, tags=[:hydrogen])
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
+        makedispatchable("CCGT", elec1, snap; co2_node=co2, tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        makeflathydrogenpurchase("Supply", h2_a, 876_000.0, snap)
+        makeflathydrogendemand("Demand", h2_b, 4.5 * 8760.0, snap)
+        link = makehydrogentransport(
+            "H2 pipeline", h2_a, h2_b, snap;
+            cap=5.0, loss_factor=0.1,
+        )
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        @test Posy2._fromto_h2_transport(s, link) == ("A", "B")
+
+        cap = Posy2._dataline_h2_transport_cap(s; showforeign=true)
+        @test cap.title == "Hydrogen transport capacity"
+        @test cap.unit == "GW"
+        @test isapprox(cap.d[cap.d[!, "From \\ To"] .== "A >", "> B"][1], 0.005; rtol=1e-12)
+        @test isapprox(cap.d[cap.d[!, "From \\ To"] .== "B >", "> A"][1], 0.005; rtol=1e-12)
+
+        vol = Posy2._dataline_h2_transport_vol(s; showforeign=true)
+        @test vol.title == "Hydrogen transport volume"
+        @test vol.unit == "TWh/y"
+        @test isapprox(vol.d[vol.d[!, "From \\ To"] .== "A >", "> B"][1], 5.0 * 8760 / 1E6; rtol=1e-9)
+        @test isapprox(vol.d[vol.d[!, "From \\ To"] .== "B >", "> A"][1], 0.0; atol=1e-12)
+
+    end
 end

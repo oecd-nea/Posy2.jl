@@ -1,8 +1,8 @@
 # Hydrogen
 
-Hydrogen can be supplied exogenously, produced from electricity, and moved
-across time. Hydrogen demand builders are documented on the [Demand And
-Flexibility](demand.md) page.
+Hydrogen can be supplied exogenously, produced from electricity, stored, and
+moved between hydrogen nodes. Hydrogen demand builders are documented on the
+[Demand And Flexibility](demand.md) page.
 
 See [Component Builders](../components.md) for shared naming, workbook,
 capacity, and port conventions, and [Tags And
@@ -88,6 +88,29 @@ complete model using this builder.
 
 ```@docs; canonical=false
 makehydrogenstorage
+```
+
+## Hydrogen Transport
+
+[`makehydrogentransport`](@ref) links two hydrogen nodes. Send capacity is
+shared by both directions on `input` (`a -> b`) and `input2` (`b -> a`).
+Received flows are `(1 - loss_factor)` times the send flows. An unconnected
+`hydrogen transport losses` port records the lost energy for reporting.
+Optional `elec_a` / `elec_b` ports draw compressor electricity in proportion
+to each send flow.
+
+The generated name is `"$(name)_$(a.name)_$(b.name)"`.
+
+Tags: `:zone` for both node names, and the function tags
+`hydrogen` and `transport`. 
+
+![Ports of a hydrogen transport component](../assets/component-hydrogen-transport.svg)
+
+See the [Hydrogen Transport example](../examples/hydrogen-transport.md) for a
+complete model using this builder.
+
+```@docs; canonical=false
+makehydrogentransport
 ```
 
 Related demand builders: [`makeflathydrogendemand`](@ref) and

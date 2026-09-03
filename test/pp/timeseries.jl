@@ -298,4 +298,26 @@ using HiGHS
         @test all(iszero, df[!, "ZONE2 > ZONE1"])
         @test all(iszero, df[!, "ZONE1 > ZONE2"])
     end
+
+    # Hydrogen transport: from > to columns; A->B is steady 5 MW, reverse is zero.
+    let
+        snap, elec1, elec2, co2 = makesnapshot()
+        h2_a = Node("A", EnergyCarrier("hydrogen A", sim(snap)), rule=:curtailed, tags=[:hydrogen])
+        h2_b = Node("B", EnergyCarrier("hydrogen B", sim(snap)), rule=:curtailed, tags=[:hydrogen])
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
+        makedispatchable("CCGT", elec1, snap; co2_node=co2, tech_column="CCGT", cap=300.0, construction_profile=1.0, decommissioning_profile=1.0)
+        maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
+        makeflathydrogenpurchase("Supply", h2_a, 876_000.0, snap)
+        makeflathydrogendemand("Demand", h2_b, 4.5 * 8760.0, snap)
+        makehydrogentransport("H2 pipeline", h2_a, h2_b, snap; cap=5.0, loss_factor=0.1)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        df = Posy2.gentimeseries(s)
+        @test "A > B" in names(df)
+        @test "B > A" in names(df)
+        @test all(isapprox.(df[!, "A > B"], 5.0 / 1000; rtol=1e-12))
+        @test all(iszero, df[!, "B > A"])
+        @test "ZONE1 > ZONE2" in names(df)
+    end
 end

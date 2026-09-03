@@ -19,7 +19,7 @@ The builders are grouped by modelling role:
 - [Interconnections](components/interconnections.md) covers links between
   explicit nodes and links represented by an exogenous price series.
 - [Hydrogen](components/hydrogen.md) covers exogenous hydrogen purchase,
-  electrolysers, and hydrogen storage.
+  electrolysers, hydrogen storage, and hydrogen transport.
 
 ## Common Arguments
 

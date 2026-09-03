@@ -25,7 +25,7 @@ export makehydroror, makehydroreservoir
 export makebatterystorage
 export makedemandresponse
 export makepricelink, maketransmissionlink
-export makeelectrolyser, makehydrogenstorage
+export makeelectrolyser, makehydrogenstorage, makehydrogentransport
 
 export applydcopf!
 
