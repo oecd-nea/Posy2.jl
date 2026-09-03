@@ -91,6 +91,15 @@ function gentimeseries(s::Snapshot)
         df[!, col] = (col in names(df) ? df[!, col] : 0) .+ balance(c, :input, energy, collapse=false, aggregate=false)["input"] / 1000.
     end
 
+    # hydrogen transport volumes (column names: from > to)
+    for (_, c) in getcomponents(s, with=[:function => "transport", :function => "hydrogen"])
+        (_from, _to) = _fromto_h2_transport(s, c)
+        col = string(_from, " > ", _to)
+        df[!, col] = (col in names(df) ? df[!, col] : 0) .+ balance(c, :input, energy, collapse=false, aggregate=false)["input"] / 1000.
+        col = string(_to, " > ", _from)
+        df[!, col] = (col in names(df) ? df[!, col] : 0) .+ balance(c, :input, energy, collapse=false, aggregate=false)["input2"] / 1000.
+    end
+
     # price from electricity nodes
     for (nname, n) in getnodes(s, with=[:electricity])
         price = Nosy.dualprice(n)

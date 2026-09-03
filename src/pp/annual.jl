@@ -329,6 +329,114 @@ function _dataline_hydrogen_storage_cap(s; showforeign=true)
     return d
 end
 
+"""
+    _fromto_h2_transport(s::Snapshot, c::Component)
+Return `(from, to)` node names for a hydrogen transport corridor.
+Direction follows builder ports `"input"` (from) and `"output"` (to); each port carrier
+identifies the connected hydrogen node among nodes linked to this component.
+"""
+function _fromto_h2_transport(s::Snapshot, c::Component)
+    connected = String[]
+    for (nodename, _) in getnodes(s, with=[:hydrogen])
+        if haskey(getcomponents(s, nodename, with=[:function => "transport", :function => "hydrogen"]), c.name)
+            push!(connected, nodename)
+        end
+    end
+    length(connected) == 2 || throw(ArgumentError("hydrogen transport $(c.name) expected 2 connected hydrogen nodes, got $(connected)"))
+
+    carrier_from = Nosy.getport(c, "input").carrier.name
+    carrier_to = Nosy.getport(c, "output").carrier.name
+
+    from_candidates = String[]
+    to_candidates = String[]
+    for nodename in connected
+        n = Nosy.getnode(s, nodename)
+        n.carrier.name == carrier_from && push!(from_candidates, nodename)
+        n.carrier.name == carrier_to && push!(to_candidates, nodename)
+    end
+    length(from_candidates) == 1 || throw(ArgumentError("hydrogen transport $(c.name): input port carrier '$(carrier_from)' matched $(length(from_candidates)) connected nodes"))
+    length(to_candidates) == 1 || throw(ArgumentError("hydrogen transport $(c.name): output port carrier '$(carrier_to)' matched $(length(to_candidates)) connected nodes"))
+
+    _from = only(from_candidates)
+    _to = only(to_candidates)
+    @assert _from != _to "hydrogen transport $(c.name): input and output ports map to the same node"
+    return (_from, _to)
+end
+
+# return a From \\ To capacity matrix for hydrogen transport corridors (shared send capacity)
+function _dataline_h2_transport_cap(s; showforeign=true)
+    allnodes = sort(collect(keys(
+        showforeign ? getnodes(s, with=[:hydrogen]) : getnodes(s, with=[:hydrogen], without=[:foreign]),
+    )))
+    df = DataFrame("From \\ To" => allnodes)
+    for k in allnodes
+        df[!, k] = convert(Vector{Union{String,Float64,Missing}}, fill(missing, length(allnodes)))
+    end
+
+    for (_, c) in getcomponents(s, with=[:function => "transport", :function => "hydrogen"])
+        (_from, _to) = _fromto_h2_transport(s, c)
+        (_from in allnodes && _to in allnodes) || continue
+        if Nosy.hascapacitybehavior(c, "input")
+            v = capacity(c, "input") / 1E3
+            rows = df[!, "From \\ To"] .== _from
+            old = first(df[rows, _to])
+            df[rows, _to] .= ismissing(old) ? v : old + v
+        end
+        if Nosy.hascapacitybehavior(c, "input2")
+            v = capacity(c, "input2") / 1E3
+            rows = df[!, "From \\ To"] .== _to
+            old = first(df[rows, _from])
+            df[rows, _from] .= ismissing(old) ? v : old + v
+        end
+    end
+
+    df[!, 1] .*= " >"
+    for n in names(df)[2:end]
+        rename!(df, n => "> " * n)
+    end
+
+    datacols = names(df)[2:end]
+    df[!, "> Total"] = [sum((df[i, c] for c in datacols if !ismissing(df[i, c])); init=0.0) for i in 1:nrow(df)]
+    _lastrow = permutedims(vcat("Total >", [sum((x for x in c if !ismissing(x)); init=0.0) for c in eachcol(df)[2:end]]))
+    push!(df, _lastrow)
+
+    return DataLine("Hydrogen transport capacity", "GW", df)
+end
+
+# return a From \\ To volume matrix for hydrogen transport send flows
+function _dataline_h2_transport_vol(s; showforeign=true)
+    allnodes = sort(collect(keys(
+        showforeign ? getnodes(s, with=[:hydrogen]) : getnodes(s, with=[:hydrogen], without=[:foreign]),
+    )))
+    df = DataFrame("From \\ To" => allnodes .* " >")
+    for k in allnodes
+        col = "> " * k
+        df[!, col] = Union{Missing,Float64}[missing for _ in allnodes]
+    end
+
+    for (_, c) in getcomponents(s, with=[:function => "transport", :function => "hydrogen"])
+        (_from, _to) = _fromto_h2_transport(s, c)
+        (_from in allnodes && _to in allnodes) || continue
+        fwd = balance(c, :input, energy, aggregate=false, collapse=true)["input"]
+        rev = balance(c, :input, energy, aggregate=false, collapse=true)["input2"]
+        for (src, dst, flow) in ((_from, _to, fwd), (_to, _from, rev))
+            row = string(src, " >")
+            col = "> " * dst
+            rows = df[!, "From \\ To"] .== row
+            old = first(df[rows, col])
+            df[rows, col] .= ismissing(old) ? flow : old + flow
+        end
+    end
+
+    datacols = names(df)[2:end]
+    df[!, "> Total"] = [sum((df[i, c] for c in datacols if !ismissing(df[i, c])); init=0.0) for i in 1:nrow(df)]
+    _lastrow = permutedims(vcat("Total >", [sum((x for x in c if !ismissing(x)); init=0.0) for c in eachcol(df)[2:end]]))
+    push!(df, _lastrow)
+
+    df = (x -> x isa Real ? x / 1E6 : x).(df)
+    return DataLine("Hydrogen transport volume", "TWh/y", df)
+end
+
 
 # demand response capacity is not trivial:
 #  * there can be multiple capacities associated with it, that must all be shown here
@@ -1514,6 +1622,7 @@ function _annual_post_processing_self(s::Snapshot)
         x->_dataline_demandresponse_cap(x, showforeign=false),
         x->_dataline_electrolysis_cap(x, showforeign=false),
         x->_dataline_hydrogen_storage_cap(x, showforeign=false),
+        x->_dataline_h2_transport_cap(x, showforeign=false),
         x->_dataline_elec_storage_cap(x, showforeign=false),
         x->_dataline_elec_storage_discharge_cap(x, showforeign=false),
         x->_dataline_elec_storage_cap_level(x; showforeign=false), 
@@ -1529,6 +1638,7 @@ function _annual_post_processing_self(s::Snapshot)
         x->_dataline_yearly_demandresponse(x, showforeign=false),
         # x->_dataline_yearly_ev_consumption(x, showforeign=false),
         x->_dataline_yearly_electrolysis(x, showforeign=false),
+        x->_dataline_h2_transport_vol(x, showforeign=false),
         _dataline_ic_vol_detailed,
         x->_dataline_ic_vol_detailed(x; kind=:AC),
         x->_dataline_ic_vol_detailed(x; kind=:DC),
@@ -1556,6 +1666,7 @@ function _annual_post_processing_all(s::Snapshot)
         x->_dataline_demandresponse_cap(x, showforeign=true),
         x->_dataline_electrolysis_cap(x, showforeign=true),
         x->_dataline_hydrogen_storage_cap(x, showforeign=true),
+        x->_dataline_h2_transport_cap(x, showforeign=true),
         x->_dataline_elec_storage_cap(x, showforeign=true),
         x->_dataline_elec_storage_discharge_cap(x, showforeign=true),
         x->_dataline_elec_storage_cap_level(x; showforeign=true),
@@ -1571,6 +1682,7 @@ function _annual_post_processing_all(s::Snapshot)
         x->_dataline_yearly_demandresponse(x, showforeign=true),
         # x->_dataline_yearly_ev_consumption(x, showforeign=true),
         x->_dataline_yearly_electrolysis(x, showforeign=true),
+        x->_dataline_h2_transport_vol(x, showforeign=true),
         _dataline_ic_vol_detailed,
         x->_dataline_ic_vol_detailed(x; kind=:AC),
         x->_dataline_ic_vol_detailed(x; kind=:DC),

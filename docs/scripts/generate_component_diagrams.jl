@@ -338,6 +338,27 @@ const SPECS = [
         outputs=[(name="output", kind=:free, note=["discharging", "no power capacity"], endpoint=H2_BOTH)],
         level=(name="level", note=["cap, investment, fom", "always simplified"]),
     ),
+    (
+        file="component-hydrogen-transport.svg",
+        component="Hydrogen Transport",
+        inputs=[
+            (name="input", kind=:free, note=["a to b, shared cap", "transport cost"],
+                endpoint=(label=["hydrogen node", "a"], kind=:node, carrier=:hydrogen)),
+            (name="input2", kind=:free, note=["b to a, shared cap", "transport cost"],
+                endpoint=(label=["hydrogen node", "b"], kind=:node, carrier=:hydrogen)),
+            (name="electricity_a", kind=:linked, note=["only if elec_a given", "coeff x input"],
+                endpoint=(label=["electricity node", "optional"], kind=:node, carrier=:electricity)),
+        ],
+        outputs=[
+            (name="output", kind=:linked, note=["(1 - loss_factor) x input"],
+                endpoint=(label=["hydrogen node", "b"], kind=:node, carrier=:hydrogen)),
+            (name="output2", kind=:linked, note=["(1 - loss_factor) x input2"],
+                endpoint=(label=["hydrogen node", "a"], kind=:node, carrier=:hydrogen)),
+            (name="hydrogen transport losses", kind=:linked, note=["loss_factor x (input + input2)", "reporting only"],
+                endpoint=(label=["not connected", "avoids double counting"], kind=:unconnected)),
+        ],
+        level=nothing,
+    ),
 
     # --- interconnections --------------------------------------------------
     (
