@@ -276,4 +276,43 @@ using HiGHS
         maketransmissionlink("IC", n1, n2, snap; cap=100.0, a_to_b_availability=1.0, b_to_a_availability=1.0, dc=false)
         @test_throws ArgumentError Posy2.applydcopf!(snap)
     end
+
+    # Three-node loop with PST: KVL is sum(flow/B + phi) = 0 on the cycle.
+    let
+        snap, sim = makesnapshot()
+
+        n1 = Node("ZONE1", EnergyCarrier("electricity ZONE1", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        n2 = Node("ZONE2", EnergyCarrier("electricity ZONE2", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        n3 = Node("ZONE3", EnergyCarrier("electricity ZONE3", sim), rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+
+        src = Component("src", DispatchableSource(n1.carrier), [
+            VariableCost(:fuel, "output", energy, 1.0),
+            FixedCapacity("output", energy, 48.0),
+        ])
+        connect!(snap, src, n1)
+        d2 = Component("dmd2", Demand(n2.carrier, fill(1.0, 8760)), [])
+        d3 = Component("dmd3", Demand(n3.carrier, fill(1.0, 8760)), [])
+        connect!(snap, d2, n2)
+        connect!(snap, d3, n3)
+
+        b12, b23, b31 = -1.5, -0.7, -2.0
+        maketransmissionlink("IC", n1, n2, snap; cap=100.0, a_to_b_availability=1.0, b_to_a_availability=1.0, dc=false, susceptance=b12)
+        maketransmissionlink("IC", n2, n3, snap; cap=100.0, a_to_b_availability=1.0, b_to_a_availability=1.0, dc=false, susceptance=b23, max_phase_shift=0.5)
+        maketransmissionlink("IC", n3, n1, snap; cap=100.0, a_to_b_availability=1.0, b_to_a_availability=1.0, dc=false, susceptance=b31)
+
+        Posy2.applydcopf!(snap)
+        Nosy.optimize!(snap, cost(snap))
+        @test is_solved_and_feasible(sim.model)
+
+        phi = Posy2.ic_phase_shift(snap, "ZONE2", "ZONE3")
+        @test !isnothing(phi)
+
+        _, _, node_map = Posy2.getic_susceptancematrix(snap)
+        f12 = JuMP.value.(Posy2._net_ic_flow(snap, "ZONE1", "ZONE2", node_map))
+        f23 = JuMP.value.(Posy2._net_ic_flow(snap, "ZONE2", "ZONE3", node_map))
+        f31 = JuMP.value.(Posy2._net_ic_flow(snap, "ZONE3", "ZONE1", node_map))
+        phi23 = JuMP.value.(phi.data)
+        lhs = f12 ./ b12 .+ f23 ./ b23 .+ f31 ./ b31 .- phi23
+        @test all(isapprox.(lhs, 0.0; atol=1e-6))
+    end
 end

@@ -70,6 +70,7 @@ makedocs(
             "Two Countries" => "examples/two-countries.md",
             "Price Interconnection" => "examples/price-interconnection.md",
             "DC OPF" => "examples/dc-opf.md",
+            "Phase Shifting Transformer" => "examples/phase-shift.md",
             "Stochastic Programming" => "examples/stochastic.md",
             "Coarse Time Mesh" => "examples/coarse-time-mesh.md",
             "Infeasibility" => "examples/infeasibility.md",

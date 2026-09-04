@@ -8,8 +8,8 @@ using JuMP: @constraint
 
 # Build B-matrix (susceptance matrix) from AC node interconnections only.
 # DC interconnections are excluded because KVL does not apply to DC circuits.
-# Susceptance values come from `Snapshot.options[:ic_susceptance]` (registered by
-# `maketransmissionlink`), not from component tags or name parsing.
+# Susceptance and optional PST values come from `Snapshot.options`
+# (`:ic_susceptance`, `:ic_phase_shift`), registered by `maketransmissionlink`.
 function getic_susceptancematrix(s::Snapshot)
     nodelist = sort(collect(keys(getnodes(s, with=[:electricity]))))
     nodeindex = Dict(n => i for (i, n) in enumerate(nodelist))
@@ -71,9 +71,10 @@ end
 
 Add KVL (DC power flow) constraints at snapshot level, so that cycles in the AC
 network are enforced globally. For each independent cycle, constrain
-`sum(flow_ij / B_ij) = 0`, where `flow_ij` is the net midpoint flow and `B_ij`
-the susceptance registered by [`maketransmissionlink`](@ref). DC interconnections are
-excluded. Warns when there is no AC loop to constrain.
+`sum(flow_ij / B_ij - phi_ij) = 0`, where `flow_ij` is the net midpoint flow,
+`B_ij` the susceptance, and `phi_ij` an optional phase shift, all registered by
+[`maketransmissionlink`](@ref). DC interconnections are excluded. Warns when
+there is no AC loop to constrain.
 
 Call it before `Nosy.optimize!` in the studies that need DC power flow, and
 leave it out of the others: there is no snapshot option to switch it off.
@@ -111,10 +112,14 @@ function applydcopf!(s::Snapshot{T}) where T
             bij = mat[vi, vj]
             bij >= 0.0 &&
                 throw(AssertionError("No AC node IC between nodes $from and $to"))
-            # KVL: sum(flow_ij / B_ij) = 0
+            # KVL: sum(flow_ij / B_ij - phi_ij) = 0
             # flow_ij is net midpoint flow (forward - reverse) for bidirectional ICs
             # divide by susceptance B_ij to get voltage drop: V = flow / B
             add_to_expression!.(exp, (_net_ic_flow(s, from, to, node_map) / bij).data)
+            phi = ic_phase_shift(s, from, to)
+            if !isnothing(phi)
+                add_to_expression!.(exp, -phi.data)
+            end
         end
         # enforce KVL constraint: sum of voltage drops around cycle must be zero
         @constraint(s.sim.model, exp .== 0.0)

@@ -62,4 +62,67 @@ using HiGHS
         snap.options[:ic_susceptance] = Dict{String, Float64}()
         @test_throws ArgumentError Posy2.ic_susceptance(snap, "ZONE1", "ZONE2")
     end
+
+    # max_phase_shift registers hourly variables bounded symmetrically.
+    let
+        snap = makesnapshot()
+        n1, n2 = twonodes(snap)
+        maketransmissionlink(
+            "IC", n1, n2, snap;
+            cap=100.0, a_to_b_availability=1.0, b_to_a_availability=1.0,
+            dc=false, susceptance=-2.0, max_phase_shift=0.3,
+        )
+        phi = Posy2.ic_phase_shift(snap, "ZONE1", "ZONE2")
+        @test !isnothing(phi)
+        @test length(phi.data) == Nosy.nsteps(sim(snap))
+        v = first(phi.data[1].terms)[1]
+        @test JuMP.lower_bound(v) == -0.3
+        @test JuMP.upper_bound(v) == 0.3
+        @test Posy2.ic_phase_shift(snap, "ZONE2", "ZONE1") == -phi
+    end
+
+    # Omitting max_phase_shift registers no phase shift.
+    let
+        snap = makesnapshot()
+        n1, n2 = twonodes(snap)
+        maketransmissionlink(
+            "IC", n1, n2, snap;
+            cap=100.0, a_to_b_availability=1.0, b_to_a_availability=1.0,
+            dc=false, susceptance=-2.0,
+        )
+        @test isnothing(Posy2.ic_phase_shift(snap, "ZONE1", "ZONE2"))
+    end
+
+    # PST is rejected on DC links.
+    let
+        snap = makesnapshot()
+        n1, n2 = twonodes(snap)
+        @test_throws ArgumentError maketransmissionlink(
+            "IC", n1, n2, snap;
+            cap=100.0, a_to_b_availability=1.0, b_to_a_availability=1.0,
+            dc=true, max_phase_shift=0.3,
+        )
+    end
+
+    # PST is rejected without susceptance.
+    let
+        snap = makesnapshot()
+        n1, n2 = twonodes(snap)
+        @test_throws ArgumentError maketransmissionlink(
+            "IC", n1, n2, snap;
+            cap=100.0, a_to_b_availability=1.0, b_to_a_availability=1.0,
+            dc=false, max_phase_shift=0.3,
+        )
+    end
+
+    # Non positive max_phase_shift is rejected.
+    let
+        snap = makesnapshot()
+        n1, n2 = twonodes(snap)
+        @test_throws ArgumentError maketransmissionlink(
+            "IC", n1, n2, snap;
+            cap=100.0, a_to_b_availability=1.0, b_to_a_availability=1.0,
+            dc=false, susceptance=-2.0, max_phase_shift=0.0,
+        )
+    end
 end

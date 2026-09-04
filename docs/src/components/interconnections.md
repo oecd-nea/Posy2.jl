@@ -105,13 +105,14 @@ it does not make the link unidirectional. `dc=false` creates an AC-classified
 link, while `dc=true` excludes it from the cycle constraints added by
 [`applydcopf!`](@ref).
 
-When DC power flow is enabled in [`Posy2Options`](@ref), every AC node
-interconnection must supply a negative series `susceptance`
-(``B\approx-1/X`` for inductive lines). The builder stores it in the
-snapshot's internal registry. Call [`applydcopf!`](@ref) after adding all
-links and before optimisation; once it has run, the node interconnections are
-frozen and a further `maketransmissionlink` call raises an `ArgumentError`. See
-[Optimising A Snapshot](../concepts/optimizing.md) for the complete workflow.
+Every AC node interconnection that enters those constraints must supply a
+negative series `susceptance` (``B\approx-1/X`` for inductive lines). The
+builder stores it in the snapshot's internal registry. An AC link may also
+take `max_phase_shift` for an optional PST. Call [`applydcopf!`](@ref) after
+adding all links and before optimisation; once it has run, the node
+interconnections are frozen and a further `maketransmissionlink` call raises
+an `ArgumentError`. See [Optimising A Snapshot](../concepts/optimizing.md)
+for the complete workflow.
 
 See the [Two Countries example](../examples/two-countries.md) for a transport
 link, and the [DC OPF example](../examples/dc-opf.md) for AC and DC networks
