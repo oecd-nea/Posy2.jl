@@ -3,11 +3,13 @@
     gentimeseries(s::Snapshot)
 Return a DataFrame of hourly post-processing time series related to Snapshot `s`.
 Power time series are in GWe. Price time series use the same units as in Snapshot `s`.
+Demand response columns report the positive activation (`output`), not included in `Total demand`.
 `Total net interconnection` is the net import of the self system across its boundary with
 `:foreign` nodes and foreign price zones; transfers between two self nodes cancel.
 """
 function gentimeseries(s::Snapshot)
     cons = demand(s, collapse=false, aggregate=true)
+    dr = demandresponse(s, collapse=false, aggregate=true)
     net = netinterconnection(s, collapse=false)
     atc = availabletransfercapacities(s)
     prod = production(s, collapse=false, aggregate=true)
@@ -22,6 +24,7 @@ function gentimeseries(s::Snapshot)
 
     df[!,"Hour"] = 1:8760
     df[!,"Total demand"] = cons / 1000.
+    df[!,"Total demand response"] = dr / 1000.
     df[!,"Total losses"] = los / 1000.
     df[!,"Total net interconnection"] = net / 1000.
     df[!,"Total production"] = prod / 1000.
@@ -34,6 +37,11 @@ function gentimeseries(s::Snapshot)
 
     dcons = demand(s, collapse=false, aggregate=false)
     for (k,v) in dcons
+        df[!,k] = v / 1000.
+    end
+
+    ddr = demandresponse(s, collapse=false, aggregate=false)
+    for (k,v) in ddr
         df[!,k] = v / 1000.
     end
 

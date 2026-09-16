@@ -21,8 +21,8 @@ and the path is returned. The output contains five sheets:
   boundary;
 - `Losses`: annual losses per node, broken down by category and by technology,
   and the detailed per-source table (see [Losses](#Losses));
-- `Time series`: hourly demand, production, storage, interconnection, loss,
-  curtailment, and price series;
+- `Time series`: hourly demand, demand response, production, storage,
+  interconnection, loss, curtailment, and price series;
 - `Price duration curves`: endogenous and exogenous electricity prices sorted
   from highest to lowest.
 

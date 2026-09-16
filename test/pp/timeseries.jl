@@ -84,6 +84,30 @@ using HiGHS
         @test isapprox(sum(df[!, "Total demand"]), component_sum; rtol=1e-12)
     end
 
+    # Demand response: per-component activation columns in GW, their sum in "Total demand response",
+    # consistent with the annual demandresponse indicator and excluded from "Total demand".
+    let
+        snap, elec1, _, co2 = makesnapshot()
+        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
+        makedispatchable("CCGT", elec1, snap; co2_node=co2, tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
+        # 100 MW demand, 50 MW CCGT, two 30 MW responses: each must deliver at least 20 MW every hour
+        makedemandresponse("DR1", elec1, 30.0, 40.0, snap)
+        makedemandresponse("DR2", elec1, 30.0, 50.0, snap)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        df = Posy2.gentimeseries(s)
+        @test "Total demand response" in names(df)
+        for cname in ("DR1 ZONE1", "DR2 ZONE1")
+            c = Nosy.getcomponent(s, cname)
+            @test isapprox(df[!, cname], balance(c, :output, energy, collapse=false, aggregate=false)["output"] / 1000.0; rtol=1e-12)
+            @test all(>=(0.02 - 1e-9), df[!, cname])
+        end
+        @test isapprox(df[!, "Total demand response"], df[!, "DR1 ZONE1"] .+ df[!, "DR2 ZONE1"]; rtol=1e-12)
+        @test isapprox(sum(df[!, "Total demand response"]), Posy2.demandresponse(s, "ZONE1") / 1000.0; rtol=1e-12)
+        @test isapprox(df[!, "Total demand"], df[!, "Other consumption ZONE1"]; rtol=1e-12)
+    end
+
     # Internal price IC: directed corridor columns (nhours rows); ZONE2->ZONE1 sum matches imports_internal in GW.
     let
         snap, elec1, elec2, co2 = makesnapshot()

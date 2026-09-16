@@ -110,6 +110,16 @@ function production(s; aggregate=false, collapse=false)
     return d
 end
 
+# return demand response activation (positive `output` accounting flow) time series in MWhe
+function demandresponse(s; aggregate=false, collapse=false)
+    d = LittleDict()
+    for (k,v) in getcomponents(s, with=[:function => "demandresponse"])
+        d[k] = balance(v, :output, energy, collapse=collapse, aggregate=false)["output"]
+    end
+    aggregate && return sum(values(d); init=_aggregate_init(s, collapse))
+    return d
+end
+
 # return charging time series in MWhe
 function charging(s; aggregate=false, collapse=false)
     d = LittleDict()

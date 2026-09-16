@@ -33,7 +33,7 @@ includes it in the blocks below. A component may carry several values at once
 | `"storage"` | Electrical storage charge / discharge / max-level capacity and yearly charge / discharge (on `:electricity` nodes). Hydrogen storage max level (on `:hydrogen` nodes). Hourly charging, discharging, and level series. |
 | `"ev"` | Treated like storage for charge / discharge / level blocks, and like demand for driving consumption. Merged with storage in several indicators. |
 | `"demand"` | Electrical final consumption (port `input`) when also tagged for electricity reporting; hydrogen demand on hydrogen nodes. Hourly demand series. |
-| `"demandresponse"` | Demand-response capacity and yearly output. |
+| `"demandresponse"` | Demand-response capacity and yearly output. Hourly demand response series. |
 | `"electrolysis"` | Electrolysis capacity and yearly electricity input. Counted in electricity-consumption indicators. |
 | `"interconnection"` | Interconnection capacity, flows, losses, congestion, and trade tables; hourly interconnection series. |
 | `"nodeinterconnection"` | Subtype of interconnection between two modelled nodes. |
