@@ -1001,6 +1001,63 @@ function _dataline_ic_hours_at_ntc(s; kind::Symbol=:either)
     return DataLine(title, "h/y", df)
 end
 
+# return hourly (flow, ATC) series per directed corridor; AC and DC links sharing a corridor sum
+# a direction without capacity limit has no ATC and is skipped
+function _ic_directed_flows_atc(s)
+    nh = Nosy.nhours(sim(s))
+    d = Dict{Tuple{String, String}, Tuple{Vector{Float64}, Vector{Float64}}}()
+    for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        # capacity ports of both directions, in `_ic_directed_flows` order
+        ports = hastag(c, :function, "nodeinterconnection") ? ("input", "input2") : ("output", "input")
+        for ((_from, _to, flow), port) in zip(_ic_directed_flows(s, c; collapse=false), ports)
+            Nosy.hascapacitybehavior(c, port) || continue
+            atc = capacity(c, port, multiplier=true)
+            atc isa Nosy.Stepwise && (atc = Nosy.Hourly(atc)) # coarse mesh: multiplier is on the step grid
+            atc = atc .* ones(nh)
+            (f, a) = get(d, (_from, _to), (zeros(nh), zeros(nh)))
+            d[(_from, _to)] = (f .+ flow, a .+ atc)
+        end
+    end
+    return d
+end
+
+# return a DataLine with the use of each directed corridor: average over hours of flow / ATC
+# hours with zero ATC are left out of the average; a corridor never available stays empty
+function _dataline_ic_use_asymmetric(s)
+    zonenames = unique(_ic_quasinodes(s))
+    df = DataFrame("From \\ To" => zonenames .* " >")
+    for k in zonenames
+        df[!, "> " * k] = Union{Missing, Float64}[missing for _ in zonenames]
+    end
+    for ((_from, _to), (flow, atc)) in _ic_directed_flows_atc(s)
+        avail = atc .> 0
+        any(avail) || continue
+        df[df[!, "From \\ To"] .== _from * " >", "> " * _to] .= 100 * sum(flow[avail] ./ atc[avail]) / count(avail)
+    end
+    return DataLine("Interconnection use (asymmetric)", "% of ATC, average over hours", df)
+end
+
+# return a DataLine with the use of each corridor, both senses as one entity:
+# average over hours of the max of flow / ATC among the senses available at that hour
+# hours where no sense is available are left out of the average
+function _dataline_ic_use_symmetric(s)
+    flows = _ic_directed_flows_atc(s)
+    nh = Nosy.nhours(sim(s))
+    d = LittleDict{String, Union{Missing, Float64}}()
+    for (a, b) in sort(unique(minmax(from, to) for (from, to) in keys(flows)))
+        use = fill(-Inf, nh) # -Inf marks an hour with no available sense
+        for key in ((a, b), (b, a))
+            haskey(flows, key) || continue
+            (flow, atc) = flows[key]
+            avail = atc .> 0
+            use[avail] = max.(use[avail], flow[avail] ./ atc[avail])
+        end
+        hours = use .> -Inf
+        d[string(a, " <> ", b)] = any(hours) ? 100 * sum(use[hours]) / count(hours) : missing
+    end
+    return DataLine("Interconnection use (symmetric)", "% of ATC, average over hours of the max over both senses", d)
+end
+
 # build an interconnection volume matrix (From \ To layout)
 # `kind` is `:all`, `:AC`, or `:DC` (AC/DC tables are node ICs only; price ICs in `:all`)
 function _ic_vol_detailed(s; collapse=true, addtotal=false, kind::Symbol=:all)
@@ -1523,6 +1580,8 @@ function _annual_post_processing_self(s::Snapshot)
         _dataline_ic_hours_at_ntc,
         x->_dataline_ic_hours_at_ntc(x; kind=:AC),
         x->_dataline_ic_hours_at_ntc(x; kind=:DC),
+        _dataline_ic_use_symmetric,
+        _dataline_ic_use_asymmetric,
         x->_dataline_yearly_production(x, showforeign=false),
         x->_dataline_yearly_charging(x, showforeign=false),
         x->_dataline_yearly_discharging(x, showforeign=false),
@@ -1565,6 +1624,8 @@ function _annual_post_processing_all(s::Snapshot)
         _dataline_ic_hours_at_ntc,
         x->_dataline_ic_hours_at_ntc(x; kind=:AC),
         x->_dataline_ic_hours_at_ntc(x; kind=:DC),
+        _dataline_ic_use_symmetric,
+        _dataline_ic_use_asymmetric,
         x->_dataline_yearly_production(x, showforeign=true),
         x->_dataline_yearly_charging(x, showforeign=true),
         x->_dataline_yearly_discharging(x, showforeign=true),

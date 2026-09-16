@@ -279,6 +279,85 @@ using DataFrames
         @test either_h >= max(ac_h, dc_h)
     end
 
+    # IC use: A imports 50 MW from cheap B whenever the B -> A ATC allows it.
+    # A -> B ATC is 50 MW and unused. B -> A ATC cycles 100, 25, 0, 0 MW, so B -> A
+    # use is 50% and 100%, with its zero-ATC hours excluded (75%). The symmetric max
+    # is 50%, 100%, 0%, 0% over all hours (37.5%).
+    let
+        simu = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+        set_silent(simu.model)
+        snap = Snapshot(simu, Dict(:posy => Posy2Options(tech_mode=:arguments, timeseries_mode=:arguments)))
+        elec_a = Node("A", EnergyCarrier("electricity A", simu); rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        elec_b = Node("B", EnergyCarrier("electricity B", simu); rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        co2 = Node("CO2", CO2Carrier("CO2", simu); rule=:curtailed, tags=[:co2])
+        nh = Nosy.nhours(simu)
+        makedemand("Other consumption", "A", elec_a, snap; profile=50.0)
+        makedispatchable("Expensive", elec_a, snap; co2_node=co2, tech_column="unused", cap=1_000.0, fuel_cost=1_000.0)
+        makedispatchable("Cheap", elec_b, snap; co2_node=co2, tech_column="unused", cap=1_000.0, fuel_cost=1.0)
+        maketransmissionlink(
+            "IC", elec_a, elec_b, snap;
+            cap=100.0, transaction_cost=1.0,
+            a_to_b_availability=0.5, b_to_a_availability=[(1.0, 0.25, 0.0, 0.0)[mod1(t, 4)] for t in 1:nh],
+        )
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        asym = Posy2._dataline_ic_use_asymmetric(s).d
+        @test isapprox(asym[asym[!, "From \\ To"] .== "B >", "> A"][1], 75.0; rtol=1e-9)
+        @test isapprox(asym[asym[!, "From \\ To"] .== "A >", "> B"][1], 0.0; atol=1e-9)
+        @test ismissing(asym[asym[!, "From \\ To"] .== "A >", "> A"][1])
+        sym = Posy2._dataline_ic_use_symmetric(s).d
+        @test collect(keys(sym)) == ["A <> B"]
+        @test isapprox(sym["A <> B"], 37.5; rtol=1e-9)
+    end
+
+    # IC use on a 2-hour mesh: the step-grid ATC is compared with the hourly flow.
+    # A imports at the 25 MW B -> A ATC at every hour (100%), A -> B is unused.
+    let
+        simu = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh(fill(2 // 1, 4380)))
+        set_silent(simu.model)
+        snap = Snapshot(simu, Dict(:posy => Posy2Options(tech_mode=:arguments, timeseries_mode=:arguments)))
+        elec_a = Node("A", EnergyCarrier("electricity A", simu); rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        elec_b = Node("B", EnergyCarrier("electricity B", simu); rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        co2 = Node("CO2", CO2Carrier("CO2", simu); rule=:curtailed, tags=[:co2])
+        makedemand("Other consumption", "A", elec_a, snap; profile=50.0)
+        makedispatchable("Expensive", elec_a, snap; co2_node=co2, tech_column="unused", cap=1_000.0, fuel_cost=1_000.0)
+        makedispatchable("Cheap", elec_b, snap; co2_node=co2, tech_column="unused", cap=1_000.0, fuel_cost=1.0)
+        maketransmissionlink(
+            "IC", elec_a, elec_b, snap;
+            cap=100.0, transaction_cost=1.0, a_to_b_availability=0.5, b_to_a_availability=0.25,
+        )
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        asym = Posy2._dataline_ic_use_asymmetric(s).d
+        @test isapprox(asym[asym[!, "From \\ To"] .== "B >", "> A"][1], 100.0; rtol=1e-9)
+        @test isapprox(asym[asym[!, "From \\ To"] .== "A >", "> B"][1], 0.0; atol=1e-9)
+        @test isapprox(Posy2._dataline_ic_use_symmetric(s).d["A <> B"], 100.0; rtol=1e-9)
+    end
+
+    # IC use of a price link: imports follow the 100 MW import ATC, export is disabled
+    # (zero ATC at every hour), so its directed cell stays empty and the symmetric use
+    # is the import use.
+    let
+        simu = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+        set_silent(simu.model)
+        snap = Snapshot(simu, Dict(:posy => Posy2Options(tech_mode=:arguments, timeseries_mode=:arguments)))
+        elec = Node("A", EnergyCarrier("electricity A", simu); rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        co2 = Node("CO2", CO2Carrier("CO2", simu); rule=:curtailed, tags=[:co2])
+        makedemand("Other consumption", "A", elec, snap; profile=50.0)
+        makedispatchable("Expensive", elec, snap; co2_node=co2, tech_column="unused", cap=1_000.0, fuel_cost=1_000.0)
+        makepricelink("FR", elec, snap; import_cap=100.0, export_cap=0.0, spot_price=1.0)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        asym = Posy2._dataline_ic_use_asymmetric(s).d
+        @test isapprox(asym[asym[!, "From \\ To"] .== "FR >", "> A"][1], 50.0; rtol=1e-9)
+        @test ismissing(asym[asym[!, "From \\ To"] .== "A >", "> FR"][1])
+        sym = Posy2._dataline_ic_use_symmetric(s).d
+        @test isapprox(sym["A <> FR"], 50.0; rtol=1e-9)
+    end
+
     # Internal price IC selfcosts row: imports/exports/congestion rent match dedicated priceIC helpers.
     let
         snap, elec1, elec2, co2 = makesnapshot()

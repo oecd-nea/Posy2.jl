@@ -186,7 +186,15 @@ interconnection capacity and volume for all links, then AC-only and DC-only
 node-interconnection views (price interconnections appear only in the total
 tables). Hours at NTC (Net Transfer Capacity, the directional transfer limit)
 are reported as `(AC or DC)` (hour counts if either link
-is binding), then `(AC)` and `(DC)` separately. In the hourly time-series sheet,
+is binding), then `(AC)` and `(DC)` separately. Interconnection use, in % of
+the available transfer capacity (ATC, installed capacity times the directional
+availability), comes in two tables. The asymmetric table gives, for each
+directed corridor, the average over hours of `flow / ATC`. The symmetric table
+treats both senses of a corridor as one entity and gives the average over hours
+of the larger `flow / ATC` of the two senses. Hours with zero ATC are left out
+of the averages (a corridor never available is left empty), directions without
+a capacity limit are ignored, and AC and DC links sharing a corridor are summed
+before the ratio is taken. In the hourly time-series sheet,
 the same directed `from > to` label is used; when AC and DC share a corridor
 their flows are summed into one column (there are no separate AC/DC time-series
 columns). The hourly sheet also reports available transfer capacities
