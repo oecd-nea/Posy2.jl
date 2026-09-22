@@ -942,71 +942,18 @@ function _dataline_ic_cap(s; kind::Symbol=:all)
     )
 end
 
-# return a DataLine with the number of hours per year each node interconnection is at its NTC
-# Net Transfer Capacity is directional transfer limit. From \ To matrix; node IC corridors only.
-# `kind` is `:either` (hour counts if AC or DC is binding), `:AC`, or `:DC`.
-function _dataline_ic_hours_at_ntc(s; kind::Symbol=:either)
-    kind in (:either, :AC, :DC) || throw(ArgumentError("kind must be :either, :AC, or :DC; got $kind"))
-
-    zonenames = sort(collect(keys(getnodes(s, with=[:electricity]))))
-    df = DataFrame("From \\ To" => zonenames)
-    for k in zonenames
-        df[!, k] = Union{Missing, Float64}[missing for _ in zonenames]
-    end
-
-    # Binding: flow and capacity in MW; atol = 1 W.
-    # Per directed corridor: OR binding masks for `:either`, else the single-kind mask.
-    masks = Dict{Tuple{String, String}, BitVector}()
-
-    for (_, c) in getcomponents(s, with=[:function => "interconnection", :function => "nodeinterconnection"])
-        if kind === :AC
-            hastag(c, :function, "AC") || continue
-        elseif kind === :DC
-            hastag(c, :function, "DC") || continue
-        end
-        (_from, _to) = _fromto_ic_internal(s, c)
-        for (port, row_zone, col_zone) in (("input", _from, _to), ("input2", _to, _from))
-            Nosy.hascapacitybehavior(c, port) || continue
-            flow = balance(c, :input, energy, collapse=false, aggregate=false)[port]
-            cap = capacity(c, port, multiplier=true)
-            m = falses(length(flow))
-            for t in eachindex(flow)
-                cap_t = cap isa Real ? cap : cap[t]
-                m[t] = cap_t > 0 && isapprox(cap_t, flow[t]; atol=1e-6, rtol=0)
-            end
-            key = (row_zone, col_zone)
-            if haskey(masks, key)
-                masks[key] .|= m
-            else
-                masks[key] = m
-            end
-        end
-    end
-
-    for ((row_zone, col_zone), m) in masks
-        df[df[!, "From \\ To"] .== row_zone, col_zone] .= Ref(Float64(count(m)))
-    end
-
-    df[!, 1] .*= " >"
-    for n in names(df)[2:end]
-        rename!(df, n => "> " * n)
-    end
-
-    datacols = names(df)[2:end]
-    df[!, "> Total"] = [sum((df[i, c] for c in datacols if !ismissing(df[i, c])); init=0.0) for i in 1:nrow(df)]
-    _lastrow = permutedims(vcat("Total >", [sum((x for x in c if !ismissing(x)); init=0.0) for c in eachcol(df)[2:end]],))
-    push!(df, _lastrow)
-
-    title = kind === :either ? "Hours at NTC (AC or DC)" : "Hours at NTC ($kind)"
-    return DataLine(title, "h/y", df)
-end
-
 # return hourly (flow, ATC) series per directed corridor; AC and DC links sharing a corridor sum
 # a direction without capacity limit has no ATC and is skipped
-function _ic_directed_flows_atc(s)
+# `kind` is `:all`, `:AC`, or `:DC` (AC/DC are node ICs only; price ICs in `:all`)
+function _ic_directed_flows_atc(s; kind::Symbol=:all)
+    kind in (:all, :AC, :DC) || throw(ArgumentError("kind must be :all, :AC, or :DC; got $kind"))
     nh = Nosy.nhours(sim(s))
     d = Dict{Tuple{String, String}, Tuple{Vector{Float64}, Vector{Float64}}}()
     for (_, c) in getcomponents(s, with=[:function => "interconnection"])
+        if kind !== :all
+            hastag(c, :function, "nodeinterconnection") || continue
+            hastag(c, :function, String(kind)) || continue
+        end
         # capacity ports of both directions, in `_ic_directed_flows` order
         ports = hastag(c, :function, "nodeinterconnection") ? ("input", "input2") : ("output", "input")
         for ((_from, _to, flow), port) in zip(_ic_directed_flows(s, c; collapse=false), ports)
@@ -1019,6 +966,28 @@ function _ic_directed_flows_atc(s)
         end
     end
     return d
+end
+
+# return a DataLine with the number of hours per year each directed corridor is saturated:
+# flow within 1% of the ATC; hours with zero ATC never count
+# `kind` is `:all`, `:AC`, or `:DC` (AC/DC are node ICs only; price ICs in `:all`)
+function _dataline_ic_hours_at_saturation(s; kind::Symbol=:all)
+    zonenames = kind === :all ? unique(_ic_quasinodes(s)) : sort(collect(keys(getnodes(s, with=[:electricity]))))
+    df = DataFrame("From \\ To" => zonenames .* " >")
+    for k in zonenames
+        df[!, "> " * k] = Union{Missing, Float64}[missing for _ in zonenames]
+    end
+    for ((_from, _to), (flow, atc)) in _ic_directed_flows_atc(s; kind=kind)
+        df[df[!, "From \\ To"] .== _from * " >", "> " * _to] .= count((atc .> 0) .& (flow .>= 0.99 .* atc))
+    end
+
+    datacols = names(df)[2:end]
+    df[!, "> Total"] = [sum((df[i, c] for c in datacols if !ismissing(df[i, c])); init=0.0) for i in 1:nrow(df)]
+    _lastrow = permutedims(vcat("Total >", [sum((x for x in c if !ismissing(x)); init=0.0) for c in eachcol(df)[2:end]]))
+    push!(df, _lastrow)
+
+    title = kind === :all ? "Hours at saturation" : "Hours at saturation ($kind)"
+    return DataLine(title, "h/y", df)
 end
 
 # return a DataLine with the use of each directed corridor: average over hours of flow / ATC
@@ -1577,9 +1546,6 @@ function _annual_post_processing_self(s::Snapshot)
         _dataline_ic_cap,
         x->_dataline_ic_cap(x; kind=:AC),
         x->_dataline_ic_cap(x; kind=:DC),
-        _dataline_ic_hours_at_ntc,
-        x->_dataline_ic_hours_at_ntc(x; kind=:AC),
-        x->_dataline_ic_hours_at_ntc(x; kind=:DC),
         _dataline_ic_use_symmetric,
         _dataline_ic_use_asymmetric,
         x->_dataline_yearly_production(x, showforeign=false),
@@ -1591,6 +1557,9 @@ function _annual_post_processing_self(s::Snapshot)
         _dataline_ic_vol_detailed,
         x->_dataline_ic_vol_detailed(x; kind=:AC),
         x->_dataline_ic_vol_detailed(x; kind=:DC),
+        _dataline_ic_hours_at_saturation,
+        x->_dataline_ic_hours_at_saturation(x; kind=:AC),
+        x->_dataline_ic_hours_at_saturation(x; kind=:DC),
         x->_dataline_imports_vol(x),
         x->_dataline_exports_vol(x),
         x->_dataline_net_ic_vol(x),
@@ -1621,9 +1590,6 @@ function _annual_post_processing_all(s::Snapshot)
         _dataline_ic_cap,
         x->_dataline_ic_cap(x; kind=:AC),
         x->_dataline_ic_cap(x; kind=:DC),
-        _dataline_ic_hours_at_ntc,
-        x->_dataline_ic_hours_at_ntc(x; kind=:AC),
-        x->_dataline_ic_hours_at_ntc(x; kind=:DC),
         _dataline_ic_use_symmetric,
         _dataline_ic_use_asymmetric,
         x->_dataline_yearly_production(x, showforeign=true),
@@ -1635,6 +1601,9 @@ function _annual_post_processing_all(s::Snapshot)
         _dataline_ic_vol_detailed,
         x->_dataline_ic_vol_detailed(x; kind=:AC),
         x->_dataline_ic_vol_detailed(x; kind=:DC),
+        _dataline_ic_hours_at_saturation,
+        x->_dataline_ic_hours_at_saturation(x; kind=:AC),
+        x->_dataline_ic_hours_at_saturation(x; kind=:DC),
         x->_dataline_capacityfactors(x, showforeign=true),
         x->_dataline_electrolysers_capacityfactors(x, showforeign=true),
         x->_dataline_yearly_co2(x, showforeign=true),

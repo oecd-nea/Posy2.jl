@@ -221,7 +221,7 @@ using DataFrames
         end
     end
 
-    # NTC: steady 50 MW import stays below IC cap; hours at NTC are zero on both corridors.
+    # Saturation: steady 50 MW import stays far below the IC cap; zero hours on both corridors.
     let
         snap, elec1, elec2, co2 = makesnapshot()
         makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
@@ -231,52 +231,82 @@ using DataFrames
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        line = Posy2._dataline_ic_hours_at_ntc(s)
-        @test line.title == "Hours at NTC (AC or DC)"
+        line = Posy2._dataline_ic_hours_at_saturation(s)
+        @test line.title == "Hours at saturation"
         df = line.d
-        v_import = df[df[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
-        v_export = df[df[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
-        @test isapprox(v_import, 0.0; rtol=1e-12)
-        @test isapprox(v_export, 0.0; rtol=1e-12)
+        @test df[df[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1] == 0.0
+        @test df[df[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1] == 0.0
+        @test ismissing(df[df[!, "From \\ To"] .== "ZONE1 >", "> ZONE1"][1])
     end
 
-    # An idle finite corridor has zero binding hours in both directions.
+    # An idle finite corridor has zero saturated hours in both directions.
     let
         snap, elec1, elec2, co2 = makesnapshot()
         maketransmissionlink("IC", elec1, elec2, snap; cap=10_000.0)
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
-        line = Posy2._dataline_ic_hours_at_ntc(s)
-        df = line.d
-        v12 = df[df[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
-        v21 = df[df[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1]
-        @test v12 == 0.0
-        @test v21 == 0.0
+        df = Posy2._dataline_ic_hours_at_saturation(s).d
+        @test df[df[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1] == 0.0
+        @test df[df[!, "From \\ To"] .== "ZONE2 >", "> ZONE1"][1] == 0.0
     end
 
-    # AC + DC on one corridor: AC/DC tables are separate; (AC or DC) is the hourly union.
+    # Saturation tolerance: A imports its demand from cheap B. The B -> A ATC cycles
+    # 100, 100, 0, 0 MW and A's demand cycles 99.5, 98, 99.5, 98 MW, so the flow is within
+    # 1% of the ATC one hour in four; zero-ATC hours never count. A -> B (50 MW) is unused.
     let
-        snap, elec1, elec2, co2 = makesnapshot()
-        makedemand("Other consumption", "ZONE1", elec1, snap; profile_multiplier=1.0)
-        makedispatchable("CCGT", elec1, snap; co2_node=co2, tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        makedispatchable("CCGT", elec2, snap; co2_node=co2, tech_column="CCGT", cap=50.0, construction_profile=1.0, decommissioning_profile=1.0)
-        maketransmissionlink("AC", elec1, elec2, snap; cap=2_000.0, dc=false)
-        maketransmissionlink("DC", elec1, elec2, snap; cap=500.0, dc=true)
+        simu = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+        set_silent(simu.model)
+        snap = Snapshot(simu, Dict(:posy => Posy2Options(tech_mode=:arguments, timeseries_mode=:arguments)))
+        elec_a = Node("A", EnergyCarrier("electricity A", simu); rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        elec_b = Node("B", EnergyCarrier("electricity B", simu); rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        co2 = Node("CO2", CO2Carrier("CO2", simu); rule=:curtailed, tags=[:co2])
+        nh = Nosy.nhours(simu)
+        makedemand("Other consumption", "A", elec_a, snap; profile=[(99.5, 98.0, 99.5, 98.0)[mod1(t, 4)] for t in 1:nh])
+        makedispatchable("Expensive", elec_a, snap; co2_node=co2, tech_column="unused", cap=1_000.0, fuel_cost=1_000.0)
+        makedispatchable("Cheap", elec_b, snap; co2_node=co2, tech_column="unused", cap=1_000.0, fuel_cost=1.0)
+        maketransmissionlink(
+            "IC", elec_a, elec_b, snap;
+            cap=100.0, transaction_cost=1.0,
+            a_to_b_availability=0.5, b_to_a_availability=[(1.0, 1.0, 0.0, 0.0)[mod1(t, 4)] for t in 1:nh],
+        )
         Nosy.optimize!(snap, cost(snap))
         s = extract(snap)
 
-        either = Posy2._dataline_ic_hours_at_ntc(s)
-        line_ac = Posy2._dataline_ic_hours_at_ntc(s; kind=:AC)
-        line_dc = Posy2._dataline_ic_hours_at_ntc(s; kind=:DC)
-        @test either.title == "Hours at NTC (AC or DC)"
-        @test line_ac.title == "Hours at NTC (AC)"
-        @test line_dc.title == "Hours at NTC (DC)"
+        df = Posy2._dataline_ic_hours_at_saturation(s).d
+        @test df[df[!, "From \\ To"] .== "B >", "> A"][1] == nh / 4
+        @test df[df[!, "From \\ To"] .== "A >", "> B"][1] == 0.0
+        @test ismissing(df[df[!, "From \\ To"] .== "A >", "> A"][1])
+    end
 
-        either_h = either.d[either.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
-        ac_h = line_ac.d[line_ac.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
-        dc_h = line_dc.d[line_dc.d[!, "From \\ To"] .== "ZONE1 >", "> ZONE2"][1]
-        @test either_h <= ac_h + dc_h
-        @test either_h >= max(ac_h, dc_h)
+    # AC + DC on one corridor: the cheaper AC link (100 MW) fills before DC (50 MW). A's demand
+    # cycles 120, 150 MW, so AC is saturated every hour while DC and the summed corridor are
+    # saturated every other hour.
+    let
+        simu = Sim(Model(HiGHS.Optimizer); mesh=TimeMesh())
+        set_silent(simu.model)
+        snap = Snapshot(simu, Dict(:posy => Posy2Options(tech_mode=:arguments, timeseries_mode=:arguments)))
+        elec_a = Node("A", EnergyCarrier("electricity A", simu); rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        elec_b = Node("B", EnergyCarrier("electricity B", simu); rule=:curtailed, evalprice=true, losses=0.0, tags=[:electricity])
+        co2 = Node("CO2", CO2Carrier("CO2", simu); rule=:curtailed, tags=[:co2])
+        nh = Nosy.nhours(simu)
+        makedemand("Other consumption", "A", elec_a, snap; profile=[(120.0, 150.0)[mod1(t, 2)] for t in 1:nh])
+        makedispatchable("Expensive", elec_a, snap; co2_node=co2, tech_column="unused", cap=1_000.0, fuel_cost=1_000.0)
+        makedispatchable("Cheap", elec_b, snap; co2_node=co2, tech_column="unused", cap=1_000.0, fuel_cost=1.0)
+        maketransmissionlink("AC", elec_a, elec_b, snap; cap=100.0, transaction_cost=1.0, dc=false)
+        maketransmissionlink("DC", elec_a, elec_b, snap; cap=50.0, transaction_cost=2.0, dc=true)
+        Nosy.optimize!(snap, cost(snap))
+        s = extract(snap)
+
+        all_links = Posy2._dataline_ic_hours_at_saturation(s)
+        ac = Posy2._dataline_ic_hours_at_saturation(s; kind=:AC)
+        dc = Posy2._dataline_ic_hours_at_saturation(s; kind=:DC)
+        @test all_links.title == "Hours at saturation"
+        @test ac.title == "Hours at saturation (AC)"
+        @test dc.title == "Hours at saturation (DC)"
+        b_to_a(line) = line.d[line.d[!, "From \\ To"] .== "B >", "> A"][1]
+        @test b_to_a(ac) == nh
+        @test b_to_a(dc) == nh / 2
+        @test b_to_a(all_links) == nh / 2
     end
 
     # IC use: A imports 50 MW from cheap B whenever the B -> A ATC allows it.
