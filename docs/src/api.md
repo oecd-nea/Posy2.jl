@@ -54,6 +54,7 @@ makehydroror
 
 ```@docs
 makeflathydrogenpurchase
+makehydrogentransport
 ```
 
 ## Storage And Conversion

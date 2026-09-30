@@ -40,7 +40,8 @@ includes it in the blocks below. A component may carry several values at once
 | `"priceinterconnection"` | Subtype of interconnection with an exogenous neighbour price; feeds price-duration curves for that neighbour. |
 | `"AC"` / `"DC"` | On node interconnections: AC links enter the DC-OPF cycle basis; DC links are excluded from that basis. |
 | `"foreign"` | On price interconnections only: marks a link whose priced counterparty is outside the self-system boundary. Node interconnections carry no such component tag; their boundary crossing is derived from the connected nodes' `:foreign` tags. |
-| `"hydrogen"` | Marks hydrogen-side components (demand, purchase, electrolysis, H2 storage) for hydrogen-oriented filters. |
+| `"hydrogen"` | Marks hydrogen-side components (demand, purchase, electrolysis, H2 storage, transport) for hydrogen-oriented filters. |
+| `"transport"` | Hydrogen corridor between two hydrogen nodes. |
 | `"dispatchable"` / `"intermittent"` / `"carbonfree"` / `"virtual"` / `"purchase"` | Descriptive roles used by builders and filters; they are not separate annual sheet families by themselves. |
 | `"curtailment"` | On nodes that are not `rule=:curtailed`, output from components with this tag is summed into the curtailment indicator. Shipped builders do not set it; usual studies rely on `:curtailed` nodes instead. |
 
@@ -64,7 +65,7 @@ Nosy queries.
 | Node tag | Consequence |
 |:---------|:------------|
 | `:electricity` | Node enters electricity capacity, yearly energy, price, and DC-OPF graph construction. |
-| `:hydrogen` | Node enters hydrogen storage capacity lines and hydrogen-side filters. |
+| `:hydrogen` | Node enters hydrogen storage capacity lines, hydrogen-transport matrices, and hydrogen-side filters. |
 | `:foreign` | Node is dropped from the self annual sheet and from [`selfcost`](@ref). |
 | `:co2` | CO2 accounting node; not an electricity reporting zone. |
 
@@ -92,6 +93,7 @@ and naming; this table is the reporting map.
 | [`makebatterystorage`](@ref) | `electricity`, `storage`, `generation` | `:tech => tech`, `:zone => elec.name` |
 | [`makehydrogenstorage`](@ref) | `hydrogen`, `storage` | `:tech => tech`, `:zone => h2.name` |
 | [`makeelectrolyser`](@ref) | `demand`, `electrolysis`, `hydrogen` | `:tech => tech`, `:zone => elec.name` |
+| [`makehydrogentransport`](@ref) | `hydrogen`, `transport` | `:zone => a.name`, `:zone => b.name` |
 | [`makepricelink`](@ref) | `interconnection`, `priceinterconnection`; also `foreign` when `neighbor_is_foreign=true` | `:neighbor => neighbor`, `:zone => elec.name` |
 | [`maketransmissionlink`](@ref) | `interconnection`, `nodeinterconnection`, and `AC` or `DC` | `:zone => a.name`, `:zone => b.name` |
 

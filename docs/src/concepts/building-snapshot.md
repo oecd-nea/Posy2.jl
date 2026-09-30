@@ -99,6 +99,9 @@ and can apply a discharge compensation cost.
 
 - [`makeflathydrogenpurchase`](@ref) creates a flat, fixed yearly hydrogen
   supply.
+- [`makehydrogentransport`](@ref) moves hydrogen between two hydrogen nodes
+  with shared send capacity, proportional loss, and optional compressor
+  electricity.
 
 ### Generation
 
@@ -165,6 +168,7 @@ Which port that capacity refers to depends on the technology:
 - generation uses `output` capacity;
 - batteries and electrolysers use `input` capacity;
 - hydrogen storage uses `level` capacity;
+- hydrogen transport uses shared send capacity on `input` and `input2`;
 - reservoirs set `output`, `input` and `level` capacity separately.
 
 ### Inheriting capacity from a snapshot

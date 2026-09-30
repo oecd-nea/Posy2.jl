@@ -67,6 +67,7 @@ makedocs(
             "Demand Response" => "examples/demand-response.md",
             "Electric Vehicles" => "examples/electric-vehicles.md",
             "Hydrogen Production" => "examples/hydrogen-production.md",
+            "Hydrogen Transport" => "examples/hydrogen-transport.md",
             "Two Countries" => "examples/two-countries.md",
             "Price Interconnection" => "examples/price-interconnection.md",
             "DC OPF" => "examples/dc-opf.md",

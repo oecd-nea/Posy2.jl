@@ -21,6 +21,7 @@ remaining assets are kept simple.
 | [Demand Response](examples/demand-response.md) | Demand-side flexibility that shaves a demand peak |
 | [Electric Vehicles](examples/electric-vehicles.md) | Comparing smart charging with vehicle-to-grid operation |
 | [Hydrogen Production](examples/hydrogen-production.md) | Producing hydrogen from PV and shifting supply with storage |
+| [Hydrogen Transport](examples/hydrogen-transport.md) | Adding hydrogen transport as an additional energy-transfer route alongside electricity transmission |
 | [Two Countries](examples/two-countries.md) | Comparing trade and local generation with and without a transmission limit |
 | [Price Interconnection](examples/price-interconnection.md) | Choosing between domestic generation and priced imports |
 | [DC OPF](examples/dc-opf.md) | How KVL changes flows across meshed AC lines, and how controllable HVDC differs |
@@ -51,6 +52,7 @@ The table shows which combination each example uses.
 | [Demand Response](examples/demand-response.md) | `:arguments` | `:arguments` |
 | [Electric Vehicles](examples/electric-vehicles.md) | `:arguments` | `:excel` |
 | [Hydrogen Production](examples/hydrogen-production.md) | `:excel` | `:excel` |
+| [Hydrogen Transport](examples/hydrogen-transport.md) | `:excel` | `:excel` |
 | [Two Countries](examples/two-countries.md) | `:arguments` | `:excel` |
 | [Price Interconnection](examples/price-interconnection.md) | `:arguments` | `:excel` |
 | [DC OPF](examples/dc-opf.md) | `:excel` | `:arguments` |
