@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="460" viewBox="0 0 1000 460" role="img">
+<style>
+    text { font-family: system-ui, sans-serif; fill: #263238; }
+    .title { font-size: 14px; font-weight: 600; }
+    .legend { font-size: 12px; }
+    .axis-label { font-size: 12px; text-anchor: middle; }
+    .tick { font-size: 11px; text-anchor: end; fill: #546e7a; }
+    .tick.x { text-anchor: middle; }
+    .grid { stroke: #dfe5e8; stroke-width: 1; }
+    .grid.vertical { stroke-dasharray: 2 4; }
+    .frame { fill: none; stroke: #78909c; stroke-width: 1; }
+</style>
+<rect width="100%" height="100%" fill="white"/>
+<text class="title" x="70" y="26.0">Evening peak on C</text>
+<text class="axis-label" transform="translate(18 118.0) rotate(-90)">Power (MW)</text>
+<line class="grid" x1="70.0" y1="198.0" x2="972.0" y2="198.0"/>
+<text class="tick" x="62" y="202.0">0</text>
+<line class="grid" x1="70.0" y1="158.0" x2="972.0" y2="158.0"/>
+<text class="tick" x="62" y="162.0">25</text>
+<line class="grid" x1="70.0" y1="118.0" x2="972.0" y2="118.0"/>
+<text class="tick" x="62" y="122.0">50</text>
+<line class="grid" x1="70.0" y1="78.0" x2="972.0" y2="78.0"/>
+<text class="tick" x="62" y="82.0">75</text>
+<line class="grid" x1="70.0" y1="38.0" x2="972.0" y2="38.0"/>
+<text class="tick" x="62" y="42.0">100</text>
+<line class="grid vertical" x1="70.0" y1="38.0" x2="70.0" y2="198.0"/>
+<line class="grid vertical" x1="295.5" y1="38.0" x2="295.5" y2="198.0"/>
+<line class="grid vertical" x1="521.0" y1="38.0" x2="521.0" y2="198.0"/>
+<line class="grid vertical" x1="746.5" y1="38.0" x2="746.5" y2="198.0"/>
+<line class="grid vertical" x1="972.0" y1="38.0" x2="972.0" y2="198.0"/>
+<rect class="frame" x="70.0" y="38.0" width="902.0" height="160.0"/>
+<polyline fill="none" stroke="#264653" stroke-width="2.4" stroke-dasharray="7 5" points="70.00,121.20 109.22,124.40 148.43,127.60 187.65,130.80 226.87,130.80 266.09,126.00 305.30,114.80 344.52,105.20 383.74,110.00 422.96,118.00 462.17,121.20 501.39,118.00 540.61,114.80 579.83,111.60 619.04,105.20 658.26,86.00 697.48,62.00 736.70,38.00 775.91,44.40 815.13,66.80 854.35,89.20 893.57,102.00 932.78,111.60 972.00,118.00"/>
+<polyline fill="none" stroke="#c44536" stroke-width="2.4" points="70.00,198.00 109.22,198.00 148.43,198.00 187.65,198.00 226.87,198.00 266.09,198.00 305.30,198.00 344.52,198.00 383.74,198.00 422.96,198.00 462.17,198.00 501.39,198.00 540.61,198.00 579.83,198.00 619.04,198.00 658.26,182.00 697.48,158.00 736.70,134.00 775.91,140.40 815.13,162.80 854.35,185.20 893.57,198.00 932.78,198.00 972.00,198.00"/>
+<polyline fill="none" stroke="#2a9d8f" stroke-width="2.4" points="70.00,198.00 109.22,198.00 148.43,198.00 187.65,198.00 226.87,198.00 266.09,198.00 305.30,198.00 344.52,198.00 383.74,198.00 422.96,198.00 462.17,198.00 501.39,198.00 540.61,198.00 579.83,198.00 619.04,198.00 658.26,198.00 697.48,198.00 736.70,198.00 775.91,198.00 815.13,198.00 854.35,198.00 893.57,198.00 932.78,198.00 972.00,198.00"/>
+<line x1="318" y1="22" x2="342" y2="22" stroke="#264653" stroke-width="2.4" stroke-dasharray="7 5"/>
+<text class="legend" x="348" y="26">Demand on C</text>
+<line x1="451.2" y1="22" x2="475.2" y2="22" stroke="#c44536" stroke-width="2.4"/>
+<text class="legend" x="481.2" y="26">OCGT on C, without PST</text>
+<line x1="663.6" y1="22" x2="687.6" y2="22" stroke="#2a9d8f" stroke-width="2.4"/>
+<text class="legend" x="693.6" y="26">OCGT on C, with PST</text>
+<text class="title" x="70" y="238.0">Optimised phase shift</text>
+<text class="axis-label" transform="translate(18 322.5) rotate(-90)">φ (rad)</text>
+<line class="grid" x1="70.0" y1="395.0" x2="972.0" y2="395.0"/>
+<text class="tick" x="62" y="399.0">-0.4</text>
+<line class="grid" x1="70.0" y1="358.8" x2="972.0" y2="358.8"/>
+<text class="tick" x="62" y="362.8">-0.2</text>
+<line class="grid" x1="70.0" y1="322.5" x2="972.0" y2="322.5"/>
+<text class="tick" x="62" y="326.5">0</text>
+<line class="grid" x1="70.0" y1="286.2" x2="972.0" y2="286.2"/>
+<text class="tick" x="62" y="290.2">0.2</text>
+<line class="grid" x1="70.0" y1="250.0" x2="972.0" y2="250.0"/>
+<text class="tick" x="62" y="254.0">0.4</text>
+<line class="grid vertical" x1="70.0" y1="250.0" x2="70.0" y2="395.0"/>
+<text class="tick x" x="70.0" y="413.0">0</text>
+<line class="grid vertical" x1="295.5" y1="250.0" x2="295.5" y2="395.0"/>
+<text class="tick x" x="295.5" y="413.0">6</text>
+<line class="grid vertical" x1="521.0" y1="250.0" x2="521.0" y2="395.0"/>
+<text class="tick x" x="521.0" y="413.0">12</text>
+<line class="grid vertical" x1="746.5" y1="250.0" x2="746.5" y2="395.0"/>
+<text class="tick x" x="746.5" y="413.0">18</text>
+<line class="grid vertical" x1="972.0" y1="250.0" x2="972.0" y2="395.0"/>
+<text class="tick x" x="972.0" y="413.0">24</text>
+<rect class="frame" x="70.0" y="250.0" width="902.0" height="145.0"/>
+<polyline fill="none" stroke="#7b68a6" stroke-width="2.4" points="70.00,306.19 109.22,303.47 148.43,300.75 187.65,298.03 226.87,298.03 266.09,302.11 305.30,311.62 344.52,319.78 383.74,315.70 422.96,308.91 462.17,306.19 501.39,308.91 540.61,311.62 579.83,314.34 619.04,319.78 658.26,336.09 697.48,356.48 736.70,376.88 775.91,371.44 815.13,352.41 854.35,333.38 893.57,322.50 932.78,314.34 972.00,308.91"/>
+<text class="axis-label" x="521.0" y="433.0">Hour</text>
+<line x1="790" y1="234" x2="814" y2="234" stroke="#7b68a6" stroke-width="2.4"/>
+<text class="legend" x="820" y="238">Phase shift on B–C</text>
+</svg>

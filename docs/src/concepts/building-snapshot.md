@@ -259,10 +259,11 @@ A node interconnection crosses the boundary used for self-system reporting
 exactly when one of its endpoints is a node tagged `:foreign`; there is no
 builder flag for this. Set `dc=true` for a controllable DC link. An AC link
 participating in the optional DC power flow formulation uses `dc=false` and a
-negative `susceptance`. Exactly one AC and one DC may share the same unordered
-node pair (either, both, or neither is fine). A second AC or a second DC on
-that pair raises an error. Aggregate equivalent parallel circuits before
-calling [`maketransmissionlink`](@ref).
+negative `susceptance`. An optional `max_phase_shift` on that AC link creates
+an hourly PST variable; omit it for a plain interconnection. Exactly one AC
+and one DC may share the same unordered node pair (either, both, or neither
+is fine). A second AC or a second DC on that pair raises an error. Aggregate
+equivalent parallel circuits before calling [`maketransmissionlink`](@ref).
 
 The shared capacity uses the common `cap`/`mincap`/`maxcap` contract. Its two
 directional limits use the corresponding `From>To` columns of a time-series

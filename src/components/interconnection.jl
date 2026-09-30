@@ -172,6 +172,7 @@ end
         exclusive_direction::Bool=false, dc::Bool=false,
         transaction_cost::Real=0., loss_factor::Real=0.,
         susceptance::Union{Nothing,Real}=nothing,
+        max_phase_shift::Union{Nothing,Real}=nothing,
         a_to_b_availability=nothing, b_to_a_availability=nothing,
         overnight_cost=nothing, om_fixed_cost=nothing,
         lifetime=nothing, construction_profile=nothing,
@@ -208,6 +209,11 @@ Arguments:
     the standard convention; must be negative), used only when `dc=false`;
     stored in `Snapshot.options[:ic_susceptance]` (required for KVL when
     [`applydcopf!`](@ref) is called).
+  * `max_phase_shift`: Maximum phase shift in rad for an optional PST on this
+    AC link. When set, an hourly optimization variable `phi_t` is created with
+    `-max_phase_shift <= phi_t <= max_phase_shift` and enters KVL when
+    [`applydcopf!`](@ref) is called. `nothing` (default) leaves the link as a
+    plain interconnection. Only valid for AC links (`dc=false`).
   * `a_to_b_availability`: Dimensionless hourly `a -> b` multiplier vector or
     scalar, each value in `[0, 1]`.
   * `b_to_a_availability`: Dimensionless hourly `b -> a` multiplier vector or
@@ -252,6 +258,7 @@ function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
     # economic / physical controls
     transaction_cost::Real=0., loss_factor::Real=0.,
     susceptance::Union{Nothing,Real}=nothing,
+    max_phase_shift::Union{Nothing,Real}=nothing,
     a_to_b_availability=nothing, b_to_a_availability=nothing,
 
     # economic controls
@@ -262,6 +269,11 @@ function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
 )
     checkhorizon(s)
     @argcheck 0 <= loss_factor < 1 "loss_factor must be in [0, 1)"
+    if !isnothing(max_phase_shift)
+        @argcheck dc == false "max_phase_shift applies only to AC node interconnections"
+        @argcheck max_phase_shift > 0 "max_phase_shift must be positive"
+        isnothing(susceptance) && throw(ArgumentError("`susceptance` must be supplied when `max_phase_shift` is set",))
+    end
     component_name = string(name, "_", a.name, "_", b.name)
     a.name == b.name && throw(ArgumentError("a node interconnection must connect two distinct nodes"))
     Nosy.hascomponent(s, component_name) && throw(ArgumentError("snapshot already has a component named $component_name"))
@@ -415,6 +427,11 @@ function maketransmissionlink(name::String, a::Node, b::Node, s::Snapshot;
 
     if !dc && !isnothing(susceptance)
         _register_ic_susceptance!(s, a.name, b.name, susceptance)
+    end
+
+    if !isnothing(max_phase_shift)
+        phi = Nosy.Stepwise(sim(s), lb=-Float64(max_phase_shift), ub=Float64(max_phase_shift), basename=component_name * "_phase_shift_",)
+        _register_ic_phase_shift!(s, a.name, b.name, phi)
     end
 
     return c

@@ -199,7 +199,8 @@ For a DC power flow study:
 1. Build electricity nodes with the `:electricity` tag.
 2. Build AC node interconnections with [`maketransmissionlink`](@ref),
    `dc=false`, and a negative series `susceptance` (``B\approx-1/X`` for
-   inductive lines).
+   inductive lines). Pass `max_phase_shift` on an AC link that should carry an
+   optimized PST; omit it otherwise.
 3. Build any controllable DC links with `dc=true`.
 4. Call `applydcopf!(snapshot)` once, after all interconnections have been
    added and before optimisation.
@@ -220,6 +221,7 @@ maketransmissionlink(
     cap=10_000.0,
     dc=false,
     susceptance=-10.0,
+    max_phase_shift=0.3,
 )
 
 applydcopf!(snapshot)
@@ -232,7 +234,9 @@ Interconnections tagged as DC are excluded because their flow is controllable
 and does not obey the AC cycle equations.
 
 The susceptance registry is stored in `snapshot.options[:ic_susceptance]`.
-This entry is managed by [`maketransmissionlink`](@ref).
+When `max_phase_shift` is set, the hourly phase-shift variables are stored in
+`snapshot.options[:ic_phase_shift]`. Both entries are managed by
+[`maketransmissionlink`](@ref).
 
 Omitting the `applydcopf!` call is what makes a study a transport model: the
 directional ATC limits still bound each link, but nothing ties the flows to the

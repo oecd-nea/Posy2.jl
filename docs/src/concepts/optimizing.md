@@ -68,6 +68,9 @@ Set each AC link’s series susceptance in [`maketransmissionlink`](@ref)
 (negative for inductive lines, ``B\approx-1/X``). Use one equivalent
 susceptance if parallel AC circuits were aggregated beforehand.
 Controllable DC links (`dc=true`) are excluded from the cycle basis.
+An optional `max_phase_shift` on an AC link adds an hourly phase-shift
+variable ``\phi_t`` with ``-\phi_{\max}\le\phi_t\le\phi_{\max}``; omit it
+when the link has no PST.
 
 For each independent AC cycle ``C`` and each time step ``t``, and for a
 directed edge ``(i,j)`` oriented consistently with the traversal of ``C``, KVL
@@ -91,16 +94,18 @@ f_{ij,t} =
 This reduces to forward minus reverse transfer when `loss_factor=0`.
 ``B_{ij}`` is the series susceptance of that AC link. For the inductive lines
 used here, ``B_{ij}\approx-1/X_{ij}<0``. With the usual lossless DC flow
-``f_{ij}=(1/X_{ij})(\theta_i-\theta_j)``, that sign choice makes the angle drop
-``\theta_i-\theta_j=-f_{ij}/B_{ij}``, so the cycle constraint
+``f_{ij}=(1/X_{ij})(\theta_i-\theta_j-\phi_{ij})``, that sign choice makes the
+angle drop ``\theta_i-\theta_j-\phi_{ij}=-f_{ij}/B_{ij}``. Summing
+``\theta_i-\theta_j=-f_{ij}/B_{ij}+\phi_{ij}`` around the cycle then gives
 
 ```math
-\sum_{(i,j) \in C} \frac{f_{ij,t}}{B_{ij}} = 0
+\sum_{(i,j) \in C} \left(\frac{f_{ij,t}}{B_{ij}}-\phi_{ij,t}\right) = 0
 \qquad \forall\, C,\, t.
 ```
 
-is Kirchhoff's voltage law on those angles. Posy2 therefore requires a strictly
-negative `susceptance` on every AC link that enters the cycle basis.
+is Kirchhoff's voltage law on those angles. Links without a PST contribute
+``\phi_{ij,t}=0``. Posy2 therefore requires a strictly negative `susceptance`
+on every AC link that enters the cycle basis.
 
 Leave the call out for a transport study. Call it once for a given snapshot; it
 is a model-construction step, not part of the solver call.
