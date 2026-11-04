@@ -55,7 +55,7 @@ Arguments:
   * `lifetime`: Asset lifetime in years (`> 0`, integer-valued).
   * `construction_profile`: Dimensionless yearly construction-cost shares.
   * `decommissioning_profile`: Dimensionless yearly decommissioning-cost shares.
-  * `connection_cost`: Connection cost as a fraction of annualized investment.
+  * `connection_cost`: Grid connection CAPEX in currency/kW of output capacity, annualized like `overnight_cost`.
   * `om_var_cost`: Variable O&M in currency/MWh of output.
   * `fuel_cost`: Fuel cost in currency/MWh of output, used only without `fuel_node`.
   * `no_load_cost`: No-load cost in currency/committed-unit/hour, used with UC.
@@ -142,17 +142,18 @@ function makedispatchable(name::String, elec::Node, s::Snapshot;
     _lt = nothing
     _cp = nothing
     _inv = 0.0
-    if !iszero(_oc_raw)
+    _conn_inv = 0.0
+    if !iszero(_oc_raw) || !iszero(_conn)
         _lt_raw = if isnothing(lifetime)
             excel ? gettechparam(s, tech_column, "lifetime", "dispatchable") : throw(ArgumentError(
-                "`lifetime` must be supplied when overnight_cost is non-zero",
+                "`lifetime` must be supplied when overnight_cost or connection_cost is non-zero",
             ))
         else
             lifetime
         end
         _cp = if isnothing(construction_profile)
             excel ? gettechparam(s, tech_column, "construction_profile", "dispatchable") : throw(ArgumentError(
-                "`construction_profile` must be supplied when overnight_cost is non-zero",
+                "`construction_profile` must be supplied when overnight_cost or connection_cost is non-zero",
             ))
         else
             construction_profile
@@ -160,9 +161,10 @@ function makedispatchable(name::String, elec::Node, s::Snapshot;
         validate_component_input(component_input(lifetime=_lt_raw))
         _lt = Int(_lt_raw)
         _inv = eac(_oc, discount_rate(s), _lt, _cp)
+        _conn_inv = eac(_conn * 1000., discount_rate(s), _lt, _cp)
     end
     push!(vb, FixedCost(:investment, "output", energy, _inv))
-    push!(vb, FixedCost(:connection, "output", energy, _inv * _conn))
+    push!(vb, FixedCost(:connection, "output", energy, _conn_inv))
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))
     push!(vb, VariableCost(:vom, "output", energy, _vom))
     
@@ -390,7 +392,7 @@ Arguments:
   * `lifetime`: Asset lifetime in years (`> 0`, integer-valued).
   * `construction_profile`: Dimensionless yearly construction-cost shares.
   * `decommissioning_profile`: Dimensionless yearly decommissioning-cost shares.
-  * `connection_cost`: Connection cost as a fraction of annualized investment.
+  * `connection_cost`: Grid connection CAPEX in currency/kW of output capacity, annualized like `overnight_cost`.
   * `om_var_cost`, `fuel_cost`, `waste_cost`: Costs in currency/MWh of output;
     `fuel_cost` is used directly only without `fuel_node`.
   * `no_load_cost`: No-load cost in currency/committed-unit/hour, used with UC.
@@ -472,15 +474,15 @@ function makenuclear(name::String, elec::Node, s::Snapshot;
 
     _lt_raw = lifetime
     _inv = 0.0
-    if !iszero(_oc_raw)
+    if !iszero(_oc_raw) || !iszero(_conn)
         if isnothing(_lt_raw)
             _lt_raw = excel ? gettechparam(s, tech_column, "lifetime", "dispatchable") : throw(ArgumentError(
-                "`lifetime` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
+                "`lifetime` must be supplied when overnight_cost or connection_cost is non-zero and tech_mode=:arguments",
             ))
         end
         _cp = if isnothing(construction_profile)
             excel ? gettechparam(s, tech_column, "construction_profile", "dispatchable") : throw(ArgumentError(
-                "`construction_profile` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
+                "`construction_profile` must be supplied when overnight_cost or connection_cost is non-zero and tech_mode=:arguments",
             ))
         else
             construction_profile
@@ -509,6 +511,7 @@ function makenuclear(name::String, elec::Node, s::Snapshot;
     ))
 
     _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discount_rate(s), Int(_lt_raw), _cp)
+    _conn_inv = iszero(_conn) ? 0.0 : eac(_conn * 1000.0, discount_rate(s), Int(_lt_raw), _cp)
     _decom_cost = if iszero(_oc_raw) || iszero(_decom)
         0.0
     else
@@ -516,7 +519,7 @@ function makenuclear(name::String, elec::Node, s::Snapshot;
     end
 
     push!(vb, FixedCost(:investment, "output", energy, _inv))
-    push!(vb, FixedCost(:connection, "output", energy, _inv * _conn))
+    push!(vb, FixedCost(:connection, "output", energy, _conn_inv))
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))
     push!(vb, VariableCost(:vom, "output", energy, _vom))
     push!(vb, VariableCost(:waste, "output", energy, _waste))
@@ -742,7 +745,7 @@ Arguments:
   * `lifetime`: Asset lifetime in years (`> 0`, integer-valued).
   * `construction_profile`: Dimensionless yearly construction-cost shares.
   * `decommissioning_profile`: Dimensionless yearly decommissioning-cost shares.
-  * `connection_cost`: Connection cost as a fraction of annualized investment.
+  * `connection_cost`: Grid connection CAPEX in currency/kW of output capacity, annualized like `overnight_cost`.
   * `om_var_cost`, `fuel_cost`: Costs in currency/MWh of output.
   * `co2_emission`: Emission factor in kgCO2/MWh of output; converted to tCO2.
 
@@ -799,15 +802,15 @@ function makeintermittentsource(name::String, elec::Node, s::Snapshot;
 
     _lt_raw = lifetime
     _cp = nothing
-    if !iszero(_oc_raw)
+    if !iszero(_oc_raw) || !iszero(_conn)
         if isnothing(_lt_raw)
             _lt_raw = excel ? gettechparam(s, tech_column, "lifetime", "intermittent") : throw(ArgumentError(
-                "`lifetime` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
+                "`lifetime` must be supplied when overnight_cost or connection_cost is non-zero and tech_mode=:arguments",
             ))
         end
         _cp = if isnothing(construction_profile)
             excel ? gettechparam(s, tech_column, "construction_profile", "intermittent") : throw(ArgumentError(
-                "`construction_profile` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
+                "`construction_profile` must be supplied when overnight_cost or connection_cost is non-zero and tech_mode=:arguments",
             ))
         else
             construction_profile
@@ -835,13 +838,14 @@ function makeintermittentsource(name::String, elec::Node, s::Snapshot;
     ))
 
     _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discount_rate(s), Int(_lt_raw), _cp)
+    _conn_inv = iszero(_conn) ? 0.0 : eac(_conn * 1000.0, discount_rate(s), Int(_lt_raw), _cp)
     _decom_cost = if iszero(_oc_raw) || iszero(_decom)
         0.0
     else
         decom_cost(_oc_raw * 1000.0, _decom, Int(_lt_raw), discount_rate(s), _dcp)
     end
     push!(vb, FixedCost(:investment, "output", energy, _inv))
-    push!(vb, FixedCost(:connection, "output", energy, _inv * _conn))
+    push!(vb, FixedCost(:connection, "output", energy, _conn_inv))
     push!(vb, FixedCost(:fom, "output", energy, _fom * 1000.))
     push!(vb, VariableCost(:vom, "output", energy, _vom))
     push!(vb, VariableCost(:fuel, "output", energy, _fuel))

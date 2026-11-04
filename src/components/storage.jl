@@ -269,7 +269,7 @@ Arguments:
   * `lifetime`: Asset lifetime in years (`> 0`, integer-valued).
   * `construction_profile`: Dimensionless yearly construction-cost shares.
   * `decommissioning_profile`: Dimensionless yearly decommissioning-cost shares.
-  * `connection_cost`: Connection cost as a fraction of annualized investment.
+  * `connection_cost`: Grid connection CAPEX in currency/kW of charging capacity, annualized like `overnight_cost`.
   * `om_var_cost`: Variable O&M in currency/MWh charged.
 
 With `nothing`, economic arguments use workbook values in `:excel` mode. In
@@ -316,15 +316,15 @@ function makebatterystorage(name::String, elec::Node, s::Snapshot;
 
     _lt_raw = lifetime
     _cp = nothing
-    if !iszero(_oc_raw)
+    if !iszero(_oc_raw) || !iszero(_conn)
         if isnothing(_lt_raw)
             _lt_raw = excel ? gettechparam(s, tech_column, "lifetime", "storage") : throw(ArgumentError(
-                "`lifetime` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
+                "`lifetime` must be supplied when overnight_cost or connection_cost is non-zero and tech_mode=:arguments",
             ))
         end
         _cp = if isnothing(construction_profile)
             excel ? gettechparam(s, tech_column, "construction_profile", "storage") : throw(ArgumentError(
-                "`construction_profile` must be supplied when overnight_cost is non-zero and tech_mode=:arguments",
+                "`construction_profile` must be supplied when overnight_cost or connection_cost is non-zero and tech_mode=:arguments",
             ))
         else
             construction_profile
@@ -350,6 +350,7 @@ function makebatterystorage(name::String, elec::Node, s::Snapshot;
 
     _grid_losses = Float64(grid_losses)
     _inv = iszero(_oc_raw) ? 0.0 : eac(_oc_raw * 1000.0, discount_rate(s), Int(_lt_raw), _cp)
+    _conn_inv = iszero(_conn) ? 0.0 : eac(_conn * 1000.0, discount_rate(s), Int(_lt_raw), _cp)
     _decom_cost = if iszero(_oc_raw) || iszero(_decom)
         0.0
     else
@@ -363,7 +364,7 @@ function makebatterystorage(name::String, elec::Node, s::Snapshot;
     push!(vb, gencapacity(power_cap, "input", s, name * " " * elec.name;
         mincap=power_mincap, maxcap=power_maxcap, argname="power_cap"))
     push!(vb, FixedCost(:investment, "input", energy, _inv))
-    push!(vb, FixedCost(:connection, "input", energy, _inv * _conn))
+    push!(vb, FixedCost(:connection, "input", energy, _conn_inv))
     push!(vb, FixedCost(:fom, "input", energy, _fom * 1000.))
     push!(vb, FixedCost(:decommissioning, "input", energy, _decom_cost))
     push!(vb, VariableCost(:vom, "input", energy, _vom))

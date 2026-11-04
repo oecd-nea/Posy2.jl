@@ -293,7 +293,7 @@ scale workbook values as follows:
 | `overnight_cost` | Multiplied by 1000, then annualised (enter currency per kW) |
 | `om_fixed_cost` | Multiplied by 1000 (enter currency per kW per year) |
 | `om_var_cost`, `fuel_cost`, `waste_cost` | Per unit of the priced energy flow |
-| `connection_cost` | Fraction of annualised investment |
+| `connection_cost` | Multiplied by 1000, then annualised like `overnight_cost` (enter currency per kW) |
 | `decommissioning` | Fraction of overnight cost |
 | `lifetime` | Positive integer years |
 | `efficiency`, `roundtrip_eff`, `charging_eff` | Fraction in `(0, 1]` |

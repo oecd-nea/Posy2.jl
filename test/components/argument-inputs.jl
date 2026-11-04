@@ -34,7 +34,7 @@ using HiGHS
         fuel_cost=24.0,
         co2_emission=0.0,
     )
-    intermittent_costs = merge(generation_costs, (connection_cost=0.04,))
+    intermittent_costs = merge(generation_costs, (connection_cost=44.0,))
     hydro_costs = (
         overnight_cost=1_700.0,
         om_fixed_cost=11.0,
@@ -381,5 +381,20 @@ using HiGHS
             "Mixed reverse", electricity, series_excel; co2_node=carbon, tech_column="Onwind",
             cap=10.0, weather_year=2019, intermittent_costs...,
         ))
+    end
+
+    @testset "Connection cost in currency per kW" begin
+        s, electricity, carbon = argument_snapshot()
+        c = makeintermittentsource(
+            "Connection only", electricity, s; co2_node=carbon, cap=10.0, profile=0.4,
+            overnight_cost=0.0, connection_cost=100.0, lifetime=20, construction_profile=1.0,
+        )
+        cost(type) = only(b.data.val for b in Nosy.getbehaviors(c, Nosy.FixedCostBehavior) if b.data.type == type)
+        @test cost(:investment) == 0.0
+        @test cost(:connection) ≈ Posy2.eac(100_000.0, Posy2.discount_rate(s), 20, 1.0)
+        @test_throws ArgumentError makeintermittentsource(
+            "Connection without lifetime", electricity, s; co2_node=carbon, cap=10.0, profile=0.4,
+            connection_cost=100.0,
+        )
     end
 end
