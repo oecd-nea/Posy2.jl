@@ -16,3 +16,6 @@ Posy2 = "0.2"
 Test = "1.11 - 1.12"
 XLSX = "0.10"
 julia = "1.11 - 1.12"
+
+[sources]
+Nosy = {url = "https://github.com/oecd-nea/Nosy.jl.git", rev = "dev"}
